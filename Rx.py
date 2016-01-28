@@ -376,7 +376,7 @@ def rotate_key(account, old_key):
 def display_pub_key(parameters):
     """
     Display public key received from contact.
-    
+
     :param parameters: Packet containing public key.
     :return:           None
     """
@@ -407,8 +407,10 @@ def display_pub_key(parameters):
 
     print("Received an ephemeral public key from %s:\n" % account[3:])
 
-    s = public_key if local_testing else final
-    print("    %s %s\n\n" % (s, chksm))
+    if local_testing:
+        print("    %s%s\n\n" % (public_key, chksm))
+    else:
+        print("    %s %s\n\n" % (final, chksm))
 
     return None
 
@@ -1572,7 +1574,7 @@ def cancel_message(account):
 def cancel_file(account):
     """
     Process cancel file packet.
-    
+
     :param account: Sender's account (e.g. alice@jabber.org).
     :return:        None
     """
@@ -1600,7 +1602,7 @@ def short_message(account, packet):
     Process short message packet.
 
     Strip header from packet and add message to m_dictionary.
-    
+
     :param account: Sender's account (e.g. alice@jabber.org).
     :param packet:  Packet to process.
     :return:        None
