@@ -15,16 +15,16 @@ as the [NSA](https://firstlook.org/theintercept/2014/03/12/nsa-plans-infect-mill
 
 ###Overview
 
-**High end end-to-end encryption** with Curve25519 ECDHE / PSKs.
+**Strong end-to-end encryption** with Curve25519 ECDHE / PSKs.
 XSalsa20-Poly1305 AEAD with forward secrecy and deniability.
 
 
-**High entropy key generation** with /dev/urandom mixed with entropy from 
+**Secure key generation** with /dev/urandom mixed with entropy from 
 open circuit design GPIO HWRNG of RPi that acts either as TCB itself or as 
 a sampling device over SSH.
 
 
-**Strong endpoint security** is obtained with hardware-based TCB separation:
+**Endpoint security** obtained with hardware-based TCB separation:
 Unidirectional data flow between end point's three computers prevents 
 either injection of malware or exfiltration of keys and plaintexts from TCB
 regardless of existing software zero-day vulnerabilities in software.
@@ -53,7 +53,7 @@ to receiver computers (RxM) via networked computer (NH) through RS-232 interface
 and a data diode.
 
 Depending on packet type, the program NH.py running on Alice's NH forwards 
-packets from TxM's serial interface to Pidgin and local RxM (through another 
+packets from TxM-sode serial interface to Pidgin and local RxM (through another 
 RS-232 interface and data diode). Local RxM authenticates and decrypts received
 data before processing it.
 
@@ -62,15 +62,14 @@ that then forwards it directly (or again through Tor) to Bob.
 
 NH.py on Bob's NH receives Alice's packet from Pidgin, and forwards it through 
 RS-232 interface and data diode to Bob's RxM, where the ciphertext is 
-authenticated, decrypted, displayed and optionally also logged. When the Bob 
-responds, he will send the message using his TxM and in the end Alice reads the
-message from her RxM.
+authenticated, decrypted, and processed. When the Bob responds, he will send
+the message/file using his TxM and in the end Alice reads the message from her RxM.
 
 
 ###Why keys can not be exfiltrated
 
 1. Malware that exploits an unknown vulnerability in RxM can infiltrate to 
-system, but is unable to exfiltrate keys or plaintexts, as data diode prevents
+the system, but is unable to exfiltrate keys or plaintexts, as data diode prevents
 all outbound traffic.
 
 2. Malware can not breach TxM as data diode prevents all inbound traffic. The
@@ -81,9 +80,17 @@ user.
 
 ![](https://cs.helsinki.fi/u/oottela/tfc_attacks2.png)
 
-The optical gap of the data diode (below) physically blocks back channels.
+Optical repeater inside the optocoupler of the data diode (below) enforces direction of data transmission.
 
 <img src="https://cs.helsinki.fi/u/oottela/data_diode.png" align="center" width="74%" height="74%"/>
+
+
+###Installation
+[![Installation](http://img.youtube.com/vi/D5pDoJZj2Uw/0.jpg)](http://www.youtube.com/watch?v=D5pDoJZj2Uw)
+
+
+###How to use
+[![Use](http://img.youtube.com/vi/tH8qbl1USoo/0.jpg)](http://www.youtube.com/watch?v=tH8qbl1USoo)
 
 
 ###More information
