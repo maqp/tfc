@@ -112,7 +112,7 @@ def pip_paramiko():
 ###############################################################################
 
 hash_list = ("""
-b7093331d65eaf36b218f105a0b7a710ade5cf520b96da4f4b580600adf4ad71  tfc-mods.zip
+8b0963956bef053454647af16765ca3178749c8a1e773d85a483971870791e74  tfc-mods.zip
 c76c6ec69dc7b233dc58aff42b45d87e8ec8f8e4e32ecf790260ca9e436ec42f  dd.py
 264889d2d2f06d258035bec8baa2e1300f42805d2d6b1987faf1c5cb6e72bbf7  hwrng.py
 142cb4cb8ba803880015ccd3a82d5428a4480f4e7e463245977ba797ebf72565  NH.py
