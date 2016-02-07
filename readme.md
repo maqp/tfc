@@ -53,7 +53,7 @@ to receiver computers (RxM) via networked computer (NH) through RS-232 interface
 and a data diode.
 
 Depending on packet type, the program NH.py running on Alice's NH forwards 
-packets from TxM-sode serial interface to Pidgin and local RxM (through another 
+packets from TxM-side serial interface to Pidgin and local RxM (through another 
 RS-232 interface and data diode). Local RxM authenticates and decrypts received
 data before processing it.
 
