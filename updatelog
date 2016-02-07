@@ -211,9 +211,9 @@ arguments so that they know which sockets to use and to what direction data
 visually flows between terminals. An example set of commands that launches TFC
 on *buntu is
 
-gnome-terminal --title='TxM' --geometry=100x35+0+630  -x sh -c "python /dir/Tx.py -d"
-gnome-terminal --title='NH'  --geometry=71x41+920+150 -x sh -c "python /dir/NH.py -d"
-gnome-terminal --title='RxM' --geometry=100x20+0+0    -x sh -c "python /dir/Rx.py"
+gnome-terminal --title='TxM' --geometry=100x35+0+630  -x sh -c "python /dir/Tx.py -d -l"
+gnome-terminal --title='NH'  --geometry=71x41+920+150 -x sh -c "python /dir/NH.py -d -l"
+gnome-terminal --title='RxM' --geometry=100x20+0+0    -x sh -c "python /dir/Rx.py -l"
 gnome-terminal --title='dd'  --geometry=25x12+740+630 -x sh -c "python /dir/dd.py txnhlr"
 gnome-terminal --title='dd'  --geometry=25x12+740+425 -x sh -c "python /dir/dd.py nhrxlr"
 
