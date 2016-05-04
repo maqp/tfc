@@ -1,3 +1,77 @@
+TFC NaCl 0.16.05 | Update log
+
+-------------------------------------------------------------------------------
+Common changes
+-------------------------------------------------------------------------------
+Removed from x import y to avoid conflicts in namespace etc.
+
+Refactored code here and there.
+
+Added unittests. test_tx.py and test_rx.py now evaluate XSalsa20-Poly1305
+implementation in PyNaCl using official test vectors by djb.
+
+Improved LUI here and there.
+
+-------------------------------------------------------------------------------
+Tx.py
+-------------------------------------------------------------------------------
+User can now send encrypted command to RxM with command '/rxkey' that opens a
+file prompt. This allows user to load the PSK for contact without turning off
+Rx.py.
+
+Added boolean show_file_prompts that by default opens a storage prompt where
+user can store contact's PSK. When false, keys are stored in 'keys_to_contact'.
+
+Resolved the "CTR mode needs counter parameter, not IV" issue with Paramiko's
+SSH connection with AES CTR mode.
+
+Disallowed ':' and '/' chars in accounts to fix crashes.
+
+Reversed PSK and ECDHE key choice answer to more intuitive order.
+
+Fixed issues when sending dotfiles.
+
+-------------------------------------------------------------------------------
+Rx.py
+-------------------------------------------------------------------------------
+Opens a file prompt when '/rxkey' command is sent by TxM. This allows user to
+load the PSK for contact without turning off Rx.py.
+
+Fixed issue where lack of rx.<xmpp>.e key on RxM crashes Rx.py when /logging
+on <xmpp> command is issued from TxM.
+
+Opens file prompts based on keyfile change commands.
+
+-------------------------------------------------------------------------------
+setup.py
+-------------------------------------------------------------------------------
+Added preinstalled hashes of tested (not audited) crypto libraries.
+
+Improved SSH configuration during installation.
+
+Added NH installation configuration.
+
+Reduced window of compromise time to minimum: setup.py now first downloads
+apt-packets. It then downloads and verifies crypto libraries and TFC.
+Finally, the installer runs 'sudo ifconfig down' on every interface excluding
+'lo', listed by 'ifconfig -a', before extracting and building libraries.
+
+-------------------------------------------------------------------------------
+hwrng-nacl.py
+-------------------------------------------------------------------------------
+Renamed hwrng.py to hwrng-nacl.py in case multiple versions of TFC (CEV/OTP)
+use same RPi to load entropy from HWRNG.
+
+-------------------------------------------------------------------------------
+dd.py
+-------------------------------------------------------------------------------
+dd.py now automatically re-sizes terminal window to proper size.
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+
 TFC NaCl 0.16.01 | Update log
 
 Local key transmission: Bootstrapping security
@@ -250,10 +324,10 @@ files (and syslog.tfc once it's first generated).
 
 Added some metadata about TFC to packet headers
 -----------------------------------------------
-In future this prevents interoperation with older versions of TFC. It allows
+In future this prevents inter-operation with older versions of TFC. It allows
 fingerprinting of users (ONLY if NH is remotely exploited or OTR is being MITM
-attacked), but forces users to keep up with security updates. New protocol uses
-more simple and mature separation of payload components.
+attacked / not used) but forces users to keep up with security updates. New
+protocol uses more simple and mature separation of payload components.
 
 
 Re-designed trickle connection
@@ -289,11 +363,11 @@ prediction of file transfer duration easier.
 Improved logging
 ----------------
 Logging can now be enabled for individual contacts with command 
-/logging {on,off} <account>. When logging is enabled, in addition to automatic 
+/logging {on,off} <account>. When logging is enabled, in addition to automatic
 logging of public keys, Tx.py will also log messages sent to contact. This 
 allows the two users to manually audit whether malware has at some point 
 infected RxM device(s) and substituted words in logfiles, by cross-comparing
-the clean TxM logfile of Alice and purported RxM logfile of Bob, and vice 
+the clean TxM logfile of Alice and purported RxM logfile of Bob, and vice
 versa. Rx.py also stores information about dropped packets. Malware that
 replaces received messages with notification about dropped packet is harder to
 detect; offline record keeping might be required.
@@ -345,7 +419,7 @@ discard received data when it receives cancel packet / new message/file, but
 this is a convenience feature, NOT a security feature. Sender-based control is
 snake oil: Nothing prevents receiver from modifying their Rx.py to show/log
 partially transmitted data. The only solution to this would be to offer closed
-source version of TFC, which would defeat all security free software is
+source version of TFC, which would defeat all security FOSS software is
 designed to offer.
 
 Since the base64 encoding of transmitted files depends on TxM of contact, a 
@@ -375,18 +449,14 @@ command line. View arguments by launching program with -h/--help flag.
 Hard coded packet length
 ------------------------
 Packet length was hard coded to 254 to ensure everyone uses same value,
-and to minimize chance for errors when sending encrypted commands. The
-adjustable length was a legacy feature necessary only in TFC-OTP: Key material 
-is not a problem with symmetric crypto, thus adjusting key material expenditure
-is no longer necessary.
-
+and to minimize chance for errors when sending encrypted commands.
 
 Unittesting
 -----------
-Wrote almost 400 unittests (5600 LoC) for Tx.py, Rx.py and NH.py to reduce
-the amount of bugs. Created custom error classes for some functions for this
-purpose as well. Unittesting is a work in progress, so while TFC is more stable
-than ever, no guarantees are made.
+Wrote unittests for Tx.py, Rx.py and NH.py to reduce the amount of bugs.
+Created custom error classes for some functions for this purpose as well.
+Unittesting is a work in progress, so while TFC is more stable than ever, no
+guarantees are made.
 
 
 New startup banner animation
@@ -399,14 +469,19 @@ surprise, check it out.
 Made edits to installer
 -----------------------
 Installer now uses SHA256 instead of SHA512. As collision resistance against
-quantum computers is still 128 bits. While weaker, the security is as strong
-as the 256-bit XSalsa20 used. The reason for this was simplified import of
-file hashes when making changes.
+quantum computers is still 128 bits. The reason for this was simplified import
+of file hashes when making changes.
+
+Even more authentication was added with Trust-on-first-use (that being me)
+hashes for most downloaded libraries (PIP has no authentication). Provided that
+you can verify the setup.py's authenticity, you can detect MITM against crypto
+library downloads.
 
 Added installation configuration for HWRNG Pi that TxM connects to over SSH.
-Ensured support for latest *buntu operating systems and fixed issues with
-Lubuntu/Xubuntu in previous versions. Dropped NH support for Fedora and
-OpenSUSE. Ensured NH configuration works with latest release of Tails (2.0).
+Ensured support for *buntu 16.04 OS and fixed issues with Lubuntu/Xubuntu in
+previous versions. Dropped NH support for Fedora and OpenSUSE and added it to
+Raspbian Jessie. Ensured NH configuration works with latest release of Tails
+(2.2.1).
 
-Changed installer naming style, instead of tfcNaClinstaller.py, it's just
-setup.py.
+Changed installer naming style, instead of tfcOTPinstaller.py, it's just
+setup.py. Run it with 'sudo python setup.py'.

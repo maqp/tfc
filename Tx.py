@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# TFC-NaCl 0.16.01 beta || Tx.py
+# TFC-NaCl 0.16.05 || Tx.py
 
 """
 GPL License
@@ -17,50 +17,54 @@ A PARTICULAR PURPOSE. See the GNU General Public License for more details. For
 a copy of the GNU General Public License, see <http://www.gnu.org/licenses/>.
 """
 
-from argparse import ArgumentParser
-from base64 import b64encode
-from binascii import hexlify, unhexlify
-from csv import reader, writer
-from datetime import datetime
-from fcntl import ioctl
-from multiprocessing.connection import Client
-from multiprocessing import Process, Queue
-from os import chdir, fdopen, listdir, makedirs, system, urandom
-from os.path import dirname, exists, getsize, isfile, join
-from random import randrange, SystemRandom, choice
-from random import randint as sysrandint
-from readline import get_line_buffer, parse_and_bind, set_completer
-from serial import Serial, serialutil
-from socket import error as socket_error
-from subprocess import Popen, check_output
-from struct import unpack
-from sys import path, stdin, stdout
-from termios import TIOCGWINSZ
-from time import gmtime, sleep, strftime, time
-from threading import Thread
-from tkFileDialog import askopenfilename
-from Tkinter import Tk
-from _tkinter import TclError
-from hashlib import sha256
+import argparse
+import base64
+import binascii
+import csv
 import curses
+import datetime
+import fcntl
+import multiprocessing.connection
+import multiprocessing
+import os.path
+import os
+import random
+import readline
+import serial
+import socket
+import struct
+import subprocess
+import sys
+import termios
+import threading
+import time
+import tkFileDialog
+import Tkinter
+import _tkinter
 
-from paramiko import SSHClient, AutoAddPolicy
-from paramiko.ssh_exception import AuthenticationException
-from simplesha3 import sha3256
-from passlib.hash import pbkdf2_sha256
-from passlib.utils import ab64_decode
-from nacl.public import Box, PrivateKey, PublicKey
-from nacl.encoding import HexEncoder
-from nacl.utils import random
-import nacl.secret
+from serial.serialutil import SerialException
 
 try:
     import RPi.GPIO as GPIO
 except ImportError:
     GPIO = None
 
-str_version = "0.16.01 beta"
-int_version = 1601
+# Import crypto libraries
+import Crypto.Cipher.AES
+import hashlib
+import nacl.encoding
+import nacl.public
+import nacl.secret
+import nacl.utils
+import paramiko
+from passlib.hash import pbkdf2_sha256
+from passlib.utils import ab64_decode
+import simplesha3
+
+orig_new = Crypto.Cipher.AES.new
+
+str_version = "0.16.05"
+int_version = 1605
 
 
 ###############################################################################
@@ -77,6 +81,8 @@ print_members_in_g = True   # True shows members of groups when listing groups
 startup_banner = True       # False disables the animated startup banner
 
 confirm_file = True         # Ask user for confirmation before sending files
+
+show_file_prompts = True    # Prompt keyfile location instead of def. folders
 
 
 # Security settings
@@ -141,9 +147,8 @@ class CriticalError(Exception):
     """
 
     def __init__(self, function_name, error_message):
-        system("clear")
-        print("\nError: M(%s): %s\n" % (function_name, error_message))
-        graceful_exit()
+        graceful_exit("Error: F(%s): %s" % (function_name, error_message),
+                      queue=True)
 
 
 class FunctionParameterTypeError(Exception):
@@ -153,20 +158,8 @@ class FunctionParameterTypeError(Exception):
     """
 
     def __init__(self, function_name):
-        system("clear")
-        print("\nError: M(%s): Wrong input type.\n" % function_name)
-        graceful_exit()
-
-
-class InvalidEncryptionKeyError(Exception):
-    """
-    Tx.py should gracefully exit if loaded key is invalid.
-    """
-
-    def __init__(self, account):
-        system("clear")
-        print("\nError: Invalid key in keyfile 'keys/tx.%s.e.'\n" % account)
-        graceful_exit()
+        graceful_exit("Error: F(%s): Wrong input type." % function_name,
+                      queue=True)
 
 
 class NoLocalKeyError(Exception):
@@ -203,9 +196,9 @@ def sha2_256(message):
     if not isinstance(message, str):
         raise FunctionParameterTypeError("sha2_256")
 
-    h_function = sha256()
+    h_function = hashlib.sha256()
     h_function.update(message)
-    hex_digest = hexlify(h_function.digest())
+    hex_digest = binascii.hexlify(h_function.digest())
 
     return hex_digest
 
@@ -221,7 +214,7 @@ def sha3_256(message):
     if not isinstance(message, str):
         raise FunctionParameterTypeError("sha3_256")
 
-    return hexlify(sha3256(message))
+    return binascii.hexlify(simplesha3.sha3256(message))
 
 
 def pbkdf2_hmac_sha256(key, rounds=1000, salt=''):
@@ -247,7 +240,7 @@ def pbkdf2_hmac_sha256(key, rounds=1000, salt=''):
         raise FunctionParameterTypeError("pbkdf2_hmac_sha256")
 
     if rounds < 1:
-        raise CriticalError("pbkdf2_hmac_sha256", "Rounds < 1")
+        raise CriticalError("pbkdf2_hmac_sha256", "Number of rounds < 1")
 
     derived_key = pbkdf2_sha256.encrypt(key, rounds=rounds, salt=salt)
 
@@ -255,18 +248,21 @@ def pbkdf2_hmac_sha256(key, rounds=1000, salt=''):
     parted_hash = derived_key.split('$')[4]
 
     hash_bin = ab64_decode(parted_hash)
-    hash_hex = hexlify(hash_bin)
+    hash_hex = binascii.hexlify(hash_bin)
 
     return hash_hex
 
 
 def encrypt_and_sign(account, plaintext):
     """
-    Encrypt plaintext using PyNaCl library.
+    Encrypt and sign plaintext using PyNaCl library's XSalsa20-Poly1305.
 
-    TFC-NaCl uses 256-bit XSalsa20 cipher and Poly1305 MAC designed by Daniel
-    Bernstein. Forward secrecy is obtained by replacing previous key with it's
-    PBKDF2-HMAC-SHA256 derivation after every message.
+    256-bit XSalsa20 cipher and Poly1305 MAC is designed by Daniel Bernstein.
+    The XSalsa20 is a stream cipher based on add-rotate-XOR (ARX). It is used
+    with a /dev/urandom spawned, 192-bit nonce (length specified in libsodium).
+
+    Forward secrecy is obtained by replacing previous key with it's 1000th
+    PBKDF2-HMAC-SHA256 derivation in between every sent message.
 
     :param account:   The recipient's account name (e.g. alice@jabber.org).
     :param plaintext: Plaintext to encrypt.
@@ -289,15 +285,15 @@ def encrypt_and_sign(account, plaintext):
     write_keyid(account, key_id + 1)
 
     # Construct new SecretBox
-    secret_box = nacl.secret.SecretBox(unhexlify(key_hex))
+    secret_box = nacl.secret.SecretBox(binascii.unhexlify(key_hex))
 
     # Generate new nonce
-    nonce = random(nacl.secret.SecretBox.NONCE_SIZE)
+    nonce = nacl.utils.random(nacl.secret.SecretBox.NONCE_SIZE)
 
     # Encrypt and sign plaintext
-    ciphertext = secret_box.encrypt(plaintext, nonce)
+    signed_ciphertext = secret_box.encrypt(plaintext, nonce)
 
-    return ciphertext
+    return signed_ciphertext
 
 
 ###############################################################################
@@ -318,7 +314,7 @@ def get_keyfile_list(include_local=False):
     ensure_dir("keys/")
     kf_list = []
 
-    for f in listdir("keys/"):
+    for f in os.listdir("keys/"):
         if f.startswith("tx.") and f.endswith(".e"):
             if not include_local and f == "tx.local.e":
                 continue
@@ -331,10 +327,10 @@ def get_keyfile_list(include_local=False):
 
 def get_key(account):
     """
-    Load encryption key for selected contact.
+    Load key for selected contact.
 
     :param account: The recipient's account name (e.g. alice@jabber.org).
-    :return:        Stored encryption key.
+    :return:        Stored key.
     """
 
     if not isinstance(account, str):
@@ -346,34 +342,39 @@ def get_key(account):
     except IOError:
         raise CriticalError("get_key", "tx.%s.e IOError." % account)
 
-    if not validate_key(key):
-        raise InvalidEncryptionKeyError(account)
+    validate_key(key, account)
 
     return key
 
 
 def key_writer(account, key):
     """
-    Write symmetric key to keyfile.
+    Write key to keyfile.
 
     :param account: The recipient's account name (e.g. alice@jabber.org).
-    :param key:     Symmetric key to write.
+    :param key:     Key to write.
     :return:        None
     """
 
     if not isinstance(account, str) or not isinstance(key, str):
         raise FunctionParameterTypeError("key_writer")
 
-    ensure_dir("keys/")
-
     try:
-        open("keys/tx.%s.e" % account, "w+").write(key)
-        written_key = open("keys/tx.%s.e" % account).readline()
+        validate_key(key, account)
+
+        if '/' in account:
+            open(account, "w+").write(key)
+            written = open(account).readline()
+
+        else:
+            ensure_dir("keys/")
+            open("keys/tx.%s.e" % account, "w+").write(key)
+            written = open("keys/tx.%s.e" % account).readline()
 
     except IOError:
         raise CriticalError("key_writer", "tx.%s.e IOError." % account)
 
-    if written_key != key:
+    if written != key:
         raise CriticalError("key_writer", "Key writing failed.")
 
     return None
@@ -381,7 +382,7 @@ def key_writer(account, key):
 
 def rotate_key(account):
     """
-    Generate next encryption key by iterating it through PBKDF2-HMAC-SHA256.
+    Generate next key by iterating it through PBKDF2-HMAC-SHA256.
 
     :param account: The recipient's account name (e.g. alice@jabber.org).
     :return:        None
@@ -393,7 +394,7 @@ def rotate_key(account):
     old_key = get_key(account)
     new_key = pbkdf2_hmac_sha256(old_key)
 
-    write_t = Thread(target=key_writer, args=(account, new_key))
+    write_t = threading.Thread(target=key_writer, args=(account, new_key))
     write_t.start()
     write_t.join()
 
@@ -405,7 +406,7 @@ def new_psk(parameters, first_account=False):
     Generate new pre-shared key for manual key delivery.
 
     :param parameters:    Account (and nick) yet to be separated.
-    :param first_account: True when first account is generated.
+    :param first_account: Exit during KeyboardInterrupt if True.
     :return:              None
     """
 
@@ -414,55 +415,107 @@ def new_psk(parameters, first_account=False):
 
     ask_nick = False
     nick = ''
+    global acco_store_l
 
     # Check that account has been specified
     try:
         account = parameters.split()[1]
+
     except IndexError:
         print("\nError: No account specified.\n")
+        return None
+
+    if ':' in account or '/' in account:
+        print("\nError: No ':' or '/' characters are allowed.\n")
         return None
 
     # Try to get nick from parameters
     try:
         nick = parameters.split()[2]
-        if (len(nick) + len(account) + 128 + 5) > 254:
+        # Check that nick can fit with account, keys and split chars to packet.
+        if (len(nick) + len(account) + 64 + 64 + 5) > 254:
             print("\nError: Specified nick too long.\n")
             ask_nick = True
 
-    # If no nick was in parameter, try to load automatically.
     except IndexError:
+
+        # If no nick was in parameter, try to load nick of existing contact.
         if account not in get_list_of_accounts():
             ask_nick = True
         else:
             nick = get_nick(account)
-
-            if (len(nick) + len(account) + 128 + 5) > 254:
+            if (len(nick) + len(account) + 64 + 64 + 5) > 254:
                 print("\nError: Loaded nick is too long.\n")
                 ask_nick = True
 
     try:
-        # If no nick / invalid nick was specified, ask user to enter new nick.
+        # If no nick is specified at this point, ask user to enter new nick.
         if ask_nick:
             nick = get_nick_input(account)
-
-        if not isfile("keys/tx.local.e"):
+        if not os.path.isfile("keys/tx.local.e"):
             raise NoLocalKeyError
 
         # Generate PSK
-        ext_ent = get_hwrng_entropy()
-        phase("Generating PSK...", 45)
-        psk = pbkdf2_hmac_sha256(sha3_256(urandom(32)), 25000, ext_ent)
+        ext_entropy = generate_key("key")
+        psk = pbkdf2_hmac_sha256(os.urandom(32), 25000, ext_entropy)
+
+        # Ask user's account name for contact's keyfile generation
+        user = ''
+        while True:
+            user = raw_input("\nEnter your account name:%s" % (37 * ' '))
+            if not user:
+                print("Error: No account specified.")
+                continue
+            if ':' in user or '/' in user:
+                print("\nError: No ':' or '/' characters are allowed.\n")
+                continue
+            break
+
+        # Create copy of key for contact
+        dest = '' if show_file_prompts else " to 'keys_to_contact'"
+        phase("Copying key for contact%s..." % dest, 61)
+
+        if show_file_prompts:
+            try:
+                root = Tkinter.Tk()
+                root.withdraw()
+                store_d = tkFileDialog.askdirectory(
+                    title="Select removable media for "
+                          "key delivery to " + account)
+                root.destroy()
+                if not store_d:
+                    raise KeyboardInterrupt
+            except _tkinter.TclError:
+                print("\nError: No file dialog available. Storing key to "
+                      "directory 'keys_to_contact/'\n")
+                store_d = "keys_to_contact/"
+
+        else:
+            store_d = "keys_to_contact/"
+
+        ensure_dir(store_d)
+        f_name = "%s/rx.%s.e - Give this file to %s" % (store_d, user, account)
+        wt = threading.Thread(target=key_writer, args=(f_name, psk))
+        wt.start()
+        wt.join()
         print("Done.")
 
+        # Send PSK to RxM
         if not unittesting:
-            raw_input("\nBypass NH if needed and press <Enter> to send key.\n")
+            raw_input("\n      Bypass NH if needed and "
+                      "press <Enter> to send key.     ")
+        phase("\nSending keyset to RxM...", 61)
         command_transmit("PSK|%s|%s|%s" % (account, nick, psk))
+        print("Done.")
 
-        # Add contact data
+        # Store key and contact data on TxM. Add logging settings to dict.
+        phase("Creating contact...", 61)
+        wt = threading.Thread(target=key_writer, args=(account, psk))
+        wt.start()
+        wt.join()
+
         add_contact(account, nick)
 
-        # Add contact specific logging setting
-        global acco_store_l
         if txm_side_logging:
             acco_store_l[account] = True
         else:
@@ -474,46 +527,176 @@ def new_psk(parameters, first_account=False):
                 global recipient_nick
                 recipient_nick = nick
 
-        # Write PSK to keyfile using thread
-        wt = Thread(target=key_writer, args=(account, psk))
-        wt.start()
-        wt.join()
-
-        user = ''
-        while user == '':
-            user = raw_input("\nEnter your account name: ")
-            if not user:
-                print("Error: No account specified.")
-
-        phase("Generating copy of key to folder 'PSKs'...", 45)
-        ensure_dir("PSKs/")
-
-        try:
-            f_name = "PSKs/rx.%s.e - Give this file to %s" % (user, account)
-            open(f_name, "w+").write(psk)
-            if open(f_name).readline() != psk:
-                raise CriticalError("new_psk", "Key writing failed.")
-        except IOError:
-            raise CriticalError("new_psk", "IOError.")
-
         print("Done.")
-        sleep(1.5)
-        system("clear")
+        print("\nPSK generation successful.\n")
+        time.sleep(1.5)
+        os.system("clear")
 
     except KeyboardInterrupt:
         if first_account:
-            clean_exit()
+            graceful_exit("PSK generation aborted.")
         else:
-            system("clear")
+            os.system("clear")
             print("\nPSK generation aborted.\n")
             return None
 
     return None
 
 
+def digits_to_bytes(di):
+    """
+    Convert string of binary digits to byte string.
+
+    :param di: Digit string.
+    :return:   Byte string.
+    """
+
+    if not isinstance(di, str):
+        raise FunctionParameterTypeError("digits_to_bytes")
+
+    return ''.join(chr(int(di[i:i + 8], 2)) for i in xrange(0, len(di), 8))
+
+
+def generate_key(key_purpose):
+    """
+    Generate keyset containing eight 512-bit keys.
+
+    Generate key by using SHA3-256 to compress together entropy from kernel
+    CSPRNG (/dev/urandom) and optionally mix in entropy from HWRNG sampled from
+    HWRNG by Raspberry Pi through it's GPIO. Tx.py can either sample the HWRNG
+    itself (if run on RPi) or it can SSH into RPi (direct ethernet cable with
+    static IP is required) and load entropy that way.
+
+    Before HWRNG sampling starts, a loop collects 3000 samples to 'warm up'.
+    Sampling is done at 10Hz frequency to ensure minimal auto-correlation
+    between samples.
+
+    :param key_purpose: The purpose of the generated key.
+    :return:            256-bit symmetric key.
+    """
+
+    if not isinstance(key_purpose, str):
+        raise FunctionParameterTypeError("generate_keydata")
+
+    question = "Load entropy for %s from HWRNG?" % key_purpose
+
+    # Detect OS compatibility
+    pretty_name = subprocess.check_output(["grep", "PRETTY_NAME",
+                                           "/etc/os-release"])
+    try:
+        if pretty_name == "Raspbian GNU/Linux" and GPIO:
+            if not yes(question, (24 - len(key_purpose))):
+                key = sha3_256(os.urandom(32))
+                return key
+
+            # HWRNG sampling settings
+            samples_n = 256
+            sample_delay = 0.1
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(gpio_port, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+
+            phase("\nWaiting for HWRNG signal from GPIO...", 61)
+            warmup_zero = 0
+            warmup_one = 0
+
+            while True:
+                if warmup_one > 1500 and warmup_zero > 1500:
+                    break
+                if GPIO.input(gpio_port) == 1:
+                    warmup_one += 1
+                else:
+                    warmup_zero += 1
+                time.sleep(0.001)
+            print("Acquired.\n")
+
+            # Perform Von Neumann whitening during sampling
+            vn_digits = ''
+
+            while True:
+                sys.stdout.write("\x1b[1A")
+                print("Sampling HWRNG...%s%s/%s bits"
+                      % (44 * ' ', len(vn_digits), samples_n))
+
+                if len(vn_digits) >= samples_n:
+                    break
+
+                first_bit = GPIO.input(gpio_port)
+                time.sleep(sample_delay)
+
+                second_bit = GPIO.input(gpio_port)
+                time.sleep(sample_delay)
+
+                if first_bit == second_bit:
+                    continue
+                else:
+                    vn_digits += str(first_bit)
+
+            GPIO.cleanup()
+            ent = digits_to_bytes(vn_digits)
+            ent = binascii.hexlify(ent)
+
+            if len(ent) != 32:
+                raise CriticalError("generate_key",
+                                    "Entropy collection failed.")
+
+        else:
+            if not use_ssh_hwrng or not yes(question, (24 - len(key_purpose))):
+                key = sha3_256(os.urandom(32))
+                return key
+
+            # Load entropy over SSH using hwrng-nacl.py on Raspberry Pi.
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            paramiko.util.log_to_file("/dev/null")
+
+            try:
+                ssh.connect(hostname=hwrng_host,
+                            username=hwrng_name,
+                            password=hwrng_pass)
+            except socket.error:
+                raise CriticalError("generate_keyset", "Socket Error. "
+                                                       "Check RPi IP.")
+            except paramiko.ssh_exception.AuthenticationException:
+                raise CriticalError("generate_key",
+                                    "SSH Authentication Error")
+
+            except ValueError:  # Fix IV issue in Paramiko's AES-CTR mode
+                ssh.close()
+                ssh = paramiko.SSHClient()
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                paramiko.util.log_to_file("/dev/null")
+                Crypto.Cipher.AES.new = fixed_aes_new
+                ssh.connect(hostname=hwrng_host,
+                            username=hwrng_name,
+                            password=hwrng_pass)
+
+            ssh_stdin, ssh_stdout, ssh_stderr \
+                = ssh.exec_command("python hwrng-nacl.py")
+            ssh_stdin.flush()
+
+            phase("Waiting for entropy...", 61)
+            output = ssh_stdout.read()
+            ent = output.strip('\n')
+            print("Done.")
+
+            if ent == "ERROR":
+                raise CriticalError("generate_keyset", "HWRNG error")
+
+        validate_key(ent, "HWRNG")
+
+        compressed = sha3_256(binascii.unhexlify(ent))
+
+        return compressed
+
+    except KeyboardInterrupt:
+        if GPIO:
+            GPIO.cleanup()
+        raise
+
+
 def new_local_key(bootstrap=False):
     """
-    Send encrypted local key to RxM.
+    Send encrypted local key to RxM, display kdk and ask for device code.
 
     :param bootstrap: When True, KeyboardInterrupt exits.
     :return:          None
@@ -523,67 +706,64 @@ def new_local_key(bootstrap=False):
         raise FunctionParameterTypeError("new_local_key")
 
     try:
-        print("Starting local key bootstrap...")
+        if not bootstrap:
+            print('')
 
-        ext_ent1 = get_hwrng_entropy()
-        phase("Generating local key...", 45)
-        local_key = pbkdf2_hmac_sha256(sha3_256(urandom(32)), 25000, ext_ent1)
-        print("Done.")
+        print("Create local key\n----------------\n")
 
-        ext_ent2 = get_hwrng_entropy()
-        phase("Generating local key encryption key...", 45)
-        key_e_key = pbkdf2_hmac_sha256(sha3_256(urandom(32)), 25000, ext_ent2)
-        print("Done.")
+        # Generate local key and key encryption key
+        ext_entropy_1 = generate_key("local key")
+        local_key = pbkdf2_hmac_sha256(os.urandom(32), 25000, ext_entropy_1)
+        ext_entropy_2 = generate_key("local key encryption key")
+        key_e_key = pbkdf2_hmac_sha256(os.urandom(32), 25000, ext_entropy_2)
 
-        dev_code = hexlify(urandom(1))
-
-        # Encrypt and sign local key and device code
+        # Encrypt, sign and send local key with device code to RxM
+        dev_code = binascii.hexlify(os.urandom(1))
         padded = padding(local_key + dev_code)
-        s_box = nacl.secret.SecretBox(unhexlify(key_e_key))
-        nonce = random(nacl.secret.SecretBox.NONCE_SIZE)
-        cttag = s_box.encrypt(padded, nonce)
+        s_box = nacl.secret.SecretBox(binascii.unhexlify(key_e_key))
+        nonce = nacl.utils.random(nacl.secret.SecretBox.NONCE_SIZE)
+        ct_tag = s_box.encrypt(padded, nonce)
+        raw_input("\n%sBypass NH if needed and press <Enter> to send key.%s"
+                  % ((6 * ' '), (5 * ' ')))
+        packet = "TFC|N|%s|L|%s" % (int_version, base64.b64encode(ct_tag))
+        transmit(packet)
 
-        raw_input("\nBypass NH if needed and press <Enter> to send key.\n")
-        transmit("TFC|N|%s|L|%s" % (int_version, b64encode(cttag)))
-
-        # Generate key decryption key string
+        # Print key decryption key
         chksm = sha3_256(key_e_key)[:8]
         split = [key_e_key[i:i + 8] for i in range(0, len(key_e_key), 8)]
-
         if local_testing:
             kdk = "%s%s" % (key_e_key, chksm)
         else:
             kdk = "%s %s" % (" ".join(split), chksm)
+        print("\nLocal key decryption key (to RxM):\n %s\n" % kdk)
 
-        print("\nKey decryption key for RxM:\n    %s\n" % kdk)
-
+        # Ask for device code before storing local key on TxM
         if not unittesting:
             while True:
-                devc_purp = raw_input("\nEnter device code from RxM: ")
-
-                if devc_purp == "replay":
-                    transmit("TFC|N|%s|L|%s" % (int_version, b64encode(cttag)))
-
+                devc_purp = raw_input("Device code (from RxM):%s" % (38 * ' '))
+                if devc_purp == "resend":
+                    transmit(packet)
                 elif devc_purp == dev_code:
                     break
-
                 else:
-                    print("\nDevice code incorrect. If RxM did not receive\n"
-                          "encrypted key, replay packet by typing 'replay'.")
+                    print("\nDevice code incorrect. If RxM did not receive"
+                          "\nencrypted key, resend key by typing 'resend'.\n")
 
-        # Store keyfile
-        wt = Thread(target=key_writer, args=("local", local_key))
+        phase("Saving local key...", 61)
+        # Store tx.local.e to folder 'keys' and add it to .tx_contacts
+        wt = threading.Thread(target=key_writer, args=("local", local_key))
         wt.start()
         wt.join()
 
-        # Add contact to .tx_contacts, set keyID to 1.
         add_contact("local", "local")
+        print("Done.")
+
         print("\nLocal key added.\n")
         return None
 
     except KeyboardInterrupt:
         if bootstrap:
-            clean_exit("Local key generation aborted.")
+            graceful_exit("Local key generation aborted.")
         else:
             raise
 
@@ -592,64 +772,85 @@ def new_local_key(bootstrap=False):
 #                               SECURITY RELATED                              #
 ###############################################################################
 
-def clean_exit(message=''):
+def fixed_aes_new(key, *lst):
     """
-    Print message and exit Tx.py.
+    Fix Paramiko's AES counter mode's unnecessary IV.
 
-    :param message: Message to print.
-    :return:        [no return value]
+    :param key:  AES key.
+    :param lst:  List of parameters.
+    :return:     New function.
     """
-
-    if not isinstance(message, str):
-        raise FunctionParameterTypeError("clean_exit")
-
-    system("clear")
-
-    if message:
-        print("\n%s\n" % message)
-
-    print("\nExiting TFC-NaCl.\n")
-    exit()
+    if Crypto.Cipher.AES.MODE_CTR == lst[0]:
+        lst = list(lst)
+        lst[1] = ''
+    return orig_new(key, *lst)
 
 
-def graceful_exit():
+def graceful_exit(message='', queue=False):
     """
     Display a message and exit Tx.py.
 
     If trickle connection is enabled, put an exit command to
-    exit_queue so main loop can kill processes and exit Tx.py.
+    pc_queue so main loop can kill processes and exit Tx.py.
 
-    :return: None
+    :param: message: Message to print.
+    :param: queue:   Add command to pc_queue when True.
+    :return:         None
     """
 
-    if trickle_connection:
-        exit_queue.put("exit")
+    if not isinstance(message, str) or not isinstance(queue, bool):
+        raise FunctionParameterTypeError("graceful_exit")
+
+    os.system("clear")
+
+    if message:
+        print("\n%s" % message)
+
+    print("\nExiting TFC-NaCl.\n")
+
+    if trickle_connection and queue:
+        pc_queue.put("exit")
     else:
         exit()
 
 
-def validate_key(key):
+def validate_key(key, account=''):
     """
-    Check that hex representation of key was valid.
+    Check that key is valid. Gracefully exit if keys have a problem.
 
-    :param key: Key to validate.
-    :return:    None
+    :param key:     Key to validate.
+    :param account: Origin of key.
+    :return:        True/False depending on key validation.
     """
 
-    if not isinstance(key, str):
+    if not isinstance(key, str) or not isinstance(account, str):
         raise FunctionParameterTypeError("validate_key")
+
+    if account == "HWRNG":
+        origin = "key from HWRNG."
+    else:
+        origin = "keyfile tx.%s.e" % account
 
     # Verify key consists only from hex chars
     if not set(key.lower()).issubset("abcdef0123456789"):
-        print("\nError: Illegal character detected.\n")
-        return False
+        if not account:
+            print("\nError: Illegal character in key.\n")
+            return False
+
+        raise CriticalError("validate_keyt",
+                            "Illegal character in %s" % origin)
 
     # Verify key length
     if len(key) != 64:
-        print("\nError: Illegal length key.\n")
-        return False
+        if not account:
+            print("\nError: Illegal length key.\n")
+            return False
 
-    return True
+        raise CriticalError("validate_key",
+                            "Illegal key length in %s" % origin)
+
+    if not account:
+        return True
 
 
 def key_searcher(string):
@@ -676,6 +877,53 @@ def key_searcher(string):
     return False
 
 
+def write_log_entry(account, nick='', msg='', pk_user='', pk_contact=''):
+    """
+    Write log entry of sent messages for later cross comparison to verify
+    recipient has received same messages. During audit this helps in detecting
+    malware that could substitute content in logged messages on RxM.
+
+    Write public keys to log file. During audit this helps in detecting if MITM
+    was present during key exchange and other public key verification channels.
+
+    :param account:    The recipient's account name (e.g. alice@jabber.org).
+    :param nick:       Nickname for contact.
+    :param msg:        Message to store in log file.
+    :param pk_user:    Public key of user to store in log file.
+    :param pk_contact: Public key of contact to store in log file.
+    :return:           None
+    """
+
+    if not isinstance(account, str) or not \
+            isinstance(nick, str) or not \
+            isinstance(msg, str) or not \
+            isinstance(pk_user, str) or not \
+            isinstance(pk_contact, str):
+        raise FunctionParameterTypeError("write_log_entry")
+
+    message = msg.strip('\n')
+    t_stamp = datetime.datetime.now().strftime(l_ts)
+
+    ensure_dir("logs/")
+
+    try:
+        with open("logs/TxM - logs.%s.tfc" % account, "a+") as f:
+
+            if msg:
+                f.write("%s Me > %s: %s\n" % (t_stamp, nick, message))
+
+            if pk_user and pk_contact:
+                f.write("\n%s key exchange with %s:\n"
+                        "       My pub key:  %s\n"
+                        "Contact's pub key:  %s\n\n"
+                        % (t_stamp, account, pk_user, pk_contact))
+
+    except IOError:
+        raise CriticalError("write_log_entry", "Log file IOError.")
+
+    return None
+
+
 def get_contact_public_key_hex():
     """
     Prompt user to enter ECDHE public key, verify checksum.
@@ -685,16 +933,16 @@ def get_contact_public_key_hex():
 
     while True:
 
-        system("clear")
+        os.system("clear")
 
         print("""
                                  WARNING!
-             Key exchange will break the HW separation. Outside
-             specific requests TxM (this computer) makes, you
-             should NEVER copy ANY data from NH/RxM to TxM. Doing
-             so could infect TxM, that could then later covertly
-             exfiltrate private keys/messages from TxM to NH and
-             onwards to adversary over your Internet connection.
+           Key exchange will break the HW separation. Outside
+           specific requests TxM (this computer) makes, you
+           should NEVER copy ANY data from NH/RxM to TxM. Doing
+           so could infect TxM, that could then later covertly
+           exfiltrate private keys/messages from TxM to NH and
+           onwards to adversary over your Internet connection.
 
       Enter contact's public key (with or without spaces) from RxM:\n\n""")
 
@@ -707,18 +955,18 @@ def get_contact_public_key_hex():
             public_key = raw_input(' ').replace(' ', '')
 
             if not validate_key(public_key[:-8]):
-                sleep(1)
+                time.sleep(1)
                 continue
 
             if sha3_256(public_key[:-8])[:8] != public_key[64:]:
                 print("\nPublic key checksum fail. Try again.\n")
-                sleep(1)
+                time.sleep(1)
                 continue
             else:
                 return public_key[:-8]
 
         except KeyboardInterrupt:
-            system("clear")
+            os.system("clear")
             print("\nKey exchange aborted.\n")
             raise
 
@@ -730,7 +978,7 @@ def manual_public_key_entry():
     :return: Contact's public key.
     """
 
-    print("\n\nThis might indicate a man-in-the-middle attack!.")
+    print("\n\nThis might indicate a man-in-the-middle attack!")
     if yes("Do you want to enter correct key manually?"):
         print("\nAsk contact to read their public key over Signal:")
         while True:
@@ -743,14 +991,15 @@ def manual_public_key_entry():
             pub_k = raw_input(' ').replace(' ', '')
 
             if not validate_key(pub_k[:-8]):
-                sleep(1)
+                time.sleep(1)
                 continue
 
             if sha3_256(pub_k[:-8])[:8] != pub_k[64:]:
                 print("\nPublic key checksum fail. Try again.\n")
-                sleep(1)
+                time.sleep(1)
                 continue
             else:
+                print('')
                 return pub_k[:-8]
     else:
         print("\nKey exchange aborted.\n")
@@ -772,154 +1021,27 @@ def verify_public_keys(pub_u, pub_c, contact):
             isinstance(contact, str):
         raise FunctionParameterTypeError("verify_public_keys")
 
-    system("clear")
-    print("\nVerify received public key belongs to contact by comparing it\n"
-          "in person or over call made with Open Whisper Systems' Signal:\n")
+    os.system("clear")
+    print("\nTo verify the public key received from Internet came from your "
+          "contact, call them using\nSignal by Open whisper Systems, verify "
+          "the two-word SAS and then read and compare keys.\n")
 
     print("\nYour public key (you read):\n")
     spaced = "  ".join([pub_u[i:i + 8] for i in range(0, len(pub_u), 8)])
-    print("    %s  %s" % (spaced, sha3_256(pub_u)[:8]))
+    print(" %s  %s" % (spaced, sha3_256(pub_u)[:8]))
 
     print("\nPurported public key for %s (they read):\n" % contact)
     spaced = "  ".join([pub_c[i:i + 8] for i in range(0, len(pub_c), 8)])
-    print("    %s  %s" % (spaced, sha3_256(pub_c)[:8]))
+    print(" %s  %s" % (spaced, sha3_256(pub_c)[:8]))
 
     try:
-        if yes("\n\nIs contact's public key correct?"):
+        if yes("\n\nIs contact's public key correct?", 21):
             return pub_c
         else:
             return manual_public_key_entry()
 
     except KeyboardInterrupt:
         raise
-
-
-def get_hwrng_entropy():
-    """
-    Load entropy from HWRNG through GPIO pins.
-
-    Before sampling starts, a loop collects 3000 samples to allow the HWRNG
-    time to warm. Sampling is done at 10Hz frequency to ensure minimal
-    auto-correlation between samples. Entropy is compressed with SHA3-256
-    before it is returned.
-
-    :return: If OS is in rpi_distros list return 32 bytes of entropy,
-             else return ''.
-    """
-
-    def digits_to_bytes(di):
-        """
-        Convert string of binary digits to byte string.
-
-        :param di: Digit string.
-        :return:   Byte string.
-        """
-
-        return ''.join(chr(int(di[i:i + 8], 2)) for i in xrange(0, len(di), 8))
-
-    # Detect OS compatibility
-    rpi_os = check_output(["grep", "PRETTY_NAME", "/etc/os-release"])
-    rpi_distro_l = ["Raspbian GNU/Linux"]
-
-    for rpi_d in rpi_distro_l:
-        if rpi_d in rpi_os and GPIO:
-            if not yes("\nUse GPIO HWRNG for key generation?"):
-                return ''
-        else:
-            if not use_ssh_hwrng:
-                return ''
-
-            if not yes("\nLoad HWRNG entropy from Raspbian over SSH?"):
-                return ''
-
-            # Load entropy over SSH using hwrng.py on Raspberry Pi.
-
-            ssh = SSHClient()
-            ssh.set_missing_host_key_policy(AutoAddPolicy())
-
-            try:
-                ssh.connect(hostname=hwrng_host,
-                            username=hwrng_name,
-                            password=hwrng_pass)
-            except socket_error:
-                raise CriticalError("get_hwrng_entropy", "Socket Error. "
-                                                         "Check RPi IP.")
-            except AuthenticationException:
-                raise CriticalError("get_hwrng_entropy",
-                                    "SSH Authentication Error")
-
-            ssh_stdin, ssh_stdout, ssh_stderr \
-                = ssh.exec_command('python hwrng.py')
-            ssh_stdin.flush()
-
-            phase("Waiting for entropy...", 45)
-            output = ssh_stdout.read()
-            print("Done.")
-            output = output.strip('\n')
-
-            if not validate_key(output):
-                raise CriticalError("get_hwrng_entropy", "HWRNG Error")
-
-            return unhexlify(output)
-
-    # HWRNG sampling settings
-    sample_delay = 0.1
-    samples_n = 256
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(gpio_port, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-
-    try:
-        print('')
-        phase("Waiting for HWRNG signal from GPIO...", 45)
-        warmup_zero = 0
-        warmup_one = 0
-
-        while True:
-            if warmup_one > 1500 and warmup_zero > 1500:
-                break
-            if GPIO.input(gpio_port) == 1:
-                warmup_one += 1
-            else:
-                warmup_zero += 1
-            sleep(0.001)
-        print("Acquired.\n")
-
-        # Perform Von Neumann whitening during sampling
-        vn_digits = ''
-
-        while True:
-
-            stdout.write("\x1b[1A")
-            print("Sampling HWRNG...                            %s/%s bits"
-                  % (len(vn_digits), samples_n))
-
-            if len(vn_digits) >= samples_n:
-                break
-
-            first_bit = GPIO.input(gpio_port)
-            sleep(sample_delay)
-
-            second_bit = GPIO.input(gpio_port)
-            sleep(sample_delay)
-
-            if first_bit == second_bit:
-                continue
-            else:
-                vn_digits += str(first_bit)
-
-        hwrng_bytes = digits_to_bytes(vn_digits)
-
-        if len(hwrng_bytes) != 32:
-            raise CriticalError("get_hwrng_entropy", "Entropy bytes != 32.")
-
-        entropy = unhexlify(sha3_256(hwrng_bytes))
-
-    except KeyboardInterrupt:
-        GPIO.cleanup()
-        raise
-
-    GPIO.cleanup()
-    return entropy
 
 
 def start_key_exchange(parameter, first_account=False):
@@ -936,165 +1058,123 @@ def start_key_exchange(parameter, first_account=False):
 
     ask_nick = False
     nick = ''
+    global acco_store_l
 
     # Check that account has been specified
     try:
         account = parameter.split()[1]
+
     except IndexError:
         print("\nError: No account specified.\n")
+        return None
+
+    if ':' in account or '/' in account:
+        print("\nError: No ':' or '/' characters are allowed.\n")
         return None
 
     # Try to separate nick from parameter
     try:
         nick = parameter.split()[2]
-        if (len(nick) + len(account) + 128 + 5) > 254:
+        # Check that nick can fit with account, keys and split chars to packet.
+        if (len(nick) + len(account) + 64 + 64 + 5) > 254:
             print("\nError: Specified nick too long.\n")
             ask_nick = True
 
-    # If no nick was in parameter, load automatically
     except IndexError:
+
+        # If no nick was in parameter, try to load nick of existing contact.
         if account not in get_list_of_accounts():
             ask_nick = True
         else:
             nick = get_nick(account)
-
-            if (len(nick) + len(account) + 128 + 5) > 254:
+            if (len(nick) + len(account) + 64 + 64 + 5) > 254:
                 print("\nError: Loaded nick is too long.\n")
                 ask_nick = True
 
-    # If no nick / invalid nick was specified, ask user input.
-    if ask_nick:
-        nick = get_nick_input(account)
-
-    if not isfile("keys/tx.local.e"):
-        raise NoLocalKeyError
-
     try:
-        system("clear")
-        print("Starting ECDHE key exchange...\n")
+        # If no nick is specified at this point, ask user to enter new nick.
+        if ask_nick:
+            nick = get_nick_input(account)
+        if not os.path.isfile("keys/tx.local.e"):
+            raise NoLocalKeyError
 
-        hw_ent = get_hwrng_entropy()
-        phase("Generating private key...", 45)
-        ext_entropy = pbkdf2_hmac_sha256(sha3_256(urandom(32)), 25000, hw_ent)
-        tx_sk_bin = PrivateKey.generate(unhexlify(ext_entropy))
+        # Generate Curve25519 ECDHE private key and derive public key from it
+        ext_entropy = generate_key("key")
+
+        phase("Generating ECDHE key pair...", 61)
+        ext_entropy = pbkdf2_hmac_sha256(sha3_256(os.urandom(32)), 25000,
+                                         ext_entropy)
+        tx_sk_bin = nacl.public.PrivateKey.generate(
+            binascii.unhexlify(ext_entropy))
+        tx_pk_bin = tx_sk_bin.public_key
+        tx_pk_hex = tx_pk_bin.encode(encoder=nacl.encoding.HexEncoder)
         print("Done.")
 
-        # Derive public key from private key object
-        tx_pk_bin = tx_sk_bin.public_key
-        tx_pk_hex = tx_pk_bin.encode(encoder=HexEncoder)
-
-        # Send public key to contact
+        # Send public key, ask for contact's public key input, log public keys
+        phase("Sending public key to contact...", 61)
         transmit("TFC|N|%s|P|%s|%s" % (int_version, tx_pk_hex, account))
+        print("Done.")
+        time.sleep(0.5)
 
-        # Ask user to input and verify public key of contact
         rx_pk_hex = get_contact_public_key_hex()
         rx_pk_hex = verify_public_keys(tx_pk_hex, rx_pk_hex, account)
-        rx_pk_bin = PublicKey(rx_pk_hex, encoder=HexEncoder)
+        rx_pk_bin = nacl.public.PublicKey(rx_pk_hex,
+                                          encoder=nacl.encoding.HexEncoder)
 
-        print('')
-
-        phase("Generating encryption keys...", 45)
-        # Generate shared secret
-        dhe_box = Box(tx_sk_bin, rx_pk_bin)
-        ssk_bin = dhe_box.shared_key()
-        ssk_hex = hexlify(ssk_bin)
-
-        # Generate symmetric key pair
-        tx_ssk_hex = pbkdf2_hmac_sha256(ssk_hex + rx_pk_hex, 25000)
-        rx_ssk_hex = pbkdf2_hmac_sha256(ssk_hex + tx_pk_hex, 25000)
-
-        # Send account details and shared keys inside encrypted command to RxM.
-        p_str = "A|%s|%s|%s|%s" % (account, nick, tx_ssk_hex, rx_ssk_hex)
+        phase("Logging public keys...", 61)
+        write_log_entry(account, pk_user=tx_pk_hex, pk_contact=rx_pk_hex)
         print("Done.")
 
-        raw_input("\nBypass NH if needed and press <Enter> to send keys.\n")
-        command_transmit(p_str)
+        # Generate symmetric keys
+        phase("Generating symmetric keys...", 61)
+        dhe_box = nacl.public.Box(tx_sk_bin, rx_pk_bin)
+        ssk_bin = dhe_box.shared_key()
+        ssk_hex = binascii.hexlify(ssk_bin)
+        tx_ssk_hex = pbkdf2_hmac_sha256(ssk_hex + rx_pk_hex, 25000)
+        rx_ssk_hex = pbkdf2_hmac_sha256(ssk_hex + tx_pk_hex, 25000)
+        print("Done.")
 
-        phase("Creating contact...", 45)
-        # Add contact data
+        # Send account details and shared keys inside encrypted command to RxM.
+        if not unittesting:
+            raw_input("\n%sBypass NH if needed and press <Enter> "
+                      "to send key.%s" % ((6 * ' '), (5 * ' ')))
+        phase("\nSending keypair to RxM...", 61)
+        p_str = "A|%s|%s|%s|%s" % (account, nick, tx_ssk_hex, rx_ssk_hex)
+        command_transmit(p_str)
+        print("Done.")
+
+        # Store key and contact data on TxM. Add logging settings to dict.
+        phase("Creating contact...", 61)
+        wt = threading.Thread(target=key_writer, args=(account, tx_ssk_hex))
+        wt.start()
+        wt.join()
+
         add_contact(account, nick)
 
-        # Add contact specific logging setting
-        global acco_store_l
         if txm_side_logging:
             acco_store_l[account] = True
         else:
             acco_store_l[account] = False
 
-        # Update active nick
+        # If keypair is for active contact, update nick
         if not first_account:
             if account == recipient_acco:
                 global recipient_nick
                 recipient_nick = nick
 
-        # Write encryption key to keyfile using thread
-        wt = Thread(target=key_writer, args=(account, tx_ssk_hex))
-        wt.start()
-        wt.join()
-
-        # Write public keys to logfile
-        write_log_entry(account, pk_user=tx_pk_hex, pk_contact=rx_pk_hex)
         print("Done.")
 
-        print("\nKey generation successful. Public keys have been logged.\n")
-        sleep(1.5)
-        system("clear")
+        print("\nKey generation successful.\n")
+        time.sleep(1.5)
+        os.system("clear")
 
     except KeyboardInterrupt:
-        system("clear")
-
         if first_account:
-            clean_exit()
+            graceful_exit("Key exchange aborted.")
         else:
+            os.system("clear")
             print("\nKey exchange aborted.\n")
             return None
-
-    return None
-
-
-def write_log_entry(account, nick='', msg='', pk_user='', pk_contact=''):
-    """
-    Write log entry of sent messages for later cross comparison to verify
-    recipient has received same messages. During audit this helps in detecting
-    malware that tries to substitute content in logged messages on RxM.
-
-    Write public keys to log file. During audit this helps in detecting if MITM
-    was present during key exchange and other public key verification channels.
-
-    :param account:    The contact's account name (i.e. alice@jabber.org).
-    :param nick:       Nickname for contact.
-    :param msg:        Message to store in log file.
-    :param pk_user:    Public key of user to store in log file.
-    :param pk_contact: Public key of contact to store in log file.
-    :return:           None
-    """
-
-    if not isinstance(account, str) or not \
-            isinstance(nick, str) or not \
-            isinstance(msg, str) or not \
-            isinstance(pk_user, str) or not \
-            isinstance(pk_contact, str):
-        raise FunctionParameterTypeError("write_log_entry")
-
-    message = msg.strip('\n')
-    t_stamp = datetime.now().strftime(l_ts)
-
-    ensure_dir("logs/")
-
-    try:
-        with open("logs/TxM - logs.%s.tfc" % account, "a+") as f:
-
-            if msg:
-                f.write("%s Me > %s: %s\n" % (t_stamp, nick, message))
-
-            if pk_user and pk_contact:
-                f.write("\n%s key exchange with %s:\n"
-                        "       My pub key:  %s\n"
-                        "Contact's pub key:  %s\n\n"
-                        % (t_stamp, account, pk_user, pk_contact))
-
-    except IOError:
-        raise CriticalError("write_log_entry", "Log file IOError.")
 
     return None
 
@@ -1123,7 +1203,7 @@ def change_recipient(parameter):
 
     if new_recip in get_list_of_accounts():
         nick = get_nick(new_recip)
-        system("clear")
+        os.system("clear")
         print("\nSelected '%s' (%s)\n" % (nick, new_recip))
         return new_recip, nick, ''
 
@@ -1133,7 +1213,7 @@ def change_recipient(parameter):
             print("\nError: Groups are disabled during trickle connection.\n")
             return '', '', ''
 
-        system("clear")
+        os.system("clear")
         group_status = '' if get_group_members(new_recip) else " (empty)"
         print("\nSelected group '%s'%s\n" % (new_recip, group_status))
         return '', new_recip, new_recip
@@ -1141,7 +1221,7 @@ def change_recipient(parameter):
     else:
         try:
             account, nick = select_contact(selection=new_recip, menu=False)
-            system("clear")
+            os.system("clear")
             print("\nSelected '%s' (%s)\n" % (nick, account))
             return account, nick, ''
 
@@ -1185,7 +1265,7 @@ def get_list_of_accounts():
 
     ensure_dir("keys/")
 
-    for f in listdir("keys/"):
+    for f in os.listdir("keys/"):
         if f.startswith("tx.") and f.endswith(".e") and f != "tx.local.e":
             account_list.append(f[3:][:-2])
 
@@ -1199,17 +1279,17 @@ def print_contact_list(spacing=False):
 
     :param spacing: When True, add spacing around the printed table.
     :return:        1) c_dst tells select_contact() how much to indent caret.
-                    2) None when '/names' command is used to contacts.
+                    2) None when '/names' command is used to list contacts.
     """
 
     if not isinstance(spacing, bool):
         raise FunctionParameterTypeError("print_contact_list")
 
     if spacing:
-        system("clear")
+        os.system("clear")
         print('')
 
-    c_lst = ["Account", "ID", "Nick"]
+    c_l = ["Account", "ID", "Nick"]
     a_lst = get_list_of_accounts()
 
     if not a_lst:
@@ -1221,19 +1301,21 @@ def print_contact_list(spacing=False):
         else:
             return 0
 
-    gap_1 = len(max(a_lst, key=len)) - len(c_lst[0]) + 3
-    c_str = c_lst[0] + gap_1 * ' ' + c_lst[1] + "  " + c_lst[2]
-    c_dst = int(c_str.index(c_lst[1][0]))
+    gap_1 = len(max(a_lst, key=len)) - len(c_l[0]) + 3
+    c_str = c_l[0] + gap_1*' ' + c_l[1] + "  " + c_l[2]
+    c_dst = int(c_str.index(c_l[1][0]))
 
     print(c_str)
     print(get_tty_wh(wo=True) * '-')
 
     for a in a_lst:
-        a_id = a_lst.index(a)
+        a_id = str(a_lst.index(a))
         nick = get_nick(a)
-        gap_2 = int(c_str.index(c_lst[1][0])) - len(a)
-        gap_3 = int(c_str.index(c_lst[2][0])) - len(a) - gap_2 - len(str(a_id))
-        print(a + gap_2 * ' ' + str(a_id) + gap_3 * ' ' + nick)
+
+        d1 = c_str.index(c_l[1][0]) - len(a)
+        d2 = c_str.index(c_l[2][0]) - len(a) - d1 - len(a_id)
+
+        print(a + d1 * ' ' + a_id + d2 * ' ' + nick)
 
     print('\n')
 
@@ -1258,7 +1340,7 @@ def print_selection_error(invalid_selection):
     if not isinstance(invalid_selection, str):
         raise FunctionParameterTypeError("print_selection_error")
 
-    system("clear")
+    os.system("clear")
     print("TFC-NaCl %s || Tx.py\n" % str_version)
     print("Error: Invalid selection '%s'\n" % invalid_selection)
     print_contact_list()
@@ -1266,7 +1348,7 @@ def print_selection_error(invalid_selection):
     return None
 
 
-def select_contact(c_dist=0, selection="", menu=True):
+def select_contact(c_dist=0, selection='', menu=True):
     """
     Select contact to send messages to.
 
@@ -1279,7 +1361,7 @@ def select_contact(c_dist=0, selection="", menu=True):
     if not isinstance(c_dist, (int, long)) or not \
             isinstance(selection, str) or not \
             isinstance(menu, bool):
-        raise FunctionParameterTypeError("print_selection_error")
+        raise FunctionParameterTypeError("select_contact")
 
     while True:
         try:
@@ -1321,7 +1403,7 @@ def select_contact(c_dist=0, selection="", menu=True):
             return account, get_nick(account)
 
         except KeyboardInterrupt:
-            graceful_exit()
+            graceful_exit(queue=True)
 
 
 def get_list_of_targets():
@@ -1345,7 +1427,7 @@ def get_list_of_targets():
 # .tx_contacts management
 def add_first_contact():
     """
-    Add account name and nick of first contact. Initiate ECDHE key exchange.
+    Add account name and nick of first contact.
 
     :return: None
     """
@@ -1356,9 +1438,10 @@ def add_first_contact():
     try:
         while True:
 
-            system("clear")
+            os.system("clear")
             print("TFC-NaCl %s || Tx.py\n\n" % str_version)
-            account = raw_input("Enter contact account name:\n    >")
+            print("Add new contact\n---------------\n")
+            account = raw_input("Contact account: %s" % (44 * ' '))
 
             # Remove related commands user might give
             for s in ["/dh ", "/add ", "/psk ", ' ']:
@@ -1366,31 +1449,34 @@ def add_first_contact():
 
             if key_searcher(account):
                 print("\nError: Account looks like key.\n")
-                sleep(1)
+                time.sleep(1)
                 continue
 
             if account == '':
                 print("\nError: Can't give empty account.\n")
-                sleep(1)
+                time.sleep(1)
+                continue
+
+            if ':' in account or '/' in account:
+                print("\nError: No ':' or '/' characters are allowed.\n")
                 continue
 
             nick = get_nick_input(account)
 
-            if yes("Create contact?"):
+            if yes("\nConfirm contact %s?" % nick, (36 - len(nick))):
                 break
 
-        if yes("Use PSK instead of ECDHE?"):
-            new_psk("/psk %s %s" % (account, nick), first_account=True)
-            return None
-
-        else:
+        if yes("Use ECDHE key exchange?", 30):
             start_key_exchange("/add %s %s" % (account, nick),
                                first_account=True)
             return None
 
+        else:
+            new_psk("/psk %s %s" % (account, nick), first_account=True)
+            return None
+
     except KeyboardInterrupt:
-        print("\nExiting TFC-NaCl.\n")
-        exit()
+        graceful_exit()
 
 
 def add_contact(account, nick):
@@ -1400,7 +1486,7 @@ def add_contact(account, nick):
     Contacts are stored in CSV file. Each contact has it's own line.
     Settings are stored with following format: [account,nick,keyID].
 
-    :param account: The contact's account name (e.g. alice@jabber.org).
+    :param account: The recipient's account name (e.g. alice@jabber.org).
     :param nick:    Nick of new contact.
     :return:        None
     """
@@ -1408,7 +1494,7 @@ def add_contact(account, nick):
     if not isinstance(account, str) or not isinstance(nick, str):
         raise FunctionParameterTypeError("add_contact")
 
-    if not isfile(".tx_contacts"):
+    if not os.path.isfile(".tx_contacts"):
         open(".tx_contacts", "a+").close()
 
     try:
@@ -1439,7 +1525,7 @@ def add_keyfiles():
 
     try:
         with open(".tx_contacts", "a+") as f:
-            for row in reader(f):
+            for row in csv.reader(f):
                 c_list.append(row)
 
     except IOError:
@@ -1458,7 +1544,7 @@ def add_keyfiles():
                 add_contact("local", "local")
 
             else:
-                system("clear")
+                os.system("clear")
                 print("TFC-NaCl %s || Tx.py\n" % str_version)
                 print("New contact '%s' found." % account)
 
@@ -1488,7 +1574,7 @@ def get_keyid(account):
         key_id = 0
 
         with open(".tx_contacts") as f:
-            for row in reader(f):
+            for row in csv.reader(f):
                 c_list.append(row)
 
         for i in range(len(c_list)):
@@ -1514,7 +1600,7 @@ def get_nick(account):
     """
     Load nick from .tx_contacts.
 
-    :param account: The contact's account name (e.g. alice@jabber.org).
+    :param account: The recipient's account name (e.g. alice@jabber.org).
     :return:        The nickname for specified account.
     """
 
@@ -1527,7 +1613,7 @@ def get_nick(account):
 
     try:
         with open(".tx_contacts") as f:
-            for row in reader(f):
+            for row in csv.reader(f):
                 clist.append(row)
 
         for i in range(len(clist)):
@@ -1566,7 +1652,8 @@ def get_nick_input(account):
 
     try:
         while True:
-            nickname = raw_input("\nEnter nickname [%s]: " % def_nick)
+            nickname = raw_input("Contact nickname [%s]: %s"
+                                 % (def_nick, ((40 - len(def_nick)) * ' ')))
 
             if ',' in nickname or '|' in nickname:
                 print("\nError: Nick can't contain ',' or '|'.\n")
@@ -1614,7 +1701,7 @@ def write_keyid(account, keyid):
         c_list = []
 
         with open(".tx_contacts") as f:
-            for row in reader(f):
+            for row in csv.reader(f):
                 c_list.append(row)
 
         account_found = False
@@ -1629,13 +1716,13 @@ def write_keyid(account, keyid):
                                 % account)
 
         with open(".tx_contacts", 'w') as f:
-            writer(f).writerows(c_list)
+            csv.writer(f).writerows(c_list)
 
     except IOError:
         raise CriticalError("write_keyid", ".tx_contacts IOError.")
 
     if keyid != get_keyid(account):
-        raise CriticalError("write_keyid", "ID write fail." % account)
+        raise CriticalError("write_keyid", " %s keyID write fail." % account)
 
     return None
 
@@ -1644,7 +1731,7 @@ def write_nick(account, nick):
     """
     Write new nick for contact to .tx_contacts.
 
-    :param account: The contact's account name (e.g. alice@jabber.org).
+    :param account: The recipient's account name (e.g. alice@jabber.org).
     :param nick:    New nick for contact.
     :return:        None
     """
@@ -1656,7 +1743,7 @@ def write_nick(account, nick):
         c_list = []
 
         with open(".tx_contacts") as f:
-            for row in reader(f):
+            for row in csv.reader(f):
                 c_list.append(row)
 
         nick_changed = False
@@ -1671,7 +1758,7 @@ def write_nick(account, nick):
                                 % account)
 
         with open(".tx_contacts", 'w') as f:
-            writer(f).writerows(c_list)
+            csv.writer(f).writerows(c_list)
 
     except IOError:
         raise CriticalError("write_nick", ".tx_contacts IOError.")
@@ -1700,6 +1787,10 @@ def rm_contact(parameters):
         print("\nError: Account not specified.\n")
         return None
 
+    if ':' in account or '/' in account:
+        print("\nError: No ':' or '/' characters are allowed.\n")
+        return None
+
     if account in "me.local":
         print("\nError: Can't remove local keyfile.\n")
         return None
@@ -1721,13 +1812,14 @@ def rm_contact(parameters):
 
     command_transmit("REMOVE|%s" % account)
 
-    if not isfile("keys/tx.%s.e" % account):
+    if not os.path.isfile("keys/tx.%s.e" % account):
         print("\nTxM has no keyfile for %s to remove.\n" % account)
         return None
 
-    Popen("shred -n 3 -z -u keys/tx.%s.e" % account, shell=True).wait()
+    subprocess.Popen("shred -n 3 -z -u keys/tx.%s.e" % account,
+                     shell=True).wait()
     print("\n%s removed.\n" % account)
-    sleep(1)
+    time.sleep(1)
     return None
 
 
@@ -1787,10 +1879,10 @@ def padding(string):
     """
     Pad input to always match the packet max size (254 bytes).
 
+    Byte used in padding is determined by how much padding is needed.
+
     :param string: String to be padded.
     :return:       Padded string.
-
-    Byte used in padding is determined by how much padding is needed.
     """
 
     if not isinstance(string, str):
@@ -1865,7 +1957,7 @@ def change_logging(parameters, ret=False):
         pass
 
     # Check that local keyfile exists
-    if not isfile("keys/tx.local.e"):
+    if not os.path.isfile("keys/tx.local.e"):
         raise NoLocalKeyError
 
     if global_change:
@@ -1895,7 +1987,7 @@ def change_nick(account, parameter, ret=False):
     """
     Change nick of active 'account' to specified on TxM and RxM.
 
-    :param account:   The contact's account name (e.g. alice@jabber.org).
+    :param account:   The recipient's account name (e.g. alice@jabber.org).
     :param parameter: New nickname yet to be separated.
     :param ret        True returns nick change command plaintext.
     :return:          Nick change command if ret is True, else None.
@@ -1935,7 +2027,7 @@ def change_nick(account, parameter, ret=False):
         print("\nError: Nick can't be an account.\n")
 
     else:
-        if not isfile("keys/tx.local.e"):
+        if not os.path.isfile("keys/tx.local.e"):
             raise NoLocalKeyError
 
         write_nick(account, new_nick)
@@ -1998,7 +2090,7 @@ def change_file_storing(parameters, ret=False):
         pass
 
     # Check that local keyfile exists
-    if not isfile("keys/tx.local.e"):
+    if not os.path.isfile("keys/tx.local.e"):
         raise NoLocalKeyError
 
     if ret:
@@ -2026,10 +2118,10 @@ def clear_displays(account='', trickle=False):
     if not isinstance(account, str) or not isinstance(trickle, bool):
         raise FunctionParameterTypeError("clear_displays")
 
-    if not isfile("keys/tx.local.e") and trickle:
+    if not os.path.isfile("keys/tx.local.e") and trickle:
         raise NoLocalKeyError
 
-    system("clear")
+    os.system("clear")
     if trickle:
         return "C|CLEAR"
     else:
@@ -2057,7 +2149,7 @@ def command_thread(cmd, _=''):
     padded = padding(cmd)
     key_id = get_keyid("local")
     ct_tag = encrypt_and_sign("local", padded)
-    b64enc = b64encode(ct_tag)
+    b64enc = base64.b64encode(ct_tag)
     packet = "TFC|N|%s|C|%s|%s" % (int_version, b64enc, key_id)
     transmit(packet)
     return None
@@ -2074,7 +2166,7 @@ def command_transmit(cmd):
     if not isinstance(cmd, str):
         raise FunctionParameterTypeError("command_transmit")
 
-    wt = Thread(target=command_thread, args=(cmd, ''))
+    wt = threading.Thread(target=command_thread, args=(cmd, ''))
     wt.start()
     wt.join()
 
@@ -2096,7 +2188,7 @@ def message_thread(message, account):
     padded = padding(message)
     key_id = get_keyid(account)
     ct_tag = encrypt_and_sign(account, padded)
-    b64enc = b64encode(ct_tag)
+    b64enc = base64.b64encode(ct_tag)
     packet = "TFC|N|%s|M|%s|%s|%s" % (int_version, b64enc, key_id, account)
     transmit(packet)
     return None
@@ -2114,7 +2206,7 @@ def message_transmit(message, account):
     if not isinstance(message, str) or not isinstance(account, str):
         raise FunctionParameterTypeError("message_transmit")
 
-    wt = Thread(target=message_thread, args=(message, account))
+    wt = threading.Thread(target=message_thread, args=(message, account))
     wt.start()
     wt.join()
 
@@ -2171,19 +2263,19 @@ def long_msg_transmit(plaintext, account):
             final_time = packet_delay - ((stop - start) / 1000.0)
 
             if final_time > 0:
-                sleep(final_time)
+                time.sleep(final_time)
             else:
-                sleep(packet_delay)  # Error handling
+                time.sleep(packet_delay)  # Error handling
 
             if lt_random_delay:
                 if not p.startswith('e') and not p.startswith('E'):
 
-                    sleep_time = SystemRandom().uniform(0, lt_max_delay)
+                    sleep_time = random.SystemRandom().uniform(0, lt_max_delay)
                     indent_len = (13 - len(str(sleep_time))) * ' '
                     phase("Adding %s%s second delay between packet..."
                           % (sleep_time, indent_len), 55)
 
-                    sleep(sleep_time)
+                    time.sleep(sleep_time)
                     print("Done.")
 
         except KeyboardInterrupt:
@@ -2208,11 +2300,9 @@ def transmit_exit():
 
     command_transmit("EXIT")
     transmit("TFC|N|%s|U|EXIT" % int_version)
-
-    system("clear")
     if local_testing:
-        sleep(1)
-    graceful_exit()
+        time.sleep(1)
+    graceful_exit(queue=True)
 
 
 def recipient_chooser(payload):
@@ -2256,7 +2346,7 @@ def recipient_chooser(payload):
                 else:
                     raise CriticalError("recipient_chooser",
                                         "Invalid packet header")
-                sleep(packet_delay)
+                time.sleep(packet_delay)
 
         print('')
 
@@ -2282,20 +2372,6 @@ def recipient_chooser(payload):
     return None
 
 
-def file_dialog():
-    """
-    Open file dialog for graphical file selection.
-
-    :return: file path.
-    """
-
-    root = Tk()
-    root.withdraw()
-    fp = askopenfilename()
-    root.destroy()
-    return fp
-
-
 def load_file_data(parameters):
     """
     Load file data to payload.
@@ -2309,8 +2385,11 @@ def load_file_data(parameters):
 
     if parameters == "/file":
         try:
-            file_name = file_dialog()
-        except TclError:
+            root = Tkinter.Tk()
+            root.withdraw()
+            file_name = tkFileDialog.askopenfilename()
+            root.destroy()
+        except _tkinter.TclError:
             print("\nError: file dialog not available.\n")
             return "ABORT"
         if not file_name:
@@ -2323,29 +2402,29 @@ def load_file_data(parameters):
             print("\nError: Invalid command.\n")
             return "ABORT"
 
-    if not isfile(file_name):
+    if not os.path.isfile(file_name):
         print("\nError: File not found.\n")
         return "ABORT"
 
-    r_size = readable_size(getsize(file_name))
+    r_size = readable_size(os.path.getsize(file_name))
     trunc_fn = file_name.split('/')[-1]
 
-    print('')
-    phase("Loading file data...", 22)
+    phase("\nLoading file data...", 22)
 
     # Encode file to base64 format
-    Popen("base64 %s > .tfc_tmp_file" % file_name, shell=True).wait()
+    subprocess.Popen("base64 %s > .tfc_tmp_file" % file_name,
+                     shell=True).wait()
 
     # Read data
     data = file(".tfc_tmp_file", "rb").read()
 
     # Shred encoded temp file
-    Popen("shred -n 3 -z -u .tfc_tmp_file", shell=True).wait()
+    subprocess.Popen("shred -n 3 -z -u .tfc_tmp_file", shell=True).wait()
     print("Done.\n")
 
     if not data:
         print("\nError: target file was empty. No file was sent.\n")
-        sleep(0.5)
+        time.sleep(0.5)
         return "ABORT"
 
     # Calculate average delay based on delays and performance
@@ -2365,7 +2444,7 @@ def load_file_data(parameters):
         datalen -= 252
 
     init_est = p_count * avg_delay
-    d_human_r = strftime("%Hh %Mm %Ss", gmtime(init_est))
+    d_human_r = time.strftime("%Hh %Mm %Ss", time.gmtime(init_est))
     d_human_r = d_human_r.replace("00h ", '').replace("00m ", '')
     datalen += (len(d_human_r) + len(str(p_count)))
 
@@ -2375,21 +2454,21 @@ def load_file_data(parameters):
 
     if len("%s|%s|%s|%s|" % (trunc_fn, r_size, p_count, d_human_r)) > 252:
         print("\nError: Size of header exceeds one packet.\n")
-        sleep(0.5)
+        time.sleep(0.5)
         return "ABORT"
 
     data = "%s|%s|%s|%s|%s" % (trunc_fn, r_size, p_count, d_human_r, data)
 
     if confirm_file:
-        m = "Send %s (%s, ~%s packets, time: %s)?" % (trunc_fn, r_size,
-                                                      p_count, d_human_r)
+        m = str("Send %s (%s, ~%s packets, time: %s)?" % (trunc_fn, r_size,
+                                                          p_count, d_human_r))
         if not yes(m):
             print("\nFile sending aborted.\n")
-            sleep(0.5)
+            time.sleep(0.5)
             return "ABORT"
 
     print('')
-    return data
+    return str(data)
 
 
 def transmit(packet):
@@ -2455,7 +2534,7 @@ def get_list_of_groups():
     g_file_list = []
 
     try:
-        for f in listdir("groups/"):
+        for f in os.listdir("groups/"):
             if f.startswith("g.") and f.endswith(".tfc"):
                 g_file_list.append(f[2:][:-4])
 
@@ -2488,7 +2567,7 @@ def group_create(parameters):
     ensure_dir("groups/")
 
     # If group exists, ask to overwrite / abort
-    if isfile("groups/g.%s.tfc" % group_name):
+    if os.path.isfile("groups/g.%s.tfc" % group_name):
         if not yes("\nGroup already exists. Overwrite?"):
             print("\nGroup creation aborted.\n")
             return None
@@ -2579,7 +2658,7 @@ def group_add_member(parameters):
     c_unknown = []
     ensure_dir("groups/")
 
-    if not isfile("groups/g.%s.tfc" % group_name):
+    if not os.path.isfile("groups/g.%s.tfc" % group_name):
         if yes("\nGroup %s was not found. Create new group?" % group_name):
             try:
                 group_create(parameters)
@@ -2622,13 +2701,13 @@ def group_add_member(parameters):
         print("\nAdded following accounts to %s:" % group_name)
         for c in c_added:
             print("    %s" % c)
-        print
+        print('')
 
     if c_ready:
         print("\nFollowing accounts were already in %s:" % group_name)
         for c in c_ready:
             print("    %s" % c)
-        print
+        print('')
 
     if c_unknown:
         print("\nFollowing accounts are not in contacts:")
@@ -2668,13 +2747,13 @@ def group_rm_member(parameters):
 
     ensure_dir("groups/")
 
-    if not isfile("groups/g.%s.tfc" % group_name):
+    if not os.path.isfile("groups/g.%s.tfc" % group_name):
         raise GroupError("Group does not exist.")
 
     if not c_eval_lst:
         if yes("\nRemove group '%s'?" % group_name):
             shred_command = "shred -n 3 -z -u groups/g.%s.tfc" % group_name
-            Popen(shred_command, shell=True).wait()
+            subprocess.Popen(shred_command, shell=True).wait()
             print("\nRemoved group %s.\n" % group_name)
         else:
             print("\nGroup removal aborted.\n")
@@ -2866,9 +2945,9 @@ def ensure_dir(directory):
         raise FunctionParameterTypeError("ensure_dir")
 
     try:
-        name = dirname(directory)
-        if not exists(name):
-            makedirs(name)
+        name = os.path.dirname(directory)
+        if not os.path.exists(name):
+            os.makedirs(name)
     except OSError:
         raise CriticalError("ensure_dir", "No directory specified.")
 
@@ -2882,7 +2961,7 @@ def print_about():
     :return: None
     """
 
-    system("clear")
+    os.system("clear")
     print(" Tinfoil Chat NaCl %s\n\n" % str_version +
           " Website:     https://github.com/maqp/tfc-nacl/                \n"
           " White paper: https://cs.helsinki.fi/u/oottela/tfc.pdf         \n"
@@ -2946,7 +3025,7 @@ def print_help():
 
     width = get_tty_wh(wo=True)
 
-    system("clear")
+    os.system("clear")
     print("List of commands:")
     help_printer(common, (width > 80))
 
@@ -2987,7 +3066,8 @@ def get_tab_complete_list():
     tc_list = []
 
     # Add list of files
-    dir_files = [f for f in listdir('.') if isfile(join('.', f))]
+    dir_files = [f for f in os.listdir('.') if
+                 os.path.isfile(os.path.join('.', f))]
     tfc_files = ["Tx.py", "Tx.pyc", "test_tx.py", "setup.py",
                  "Rx.py", "Rx.pyc", "test_rx.py", ".tx_contacts",
                  "NH.py", "NH.pyc", "test_nh.py", ".rx_contacts"
@@ -2999,7 +3079,8 @@ def get_tab_complete_list():
     # Add list of commands
     tc_list += ["about", "add ", "clear", "create ", "exit",
                 "file ", "group ", "help", "logging ", "msg ",
-                "nick ", "quit", "rm ", "select ", "store "]
+                "nick ", "quit", "rm ", "select ", "store ",
+                "localkey", "rxkey"]
 
     # Add list of groups
     tc_list += [(c + ' ') for c in get_list_of_accounts()]
@@ -3029,20 +3110,21 @@ def readable_size(size):
     return "%.1f%sB" % (size, 'Y')
 
 
-def yes(prompt):
+def yes(prompt, indent=0):
     """
     Prompt user a question that is answered with yes / no.
 
     :param prompt: Question to be asked.
+    :param indent: Indent of answer.
     :return:       True if user types 'y' or 'yes', otherwise returns False.
     """
 
-    if not isinstance(prompt, str):
+    if not isinstance(prompt, str) or not isinstance(indent, int):
         raise FunctionParameterTypeError("yes")
 
     while True:
         try:
-            answer = raw_input("%s (y/n): " % prompt)
+            answer = raw_input("%s (y/n): %s" % (prompt, indent * ' '))
 
         except KeyboardInterrupt:
             raise
@@ -3057,7 +3139,8 @@ def yes(prompt):
 def phase(string, dist):
     """
     Print name of next phase. Next message (about completion), printed after
-    the phase will be printed on same line as the name specified by 'string'.
+    the phase will be printed on same line as the name specified by 'string'
+    at same distance regardless of leading newlines.
 
     :param string: String to be printed.
     :param dist:   Indentation of completion message.
@@ -3067,9 +3150,16 @@ def phase(string, dist):
     if not isinstance(string, str) or not isinstance(dist, (int, long)):
         raise FunctionParameterTypeError("phase")
 
-    stdout.write(string + ((dist - len(string)) * ' '))
-    stdout.flush()
-    sleep(0.02)
+    n = 0
+    for i in range(len(string)):
+        if string[i] == '\n':
+            n += 1
+        else:
+            break
+
+    spaces = (dist - len(string) + n) * ' '
+    sys.stdout.write(string + spaces)
+    sys.stdout.flush()
 
     return None
 
@@ -3090,7 +3180,7 @@ def get_tty_wh(wo=False):
         :return:   Width and height.
         """
 
-        return unpack("hh", ioctl(fd, TIOCGWINSZ, "1234"))
+        return struct.unpack("hh", fcntl.ioctl(fd, termios.TIOCGWINSZ, "1234"))
 
     cr = ioctl_gwin_size(0) or ioctl_gwin_size(1) or ioctl_gwin_size(2)
 
@@ -3116,54 +3206,53 @@ def print_banner():
 
     string = "Tinfoil Chat NaCl %s" % str_version
 
-    system("clear")
+    os.system("clear")
     width, height = get_tty_wh()
 
-    print((height / 2) - 1) * '\n'
+    print(((height / 2) - 1) * '\n')
 
     # Style 1
-    animation = sysrandint(1, 3)
+    animation = random.randint(1, 3)
     if animation == 1:
         i = 0
         while i <= len(string):
-            stdout.write("\x1b[1A" + ' ')
-            stdout.flush()
+            sys.stdout.write("\x1b[1A" + ' ')
+            sys.stdout.flush()
 
             if i == len(string):
-                print((width - len(string)) / 2) * ' ' + string[:i]
+                print(((width - len(string)) / 2) * ' ' + string[:i])
             else:
-                rc = chr(randrange(32, 126))
-                print((width - len(string)) / 2) * ' ' + string[:i] + rc
+                rc = chr(random.randrange(32, 126))
+                print(((width - len(string)) / 2) * ' ' + string[:i] + rc)
 
             i += 1
-            sleep(0.03)
+            time.sleep(0.03)
 
     # Style 2
     if animation == 2:
         char_l = len(string) * ['']
 
         while True:
-            stdout.write("\x1b[1A" + ' ')
-            stdout.flush()
+            sys.stdout.write("\x1b[1A" + ' ')
+            sys.stdout.flush()
             st = ''
 
             for i in range(len(string)):
                 if char_l[i] != string[i]:
-                    char_l[i] = chr(randrange(32, 126))
+                    char_l[i] = chr(random.randrange(32, 126))
                 else:
                     char_l[i] = string[i]
                 st += char_l[i]
 
-            print((width - len(string)) / 2) * ' ' + st
+            print(((width - len(string)) / 2) * ' ' + st)
 
-            sleep(0.004)
+            time.sleep(0.004)
             if st == string:
                 break
 
     # Style 3
     if animation == 3:
 
-        string = "Tinfoil Chat NaCl 0.16.1"
         dropping_chars = 50
         random_cleanup = 80
         min_speed = 3
@@ -3190,7 +3279,7 @@ def print_banner():
                 self.completed = []
 
             def reset(self, c_width, speed_min, speed_max):
-                self.char = choice(FChar.list_chr)
+                self.char = random.choice(FChar.list_chr)
                 self.x = randint(1, c_width - 1)
                 self.y = 0
                 self.speed = randint(speed_min, speed_max)
@@ -3221,9 +3310,9 @@ def print_banner():
                                 self.char = final_string[self.x]
                                 self.completed.append(self.x)
                             except IndexError:
-                                self.char = choice(FChar.list_chr)
+                                self.char = random.choice(FChar.list_chr)
                     else:
-                        self.char = choice(FChar.list_chr)
+                        self.char = random.choice(FChar.list_chr)
 
                     if not self.out_of_bounds_reset(win_w, win_h):
                         scr.addstr(self.y, self.x, self.char, curses.A_NORMAL)
@@ -3244,7 +3333,7 @@ def print_banner():
 
         # Use insecure but fast PRNG
         def rand():
-            p = sysrandint(0, 1000000000)
+            p = random.randint(0, 1000000000)
             while True:
                 p ^= (p << 21) & 0xffffffffffffffff
                 p ^= (p >> 35)
@@ -3315,7 +3404,7 @@ def print_banner():
                         window_animation = None
 
                 scr.refresh()
-                sleep(sleep_ms)
+                time.sleep(sleep_ms)
                 steps += 1
         try:
             r = rand()
@@ -3325,11 +3414,141 @@ def print_banner():
             curses.curs_set(1)
             curses.reset_shell_mode()
             curses.echo()
-            system("clear")
+            os.system("clear")
 
-    sleep(0.3)
-    system("clear")
+    time.sleep(0.3)
+    os.system("clear")
     return None
+
+
+def process_arguments():
+    """
+    Define Tx.py settings from arguments passed from command line.
+
+    :return: None
+    """
+
+    parser = argparse.ArgumentParser("python Tx.py",
+                                     usage="%(prog)s [OPTION]",
+                                     description="More options inside Tx.py")
+
+    parser.add_argument("-c",
+                        action="store_true",
+                        default=False,
+                        dest="clear_ip_s",
+                        help="clear input screen after each entry")
+
+    parser.add_argument("-p",
+                        action="store_true",
+                        default=False,
+                        dest="panic",
+                        help="panic exit with double space command")
+
+    parser.add_argument("-m",
+                        action="store_true",
+                        default=False,
+                        dest="m_logging",
+                        help="enable message logging by default")
+
+    parser.add_argument("-t",
+                        action="store_true",
+                        default=False,
+                        dest="trickle",
+                        help="enable trickle connection to hide metadata")
+
+    parser.add_argument("-s",
+                        action="store_true",
+                        default=False,
+                        dest="trickle_stats",
+                        help="Print statistics about constant time delay")
+
+    parser.add_argument("-l",
+                        action="store_true",
+                        default=False,
+                        dest="local",
+                        help="enable local testing mode")
+
+    parser.add_argument("-d",
+                        action="store_true",
+                        default=False,
+                        dest="ddsockets",
+                        help="data diode simulator socket configuration")
+
+    args = parser.parse_args()
+
+    global clear_input_screen
+    global panic_exit
+    global txm_side_logging
+    global trickle_connection
+    global print_ct_stats
+    global local_testing
+    global dd_socket
+
+    if args.clear_ip_s:
+        clear_input_screen = True
+
+    if args.panic:
+        panic_exit = True
+
+    if args.m_logging:
+        txm_side_logging = True
+
+    if args.trickle:
+        trickle_connection = True
+
+    if args.trickle_stats:
+        print_ct_stats = True
+
+    if args.local:
+        local_testing = True
+
+    if args.ddsockets:
+        dd_socket = True
+
+
+def search_serial_interfaces():
+    """
+    Search serial interfaces.
+
+    :return: Serial interface to use.
+    """
+
+    dev_files = [df for df in os.listdir("/dev/")]
+    dev_files.sort()
+    serial_iface = ''
+
+    if nh_usb_adapter:
+        for dev_file in dev_files:
+            if dev_file.startswith("ttyUSB"):
+                serial_iface = "/dev/%s" % dev_file
+                break
+
+        if not serial_iface:
+            graceful_exit("Error: No USB-serial adapter was not found.")
+
+    else:
+        os_name = subprocess.check_output(["grep", "PRETTY_NAME",
+                                           "/etc/os-release"])
+        rpi_distros = ["Raspbian GNU/Linux"]
+
+        rpi_in_use = False
+        for distro in rpi_distros:
+            if distro in os_name:
+                rpi_in_use = True
+
+        integrated_if = "ttyAMA0" if rpi_in_use else "ttyS0"
+
+        integrated_found = False
+        for dev_file in dev_files:
+            if dev_file == integrated_if:
+                integrated_found = True
+
+        if integrated_found:
+            serial_iface = "/dev/%s" % integrated_if
+        else:
+            graceful_exit("Error: /dev/%s was not found." % integrated_if)
+
+        return serial_iface
 
 
 ###############################################################################
@@ -3343,7 +3562,7 @@ def heads():
     :return: True / False
     """
 
-    return ord(urandom(1)) % 2 == 1
+    return ord(os.urandom(1)) % 2 == 1
 
 
 def get_ms():
@@ -3353,7 +3572,7 @@ def get_ms():
     :return: system time in milliseconds (int).
     """
 
-    return int(round(time() * 1000))
+    return int(round(time.time() * 1000))
 
 
 def trickle_delay(start):
@@ -3364,7 +3583,7 @@ def trickle_delay(start):
     This function first compares the initial timestamp from start of
     sender_process() loop against current timestamp. It'll then calculate the
     difference between elapsed time and variable trickle_c_delay, and sleep
-    that time. This way sleep(ct_filler) returns ~2000 ms after start of
+    that time. This way time.sleep(ct_filler) returns ~2000 ms after start of
     sender_process(). Encryption-times longer than 2000ms will gracefully exit.
 
     The constant time sleep hides metadata on platform speed that could be used
@@ -3399,16 +3618,16 @@ def trickle_delay(start):
                             "Function execute time exceeded trickle_c_delay.\n"
                             "Increase the value from settings and restart.\n")
 
-    sleep(ct_filler)
+    time.sleep(ct_filler)
     t_after_ct_sleep = get_ms() - start
 
-    t_r_delay = SystemRandom().uniform(0, trickle_r_delay)
-    sleep(t_r_delay)
+    t_r_delay = random.SystemRandom().uniform(0, trickle_r_delay)
+    time.sleep(t_r_delay)
 
     l_t_delay = 0
     if lt_random_delay:
-        l_t_delay = SystemRandom().uniform(0, lt_max_delay)
-        sleep(l_t_delay)
+        l_t_delay = random.SystemRandom().uniform(0, lt_max_delay)
+        time.sleep(l_t_delay)
 
     if print_ct_stats:
         print("Time after constant time delay %sms (setting=%sms)" %
@@ -3444,8 +3663,8 @@ def sender_process():
     Based on whether packet loaded from queue was a command or a message/file,
     the process will enter one of two loops. At the beginning of the loop, the
     process will call function heads(), that outputs true/false based on
-    evaluation of ord(urandom(1)) % 2 == 1. The choice is thus always uniformly
-    random: CSPRNG keeps the result of next coin toss computationally
+    evaluation of ord(os.urandom(1)) % 2 == 1. The choice is thus always
+    uniformly random: CSPRNG keeps the result of next coin toss computationally
     unpredictable.
 
     If the coin lands on heads, the process will output the packet and exit the
@@ -3470,7 +3689,7 @@ def sender_process():
     while True:
 
         start = get_ms()
-        stdout.write('\r' + ' ' * (len(get_line_buffer())) + '\r')
+        sys.stdout.write('\r' + ' ' * (len(readline.get_line_buffer())) + '\r')
 
         if msg_queue.empty() and file_queue.empty():
             if heads():
@@ -3524,9 +3743,7 @@ def input_process(file_no, _):
     :return:        None
     """
 
-    import sys
-
-    sys.stdin = fdopen(file_no)
+    sys.stdin = os.fdopen(file_no)
     kb_string = ''
 
     try:
@@ -3538,7 +3755,7 @@ def input_process(file_no, _):
                     print('')
 
             if clear_input_screen:
-                system("clear")
+                os.system("clear")
                 print("TFC-NaCl %s || Tx.py || Trickle connection enabled\n"
                       % str_version)
 
@@ -3551,7 +3768,7 @@ def input_process(file_no, _):
                 if kb_string.startswith(c):
                     print("\nError: Command disabled during trickle mode.\n")
                     if clear_input_screen:
-                        sleep(1)
+                        time.sleep(1)
                     kb_string = ''
                     continue
 
@@ -3637,7 +3854,7 @@ def input_process(file_no, _):
                     msg_queue.put('s' + kb_string)
 
     except KeyboardInterrupt:
-        graceful_exit()
+        graceful_exit(queue=True)
 
 
 ###############################################################################
@@ -3662,37 +3879,37 @@ def get_normal_input():
 
     if paste:
         try:
-            system("clear")
+            os.system("clear")
             print("TFC-NaCl %s || Tx.py\n" % str_version)
             print("Paste mode on || 2x ^D sends || ^C exits\n\n%s\n" % prompt)
 
             try:
-                lines = stdin.read()
+                lines = sys.stdin.read()
             except IOError:
                 print("\nError in stdio. Please try again.\n")
-                sleep(1.5)
+                time.sleep(1.5)
                 return ''
 
             if not lines:
                 return ''
 
-            user_input = '\n%s' % lines
+            user_input = "\n%s" % lines
             print("\nSending...\n")
-            sleep(0.25)
+            time.sleep(0.25)
 
         except KeyboardInterrupt:
-            system("clear")
+            os.system("clear")
             print("TFC-NaCl %s || Tx.py       \n" % str_version)
             print("Closing paste mode...\n\n%s\n" % prompt)
 
             paste = False
-            sleep(0.25)
-            system("clear")
+            time.sleep(0.25)
+            os.system("clear")
             return ''
     else:
         try:
             if clear_input_screen:
-                system("clear")
+                os.system("clear")
                 print("TFC-NaCl %s || Tx.py \n\n\n" % str_version)
 
             try:
@@ -3738,7 +3955,7 @@ def main_loop(user_input=''):
                 group = ''
 
             if recipient_nick not in get_list_of_targets():
-                system("clear")
+                os.system("clear")
                 print("TFC-NaCl %s || Tx.py\n\n"
                       "No contact is currently active.\n" % str_version)
 
@@ -3747,7 +3964,7 @@ def main_loop(user_input=''):
                 caret_dist = print_contact_list()
                 recipient_acco, recipient_nick = select_contact(caret_dist)
 
-                system("clear")
+                os.system("clear")
                 print("\nSelected '%s' (%s)\n" % (recipient_nick,
                                                   recipient_acco))
 
@@ -3759,8 +3976,8 @@ def main_loop(user_input=''):
             user_input = get_normal_input()
 
         # Refresh tab-complete list
-        set_completer(tab_complete)
-        parse_and_bind("tab: complete")
+        readline.set_completer(tab_complete)
+        readline.parse_and_bind("tab: complete")
 
         if user_input == '':
             pass
@@ -3866,6 +4083,9 @@ def main_loop(user_input=''):
             except NoLocalKeyError:
                 pass
 
+        elif user_input.startswith("/rxkey"):
+            command_transmit("ASKRXKF")
+
         elif user_input.startswith("/localkey"):
             try:
                 new_local_key()
@@ -3879,7 +4099,6 @@ def main_loop(user_input=''):
             print("\nError: Invalid command.\n")
 
         else:
-
             if key_searcher(user_input):
                 if not yes("\nMessage appears to contain a key. Proceed?"):
                     continue
@@ -3905,83 +4124,16 @@ acco_store_l = {}
 
 if __name__ == "__main__":
 
-    parser = ArgumentParser("python Tx.py",
-                            usage="%(prog)s [OPTION]",
-                            description="More options inside Tx.py")
-
-    parser.add_argument("-c",
-                        action="store_true",
-                        default=False,
-                        dest="clear_ip_s",
-                        help="clear input screen after each entry")
-
-    parser.add_argument("-p",
-                        action="store_true",
-                        default=False,
-                        dest="panic",
-                        help="panic exit with double space command")
-
-    parser.add_argument("-m",
-                        action="store_true",
-                        default=False,
-                        dest="m_logging",
-                        help="enable message logging by default")
-
-    parser.add_argument("-t",
-                        action="store_true",
-                        default=False,
-                        dest="trickle",
-                        help="enable trickle connection to hide metadata")
-
-    parser.add_argument("-s",
-                        action="store_true",
-                        default=False,
-                        dest="trickle_stats",
-                        help="Print statistics about constant time delay")
-
-    parser.add_argument("-l",
-                        action="store_true",
-                        default=False,
-                        dest="local",
-                        help="enable local testing mode")
-
-    parser.add_argument("-d",
-                        action="store_true",
-                        default=False,
-                        dest="ddsockets",
-                        help="data diode simulator socket configuration")
-
-    args = parser.parse_args()
-
-    if args.clear_ip_s:
-        clear_input_screen = True
-
-    if args.panic:
-        panic_exit = True
-
-    if args.m_logging:
-        txm_side_logging = True
-
-    if args.trickle:
-        trickle_connection = True
-
-    if args.trickle_stats:
-        print_ct_stats = True
-
-    if args.local:
-        local_testing = True
-
-    if args.ddsockets:
-        dd_socket = True
+    process_arguments()
 
     if unittesting:
-        clean_exit("Error: Variable 'unittesting' is set true.")
+        graceful_exit("Error: Variable 'unittesting' is set true.")
 
     if startup_banner:
         print_banner()
 
     # Set default directory
-    chdir(path[0])
+    os.chdir(sys.path[0])
 
     # Select IPC / Serial interface depending on local_testing boolean
     if local_testing:
@@ -3991,67 +4143,34 @@ if __name__ == "__main__":
             nh_socket = 5001
 
         try:
-            system("clear")
+            os.system("clear")
             print("TFC-NaCl %s || Tx.py\n\n" % str_version)
             phase("Waiting for socket from NH.py...", 35)
-            ipc_nh = Client(("localhost", nh_socket))
+            ipc_nh = multiprocessing.connection.Client(("localhost",
+                                                        nh_socket))
             print("Connection established.\n")
-            sleep(0.5)
-            system("clear")
+            time.sleep(0.5)
+            os.system("clear")
 
         except KeyboardInterrupt:
-            clean_exit()
+            graceful_exit()
 
     else:
 
-        # Auto-pick correct serial interface
-        dev_files = [df for df in listdir("/dev/")]
-        dev_files.sort()
-        serial_nh = ''
-
-        if nh_usb_adapter:
-            for dev_file in dev_files:
-                if dev_file.startswith("ttyUSB"):
-                    serial_nh = "/dev/%s" % dev_file
-                    break
-
-            if not serial_nh:
-                clean_exit("Error: No USB-serial adapter was not found.")
-
-        else:
-            os_name = check_output(["grep", "PRETTY_NAME",
-                                    "/etc/os-release"])
-            rpi_distros = ["Raspbian GNU/Linux"]
-
-            rpi_in_use = False
-            for distro in rpi_distros:
-                if distro in os_name:
-                    rpi_in_use = True
-
-            integrated_if = "ttyAMA0" if rpi_in_use else "ttyS0"
-
-            integrated_found = False
-            for dev_file in dev_files:
-                if dev_file == integrated_if:
-                    integrated_found = True
-
-            if integrated_found:
-                serial_nh = "/dev/%s" % integrated_if
-            else:
-                clean_exit("Error: /dev/%s was not found." % integrated_if)
-
         try:
-            port_nh = Serial(serial_nh, baud_rate, timeout=0.1)
+            serial_nh = search_serial_interfaces()
+            port_nh = serial.Serial(serial_nh, baud_rate, timeout=0.1)
             transmit("TFC|N|%s|I|" % int_version)  # NH interface config
 
-        except serialutil.SerialException:
-            clean_exit("Error: Serial interface to NH was not found.")
+        except SerialException:
+            graceful_exit("Error: Serial interface to NH was not found.")
 
     # Create directories
     ensure_dir("keys/")
     ensure_dir("groups/")
     ensure_dir("logs/")
     ensure_dir("files/")
+    ensure_dir("keys_to_contact/")
 
     # Add new keyfiles
     add_keyfiles()
@@ -4061,8 +4180,8 @@ if __name__ == "__main__":
     paste = False
 
     # Initialize tab-complete
-    set_completer(tab_complete)
-    parse_and_bind("tab: complete")
+    readline.set_completer(tab_complete)
+    readline.parse_and_bind("tab: complete")
 
     # Contact specific log setting dictionary
     for acco in get_list_of_accounts():
@@ -4072,8 +4191,8 @@ if __name__ == "__main__":
             acco_store_l[acco] = False
 
     # If local key does not exist, ask user to generate it.
-    if not isfile("keys/tx.local.e"):
-        system("clear")
+    if not os.path.isfile("keys/tx.local.e"):
+        os.system("clear")
         print("TFC-NaCl %s || Tx.py\n\n" % str_version)
         new_local_key(bootstrap=True)
 
@@ -4084,34 +4203,35 @@ if __name__ == "__main__":
     # Select contact
     recipient_acco, recipient_nick = select_contact(print_contact_list())
 
-    system("clear")
+    os.system("clear")
 
     if trickle_connection:
-        msg_queue = Queue()
-        file_queue = Queue()
-        exit_queue = Queue()
-        ip = Process(target=input_process, args=(stdin.fileno(), ''))
-        sp = Process(target=sender_process)
+        msg_queue = multiprocessing.Queue()
+        file_queue = multiprocessing.Queue()
+        pc_queue = multiprocessing.Queue()
+        ip = multiprocessing.Process(target=input_process,
+                                     args=(sys.stdin.fileno(), ''))
+        sp = multiprocessing.Process(target=sender_process)
 
         ip.start()
         sp.start()
 
         try:
             while True:
-                if not exit_queue.empty():
-                    command = exit_queue.get()
+                if not pc_queue.empty():
+                    command = pc_queue.get()
                     if command == "exit":
                         ip.terminate()
                         sp.terminate()
-                        clean_exit()
-                sleep(0.001)
+                        graceful_exit()
+                time.sleep(0.001)
 
         except KeyboardInterrupt:
             ip.terminate()
             sp.terminate()
-            clean_exit()
+            graceful_exit()
     else:
         try:
             main_loop()
         except KeyboardInterrupt:
-            clean_exit()
+            graceful_exit()

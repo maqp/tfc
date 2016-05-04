@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# TFC-NaCl || test_rx.py
+# TFC-NaCl 0.16.05 || test_rx.py
 
 """
 GPL License
@@ -17,24 +17,26 @@ A PARTICULAR PURPOSE. See the GNU General Public License for more details. For
 a copy of the GNU General Public License, see <http://www.gnu.org/licenses/>.
 """
 
-import unittest
 import Rx
 from Rx import *
-from base64 import b64decode
-from binascii import hexlify
-from os import chdir, makedirs, remove
-from os.path import dirname, exists
-from shutil import rmtree
-from sys import path
-from hashlib import sha256
-from simplesha3 import sha3256
+import base64
+import binascii
+import os.path
+import os
+import shutil
+import sys
+import unittest
+
+# Import crypto libraries
+import hashlib
+import simplesha3
 
 
 ###############################################################################
 #                               UNITTEST HELPERS                              #
 ###############################################################################
 
-def create_me_keys(nick_list, key=(64*'a')):
+def create_me_keys(nick_list, key=(64 * 'a')):
     """
     Create local decryption test keyfiles.
 
@@ -52,7 +54,7 @@ def create_me_keys(nick_list, key=(64*'a')):
             open("keys/me.%s@jabber.org.e" % nick, "w+").write(key)
 
 
-def create_rx_keys(nick_list, key=(64*'a')):
+def create_rx_keys(nick_list, key=(64 * 'a')):
     """
     Create decryption test keyfiles.
 
@@ -80,21 +82,6 @@ def create_contact_db(nick_list, keyid='1'):
                 f.write("rx.%s@jabber.org,%s,%s\n" % (nick, nick, keyid))
 
 
-def ut_validate_key(key):
-    """
-    Test key is valid.
-
-    :param key: Key to test.
-    :return:    Boolean on test success.
-    """
-
-    if not set(key.lower()).issubset("abcdef0123456789"):
-        return False
-    if len(key) != 64:
-        return False
-    return True
-
-
 def ut_sha3_256(message):
     """
     SHA3-256 digest.
@@ -103,7 +90,7 @@ def ut_sha3_256(message):
     :return:        Digest (hex format).
     """
 
-    return hexlify(sha3256(message))
+    return binascii.hexlify(simplesha3.sha3256(message))
 
 
 def ut_sha2_256(message):
@@ -114,9 +101,9 @@ def ut_sha2_256(message):
     :return:        Digest (hex format).
     """
 
-    h_function = sha256()
+    h_function = hashlib.sha256()
     h_function.update(message)
-    return hexlify(h_function.digest())
+    return binascii.hexlify(h_function.digest())
 
 
 def ut_ensure_dir(directory):
@@ -127,9 +114,9 @@ def ut_ensure_dir(directory):
     :return:          None
     """
 
-    name = dirname(directory)
-    if not exists(name):
-        makedirs(name)
+    name = os.path.dirname(directory)
+    if not os.path.exists(name):
+        os.makedirs(name)
 
 
 ###############################################################################
@@ -176,7 +163,7 @@ class TestSHA3256(unittest.TestCase):
                          "f580ff4de43b49fa82d80a4b80f8434a")
 
 
-class TestPBKDF2(unittest.TestCase):
+class TestPBKDF2HMACSHA256(unittest.TestCase):
 
     def test_1_input_parameters(self):
         for a in [1, 1.0, True]:
@@ -207,15 +194,6 @@ class TestPBKDF2(unittest.TestCase):
 
 class TestAuthAndDecrypt(unittest.TestCase):
 
-    def setUp(self):
-        create_me_keys(["bob"])
-        create_rx_keys(["bob"])
-        create_contact_db(["bob"])
-
-    def tearDown(self):
-        rmtree("keys")
-        remove(".rx_contacts")
-
     def test_1_input_parameters(self):
         for a in [1, 1.0, True]:
             for b in [1, 1.0, True]:
@@ -225,35 +203,101 @@ class TestAuthAndDecrypt(unittest.TestCase):
 
     def test_2_auth_and_decrypt(self):
 
-        ct_and_tag = b64decode("UWVmcPLGyf0BH3OZG6VUI06G8N6fYMD4z0LX1ERJBiMx9T"
-                               "u1Wcca+C+L8EMpEaPOfrLA0vcJF83CQp64K9xo9DHBNjDE"
-                               "VM/NEnrplBX3rIsFPsZQBlLEFsM6OpUne2w/p8ZRB8ZjPF"
-                               "DGnHKegF4w/o/9GJnlxt9gsBCNCZRxJ6MTEQgg1H7s0izC"
-                               "nczH2eE670ePQen6OQtD1Zpchqm9hALi9Vd3uKyQAP7WTp"
-                               "vvBSVkiSVyBkCopwIz+SkrlEME7AVMUZOLcHxXIlXUUHIx"
-                               "LX422jaX4dfHv6EcNjBZyNr1SxnhOT03tl6TbSowsX6jEA"
-                               "cbx5BVdB1gA/4bnmBAxZ0dvNAJdALoczdbVkKoiV3MPuh+"
-                               "3NF4O5Nbq6dc/kzyyVW7WmPd")
+        # Setup
+        create_me_keys(["bob"])
+        create_rx_keys(["bob"])
+        create_contact_db(["bob"])
+
+        # Test
+        ct_and_tag = base64.b64decode(
+            "UWVmcPLGyf0BH3OZG6VUI06G8N6fYMD4z0LX1ER"
+            "JBiMx9Tu1Wcca+C+L8EMpEaPOfrLA0vcJF83CQp"
+            "64K9xo9DHBNjDEVM/NEnrplBX3rIsFPsZQBlLEF"
+            "sM6OpUne2w/p8ZRB8ZjPFDGnHKegF4w/o/9GJnl"
+            "xt9gsBCNCZRxJ6MTEQgg1H7s0izCnczH2eE670e"
+            "PQen6OQtD1Zpchqm9hALi9Vd3uKyQAP7WTpvvBS"
+            "VkiSVyBkCopwIz+SkrlEME7AVMUZOLcHxXIlXUU"
+            "HIxLX422jaX4dfHv6EcNjBZyNr1SxnhOT03tl6T"
+            "bSowsX6jEAcbx5BVdB1gA/4bnmBAxZ0dvNAJdAL"
+            "oczdbVkKoiV3MPuh+3NF4O5Nbq6dc/kzyyVW7Wm"
+            "Pd")
 
         auth_bool, pt = auth_and_decrypt("rx.bob@jabber.org", ct_and_tag, 1)
+
+        pt = rm_padding(pt)
 
         self.assertTrue(auth_bool)
         self.assertEqual(pt, "splaintext")
 
-        ct_and_tag = b64decode("VWVmcPLGyf0BH3OZG6VUI06G8N6fYMD4z0LX1ERJBiMx9T"
-                               "u1Wcca+C+L8EMpEaPOfrLA0vcJF83CQp64K9xo9DHBNjDE"
-                               "VM/NEnrplBX3rIsFPsZQBlLEFsM6OpUne2w/p8ZRB8ZjPF"
-                               "DGnHKegF4w/o/9GJnlxt9gsBCNCZRxJ6MTEQgg1H7s0izC"
-                               "nczH2eE670ePQen6OQtD1Zpchqm9hALi9Vd3uKyQAP7WTp"
-                               "vvBSVkiSVyBkCopwIz+SkrlEME7AVMUZOLcHxXIlXUUHIx"
-                               "LX422jaX4dfHv6EcNjBZyNr1SxnhOT03tl6TbSowsX6jEA"
-                               "cbx5BVdB1gA/4bnmBAxZ0dvNAJdALoczdbVkKoiV3MPuh+"
-                               "3NF4O5Nbq6dc/kzyyVW7WmPd")
+        ct_and_tag = base64.b64decode(
+            "VWVmcPLGyf0BH3OZG6VUI06G8N6fYMD4z0LX1ERJBiMx9T"
+            "u1Wcca+C+L8EMpEaPOfrLA0vcJF83CQp64K9xo9DHBNjDE"
+            "VM/NEnrplBX3rIsFPsZQBlLEFsM6OpUne2w/p8ZRB8ZjPF"
+            "DGnHKegF4w/o/9GJnlxt9gsBCNCZRxJ6MTEQgg1H7s0izC"
+            "nczH2eE670ePQen6OQtD1Zpchqm9hALi9Vd3uKyQAP7WTp"
+            "vvBSVkiSVyBkCopwIz+SkrlEME7AVMUZOLcHxXIlXUUHIx"
+            "LX422jaX4dfHv6EcNjBZyNr1SxnhOT03tl6TbSowsX6jEA"
+            "cbx5BVdB1gA/4bnmBAxZ0dvNAJdALoczdbVkKoiV3MPuh+"
+            "3NF4O5Nbq6dc/kzyyVW7WmPd")
 
         auth_bool, pt = auth_and_decrypt("rx.bob@jabber.org", ct_and_tag, 1)
 
         self.assertFalse(auth_bool)
         self.assertEqual(pt, "MAC_FAIL")
+
+        # Teardown
+        shutil.rmtree("keys")
+        os.remove(".rx_contacts")
+
+    def test_3_official_test_vectors(self):
+
+        # Test
+        iv_hex = "69696ee955b62b73cd62bda875fc73d68219e0036b7a0b37"
+        iv_bin = binascii.unhexlify(iv_hex)
+
+        key_hex = ("1b27556473e985d462cd51197a9a46c7"
+                   "6009549eac6474f206c4ee0844f68389")
+
+        create_me_keys(['bob'], key_hex)
+        create_contact_db(['bob'])
+
+        pt_tv_hex = ("be075fc53c81f2d5cf141316"
+                     "ebeb0c7b5228c52a4c62cbd4"
+                     "4b66849b64244ffce5ecbaaf"
+                     "33bd751a1ac728d45e6c6129"
+                     "6cdc3c01233561f41db66cce"
+                     "314adb310e3be8250c46f06d"
+                     "ceea3a7fa1348057e2f6556a"
+                     "d6b1318a024a838f21af1fde"
+                     "048977eb48f59ffd4924ca1c"
+                     "60902e52f0a089bc76897040"
+                     "e082f937763848645e0705")
+
+        ct_tv_hex = ("f3ffc7703f9400e52a7dfb4b"
+                     "3d3305d98e993b9f48681273"
+                     "c29650ba32fc76ce48332ea7"
+                     "164d96a4476fb8c531a1186a"
+                     "c0dfc17c98dce87b4da7f011"
+                     "ec48c97271d2c20f9b928fe2"
+                     "270d6fb863d51738b48eeee3"
+                     "14a7cc8ab932164548e526ae"
+                     "90224368517acfeabd6bb373"
+                     "2bc0e9da99832b61ca01b6de"
+                     "56244a9e88d5f9b37973f622"
+                     "a43d14a6599b1f654cb45a74"
+                     "e355a5")
+
+        ct_tv_bin = binascii.unhexlify(ct_tv_hex)
+
+        auth_bool, pt = auth_and_decrypt("me.bob@jabber.org",
+                                         iv_bin + ct_tv_bin, 1)
+
+        self.assertTrue(auth_bool)
+        self.assertEqual(binascii.hexlify(pt), pt_tv_hex)
+
+        # Teardown
+        shutil.rmtree("keys")
+        os.remove(".rx_contacts")
 
 
 ###############################################################################
@@ -280,7 +324,7 @@ class TestGetKeyfileList(unittest.TestCase):
                           "rx.1.e", "rx.2.e"])
 
         # Teardown
-        rmtree("keys")
+        shutil.rmtree("keys")
 
 
 class TestGetKey(unittest.TestCase):
@@ -303,7 +347,7 @@ class TestGetKey(unittest.TestCase):
         self.assertEqual(get_key("me.bob@jabber.org"), "%s" % (64 * 'a'))
 
         # Teardown
-        rmtree("keys")
+        shutil.rmtree("keys")
 
     def test_4_too_short_key(self):
 
@@ -315,7 +359,7 @@ class TestGetKey(unittest.TestCase):
             get_key("me.bob@jabber.org")
 
         # Teardown
-        rmtree("keys")
+        shutil.rmtree("keys")
 
     def test_5_too_long_key(self):
 
@@ -327,7 +371,7 @@ class TestGetKey(unittest.TestCase):
             get_key("me.bob@jabber.org")
 
         # Teardown
-        rmtree("keys")
+        shutil.rmtree("keys")
 
     def test_6_invalid_key_content(self):
 
@@ -339,11 +383,10 @@ class TestGetKey(unittest.TestCase):
             get_key("me.bob@jabber.org")
 
         # Teardown
-        rmtree("keys")
+        shutil.rmtree("keys")
 
 
 class TestKeyWriter(unittest.TestCase):
-
     def test_1_input_parameters(self):
         for a in [1, 1.0, True]:
             for b in [1, 1.0, True]:
@@ -353,16 +396,133 @@ class TestKeyWriter(unittest.TestCase):
     def test_2_key_writing(self):
 
         # Test
-        key_writer("me.bob@jabber.org.e", (64 * 'a'))
+        self.assertIsNone(key_writer("me.bob@jabber.org", (64 * 'a')))
         key_from_file = open("keys/me.bob@jabber.org.e").readline()
-        self.assertEqual(key_from_file, (64*'a'))
+        self.assertEqual(key_from_file, (64 * 'a'))
 
         # Teardown
-        rmtree("keys")
+        shutil.rmtree("keys")
+
+
+class TestAddRxKeyfile(unittest.TestCase):
+
+    def test_1_no_path(self):
+
+        # Setup
+        original_aofn = tkFileDialog.askopenfilename
+        tkFileDialog.askopenfilename = lambda title: ''
+
+        # Test
+        self.assertIsNone(add_rx_keyfile())
+
+        # Teardown
+        tkFileDialog.askopenfilename = original_aofn
+
+    def test_2_valid_path(self):
+
+        # Setup
+        ut_ensure_dir("test_dir/")
+        ut_ensure_dir("keys/")
+        test_set = []
+        for c in range(8):
+            test_set.append(128 * str(c))
+        fname = "rx.bob@jabber.org.e - Give this file to alice@jabber.org"
+        open("test_dir/%s" % fname, 'w+').write('\n'.join(test_set))
+
+        Rx.file_saving = False
+        Rx.log_messages = True
+
+        Rx.l_msg_coming["rx.bob@jabber.org"] = True
+        Rx.msg_received["rx.bob@jabber.org"] = True
+        Rx.m_dictionary["rx.bob@jabber.org"] = 'a'
+
+        Rx.l_file_onway["rx.bob@jabber.org"] = True
+        Rx.filereceived["rx.bob@jabber.org"] = True
+        Rx.f_dictionary["rx.bob@jabber.org"] = 'a'
+        Rx.acco_store_f["me.bob@jabber.org"] = False
+        Rx.acco_store_f["me.bob@jabber.org"] = True
+        Rx.acco_store_l["rx.bob@jabber.org"] = False
+        Rx.acco_store_l["me.bob@jabber.org"] = False
+
+        original_aofn = tkFileDialog.askopenfilename
+        tkFileDialog.askopenfilename = lambda title: 'test_dir/%s' % fname
+
+        # Test
+        self.assertIsNone(add_rx_keyfile())
+        self.assertFalse(os.path.isfile("test_dir/%s" % fname))
+        self.assertTrue(os.path.isfile("keys/rx.bob@jabber.org.e"))
+        written = open("keys/rx.bob@jabber.org.e").read().splitlines()
+        self.assertEqual(written, test_set)
+
+        self.assertFalse(Rx.l_msg_coming["rx.bob@jabber.org"])
+        self.assertFalse(Rx.msg_received["rx.bob@jabber.org"])
+        self.assertEqual(Rx.m_dictionary["rx.bob@jabber.org"], '')
+
+        self.assertFalse(Rx.l_file_onway["rx.bob@jabber.org"])
+        self.assertFalse(Rx.filereceived["rx.bob@jabber.org"])
+        self.assertEqual(Rx.f_dictionary["rx.bob@jabber.org"], '')
+
+        self.assertTrue(Rx.acco_store_f["me.bob@jabber.org"])
+        self.assertFalse(Rx.acco_store_f["rx.bob@jabber.org"])
+        self.assertTrue(Rx.acco_store_l["me.bob@jabber.org"])
+        self.assertTrue(Rx.acco_store_l["rx.bob@jabber.org"])
+
+        # Teardown
+        tkFileDialog.askopenfilename = original_aofn
+        shutil.rmtree("test_dir")
+        shutil.rmtree("keys")
+
+
+class TestPSKCommand(unittest.TestCase):
+
+    def test_1_input_parameter(self):
+        for a in [1, 1.0, True]:
+            with self.assertRaises(SystemExit):
+                psk_command(a)
+
+    def test_2_invalid_packets(self):
+        self.assertIsNone(psk_command("PSK|bob@jabber.org|bob|%s"
+                                      % (63 * 'a')))
+
+        self.assertIsNone(psk_command("PSK|bob@jabber.org|%s" % (64 * 'a')))
+
+    def test_3_function(self):
+
+        # Setup
+        Rx.log_messages = False
+        Rx.file_saving = False
+
+        # Test valid PSK packet creates keys
+        self.assertIsNone(psk_command("PSK|bob@jabber.org|bob|%s"
+                                      % (64 * 'a')))
+
+        self.assertFalse(Rx.l_msg_coming["me.bob@jabber.org"])
+        self.assertFalse(Rx.l_msg_coming["me.bob@jabber.org"])
+        key = open("keys/me.bob@jabber.org.e").readline()
+        self.assertEqual(key, (64 * 'a'))
+
+        # Test valid PSK packet creates database
+        c_db = open(".rx_contacts").read().splitlines()
+        self.assertEqual(c_db, ["me.bob@jabber.org,bob,1"])
+
+        # Test valid PSK packet creates dictionaries
+        self.assertFalse(Rx.l_msg_coming["me.bob@jabber.org"])
+        self.assertFalse(Rx.msg_received["me.bob@jabber.org"])
+        self.assertEqual(Rx.m_dictionary["me.bob@jabber.org"], '')
+
+        self.assertFalse(Rx.l_file_onway["me.bob@jabber.org"])
+        self.assertFalse(Rx.filereceived["me.bob@jabber.org"])
+        self.assertEqual(Rx.f_dictionary["me.bob@jabber.org"], '')
+
+        self.assertTrue(Rx.acco_store_f["me.bob@jabber.org"])
+        self.assertFalse(Rx.acco_store_l["me.bob@jabber.org"])
+
+        # Teardown
+        shutil.rmtree("keys")
+        os.remove(".rx_contacts")
 
 
 class TestRotateKey(unittest.TestCase):
-
     def test_1_input_parameters(self):
         for a in [1, 1.0, True]:
             for b in [1, 1.0, True]:
@@ -381,11 +541,26 @@ class TestRotateKey(unittest.TestCase):
                                   "4c42df327db8be31d5a0cf303573923e")
 
         # Teardown
-        rmtree("keys")
+        shutil.rmtree("keys")
+
+
+class TestRemoveInstructions(unittest.TestCase):
+    def test_1_function(self):
+
+        # Setup
+        ut_ensure_dir("keys/")
+        open("keys/rx.alice@jabber.org.e - Give this file to bob@jabber.org",
+             "w+").close()
+
+        # Test
+        remove_instructions()
+        self.assertTrue(os.path.isfile("keys/rx.alice@jabber.org.e"))
+
+        # Teardown
+        shutil.rmtree("keys")
 
 
 class TestDisplayPubKey(unittest.TestCase):
-
     def test_1_input_parameter(self):
         for a in [1, 1.0, True]:
             with self.assertRaises(SystemExit):
@@ -421,9 +596,7 @@ class TestDisplayPubKey(unittest.TestCase):
 
 
 class TestECDHECommand(unittest.TestCase):
-
     def test_1_input_parameter(self):
-
         for a in [1, 1.0, True]:
             with self.assertRaises(SystemExit):
                 ecdhe_command(a)
@@ -468,75 +641,8 @@ class TestECDHECommand(unittest.TestCase):
         self.assertFalse(Rx.acco_store_f["rx.bob@jabber.org"])
 
         # Teardown
-        remove(".rx_contacts")
-        rmtree("keys")
-
-
-class TestPSKCommand(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                psk_command(a)
-
-    def test_2_invalid_packets(self):
-
-        self.assertIsNone(psk_command("PSK|bob@jabber.org|bob|%s"
-                                      % (63 * 'a')))
-
-        self.assertIsNone(psk_command("PSK|bob@jabber.org|%s" % (64 * 'a')))
-
-    def test_3_function(self):
-
-        # Setup
-        Rx.log_messages = False
-        Rx.file_saving = False
-
-        # Test valid PSK packet creates keys
-        self.assertIsNone(psk_command("PSK|bob@jabber.org|bob|%s"
-                                      % (64 * 'a')))
-
-        self.assertFalse(Rx.l_msg_coming["me.bob@jabber.org"])
-        self.assertFalse(Rx.l_msg_coming["me.bob@jabber.org"])
-        key = open("keys/me.bob@jabber.org.e").readline()
-        self.assertEqual(key, (64 * 'a'))
-
-        # Test valid PSK packet creates database
-        c_db = open(".rx_contacts").read().splitlines()
-        self.assertEqual(c_db, ["me.bob@jabber.org,bob,1"])
-
-        # Test valid PSK packet creates dictionaries
-        self.assertFalse(Rx.l_msg_coming["me.bob@jabber.org"])
-        self.assertFalse(Rx.msg_received["me.bob@jabber.org"])
-        self.assertEqual(Rx.m_dictionary["me.bob@jabber.org"], '')
-
-        self.assertFalse(Rx.l_file_onway["me.bob@jabber.org"])
-        self.assertFalse(Rx.filereceived["me.bob@jabber.org"])
-        self.assertTrue(Rx.acco_store_f["me.bob@jabber.org"])
-        self.assertEqual(Rx.f_dictionary["me.bob@jabber.org"], '')
-
-        self.assertFalse(Rx.acco_store_l["me.bob@jabber.org"])
-
-        # Teardown
-        rmtree("keys")
-        remove(".rx_contacts")
-
-
-class TestRemoveInstructions(unittest.TestCase):
-
-    def test_1_function(self):
-
-        # Setup
-        ut_ensure_dir("keys/")
-        open("keys/rx.alice@jabber.org.e - Give this file to bob@jabber.org",
-             "w+").close()
-
-        # Test
-        remove_instructions()
-        self.assertTrue(isfile("keys/rx.alice@jabber.org.e"))
-
-        # Teardown
-        rmtree("keys")
+        os.remove(".rx_contacts")
+        shutil.rmtree("keys")
 
 
 ###############################################################################
@@ -568,7 +674,7 @@ class TestPacketAnomaly(unittest.TestCase):
         self.assertEqual(timestampless, "Automatic log entry: "
                                         "MAC of message failed.")
         # Teardown
-        remove("syslog.tfc")
+        os.remove("syslog.tfc")
 
     def test_3_replayed_packet(self):
 
@@ -581,7 +687,7 @@ class TestPacketAnomaly(unittest.TestCase):
         self.assertEqual(timestampless, "Automatic log entry: "
                                         "Replayed message.")
         # Teardown
-        remove("syslog.tfc")
+        os.remove("syslog.tfc")
 
     def test_4_tampered_packet(self):
 
@@ -594,7 +700,7 @@ class TestPacketAnomaly(unittest.TestCase):
         self.assertEqual(timestampless, "Automatic log entry: "
                                         "Tampered / malformed message.")
         # Teardown
-        remove("syslog.tfc")
+        os.remove("syslog.tfc")
 
     def test_5_checksum_error(self):
 
@@ -607,7 +713,7 @@ class TestPacketAnomaly(unittest.TestCase):
         self.assertEqual(timestampless, "Automatic log entry: "
                                         "Checksum error in message.")
         # Teardown
-        remove("syslog.tfc")
+        os.remove("syslog.tfc")
 
     def test_6_hash_of_long_msg_failed(self):
 
@@ -620,42 +726,33 @@ class TestPacketAnomaly(unittest.TestCase):
         self.assertEqual(timestampless, "Automatic log entry: "
                                         "Invalid hash in long message.")
         # Teardown
-        remove("syslog.tfc")
+        os.remove("syslog.tfc")
 
     def test_7_invalid_error_type(self):
         with self.assertRaises(SystemExit):
             packet_anomaly("test", "message")
 
 
-class TestCleanExit(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-                with self.assertRaises(SystemExit):
-                    clean_exit(a)
-
-    def test_2_exit_no_msg(self):
-        with self.assertRaises(SystemExit):
-            clean_exit()
-
-    def test_3_exit_with_msg(self):
-        with self.assertRaises(SystemExit):
-            clean_exit("test message")
-
-
 class TestGracefulExit(unittest.TestCase):
 
     def test_1_function(self):
+        # Setup
+        Rx.unittesting = False
+
+        # Test
         with self.assertRaises(SystemExit):
             graceful_exit()
+
+        # Teardown
+        Rx.unittesting = True
 
 
 class TestValidateKey(unittest.TestCase):
 
     def test_1_input_parameter(self):
         for a in [1, 1.0, True]:
-                with self.assertRaises(SystemExit):
-                    validate_key(a)
+            with self.assertRaises(SystemExit):
+                validate_key(a)
 
     def test_2_illegal_key_length(self):
         for b in range(0, 63):
@@ -695,7 +792,7 @@ class TestAddContact(unittest.TestCase):
         self.assertEqual(csv_data, ["me.alice@jabber.org,alice,1"])
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_3_reset_existing_contact(self):
 
@@ -713,7 +810,7 @@ class TestAddContact(unittest.TestCase):
                           "rx.alice@jabber.org,ALICE,1"])
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
 
 class TestAddKeyfiles(unittest.TestCase):
@@ -735,8 +832,8 @@ class TestAddKeyfiles(unittest.TestCase):
                                 "rx.alice@jabber.org,alice,1",
                                 "rx.bob@jabber.org,bob,1"])
         # Teardown
-        remove(".rx_contacts")
-        rmtree("keys")
+        os.remove(".rx_contacts")
+        shutil.rmtree("keys")
         __builtins__.raw_input = raw_input_original
 
 
@@ -757,7 +854,7 @@ class TestGetKeyID(unittest.TestCase):
             get_keyid("me.alice@jabber.org")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_3_invalid_keyID_value(self):
 
@@ -769,7 +866,7 @@ class TestGetKeyID(unittest.TestCase):
             get_keyid("me.alice@jabber.org")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_4_keyID_zero(self):
 
@@ -781,7 +878,7 @@ class TestGetKeyID(unittest.TestCase):
             get_keyid("me.alice@jabber.org")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_5_correct_keyID(self):
 
@@ -792,7 +889,7 @@ class TestGetKeyID(unittest.TestCase):
         self.assertEqual(get_keyid("me.alice@jabber.org"), 1)
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_6_no_contact(self):
 
@@ -803,7 +900,7 @@ class TestGetKeyID(unittest.TestCase):
         self.assertEqual(get_keyid("me.bob@jabber.org"), -1)
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
 
 class TestGetNick(unittest.TestCase):
@@ -824,7 +921,7 @@ class TestGetNick(unittest.TestCase):
                 get_nick("me.alice@jabber.org")
 
             # Teardown
-            remove(".rx_contacts")
+            os.remove(".rx_contacts")
 
     def test_3_no_contact(self):
 
@@ -835,7 +932,7 @@ class TestGetNick(unittest.TestCase):
             get_nick("me.bob@jabber.org")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_4_correct_nick(self):
 
@@ -846,7 +943,7 @@ class TestGetNick(unittest.TestCase):
         self.assertEqual(get_nick("me.alice@jabber.org"), "alice")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
 
 class TestWriteKeyID(unittest.TestCase):
@@ -871,7 +968,7 @@ class TestWriteKeyID(unittest.TestCase):
             write_keyid("me.alice@jabber.org", 0)
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_4_correct_keyID_writing(self):
 
@@ -885,7 +982,7 @@ class TestWriteKeyID(unittest.TestCase):
                                         "rx.alice@jabber.org,alice,1"])
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_5_no_account(self):
         with self.assertRaises(SystemExit):
@@ -916,7 +1013,7 @@ class TestWriteNick(unittest.TestCase):
                                         "rx.alice@jabber.org,alice,1"])
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_4_no_account(self):
         with self.assertRaises(SystemExit):
@@ -936,7 +1033,7 @@ class TestGetListOfAccounts(unittest.TestCase):
         open("keys/me.local.e", "w+").close()
 
     def tearDown(self):
-        rmtree("keys")
+        shutil.rmtree("keys")
 
     def test_1_function(self):
         self.assertEqual(get_list_of_accounts(), ["me.1", "me.local", "rx.1"])
@@ -948,7 +1045,7 @@ class TestCheckKeyfileParity(unittest.TestCase):
         ut_ensure_dir("keys/")
 
     def tearDown(self):
-        rmtree("keys")
+        shutil.rmtree("keys")
 
     def test_1_function(self):
 
@@ -972,7 +1069,7 @@ class TestRMContact(unittest.TestCase):
         self.assertIsNone(rm_contact("REMOVE|"))
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_3_remove_contact(self):
 
@@ -987,8 +1084,8 @@ class TestRMContact(unittest.TestCase):
         rm_contact("REMOVE|alice@jabber.org")
 
         # Test keyfiles were removed
-        self.assertFalse(isfile("keys/me.alice@jabber.org.e"))
-        self.assertFalse(isfile("keys/rx.alice@jabber.org.e"))
+        self.assertFalse(os.path.isfile("keys/me.alice@jabber.org.e"))
+        self.assertFalse(os.path.isfile("keys/rx.alice@jabber.org.e"))
 
         # Test Alice was removed from .rx_contacts
         contact_db = open(".rx_contacts").read().splitlines()
@@ -997,8 +1094,8 @@ class TestRMContact(unittest.TestCase):
 
         # Teardown
         Rx.yes = original_yes
-        remove(".rx_contacts")
-        rmtree("keys")
+        os.remove(".rx_contacts")
+        shutil.rmtree("keys")
 
 
 ###############################################################################
@@ -1040,9 +1137,8 @@ class TestRMPadding(unittest.TestCase):
 
 
 ###############################################################################
-#                           COMMANDS AND FUNCTIONS                            #
+#                                    MISC                                     #
 ###############################################################################
-
 
 class TestWriteLogEntry(unittest.TestCase):
 
@@ -1065,7 +1161,7 @@ class TestWriteLogEntry(unittest.TestCase):
         self.assertEqual(split[3], "message")
 
         # Teardown
-        rmtree("logs")
+        shutil.rmtree("logs")
 
     def test_3_missing_sent(self):
 
@@ -1075,7 +1171,7 @@ class TestWriteLogEntry(unittest.TestCase):
         self.assertEquals(logged, "\n3 (noise) messages /file packets to"
                                   " alice@jabber.org were dropped.\n\n")
         # Teardown
-        rmtree("logs")
+        shutil.rmtree("logs")
 
     def test_4_missing_received(self):
         write_log_entry('', "rx.alice@jabber.org", '', '4')
@@ -1083,7 +1179,7 @@ class TestWriteLogEntry(unittest.TestCase):
         self.assertEquals(logged, "\n4 (noise) messages /file packets from"
                                   " alice@jabber.org were dropped.\n\n")
         # Teardown
-        rmtree("logs")
+        shutil.rmtree("logs")
 
 
 class TestYes(unittest.TestCase):
@@ -1147,7 +1243,7 @@ class TestPrintBanner(unittest.TestCase):
         self.assertIsNone(print_banner())
 
 
-class TestVerifyChksum(unittest.TestCase):
+class TestVerifyChecksum(unittest.TestCase):
 
     def test_1_input_parameter(self):
         for a in [1, 1.0, True]:
@@ -1179,9 +1275,27 @@ class TestEnsureDir(unittest.TestCase):
     def test_3_function(self):
         ensure_dir("directory/")
 
-        self.assertTrue(exists(dirname("directory/")))
+        self.assertTrue(os.path.exists(os.path.dirname("directory/")))
 
-        rmtree("directory")
+        shutil.rmtree("directory")
+
+
+class TestPrintHeaders(unittest.TestCase):
+
+    def test_1_function(self):
+        self.assertIsNone(print_headers())
+
+
+class TestProcessArguments(unittest.TestCase):
+    """
+    This function doesn't have any tests yet.
+    """
+
+
+class TestSearchSerialInterfaces(unittest.TestCase):
+    """
+    This function doesn't have any tests yet.
+    """
 
 
 ###############################################################################
@@ -1210,7 +1324,7 @@ class TestNoisePacket(unittest.TestCase):
         self.assertEqual(Rx.m_dictionary["me.alice@jabber.org"], '')
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_3_received_noise_packet(self):
 
@@ -1227,7 +1341,7 @@ class TestNoisePacket(unittest.TestCase):
         self.assertEqual(Rx.m_dictionary["rx.alice@jabber.org"], '')
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
 
 class TestCancelMessage(unittest.TestCase):
@@ -1252,7 +1366,7 @@ class TestCancelMessage(unittest.TestCase):
         self.assertEqual(Rx.m_dictionary["me.alice@jabber.org"], '')
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_3_received_cancel_message(self):
 
@@ -1269,7 +1383,7 @@ class TestCancelMessage(unittest.TestCase):
         self.assertEqual(Rx.m_dictionary["rx.alice@jabber.org"], '')
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
 
 class TestCancelFile(unittest.TestCase):
@@ -1296,7 +1410,7 @@ class TestCancelFile(unittest.TestCase):
         self.assertEqual(Rx.f_dictionary["me.alice@jabber.org"], '')
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_3_received_cancel_file(self):
 
@@ -1315,7 +1429,7 @@ class TestCancelFile(unittest.TestCase):
         self.assertEqual(Rx.f_dictionary["rx.alice@jabber.org"], '')
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
 
 class TestShortMessage(unittest.TestCase):
@@ -1341,7 +1455,7 @@ class TestShortMessage(unittest.TestCase):
         self.assertEqual(Rx.m_dictionary["me.alice@jabber.org"], "test")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_3_received_short_message(self):
 
@@ -1358,7 +1472,7 @@ class TestShortMessage(unittest.TestCase):
         self.assertEqual(Rx.m_dictionary["rx.alice@jabber.org"], "test")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
 
 class TestShortFile(unittest.TestCase):
@@ -1385,7 +1499,7 @@ class TestShortFile(unittest.TestCase):
         self.assertEqual(Rx.f_dictionary["me.alice@jabber.org"], "filedata")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_3_received_short_file(self):
 
@@ -1403,7 +1517,7 @@ class TestShortFile(unittest.TestCase):
         self.assertEqual(Rx.f_dictionary["rx.alice@jabber.org"], "filedata")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
 
 class TestLongMessageStart(unittest.TestCase):
@@ -1429,7 +1543,7 @@ class TestLongMessageStart(unittest.TestCase):
         self.assertEqual(Rx.m_dictionary["me.alice@jabber.org"], "msg")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_3_received_long_message_start(self):
 
@@ -1446,7 +1560,7 @@ class TestLongMessageStart(unittest.TestCase):
         self.assertEqual(Rx.m_dictionary["rx.alice@jabber.org"], "msg")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
 
 class TestLongFileStart(unittest.TestCase):
@@ -1475,7 +1589,7 @@ class TestLongFileStart(unittest.TestCase):
                          "doc.txt|1.1KB|6|00m 01s|filedata")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_3_received_long_file_start(self):
 
@@ -1495,7 +1609,7 @@ class TestLongFileStart(unittest.TestCase):
                          "doc.txt|1.1KB|6|00m 01s|filedata")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
 
 class TestLongMessageAppend(unittest.TestCase):
@@ -1521,7 +1635,7 @@ class TestLongMessageAppend(unittest.TestCase):
         self.assertEqual(Rx.m_dictionary["me.alice@jabber.org"], "1st2nd")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_3_received_long_message_append(self):
 
@@ -1538,7 +1652,7 @@ class TestLongMessageAppend(unittest.TestCase):
         self.assertEqual(Rx.m_dictionary["rx.alice@jabber.org"], "1st2nd")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
 
 class TestLongFileAppend(unittest.TestCase):
@@ -1565,7 +1679,7 @@ class TestLongFileAppend(unittest.TestCase):
         self.assertEqual(Rx.f_dictionary["me.alice@jabber.org"], "1st2nd")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_3_received_long_file_append(self):
 
@@ -1583,7 +1697,7 @@ class TestLongFileAppend(unittest.TestCase):
         self.assertEqual(Rx.f_dictionary["rx.alice@jabber.org"], "1st2nd")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
 
 class TestLongMessageEnd(unittest.TestCase):
@@ -1612,7 +1726,7 @@ class TestLongMessageEnd(unittest.TestCase):
         self.assertEqual(Rx.m_dictionary["me.alice@jabber.org"], "1st2nd3rd")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_3_received_long_message_end(self):
 
@@ -1632,7 +1746,7 @@ class TestLongMessageEnd(unittest.TestCase):
         self.assertEqual(Rx.m_dictionary["rx.alice@jabber.org"], "1st2nd3rd")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
 
 class TestLongFileEnd(unittest.TestCase):
@@ -1662,7 +1776,7 @@ class TestLongFileEnd(unittest.TestCase):
         self.assertEqual(Rx.f_dictionary["me.alice@jabber.org"], "1st2nd3rd")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_3_received_long_file_end(self):
 
@@ -1683,7 +1797,7 @@ class TestLongFileEnd(unittest.TestCase):
         self.assertEqual(Rx.f_dictionary["me.alice@jabber.org"], "1st2nd3rd")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
 
 class TestProcessReceivedMessages(unittest.TestCase):
@@ -1708,8 +1822,8 @@ class TestProcessReceivedMessages(unittest.TestCase):
         self.assertTrue("Me: testmessage" in logged_data)
 
         # Teardown
-        remove(".rx_contacts")
-        rmtree("logs")
+        os.remove(".rx_contacts")
+        shutil.rmtree("logs")
 
     def test_3_process_received_message(self):
 
@@ -1726,8 +1840,8 @@ class TestProcessReceivedMessages(unittest.TestCase):
         self.assertTrue("alice: testmessage" in logged_data)
 
         # Teardown
-        remove(".rx_contacts")
-        rmtree("logs")
+        os.remove(".rx_contacts")
+        shutil.rmtree("logs")
 
 
 class TestProcessSentFiles(unittest.TestCase):
@@ -1750,11 +1864,11 @@ class TestProcessSentFiles(unittest.TestCase):
         # Test
         self.assertIsNone(process_received_files("me.alice@jabber.org"))
         ut_ensure_dir("files/")
-        self.assertFalse(isfile("files/doc.txt"))
+        self.assertFalse(os.path.isfile("files/doc.txt"))
 
         # Teardown
-        remove(".rx_contacts")
-        rmtree("files")
+        os.remove(".rx_contacts")
+        shutil.rmtree("files")
         Rx.keep_local_files = True
 
     def test_3_process_sent_file_reception_on(self):
@@ -1769,11 +1883,11 @@ class TestProcessSentFiles(unittest.TestCase):
 
         # Test
         self.assertIsNone(process_received_files("me.alice@jabber.org"))
-        self.assertTrue(isfile("files/Local copy - doc.txt"))
+        self.assertTrue(os.path.isfile("files/Local copy - doc.txt"))
 
         # Teardown
-        remove(".rx_contacts")
-        rmtree("files")
+        os.remove(".rx_contacts")
+        shutil.rmtree("files")
         Rx.keep_local_files = False
 
     def test_4_process_sent_file_duplicate_reception_on(self):
@@ -1790,11 +1904,11 @@ class TestProcessSentFiles(unittest.TestCase):
 
         # Test
         self.assertIsNone(process_received_files("me.alice@jabber.org"))
-        self.assertTrue(isfile("files/Local copy - doc(1).txt"))
+        self.assertTrue(os.path.isfile("files/Local copy - doc(1).txt"))
 
         # Teardown
-        remove(".rx_contacts")
-        rmtree("files")
+        os.remove(".rx_contacts")
+        shutil.rmtree("files")
 
 
 class TestProcessReceivedFiles(unittest.TestCase):
@@ -1816,11 +1930,11 @@ class TestProcessReceivedFiles(unittest.TestCase):
         # Test
         self.assertIsNone(process_received_files("rx.alice@jabber.org"))
         ut_ensure_dir("files/")
-        self.assertFalse(isfile("files/doc.txt"))
+        self.assertFalse(os.path.isfile("files/doc.txt"))
 
         # Teardown
-        remove(".rx_contacts")
-        rmtree("files")
+        os.remove(".rx_contacts")
+        shutil.rmtree("files")
 
     def test_3_process_received_file_reception_on(self):
 
@@ -1833,11 +1947,11 @@ class TestProcessReceivedFiles(unittest.TestCase):
 
         # Test
         self.assertIsNone(process_received_files("rx.alice@jabber.org"))
-        self.assertTrue(isfile("files/doc.txt"))
+        self.assertTrue(os.path.isfile("files/doc.txt"))
 
         # Teardown
-        remove(".rx_contacts")
-        rmtree("files")
+        os.remove(".rx_contacts")
+        shutil.rmtree("files")
 
     def test_4_process_received_file_duplicate_reception_on(self):
 
@@ -1853,12 +1967,16 @@ class TestProcessReceivedFiles(unittest.TestCase):
 
         # Test
         self.assertIsNone(process_received_files("rx.alice@jabber.org"))
-        self.assertTrue(isfile("files/doc(1).txt"))
+        self.assertTrue(os.path.isfile("files/doc(1).txt"))
 
         # Teardown
-        remove(".rx_contacts")
-        rmtree("files")
+        os.remove(".rx_contacts")
+        shutil.rmtree("files")
 
+
+###############################################################################
+#                          RECEIVED DATA PROCESSING                           #
+###############################################################################
 
 class TestNHPacketLoadingProcess(unittest.TestCase):
     """
@@ -1876,7 +1994,7 @@ class TestMessagePacket(unittest.TestCase):
     def test_02_invalid_packet(self):
 
         # Test
-        packet = ("TFC|N|1601|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("TFC|N|1605|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -1888,12 +2006,12 @@ class TestMessagePacket(unittest.TestCase):
         self.assertIsNone(message_packet(packet))
 
         # Teardown
-        remove("syslog.tfc")
+        os.remove("syslog.tfc")
 
     def test_03_invalid_packet(self):
 
         # Test
-        packet = ("N|1601|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("N|1605|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -1905,12 +2023,12 @@ class TestMessagePacket(unittest.TestCase):
         self.assertIsNone(message_packet(packet))
 
         # Teardown
-        remove("syslog.tfc")
+        os.remove("syslog.tfc")
 
     def test_04_b64_decode_error(self):
 
         # Test
-        packet = ("TFC|N|1601|M|#0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("TFC|N|1605|M|#0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -1922,7 +2040,7 @@ class TestMessagePacket(unittest.TestCase):
         self.assertIsNone(message_packet(packet))
 
         # Teardown
-        remove("syslog.tfc")
+        os.remove("syslog.tfc")
 
     def test_05_no_keyfile(self):
 
@@ -1931,7 +2049,7 @@ class TestMessagePacket(unittest.TestCase):
         create_contact_db(["bob"])
 
         # Test
-        packet = ("TFC|N|1601|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("TFC|N|1605|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -1943,8 +2061,8 @@ class TestMessagePacket(unittest.TestCase):
         self.assertIsNone(message_packet(packet))
 
         # Teardown
-        remove(".rx_contacts")
-        rmtree("files")
+        os.remove(".rx_contacts")
+        shutil.rmtree("files")
 
     def test_06_old_keyid(self):
 
@@ -1952,7 +2070,7 @@ class TestMessagePacket(unittest.TestCase):
         create_contact_db(["alice"], keyid='2')
 
         # Test
-        packet = ("TFC|N|1601|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("TFC|N|1605|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -1964,8 +2082,8 @@ class TestMessagePacket(unittest.TestCase):
         self.assertIsNone(message_packet(packet))
 
         # Teardown
-        remove(".rx_contacts")
-        remove("syslog.tfc")
+        os.remove(".rx_contacts")
+        os.remove("syslog.tfc")
 
     def test_07_invalid_keyid(self):
 
@@ -1973,7 +2091,7 @@ class TestMessagePacket(unittest.TestCase):
         create_contact_db(["alice"], keyid='a')
 
         # Test
-        packet = ("TFC|N|1601|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("TFC|N|1605|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -1986,7 +2104,7 @@ class TestMessagePacket(unittest.TestCase):
             message_packet(packet)
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_08_missing_keyfile(self):
 
@@ -1994,7 +2112,7 @@ class TestMessagePacket(unittest.TestCase):
         create_contact_db(["alice"])
 
         # Test
-        packet = ("TFC|N|1601|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("TFC|N|1605|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -2006,7 +2124,7 @@ class TestMessagePacket(unittest.TestCase):
         self.assertIsNone(message_packet(packet))
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_09_keyIDOverflow(self):
 
@@ -2015,7 +2133,7 @@ class TestMessagePacket(unittest.TestCase):
         create_me_keys(["alice"])
 
         # Test
-        packet = ("TFC|N|1601|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("TFC|N|1605|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -2027,9 +2145,9 @@ class TestMessagePacket(unittest.TestCase):
         self.assertIsNone(message_packet(packet))
 
         # Teardown
-        remove(".rx_contacts")
-        rmtree("keys")
-        remove("syslog.tfc")
+        os.remove(".rx_contacts")
+        shutil.rmtree("keys")
+        os.remove("syslog.tfc")
 
     def test_10_incorrect_mac(self):
 
@@ -2038,7 +2156,7 @@ class TestMessagePacket(unittest.TestCase):
         create_me_keys(["alice"])
 
         # Test
-        packet = ("TFC|N|1601|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("TFC|N|1605|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -2050,9 +2168,9 @@ class TestMessagePacket(unittest.TestCase):
         self.assertIsNone(message_packet(packet))
 
         # Teardown
-        remove(".rx_contacts")
-        rmtree("keys")
-        remove("syslog.tfc")
+        os.remove(".rx_contacts")
+        shutil.rmtree("keys")
+        os.remove("syslog.tfc")
 
 
 class TestProcessMessage(unittest.TestCase):
@@ -2074,7 +2192,7 @@ class TestCommandPacket(unittest.TestCase):
     def test_02_invalid_packet(self):
 
         # Test
-        packet = ("TFC|N|1601|C|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("TFC|N|1605|C|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -2086,12 +2204,12 @@ class TestCommandPacket(unittest.TestCase):
         self.assertIsNone(command_packet(packet))
 
         # Teardown
-        remove("syslog.tfc")
+        os.remove("syslog.tfc")
 
     def test_03_invalid_packet(self):
 
         # Test
-        packet = ("N|1601|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("N|1605|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -2103,12 +2221,12 @@ class TestCommandPacket(unittest.TestCase):
         self.assertIsNone(command_packet(packet))
 
         # Teardown
-        remove("syslog.tfc")
+        os.remove("syslog.tfc")
 
     def test_04_b64_decode_error(self):
 
         # Test
-        packet = ("TFC|N|1601|M|#0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("TFC|N|1605|M|#0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -2120,7 +2238,7 @@ class TestCommandPacket(unittest.TestCase):
         self.assertIsNone(command_packet(packet))
 
         # Teardown
-        remove("syslog.tfc")
+        os.remove("syslog.tfc")
 
     def test_05_no_keyfile(self):
 
@@ -2129,7 +2247,7 @@ class TestCommandPacket(unittest.TestCase):
         create_contact_db(["bob"])
 
         # Test
-        packet = ("TFC|N|1601|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("TFC|N|1605|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -2141,8 +2259,8 @@ class TestCommandPacket(unittest.TestCase):
         self.assertIsNone(command_packet(packet))
 
         # Teardown
-        remove(".rx_contacts")
-        rmtree("files")
+        os.remove(".rx_contacts")
+        shutil.rmtree("files")
 
     def test_06_old_keyid(self):
 
@@ -2150,7 +2268,7 @@ class TestCommandPacket(unittest.TestCase):
         create_contact_db(["local"], keyid='2')
 
         # Test
-        packet = ("TFC|N|1601|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("TFC|N|1605|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -2162,8 +2280,8 @@ class TestCommandPacket(unittest.TestCase):
         self.assertIsNone(command_packet(packet))
 
         # Teardown
-        remove(".rx_contacts")
-        remove("syslog.tfc")
+        os.remove(".rx_contacts")
+        os.remove("syslog.tfc")
 
     def test_07_invalid_keyid(self):
 
@@ -2171,7 +2289,7 @@ class TestCommandPacket(unittest.TestCase):
         create_contact_db(["local"], keyid='a')
 
         # Test
-        packet = ("TFC|N|1601|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("TFC|N|1605|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -2184,7 +2302,7 @@ class TestCommandPacket(unittest.TestCase):
             command_packet(packet)
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_08_missing_keyfile(self):
 
@@ -2192,7 +2310,7 @@ class TestCommandPacket(unittest.TestCase):
         create_contact_db(["local"])
 
         # Test
-        packet = ("TFC|N|1601|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("TFC|N|1605|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -2204,7 +2322,7 @@ class TestCommandPacket(unittest.TestCase):
         self.assertIsNone(command_packet(packet))
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
 
     def test_09_keyIDOverflow(self):
 
@@ -2213,7 +2331,7 @@ class TestCommandPacket(unittest.TestCase):
         create_me_keys(["local"])
 
         # Test
-        packet = ("TFC|N|1601|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("TFC|N|1605|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -2225,9 +2343,9 @@ class TestCommandPacket(unittest.TestCase):
         self.assertIsNone(command_packet(packet))
 
         # Teardown
-        remove(".rx_contacts")
-        rmtree("keys")
-        remove("syslog.tfc")
+        os.remove(".rx_contacts")
+        shutil.rmtree("keys")
+        os.remove("syslog.tfc")
 
     def test_10_incorrect_mac(self):
 
@@ -2236,7 +2354,7 @@ class TestCommandPacket(unittest.TestCase):
         create_me_keys(["local"])
 
         # Test
-        packet = ("TFC|N|1601|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("TFC|N|1605|M|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -2248,9 +2366,9 @@ class TestCommandPacket(unittest.TestCase):
         self.assertIsNone(command_packet(packet))
 
         # Teardown
-        remove(".rx_contacts")
-        rmtree("keys")
-        remove("syslog.tfc")
+        os.remove(".rx_contacts")
+        shutil.rmtree("keys")
+        os.remove("syslog.tfc")
 
 
 class TestProcessCommand(unittest.TestCase):
@@ -2285,7 +2403,7 @@ class TestProcessCommand(unittest.TestCase):
         self.assertTrue(Rx.acco_store_l["me.bob@jabber.org"])
 
         # Teardown
-        rmtree("keys")
+        shutil.rmtree("keys")
 
     def test_05_disable_logging(self):
 
@@ -2305,7 +2423,7 @@ class TestProcessCommand(unittest.TestCase):
         self.assertFalse(Rx.acco_store_l["me.bob@jabber.org"])
 
         # Teardown
-        rmtree("keys")
+        shutil.rmtree("keys")
 
     def test_06_enable_logging_for_account(self):
 
@@ -2325,7 +2443,7 @@ class TestProcessCommand(unittest.TestCase):
         self.assertTrue(Rx.acco_store_l["me.bob@jabber.org"])
 
         # Teardown
-        rmtree("keys")
+        shutil.rmtree("keys")
 
     def test_07_disable_logging_for_contact(self):
 
@@ -2345,7 +2463,7 @@ class TestProcessCommand(unittest.TestCase):
         self.assertFalse(Rx.acco_store_l["me.bob@jabber.org"])
 
         # Teardown
-        rmtree("keys")
+        shutil.rmtree("keys")
 
     def test_08_enable_reception(self):
 
@@ -2376,7 +2494,7 @@ class TestProcessCommand(unittest.TestCase):
         self.assertEqual(Rx.f_dictionary["rx.bob@jabber.org"], '')
 
         # Teardown
-        rmtree("keys")
+        shutil.rmtree("keys")
 
     def test_09_disable_reception(self):
 
@@ -2396,7 +2514,7 @@ class TestProcessCommand(unittest.TestCase):
         self.assertFalse(Rx.acco_store_f["me.bob@jabber.org"])
 
         # Teardown
-        rmtree("keys")
+        shutil.rmtree("keys")
 
     def test_10_enable_reception_for_contact(self):
 
@@ -2414,7 +2532,7 @@ class TestProcessCommand(unittest.TestCase):
         self.assertTrue(Rx.acco_store_f["rx.bob@jabber.org"])
 
         # Teardown
-        rmtree("keys")
+        shutil.rmtree("keys")
 
     def test_11_disable_reception_for_contact(self):
 
@@ -2432,7 +2550,7 @@ class TestProcessCommand(unittest.TestCase):
         self.assertFalse(Rx.acco_store_f["rx.bob@jabber.org"])
 
         # Teardown
-        rmtree("keys")
+        shutil.rmtree("keys")
 
     def test_12_change_nick(self):
 
@@ -2440,16 +2558,218 @@ class TestProcessCommand(unittest.TestCase):
         create_contact_db(["alice"])
 
         # Test
-        self.assertIsNone(process_command("NICK|me.alice@jabber.org|A"))
+        self.assertIsNone(process_command("NICK|me.alice@jabber.org|ALICE"))
         contactdata = open(".rx_contacts").readline()
-        self.assertEqual(contactdata, "me.alice@jabber.org,A,1\r\n")
+        self.assertEqual(contactdata, "me.alice@jabber.org,ALICE,1\r\n")
 
         # Teardown
-        remove(".rx_contacts")
+        os.remove(".rx_contacts")
+
+
+class TestControlLogging(unittest.TestCase):
+
+    def test_1_input_parameter(self):
+        for a in [1, 1.0, True]:
+            with self.assertRaises(SystemExit):
+                control_logging(a)
+
+    def test_2_enable_logging(self):
+
+        # Setup
+        create_me_keys(["alice", "bob"])
+        create_rx_keys(["alice", "bob"])
+        Rx.acco_store_l["rx.alice@jabber.org"] = False
+        Rx.acco_store_l["me.alice@jabber.org"] = False
+        Rx.acco_store_l["rx.bob@jabber.org"] = False
+        Rx.acco_store_l["me.bob@jabber.org"] = False
+
+        # Test
+        self.assertIsNone(process_command("LOGGING|ENABLE"))
+        self.assertTrue(Rx.acco_store_l["rx.alice@jabber.org"])
+        self.assertTrue(Rx.acco_store_l["me.alice@jabber.org"])
+        self.assertTrue(Rx.acco_store_l["rx.bob@jabber.org"])
+        self.assertTrue(Rx.acco_store_l["me.bob@jabber.org"])
+
+        # Teardown
+        shutil.rmtree("keys")
+
+    def test_3_disable_logging(self):
+
+        # Setup
+        create_me_keys(["alice", "bob"])
+        create_rx_keys(["alice", "bob"])
+        Rx.acco_store_l["rx.alice@jabber.org"] = True
+        Rx.acco_store_l["me.alice@jabber.org"] = True
+        Rx.acco_store_l["rx.bob@jabber.org"] = True
+        Rx.acco_store_l["me.bob@jabber.org"] = True
+
+        # Test
+        self.assertIsNone(process_command("LOGGING|DISABLE"))
+        self.assertFalse(Rx.acco_store_l["rx.alice@jabber.org"])
+        self.assertFalse(Rx.acco_store_l["me.alice@jabber.org"])
+        self.assertFalse(Rx.acco_store_l["rx.bob@jabber.org"])
+        self.assertFalse(Rx.acco_store_l["me.bob@jabber.org"])
+
+        # Teardown
+        shutil.rmtree("keys")
+
+    def test_4_enable_logging_for_account(self):
+
+        # Setup
+        create_me_keys(["alice", "bob"])
+        create_rx_keys(["alice", "bob"])
+        Rx.acco_store_l["rx.alice@jabber.org"] = False
+        Rx.acco_store_l["me.alice@jabber.org"] = False
+        Rx.acco_store_l["rx.bob@jabber.org"] = False
+        Rx.acco_store_l["me.bob@jabber.org"] = False
+
+        # Test
+        self.assertIsNone(process_command("LOGGING|ENABLE|me.bob@jabber.org"))
+        self.assertFalse(Rx.acco_store_l["rx.alice@jabber.org"])
+        self.assertFalse(Rx.acco_store_l["me.alice@jabber.org"])
+        self.assertTrue(Rx.acco_store_l["rx.bob@jabber.org"])
+        self.assertTrue(Rx.acco_store_l["me.bob@jabber.org"])
+
+        # Teardown
+        shutil.rmtree("keys")
+
+    def test_5_disable_logging_for_contact(self):
+
+        # Setup
+        create_me_keys(["alice", "bob"])
+        create_rx_keys(["alice", "bob"])
+        Rx.acco_store_l["rx.alice@jabber.org"] = True
+        Rx.acco_store_l["me.alice@jabber.org"] = True
+        Rx.acco_store_l["rx.bob@jabber.org"] = True
+        Rx.acco_store_l["me.bob@jabber.org"] = True
+
+        # Test
+        self.assertIsNone(process_command("LOGGING|DISABLE|me.bob@jabber.org"))
+        self.assertTrue(Rx.acco_store_l["rx.alice@jabber.org"])
+        self.assertTrue(Rx.acco_store_l["me.alice@jabber.org"])
+        self.assertFalse(Rx.acco_store_l["rx.bob@jabber.org"])
+        self.assertFalse(Rx.acco_store_l["me.bob@jabber.org"])
+
+        # Teardown
+        shutil.rmtree("keys")
+
+
+class TestControlStoring(unittest.TestCase):
+
+    def test_1_input_parameter(self):
+        for a in [1, 1.0, True]:
+            with self.assertRaises(SystemExit):
+                control_storing(a)
+
+    def test_2_enable_reception(self):
+
+        # Setup
+        create_me_keys(["alice", "bob"])
+        create_rx_keys(["alice", "bob"])
+
+        # Test
+        Rx.l_file_onway["me.alice@jabber.org"] = False
+        Rx.l_file_onway["rx.alice@jabber.org"] = False
+        Rx.l_file_onway["me.bob@jabber.org"] = False
+        Rx.l_file_onway["rx.bob@jabber.org"] = False
+
+        Rx.filereceived["me.alice@jabber.org"] = False
+        Rx.filereceived["rx.alice@jabber.org"] = False
+        Rx.filereceived["me.bob@jabber.org"] = False
+        Rx.filereceived["rx.bob@jabber.org"] = False
+
+        Rx.acco_store_f["me.alice@jabber.org"] = False
+        Rx.acco_store_f["rx.alice@jabber.org"] = False
+        Rx.acco_store_f["me.bob@jabber.org"] = False
+        Rx.acco_store_f["rx.bob@jabber.org"] = False
+
+        Rx.f_dictionary["me.alice@jabber.org"] = ''
+        Rx.f_dictionary["rx.alice@jabber.org"] = ''
+        Rx.f_dictionary["me.bob@jabber.org"] = ''
+        Rx.f_dictionary["rx.bob@jabber.org"] = ''
+
+        self.assertIsNone(process_command("STORE|ENABLE"))
+        self.assertFalse(Rx.l_file_onway["me.alice@jabber.org"])
+        self.assertFalse(Rx.l_file_onway["rx.alice@jabber.org"])
+        self.assertFalse(Rx.l_file_onway["me.bob@jabber.org"])
+        self.assertFalse(Rx.l_file_onway["rx.bob@jabber.org"])
+
+        self.assertFalse(Rx.filereceived["me.alice@jabber.org"])
+        self.assertFalse(Rx.filereceived["rx.alice@jabber.org"])
+        self.assertFalse(Rx.filereceived["me.bob@jabber.org"])
+        self.assertFalse(Rx.filereceived["rx.bob@jabber.org"])
+
+        self.assertTrue(Rx.acco_store_f["me.alice@jabber.org"])
+        self.assertTrue(Rx.acco_store_f["rx.alice@jabber.org"])
+        self.assertTrue(Rx.acco_store_f["me.bob@jabber.org"])
+        self.assertTrue(Rx.acco_store_f["rx.bob@jabber.org"])
+
+        self.assertEqual(Rx.f_dictionary["me.alice@jabber.org"], '')
+        self.assertEqual(Rx.f_dictionary["rx.alice@jabber.org"], '')
+        self.assertEqual(Rx.f_dictionary["me.bob@jabber.org"], '')
+        self.assertEqual(Rx.f_dictionary["rx.bob@jabber.org"], '')
+
+        # Teardown
+        shutil.rmtree("keys")
+
+    def test_3_disable_reception(self):
+
+        # Setup
+        create_me_keys(["alice", "bob"])
+        create_rx_keys(["alice", "bob"])
+        Rx.acco_store_f["me.alice@jabber.org"] = True
+        Rx.acco_store_f["rx.alice@jabber.org"] = True
+        Rx.acco_store_f["me.bob@jabber.org"] = True
+        Rx.acco_store_f["rx.bob@jabber.org"] = True
+
+        # Test
+        self.assertIsNone(process_command("STORE|DISABLE"))
+        self.assertFalse(Rx.acco_store_f["rx.alice@jabber.org"])
+        self.assertFalse(Rx.acco_store_f["me.alice@jabber.org"])
+        self.assertFalse(Rx.acco_store_f["rx.bob@jabber.org"])
+        self.assertFalse(Rx.acco_store_f["me.bob@jabber.org"])
+
+        # Teardown
+        shutil.rmtree("keys")
+
+    def test_4_enable_reception_for_contact(self):
+
+        # Setup
+        create_me_keys(["alice", "bob"])
+        create_rx_keys(["alice", "bob"])
+        Rx.acco_store_f["me.alice@jabber.org"] = False
+        Rx.acco_store_f["rx.alice@jabber.org"] = False
+        Rx.acco_store_f["me.bob@jabber.org"] = False
+        Rx.acco_store_f["rx.bob@jabber.org"] = False
+
+        # Test
+        self.assertIsNone(process_command("STORE|ENABLE|rx.bob@jabber.org"))
+        self.assertFalse(Rx.acco_store_f["rx.alice@jabber.org"])
+        self.assertTrue(Rx.acco_store_f["rx.bob@jabber.org"])
+
+        # Teardown
+        shutil.rmtree("keys")
+
+    def test_5_disable_reception_for_contact(self):
+
+        # Setup
+        create_me_keys(["alice", "bob"])
+        create_rx_keys(["alice", "bob"])
+        Rx.acco_store_f["me.alice@jabber.org"] = True
+        Rx.acco_store_f["rx.alice@jabber.org"] = True
+        Rx.acco_store_f["me.bob@jabber.org"] = True
+        Rx.acco_store_f["rx.bob@jabber.org"] = True
+
+        # Test
+        self.assertIsNone(process_command("STORE|DISABLE|rx.bob@jabber.org"))
+        self.assertTrue(Rx.acco_store_f["rx.alice@jabber.org"])
+        self.assertFalse(Rx.acco_store_f["rx.bob@jabber.org"])
+
+        # Teardown
+        shutil.rmtree("keys")
 
 
 class TestProcessLocalKey(unittest.TestCase):
-
     def test_1_input_parameters(self):
         for a in [1, 1.0, True]:
             for b in ["string", 1, 1.0]:
@@ -2458,7 +2778,7 @@ class TestProcessLocalKey(unittest.TestCase):
 
     def test_2_missing_parameter(self):
 
-        packet = ("TFC|N|1601|L|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
+        packet = ("TFC|N|1605|L|S0/oPUk8UNKRpKddw6wfUw2tOTZA+SraOkP1wCzRBOaT0"
                   "BdWFEIl0Xhl4PdtrkGdMP8O4+skYSqnIvuB5vcfbN+QvjkVtquU1b74bve"
                   "880AdqM+1DHEWzdXsAbZW4z/p8iD+2S7WTXt67LA03XPzUhd8FnUIz6bF5"
                   "f7VTHNeG0rnJ6qyOofxroqpu4XjuWdXm8hSJv+ezPjUGviZlhNlhUT2vIC"
@@ -2469,12 +2789,12 @@ class TestProcessLocalKey(unittest.TestCase):
         self.assertIsNone(process_local_key(packet))
 
         # Teardown
-        remove("syslog.tfc")
+        os.remove("syslog.tfc")
 
     def test_3_valid_packet_and_key(self):
 
         # Setup
-        packet = ("TFC|N|1601|L|XWOoG8/0ZJd7zP56cMv48Cr/LyPYYP6PPtBp60IPkXQXz"
+        packet = ("TFC|N|1605|L|XWOoG8/0ZJd7zP56cMv48Cr/LyPYYP6PPtBp60IPkXQXz"
                   "9kR2pxJvAjA1Py70S3ffsmaNHeZ37q/qufQXB4IhCUoK0OJNZU+Me8XJQv"
                   "22NG5VPHMkffeVpBMybyeVs3A1wwDWajs/vPaEVaakMDirkbdzo9ONkqrH"
                   "FIDqJ2d2y8MOIkGjGz27WOj/Y2uHcpqF6KOCvpTkEzmZrAf4Ogby89e5aI"
@@ -2482,7 +2802,7 @@ class TestProcessLocalKey(unittest.TestCase):
                   "/KgE9t1MDXRWEV3dNm7hMOzwbILe2GnAJX1HVSzEFkIBfGV8E19e2DnBJM"
                   "oP0hDiZxjWcQeiuCSX4qLU03opB+ENFYJK43o2+2wN4jZpzmb0tqJWtQu")
         original_raw_input = __builtins__.raw_input
-        __builtins__.raw_input = lambda x: ((64*'b') + "f3ba0a38")
+        __builtins__.raw_input = lambda x: ((64 * 'b') + "f3ba0a38")
 
         # Test
         self.assertEquals(process_local_key(packet), "SUCCESS")
@@ -2491,13 +2811,13 @@ class TestProcessLocalKey(unittest.TestCase):
 
         # Teardown
         __builtins__.raw_input = original_raw_input
-        rmtree('keys')
-        remove(".rx_contacts")
+        shutil.rmtree('keys')
+        os.remove(".rx_contacts")
 
     def test_4_b64_decoding_error(self):
 
         # Setup
-        packet = ("TFC|N|1601|L|€WOoG8/0ZJd7zP56cMv48Cr/LyPYYP6PPtBp60IPkXQXz"
+        packet = ("TFC|N|1605|L|€WOoG8/0ZJd7zP56cMv48Cr/LyPYYP6PPtBp60IPkXQXz"
                   "9kR2pxJvAjA1Py70S3ffsmaNHeZ37q/qufQXB4IhCUoK0OJNZU+Me8XJQv"
                   "22NG5VPHMkffeVpBMybyeVs3A1wwDWajs/vPaEVaakMDirkbdzo9ONkqrH"
                   "FIDqJ2d2y8MOIkGjGz27WOj/Y2uHcpqF6KOCvpTkEzmZrAf4Ogby89e5aI"
@@ -2506,7 +2826,7 @@ class TestProcessLocalKey(unittest.TestCase):
                   "oP0hDiZxjWcQeiuCSX4qLU03opB+ENFYJK43o2+2wN4jZpzmb0tqJWtQu")
 
         original_raw_input = __builtins__.raw_input
-        __builtins__.raw_input = lambda x: ((64*'b') + "f3ba0a38")
+        __builtins__.raw_input = lambda x: ((64 * 'b') + "f3ba0a38")
 
         # Test
         self.assertIsNone(process_local_key(packet))
@@ -2517,7 +2837,7 @@ class TestProcessLocalKey(unittest.TestCase):
     def test_5_mac_fail(self):
 
         # Setup
-        packet = ("TFC|N|1601|L|aWOoG8/0ZJd7zP56cMv48Cr/LyPYYP6PPtBp60IPkXQXz"
+        packet = ("TFC|N|1605|L|aWOoG8/0ZJd7zP56cMv48Cr/LyPYYP6PPtBp60IPkXQXz"
                   "9kR2pxJvAjA1Py70S3ffsmaNHeZ37q/qufQXB4IhCUoK0OJNZU+Me8XJQv"
                   "22NG5VPHMkffeVpBMybyeVs3A1wwDWajs/vPaEVaakMDirkbdzo9ONkqrH"
                   "FIDqJ2d2y8MOIkGjGz27WOj/Y2uHcpqF6KOCvpTkEzmZrAf4Ogby89e5aI"
@@ -2526,7 +2846,7 @@ class TestProcessLocalKey(unittest.TestCase):
                   "oP0hDiZxjWcQeiuCSX4qLU03opB+ENFYJK43o2+2wN4jZpzmb0tqJWtQu")
 
         original_raw_input = __builtins__.raw_input
-        __builtins__.raw_input = lambda x: ((64*'b') + "f3ba0a38")
+        __builtins__.raw_input = lambda x: ((64 * 'b') + "f3ba0a38")
 
         # Test
         self.assertIsNone(process_local_key(packet))
@@ -2535,8 +2855,9 @@ class TestProcessLocalKey(unittest.TestCase):
         __builtins__.raw_input = original_raw_input
 
     def test_6_invalid_local_key(self):
+
         # Setup
-        packet = ("TFC|N|1601|L|uvwEENF2ohEIG/CN/gqVZWK0Tqwc/zbcejmmqTU8cR3wQ"
+        packet = ("TFC|N|1605|L|uvwEENF2ohEIG/CN/gqVZWK0Tqwc/zbcejmmqTU8cR3wQ"
                   "/BSWG5DFrfo7a69VaiPLkOgcxOnwdwmWwBtDp2ugphFAU9sm5PW7L6ojOe"
                   "Jd5WILMsqCorhx9uxZZUivCG8MZb+zF4C6cG11eZVbOHIpge4OwDDU49wn"
                   "LZ4sFO1t3TjVpq5Rm4WkDLeQb1Wloy784M4RCedLfb9YsYKPqmZ1AKHjww"
@@ -2545,7 +2866,7 @@ class TestProcessLocalKey(unittest.TestCase):
                   "YlttunAAU79y9TDmw/rCt8rO0Ggk1N6k+AFe6hW8eE6NVJBN6JGgP8t/F")
 
         original_raw_input = __builtins__.raw_input
-        __builtins__.raw_input = lambda x: ((64*'b') + "f3ba0a38")
+        __builtins__.raw_input = lambda x: ((64 * 'b') + "f3ba0a38")
 
         # Test
         self.assertIsNone(process_local_key(packet))
@@ -2572,22 +2893,16 @@ class TestKDKInputProcess(unittest.TestCase):
     """
 
 
-class TestPrintHeaders(unittest.TestCase):
-
-    def test_1_function(self):
-        self.assertIsNone(print_headers())
-
-
 if __name__ == "__main__":
-    chdir(path[0])
+    os.chdir(sys.path[0])
     try:
-        rmtree("keys")
-        rmtree("groups")
-        rmtree("logs")
-        rmtree("files")
-        remove(".tx_contacts")
-        remove(".rx_contacts")
-        remove("unitt_txm_out")
+        shutil.rmtree("keys")
+        shutil.rmtree("groups")
+        shutil.rmtree("logs")
+        shutil.rmtree("files")
+        os.remove(".tx_contacts")
+        os.remove(".rx_contacts")
+        os.remove("unitt_txm_out")
     except OSError:
         pass
     unittest.main(exit=False)

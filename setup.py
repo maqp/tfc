@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# TFC-NaCl 0.16.01 beta || setup.py
+# TFC-NaCl 0.16.05 || setup.py
 
 """
 GPL License
@@ -17,13 +17,21 @@ A PARTICULAR PURPOSE. See the GNU General Public License for more details. For
 a copy of the GNU General Public License, see <http://www.gnu.org/licenses/>.
 """
 
-from os import chdir, getcwd, system, geteuid
-from subprocess import Popen, check_output
+import getpass
+import os
+import subprocess
+import time
 
-str_version = "0.16.01 beta"
-int_version = 1601
 
-repository = "https://raw.githubusercontent.com/maqp/tfc-nacl/master/"
+repository = "https://cs.helsinki.fi/u/oottela/tfc-nacl/"
+str_version = "0.16.05"
+
+
+###############################################################################
+#                                CONFIGURATION                                #
+###############################################################################
+
+kill_ifaces = True   # Kills network after downloading TxM/RxM configuration.
 
 
 ###############################################################################
@@ -33,78 +41,66 @@ repository = "https://raw.githubusercontent.com/maqp/tfc-nacl/master/"
 sagi = "sudo apt-get --yes install"
 
 
-def cmd(message, command):
+def cmd(command, message=''):
     """
     Display message and run command as subprocess.
 
-    :param message: Message to be displayed.
     :param command: Command to run.
+    :param message: Message to be displayed.
     :return:        None
     """
-
-    print("\n%s\n" % message)
-    Popen(command, shell=True).wait()
+    if message:
+        print("\n%s\n" % message)
+    subprocess.Popen(command, shell=True).wait()
     return None
 
 
 def update_repositories():
-    cmd("Updating repository list", "sudo apt-get --yes update")
+    cmd("sudo apt-get --yes update", "Updating repository list")
 
 
 def install_python_serial():
-    cmd("Installing Python serial", "%s python-serial" % sagi)
+    cmd("%s python-serial" % sagi, "Installing Python serial")
 
 
 def install_python_qt4():
-    cmd("Installing Python QT4", "%s python-qt4" % sagi)
+    cmd("%s python-qt4" % sagi, "Installing Python QT4")
 
 
 def install_python_qt4_dbus():
-    cmd("Installing Python QT4-DBus", "%s python-qt4-dbus" % sagi)
+    cmd("%s python-qt4-dbus" % sagi, "Installing Python QT4-DBus")
 
 
 def install_pidgin():
-    cmd("Installing Pidgin", "%s pidgin" % sagi)
+    cmd("%s pidgin" % sagi, "Installing Pidgin")
 
 
 def install_pidgin_otr():
-    cmd("Installing Pidgin OTR", "%s pidgin-otr" % sagi)
-
-
-def install_python_pip():
-    cmd("Installing Python pip", "%s python-pip" % sagi)
+    cmd("%s pidgin-otr" % sagi, "Installing Pidgin OTR")
 
 
 def install_python_setuptools():
-    cmd("Installing Python Setuptools", "%s python-setuptools" % sagi)
+    cmd("%s python-setuptools" % sagi, "Installing Python Setuptools")
 
 
 def install_python_dev():
-    cmd("Installing Python-Dev", "%s python-dev" % sagi)
+    cmd("%s python-dev" % sagi, "Installing Python-Dev")
 
 
 def install_libffi_dev():
-    cmd("Installing libffi", "%s libffi-dev" % sagi)
+    cmd("%s libffi-dev" % sagi, "Installing libffi")
 
 
 def install_tkinter():
-    cmd("Installing Python Tkinter", "%s python-tk" % sagi)
+    cmd("%s python-tk" % sagi, "Installing Python Tkinter")
 
 
-###############################################################################
-#                                PIP COMMANDS                                 #
-###############################################################################
-
-def pip_passlib():
-    cmd("Installing PassLib", "sudo pip install passlib")
+def install_libssl_dev():
+    cmd("%s libssl-dev" % sagi, "Installing libssl-Dev")
 
 
-def pip_simplesha3():
-    cmd("Installing SimpleSHA3", " sudo pip install simplesha3")
-
-
-def pip_paramiko():
-    cmd("Installing SimpleSHA3", " sudo pip install paramiko")
+def install_build_essential():
+    cmd("%s build-essential" % sagi, "Installing Build-essential")
 
 
 ###############################################################################
@@ -113,14 +109,20 @@ def pip_paramiko():
 
 hash_list = ("""
 8b0963956bef053454647af16765ca3178749c8a1e773d85a483971870791e74  tfc-mods.zip
-c76c6ec69dc7b233dc58aff42b45d87e8ec8f8e4e32ecf790260ca9e436ec42f  dd.py
-264889d2d2f06d258035bec8baa2e1300f42805d2d6b1987faf1c5cb6e72bbf7  hwrng.py
-142cb4cb8ba803880015ccd3a82d5428a4480f4e7e463245977ba797ebf72565  NH.py
-09bd84a25e71c9ddf4d9d5a7f8710dc79fe633e5a27c5f5ae97cd08d9dd02836  Rx.py
-af392c14f4390103ab9f28d042b8dc353b1d9f5590aff01d9a456047c6babd4d  test_nh.py
-acd7ca80c2b7b3f15c5a588d0dfc858246f1675456d787d655e7af093d5ab2ed  test_rx.py
-73a01d9176f883e16b48858ee62ae847f09b9ab0e663db5a4f8628081638a0b9  test_tx.py
-1553911611f2ebdd54c55d8c2d9ef822378169a0c3ea8e66495c2d6ae73346d5  Tx.py
+a83d34f53dc9b17aa42c9a35c3fbcc5120f3fcb07f7f8721ec45e6a27be347fc  passlb.tar.gz
+1898d64e22c03aadce9e6b2936897a4bdc125f17ebbd15a96bdc3f71d7f69cf6  sha3.tar.bz2
+be2623c41873e8e8a512a77f93edb301f64377331714b71116f7c30ea4fe6e2a  pyc.zip
+64cf1ee26d1cde3c73c6d7d107f835fed7c6a2904aef9eac223d57ad800c43fa  ecdsa.tar.gz
+402c44cd30284a6acf80fdb4de56de44b879049f4d0342e28c84ef60223113bc  paramiko.zip
+249db300d1fe395ac1c31d08e91a3a31b473214b5da06002503e01229e44ae03  dd.py
+45f2c3b9790a0b831609b0cd0b28517c7d0fc5412d8cae3af4f01a99bed554e3  hwrng-nacl.py
+fbbd1dac1c4bd63b7f3ede0f65881a8e28cf5a4212dc45b65c7cda35195353cd  NH.py
+f55a2b8c84e81400a9c2ef1183deb791f6e8f48280853451fefd20e42e4d338b  Rx.py
+e777f8034a924e8df184e5cde54a5a48f0356aa506f255d4dcbdbd3c849c4d1a  setup.py
+6c3586d1cbd8f0a388a40c326faf4da2799dc3a88e235addb0efc819156fa211  test_nh.py
+1200902f4569373597dc66f555c0a8fce087fcfd1392f2ea5367a0ace1858cb1  test_rx.py
+3faf6d2a9ad83e314809605bc1d41bce58565fbe6bc346e5de225832ab610ddc  test_tx.py
+6817de77dbf1c2c22dda6951c1c662899cca6e5ca34823bdf4e7a61fb46d5d38  Tx.py
 """)
 
 
@@ -144,22 +146,22 @@ def check_file_hash(filename):
     --------------------------------------------------------------------
 
     The only reasonably secure way to obtain the signing key is personal
-    handout of key or GPG Web of Trust with respected and trustworthy members.
+    handout or GPG Web of Trust with respected and trustworthy members.
 
     :param filename: File to verify.
     :return:         None
     """
 
-    f_hash = check_output(["sha256sum", filename]).split()[0]
+    f_hash = subprocess.check_output(["sha256sum", filename]).split()[0]
 
     h_list = hash_list.split('\n')
     for h in h_list:
         if filename in h:
             if f_hash not in h:
-                system("clear")
+                os.system("clear")
                 print("CRITICAL ERROR: SHA2-256 hash of %s was incorrect. \n"
                       "This might indicate a TLS-MITM attack, transmission\n"
-                      "error or that this installer is outdated.\n") % filename
+                      "error or that this installer is outdated.\n" % filename)
                 exit()
 
     print("\nSHA256 hash of %s was correct.\n" % filename)
@@ -167,40 +169,192 @@ def check_file_hash(filename):
 
 
 ###############################################################################
-#                            CRYPTO LIBRARIES COMMANDS                        #
+#                                CRYPTO LIBRARIES                             #
 ###############################################################################
 
-def pynacl_install():
+def simplesha3_download():
     """
-    Install the PyNaCl library.
+    Download SimpleSHA3 library.
 
     :return: None
     """
 
-    app_root_directory = getcwd()
+    cmd("wget https://pypi.python.org/packages/source/s/simplesha3/"
+        "simplesha3-2015.09.22.post1.tar.bz2 -O sha3.tar.bz2",
+        "Downloading SimpleSHA3 library")
+    check_file_hash("sha3.tar.bz2")
+    return None
 
-    cmd("Downloading PyNaCl Library", "wget https://github.com/maqp/"
-                                      "pynacl/archive/tfc-mods.zip")
 
+def simplesha3_install():
+    """
+    Install SimpleSHA3 library.
+
+    :return: None
+    """
+
+    app_root_directory = os.getcwd()
+    cmd("tar -vxjf sha3.tar.bz2", "Unzipping SimpleSHA3")
+    os.chdir("simplesha3-2015.09.22.post1/")
+    cmd("sudo python setup.py install", "Installing SimpleSHA3")
+    os.chdir(app_root_directory)
+    cmd("rm sha3.tar.bz2", "Removing install files")
+    cmd("sudo rm -r simplesha3-2015.09.22.post1/")
+    os.system("clear")
+    return None
+
+
+def pynacl_download():
+    """
+    Download PyNaCl library.
+
+    :return: None
+    """
+
+    cmd("wget https://github.com/maqp/pynacl/archive/tfc-mods.zip",
+        "Downloading PyNaCl library")
     check_file_hash("tfc-mods.zip")
+    return None
 
-    cmd("Unzipping PyNaCl Library", "unzip tfc-mods.zip")
 
-    chdir("pynacl-tfc-mods/")
+def pynacl_install():
+    """
+    Install PyNaCl library.
 
-    cmd("Installing PyNaCl Library", "sudo python setup.py install")
+    :return: None
+    """
 
-    chdir(app_root_directory)
+    app_root_directory = os.getcwd()
+    cmd("unzip tfc-mods.zip", "Unzipping PyNaCl library", )
+    os.chdir("pynacl-tfc-mods/")
+    cmd("sudo python setup.py install", "Installing PyNaCl library")
+    os.chdir(app_root_directory)
+    cmd("rm tfc-mods.zip", "Removing install files")
+    os.system("clear")
+    return None
 
-    cmd("Removing PyNaCl (tfc-mods.zip)", "rm tfc-mods.zip")
 
-    Popen("sudo rm -r pynacl-master/", shell=True).wait()
+def passlib_download():
+    """
+    Download Passlib.
 
-    system("clear")
+    :return: None
+    """
 
-    if not yes("\n  Keep PyNaCl source files?\n"):
-        Popen("sudo rm -rf pynacl-tfc-mods", shell=True).wait()
+    cmd("wget https://pypi.python.org/packages/source/p/"
+        "passlib/passlib-1.6.5.tar.gz -O passlb.tar.gz",
+        "Downloading Passlib")
+    check_file_hash("passlb.tar.gz")
+    return None
 
+
+def passlib_install():
+    """
+    Install Passlib.
+
+    :return: None
+    """
+
+    app_root_directory = os.getcwd()
+    cmd("tar -xf passlb.tar.gz", "Unzipping Passlib")
+    os.chdir("passlib-1.6.5/")
+    cmd("sudo python setup.py install", "Installing Passlib")
+    os.chdir(app_root_directory)
+    cmd("rm passlb.tar.gz", "Removing install files")
+    cmd("sudo rm -r passlib-1.6.5/")
+    os.system("clear")
+    return None
+
+
+def pycrypto_download():
+    """
+    Download Py-Crypto library (Paramiko dependency).
+
+    :return: None
+    """
+
+    cmd("wget https://github.com/dlitz/pycrypto/archive/master.zip -O pyc.zip",
+        "Downloading PyCrypto library")
+    check_file_hash("pyc.zip")
+    return None
+
+
+def pycrypto_install():
+    """
+    Install PyCrypto library (Paramiko dependency).
+
+    :return: None
+    """
+
+    app_root_dir = os.getcwd()
+    cmd("unzip pyc.zip", "Unzipping PyCrypto Library")
+    os.chdir("pycrypto-master/")
+    cmd("sudo python setup.py install", "Installing PyCrypto Library")
+    os.chdir(app_root_dir)
+    cmd("rm pyc.zip", "Removing install files")
+    cmd("sudo rm -rf pycrypto-master")
+    os.system("clear")
+    return None
+
+
+def ecdsa_download():
+    """
+    Download ECDSA library (Paramiko dependency).
+
+    :return: None
+    """
+
+    cmd("wget https://pypi.python.org/packages/"
+        "source/e/ecdsa/ecdsa-0.13.tar.gz -O ecdsa.tar.gz")
+    check_file_hash("ecdsa.tar.gz")
+
+
+def ecdsa_install():
+    """
+    Install ECDSA library (Paramiko dependency).
+
+    :return: None
+    """
+
+    app_root_directory = os.getcwd()
+    cmd("tar xf ecdsa.tar.gz", "Unzipping PyNaCl library", )
+    os.chdir("ecdsa-0.13/")
+    cmd("sudo python setup.py install", "Installing ECDSA library")
+    os.chdir(app_root_directory)
+    cmd("rm ecdsa.tar.gz", "Removing install files")
+    cmd("sudo rm -rf ecdsa-0.13")
+    os.system("clear")
+
+
+def paramiko_download():
+    """
+    Download Paramiko SSH library.
+
+    :return: None
+    """
+
+    cmd("wget https://github.com/maqp/paramiko/"
+        "archive/master.zip -O paramiko.zip",
+        "Downloading Paramiko SSH Library")
+    check_file_hash("paramiko.zip")
+    return None
+
+
+def paramiko_install():
+    """
+    Install Paramiko SSH library.
+
+    :return: None
+    """
+
+    app_root_directory = os.getcwd()
+    cmd("unzip paramiko.zip", "Unzipping Paramiko")
+    os.chdir("paramiko-master/")
+    cmd("sudo python setup.py install", "Installing Paramiko SSH Library")
+    os.chdir(app_root_directory)
+    cmd("rm paramiko.zip", "Removing install files")
+    cmd("sudo rm -r paramiko-master/")
+    os.system("clear")
     return None
 
 
@@ -209,39 +363,39 @@ def pynacl_install():
 ###############################################################################
 
 def get_tx():
-    cmd("Downloading Tx.py (TxM)", "wget %sTx.py" % repository)
+    cmd("wget %sTx.py" % repository, "Downloading Tx.py (TxM)")
     check_file_hash("Tx.py")
 
-    cmd("Downloading test_tx.py (TxM)", "wget %sunittests/test_tx.py"
-        % repository)
+    cmd("wget %sunittests/test_tx.py" % repository,
+        "Downloading test_tx.py (TxM)")
     check_file_hash("test_tx.py")
 
 
-def get_hwrng():
-    cmd("Downloading hwrng.py", "wget %shwrng.py" % repository)
-    check_file_hash("hwrng.py")
-
-
 def get_rx():
-    cmd("Downloading Rx.py (RxM)", "wget %sRx.py" % repository)
+    cmd("wget %sRx.py" % repository, "Downloading Rx.py (RxM)")
     check_file_hash("Rx.py")
 
-    cmd("Downloading test_rx.py (RxM)", "wget %sunittests/test_rx.py"
-        % repository)
+    cmd("wget %sunittests/test_rx.py" % repository,
+        "Downloading test_rx.py (RxM)")
     check_file_hash("test_rx.py")
 
 
 def get_nh():
-    cmd("Downloading NH.py (NH)", "wget %sNH.py" % repository)
+    cmd("wget %sNH.py" % repository, "Downloading NH.py (NH)")
     check_file_hash("NH.py")
 
-    cmd("Downloading test_nh.py (NH)", "wget %sunittests/test_nh.py"
-        % repository)
+    cmd("wget %sunittests/test_nh.py" % repository,
+        "Downloading test_nh.py (NH)")
     check_file_hash("test_nh.py")
 
 
+def get_hwrng():
+    cmd("wget %shwrng-nacl.py" % repository, "Downloading hwrng-nacl.py")
+    check_file_hash("hwrng-nacl.py")
+
+
 def get_dd():
-    cmd("Downloading dd.py (NH)", "wget %sdd.py" % repository)
+    cmd("wget %sdd.py" % repository, "Downloading dd.py (NH)")
     check_file_hash("dd.py")
 
 
@@ -251,8 +405,8 @@ def get_dd():
 
 def rasp_disable_boot_info():
     """
-    Disable Boot info through serial port to keep NH's TxM serial interface's
-    input only related to Tx.py output.
+    Disable Boot info through serial port to keep input of NH serial interface
+    only related to Tx.py output.
 
     :return: None
     """
@@ -260,9 +414,9 @@ def rasp_disable_boot_info():
     print("\nEditing file 'cmdline.txt'.\n")
 
     try:
-        content = open('/boot/cmdline.txt').readline()
+        content = open("/boot/cmdline.txt").readline()
         content = content.replace(" console=ttyAMA0,115200", '')
-        open('/boot/cmdline.txt', 'w+').write(content)
+        open("/boot/cmdline.txt", "w+").write(content)
 
     except IOError:
         print("CRITICAL ERROR! M(rasp_disable_boot_info):\n"
@@ -290,12 +444,57 @@ def ssh_hwrng_connection():
                                 "use_ssh_hwrng = True")
     open("Tx.py", "w+").write(contents)
 
+    ssh_config()
+
+    return None
+
+
+def ssh_config():
+    """
+    Configure Tx.py SSH settings
+
+    :return: None
+    """
+
+    if yes("Configure HWRNG host/IP, username and password?"):
+
+        host = "192.186.1.2"
+        user = "pi"
+        pswd = "raspberry"
+
+        while True:
+            os.system("clear")
+            print("Configure TxM SSH login settings: ")
+            host = raw_input("\nEnter Host/IP:    ")
+            user = raw_input("Enter Username:   ")
+            while True:
+                pwd = getpass.getpass("Enter password:   ")
+                pwd_again = getpass.getpass("Confirm password: ")
+                if pwd == pwd_again:
+                    break
+                else:
+                    print("\nError: Passwords did not match\n")
+
+            if yes("Accept configuration?"):
+                break
+
+        content = open("Tx.py").read()
+        content = content.replace('hwrng_host = "192.168.1.2"',
+                                  'hwrng_host = "%s"' % host)
+
+        content = content.replace('hwrng_name = "pi"',
+                                  'hwrng_name = "%s"' % user)
+        content = content.replace('hwrng_pass = "192.168.1.2"',
+                                  'hwrng_pass = "%s"' % pswd)
+
+        open("Tx.py", "w+").write(content)
+
     return None
 
 
 def serial_config_raspbian(program):
     """
-    Ask user whether they will use USB serial interface.
+    Ask user whether they will use USB to serial adapter.
     Answering no enables Raspberry Pi's integrated interface /dev/ttyAMA0.
 
     :param program: Program the serial interface of which is changed.
@@ -399,7 +598,7 @@ def set_serial_permissions(username=''):
             username = raw_input("\n  >")
             if yes("\n  Confirm user '%s'?" % username):
                 break
-    cmd('', "sudo gpasswd --add %s dialout" % username)
+    cmd("sudo gpasswd --add %s dialout" % username)
 
     return None
 
@@ -440,9 +639,9 @@ Select a device-OS configuration (tested distros are listed):
    TxM
       1.  Raspbian Jessie (Run this installer as sudo)
 
-      2.  Ubuntu 14.04 LTS
-          Kubuntu 14.04 LTS
-          Xubuntu 14.04 LTS
+      2.  Ubuntu 16.04 LTS
+          Kubuntu 16.04 LTS
+          Xubuntu 16.04 LTS
           Lubuntu 15.04
           Linux Mint 17.3 Rosa
 
@@ -452,25 +651,27 @@ Select a device-OS configuration (tested distros are listed):
    RxM
       4.  Raspbian Jessie (Run this installer as sudo)
 
-      5.  Ubuntu 14.04 LTS
-          Kubuntu 14.04 LTS
-          Xubuntu 14.04 LTS
+      5.  Ubuntu 16.04 LTS
+          Kubuntu 16.04 LTS
+          Xubuntu 16.04 LTS
           Lubuntu 15.04
           Linux Mint 17.3 Rosa
 
     NH
-      6.  Ubuntu 14.04 LTS
-          Kubuntu 14.04 LTS
-          Xubuntu 14.04 LTS
+      6.  Raspbian Jessie (Run this installer as sudo)
+
+      7.  Ubuntu 16.04 LTS
+          Kubuntu 16.04 LTS
+          Xubuntu 16.04 LTS
           Lubuntu 15.04
           Linux Mint 17.3 Rosa
 
-      7.  Tails 2.0
+      8.  Tails 2.2.1
 
     Local Testing (insecure)
-      8.  Ubuntu  14.04 LTS
-          Kubuntu 14.04 LTS
-          Xubuntu 14.04 LTS
+      9.  Ubuntu  16.04 LTS
+          Kubuntu 16.04 LTS
+          Xubuntu 16.04 LTS
           Lubuntu 15.04
           Linux Mint 17.3 Rosa\n""")
 
@@ -503,6 +704,22 @@ def print_local_test_install_finish():
           "  and NH.py in their own terminals.\n")
 
 
+def disable_network_interfaces():
+    """
+    This will kill all active network interfaces from TxM / RxM to minimize the
+    remote compromise time window of the TCB device.
+
+    :return: None
+    """
+
+    cmd("ifconfig -a | sed 's/[ \t].*//;/^\(lo\|\)$/d' > tfc_ifaces")
+    iface_list = open("tfc_ifaces").read().splitlines()
+    os.remove("tfc_ifaces")
+
+    for i in iface_list:
+        cmd("sudo ifconfig %s down" % i, "Disabling %s network interface" % i)
+
+
 ###############################################################################
 #                              INSTALL ROUTINES                               #
 ###############################################################################
@@ -510,7 +727,7 @@ def print_local_test_install_finish():
 def raspbian_txm():
     if yes("Install TxM configuration for Raspbian Jessie?"):
 
-        if geteuid() != 0:
+        if os.geteuid() != 0:
             print("\nError: Raspbian installer requires root privileges.\n"
                   "\nExiting.\n")
             exit()
@@ -518,80 +735,89 @@ def raspbian_txm():
         update_repositories()
 
         install_python_setuptools()
+        install_build_essential()
         install_python_dev()
         install_libffi_dev()
+        install_libssl_dev()
+        install_python_serial()
+        install_tkinter()
 
-        install_python_pip()
-        pip_passlib()
-        pip_simplesha3()
+        passlib_download()
+        simplesha3_download()
+        pynacl_download()
+
+        cmd("mkdir tfc-nacl")
+        root_dir = os.getcwd()
+        os.chdir("tfc-nacl/")
+        get_tx()
+
+        disable_network_interfaces()
+
+        os.chdir(root_dir)
+        passlib_install()
+        simplesha3_install()
         pynacl_install()
 
         rasp_disable_boot_info()
 
-        Popen("mkdir tfc-nacl", shell=True).wait()
-        chdir("tfc-nacl/")
-
-        get_tx()
+        os.chdir("tfc-nacl/")
         serial_config_raspbian("Tx.py")
         set_serial_permissions()
 
-        system("clear")
+        os.system("clear")
         print("\nTxM side installation complete.\n"
               "Reboot the system before running.\n")
         exit()
 
 
-def raspbian_hwrng():
-    if yes("Install HWRNG configuration for Raspbian Jessie?"):
-        
-        if geteuid() != 0:
-            print("\nError: Raspbian installer requires root privileges.\n"
+def ubuntu_txm():
+
+    if yes("Install TxM configuration for *buntu / Linux Mint?"):
+
+        if os.geteuid() != 0 and kill_ifaces:
+            print("\nError: Ubuntu installer requires root privileges.\n"
                   "\nExiting.\n")
             exit()
 
         update_repositories()
 
         install_python_setuptools()
+        install_build_essential()
         install_python_dev()
-        install_libffi_dev()    
-
-        install_python_pip()
-        pip_simplesha3()
-
-        get_hwrng()
-
-        system("clear")
-        print("\nHWRNG side installation complete.\n"
-              "Reboot the system before running.\n")
-        exit()
-
-
-def ubuntu_txm():
-    if yes("Install TxM configuration for *buntu / Linux Mint?"):
-
-        update_repositories()
+        install_libffi_dev()
+        install_libssl_dev()
         install_python_serial()
         install_tkinter()
 
-        install_python_setuptools()
-        install_python_dev()
-        install_libffi_dev()
+        passlib_download()
+        pycrypto_download()
+        ecdsa_download()
+        paramiko_download()
+        simplesha3_download()
+        pynacl_download()
 
-        install_python_pip()
-        pip_passlib()
-        pip_simplesha3()
-        pip_paramiko()
-        pynacl_install()
-
-        Popen("mkdir tfc-nacl", shell=True).wait()
-        chdir("tfc-nacl/")
+        cmd("mkdir tfc-nacl")
+        root_dir = os.getcwd()
+        os.chdir("tfc-nacl/")
 
         get_tx()
+
+        disable_network_interfaces()
+
+        os.chdir(root_dir)
+        passlib_install()
+        pycrypto_install()
+        ecdsa_install()
+        paramiko_install()
+        simplesha3_install()
+        pynacl_install()
+
+        os.chdir("tfc-nacl/")
         serial_config_integrated("Tx.py")
         ssh_hwrng_connection()
         set_serial_permissions()
 
-        system("clear")
+        os.system("clear")
         print("\nTxM side installation complete.\n"
               "Reboot the system before running.\n")
         exit()
@@ -600,10 +826,30 @@ def ubuntu_txm():
         return None
 
 
+def raspbian_hwrng():
+    if yes("Install HWRNG configuration for Raspbian Jessie?"):
+
+        if os.geteuid() != 0:
+            print("\nError: Raspbian installer requires root privileges.\n"
+                  "\nExiting.\n")
+            exit()
+
+        get_hwrng()
+
+        os.system("clear")
+        print("\nHWRNG side installation complete.\n"
+              "Disconnect this RasPi from Internet.\n"
+              "Connect it to the TxM device")
+        time.sleep(3)
+        print("Rebooting...")
+        time.sleep(2)
+        cmd("sudo reboot")
+
+
 def raspbian_rxm():
     if yes("Install RxM configuration for Raspbian Jessie?"):
 
-        if geteuid() != 0:
+        if os.geteuid() != 0:
             print("\nError: Raspbian installer requires root privileges.\n"
                   "\nExiting.\n")
             exit()
@@ -611,24 +857,36 @@ def raspbian_rxm():
         update_repositories()
 
         install_python_setuptools()
+        install_build_essential()
         install_python_dev()
         install_libffi_dev()
+        install_libssl_dev()
+        install_python_serial()
+        install_tkinter()
 
-        install_python_pip()
-        pip_passlib()
-        pip_simplesha3()
+        passlib_download()
+        simplesha3_download()
+        pynacl_download()
+
+        cmd("mkdir tfc-nacl")
+        root_dir = os.getcwd()
+        os.chdir("tfc-nacl/")
+        get_rx()
+
+        disable_network_interfaces()
+
+        os.chdir(root_dir)
+        passlib_install()
+        simplesha3_install()
         pynacl_install()
 
         rasp_disable_boot_info()
 
-        Popen("mkdir tfc-nacl", shell=True).wait()
-        chdir("tfc-nacl/")
-
-        get_rx()
+        os.chdir("tfc-nacl/")
         serial_config_raspbian("Rx.py")
         set_serial_permissions()
 
-        system("clear")
+        os.system("clear")
         print("\nRxM side installation complete.\n"
               "Reboot the system before running.\n")
         exit()
@@ -640,27 +898,73 @@ def raspbian_rxm():
 def ubuntu_rxm():
     if yes("Install RxM configuration for *buntu / Linux Mint?"):
 
+        if os.geteuid() != 0 and kill_ifaces:
+            print("\nError: Ubuntu installer requires root privileges.\n"
+                  "\nExiting.\n")
+            exit()
+
         update_repositories()
-        install_python_serial()
 
         install_python_setuptools()
+        install_build_essential()
         install_python_dev()
         install_libffi_dev()
+        install_libssl_dev()
+        install_python_serial()
+        install_tkinter()
 
-        install_python_pip()
-        pip_passlib()
-        pip_simplesha3()
+        passlib_download()
+        simplesha3_download()
+        pynacl_download()
+
+        cmd("mkdir tfc-nacl")
+        root_dir = os.getcwd()
+        os.chdir("tfc-nacl/")
+        get_rx()
+
+        disable_network_interfaces()
+
+        os.chdir(root_dir)
+        passlib_install()
+        simplesha3_install()
         pynacl_install()
 
-        Popen("mkdir tfc-nacl", shell=True).wait()
-        chdir("tfc-nacl/")
-
-        get_rx()
+        os.chdir("tfc-nacl/")
         serial_config_integrated("Rx.py")
         set_serial_permissions()
 
-        system("clear")
+        os.system("clear")
         print("\nRxM side installation complete.\n"
+              "Reboot the system before running.\n")
+        exit()
+
+    else:
+        return None
+
+
+def raspbian_nh():
+    if yes("Install NH configuration for Raspbian?"):
+
+        if os.geteuid() != 0:
+            print("\nError: Raspbian installer requires root privileges.\n"
+                  "\nExiting.\n")
+            exit()
+
+        update_repositories()
+        install_python_qt4()
+        install_python_qt4_dbus()
+        install_python_serial()
+
+        if yes("\nInstall Pidgin with OTR-plugin?"):
+            install_pidgin()
+            install_pidgin_otr()
+
+        get_nh()
+        serial_config_integrated("NH.py")
+        set_serial_permissions()
+
+        os.system("clear")
+        print("\nNH side installation complete.\n"
               "Reboot the system before running.\n")
         exit()
 
@@ -684,7 +988,7 @@ def ubuntu_nh():
         serial_config_integrated("NH.py")
         set_serial_permissions()
 
-        system("clear")
+        os.system("clear")
         print("\nNH side installation complete.\n"
               "Reboot the system before running.\n")
         exit()
@@ -700,11 +1004,11 @@ def tails_nh():
         install_python_serial()
         install_python_qt4_dbus()
 
-        set_serial_permissions("amnesia")
         get_nh()
         serial_config_integrated("NH.py")
+        set_serial_permissions("amnesia")
 
-        system("clear")
+        os.system("clear")
         print("\nNH install script completed. Initiate OTR-encrypted\n"
               "Pidgin conversation and launch NH.py.\n\nExiting.\n")
         exit()
@@ -714,52 +1018,62 @@ def tails_nh():
 
 
 def local_testing():
-    system("clear")
+    os.system("clear")
     print_local_tester_warning()
 
     if not raw_input("\n  TYPE 'INSECURE' TO VERIFY "
                      "YOU UNDERSTAND THE RISKS: ") == "INSECURE":
         return None
 
-    system("clear")
+    os.system("clear")
 
     update_repositories()
 
-    install_python_qt4()
-    install_python_qt4_dbus()
-    install_python_serial()
-    install_tkinter()
-
     install_python_setuptools()
+    install_build_essential()
     install_python_dev()
     install_libffi_dev()
+    install_libssl_dev()
+    install_python_serial()
+    install_tkinter()
+    install_python_qt4()
+    install_python_qt4_dbus()
 
-    install_python_pip()
-    pip_passlib()
-    pip_simplesha3()
-    pip_paramiko()
+    passlib_download()
+    pycrypto_download()
+    ecdsa_download()
+    paramiko_download()
+    simplesha3_download()
+    pynacl_download()
+
+    passlib_install()
+    pycrypto_install()
+    ecdsa_install()
+    paramiko_install()
+    simplesha3_install()
     pynacl_install()
 
     if yes("\n  Install Pidgin with OTR-plugin?"):
         install_pidgin()
         install_pidgin_otr()
 
-    Popen("mkdir tfc-nacl", shell=True).wait()
-    chdir("tfc-nacl/")
+    subprocess.Popen("mkdir tfc-nacl", shell=True).wait()
+    os.chdir("tfc-nacl/")
 
     get_tx()
-    get_nh()
     get_rx()
+    get_nh()
     get_dd()
 
     change_to_local("Tx.py")
     change_to_local("Rx.py")
     change_to_local("NH.py")
+
     ssh_hwrng_connection()
 
-    system("clear")
+    os.system("clear")
     print_local_test_install_finish()
-    print("  Exiting.\n")
+    print("  Exiting setup.py\n")
     exit()
 
 
@@ -769,9 +1083,9 @@ def local_testing():
 
 while True:
     try:
-        system("clear")
+        os.system("clear")
         print_menu()
-        selection = int(raw_input("1..8: "))
+        selection = int(raw_input("1..9: "))
 
         if selection == 1:
             raspbian_txm()
@@ -789,12 +1103,15 @@ while True:
             ubuntu_rxm()
 
         if selection == 6:
-            ubuntu_nh()
+            raspbian_nh()
 
         if selection == 7:
-            tails_nh()
+            ubuntu_nh()
 
         if selection == 8:
+            tails_nh()
+
+        if selection == 9:
             local_testing()
 
     except (ValueError, IndexError):

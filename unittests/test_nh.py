@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# TFC-NaCl || test_nh.py
+# TFC-CEV 0.16.05 || test_nh.py
 
 """
 GPL License
@@ -17,11 +17,13 @@ A PARTICULAR PURPOSE. See the GNU General Public License for more details. For
 a copy of the GNU General Public License, see <http://www.gnu.org/licenses/>.
 """
 
-import unittest
 import NH
 from NH import *
-from binascii import hexlify
-from hashlib import sha256
+import binascii
+import unittest
+
+# Import crypto libraries
+import hashlib
 
 
 ###############################################################################
@@ -29,9 +31,9 @@ from hashlib import sha256
 ###############################################################################
 
 def ut_sha2_256(message):
-    h_function = sha256()
+    h_function = hashlib.sha256()
     h_function.update(message)
-    return hexlify(h_function.digest())
+    return binascii.hexlify(h_function.digest())
 
 
 ###############################################################################
@@ -82,22 +84,6 @@ class TestVerifyChecksum(unittest.TestCase):
         pt = "test_packet"
         tv = ut_sha2_256(pt)
         self.assertTrue(verify_checksum("%s|%s" % (pt, tv[:NH.checksum_len])))
-
-
-class TestCleanExit(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-                with self.assertRaises(SystemExit):
-                    clean_exit(a)
-
-    def test_2_exit_no_msg(self):
-        with self.assertRaises(SystemExit):
-            clean_exit()
-
-    def test_3_exit_with_msg(self):
-        with self.assertRaises(SystemExit):
-            clean_exit("test message")
 
 
 class TestGracefulExit(unittest.TestCase):
@@ -206,6 +192,17 @@ class TestTxMPortListener(unittest.TestCase):
     """
     This function doesn't have any tests yet.
     """
+
+
+class TestProcessArguments(unittest.TestCase):
+    """
+    This function doesn't have any tests yet.
+    """
+
+
+###############################################################################
+#                                     MAIN                                    #
+###############################################################################
 
 if __name__ == "__main__":
     unittest.main(exit=False)

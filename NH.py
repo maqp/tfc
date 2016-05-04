@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# TFC-NaCl 0.16.01 beta || NH.py
+# TFC-NaCl 0.16.05 || NH.py
 
 """
 GPL License
@@ -17,30 +17,33 @@ A PARTICULAR PURPOSE. See the GNU General Public License for more details. For
 a copy of the GNU General Public License, see <http://www.gnu.org/licenses/>.
 """
 
-from argparse import ArgumentParser
-from binascii import hexlify
-from datetime import datetime
-from dbus import Interface, SessionBus
-from dbus.exceptions import DBusException
-from dbus.mainloop.qt import DBusQtMainLoop
-from fcntl import ioctl
-from multiprocessing import Process, Queue
-from multiprocessing.connection import Client, Listener
-from os import listdir, system
-from random import choice, randrange, randint as sysrandint
-from serial import Serial, serialutil
-from struct import unpack
-from sys import argv, stdout
-from termios import TIOCGWINSZ
-from time import sleep
+import argparse
+import binascii
 import curses
+import datetime
+import dbus.exceptions
+import dbus.mainloop.qt
+import dbus
+import fcntl
+import multiprocessing.connection
+import multiprocessing
+import os
+import random
+import serial
+import struct
+import sys
+import termios
+import time
 
-from hashlib import sha256
 from PyQt4.QtGui import QApplication
+from serial.serialutil import SerialException
 
+# Import crypto libraries
+import hashlib
 
-str_version = "0.16.01 beta"
-int_version = 1601
+str_version = "0.16.05"
+int_version = 1605
+
 
 ###############################################################################
 #                                CONFIGURATION                                #
@@ -77,17 +80,17 @@ rxm_usb_adapter = True      # False = Use integrated serial interface for RxM
 class CriticalError(Exception):
 
     def __init__(self, function_name, error_message):
-        system("clear")
+        os.system("clear")
         print("\nERROR: M(%s): %s\n" % (function_name, error_message))
-        graceful_exit()
+        graceful_exit(queue=True)
 
 
 class FunctionParameterTypeError(Exception):
 
     def __init__(self, function_name):
-        system("clear")
+        os.system("clear")
         print("\nERROR: M(%s): Wrong input type.\n" % function_name)
-        graceful_exit()
+        graceful_exit(queue=True)
 
 
 ###############################################################################
@@ -97,7 +100,8 @@ class FunctionParameterTypeError(Exception):
 def phase(string, dist):
     """
     Print name of next phase. Next message (about completion), printed after
-    the phase will be printed on same line as the name specified by 'string'.
+    the phase will be printed on same line as the name specified by 'string'
+    at same distance regardless of leading newlines.
 
     :param string: String to be printed.
     :param dist:   Indentation of completion message.
@@ -107,9 +111,16 @@ def phase(string, dist):
     if not isinstance(string, str) or not isinstance(dist, (int, long)):
         raise FunctionParameterTypeError("phase")
 
-    stdout.write(string + ((dist - len(string)) * ' '))
-    stdout.flush()
-    sleep(0.02)
+    n = 0
+    for i in range(len(string)):
+        if string[i] == '\n':
+            n += 1
+        else:
+            break
+
+    spaces = (dist - len(string) + n) * ' '
+    sys.stdout.write(string + spaces)
+    sys.stdout.flush()
 
     return None
 
@@ -125,9 +136,9 @@ def sha2_256(message):
     if not isinstance(message, str):
         raise FunctionParameterTypeError("sha2_256")
 
-    h_function = sha256()
+    h_function = hashlib.sha256()
     h_function.update(message)
-    hex_digest = hexlify(h_function.digest())
+    hex_digest = binascii.hexlify(h_function.digest())
 
     return hex_digest
 
@@ -155,41 +166,32 @@ def verify_checksum(packet):
         return False
 
 
-def clean_exit(message=''):
+def graceful_exit(message='', queue=False):
     """
-    Print exit message and close program.
+    Display a message and exit NH.py.
 
-    :param message: Message to print.
-    :return:        [no return value]
-    """
+    If trickle connection is enabled, put an exit command to
+    pc_queue so main loop can kill processes and exit NH.py.
 
-    if not isinstance(message, str):
-        raise FunctionParameterTypeError("clean_exit")
-
-    system("clear")
-
-    if message:
-        print("\n%s\n" % message)
-
-    print("\nExiting TFC-NaCl.\n")
-    exit()
-
-
-def graceful_exit():
-    """
-    Display a message and exit Tx.py.
-
-    If trickle connection is enabled, output a message to
-    exit_queue so main loop can kill processes and exit.
-
-    :return: None
+    :param: message: Message to print.
+    :param: queue:   Add command to pc_queue when True.
+    :return:         None
     """
 
-    if unittesting:
-        raise SystemExit
+    if not isinstance(message, str) or not isinstance(queue, bool):
+        raise FunctionParameterTypeError("graceful_exit")
+
+    os.system("clear")
+
+    if queue and not unittesting:
+        pc_queue.put("exit|%s" % message)
+        time.sleep(1)
+
     else:
-        exit_queue.put("exit")
-        sleep(1)
+        if message:
+            print("\n%s" % message)
+        print("\nExiting TFC-NaCl.\n")
+        exit()
 
 
 def get_tty_wh():
@@ -207,7 +209,7 @@ def get_tty_wh():
         :return:   [no definition]
         """
 
-        return unpack("hh", ioctl(fd, TIOCGWINSZ, "1234"))
+        return struct.unpack("hh", fcntl.ioctl(fd, termios.TIOCGWINSZ, "1234"))
 
     cr = ioctl_gwin_size(0) or ioctl_gwin_size(1) or ioctl_gwin_size(2)
 
@@ -230,54 +232,53 @@ def print_banner():
 
     string = "Tinfoil Chat NaCl %s" % str_version
 
-    system("clear")
+    os.system("clear")
     width, height = get_tty_wh()
 
-    print((height / 2) - 1) * '\n'
+    print(((height / 2) - 1) * '\n')
 
     # Style 1
-    animation = sysrandint(1, 3)
+    animation = random.randint(1, 3)
     if animation == 1:
         i = 0
         while i <= len(string):
-            stdout.write("\x1b[1A" + ' ')
-            stdout.flush()
+            sys.stdout.write("\x1b[1A" + ' ')
+            sys.stdout.flush()
 
             if i == len(string):
-                print((width - len(string)) / 2) * ' ' + string[:i]
+                print(((width - len(string)) / 2) * ' ' + string[:i])
             else:
-                rc = chr(randrange(32, 126))
-                print((width - len(string)) / 2) * ' ' + string[:i] + rc
+                rc = chr(random.randrange(32, 126))
+                print(((width - len(string)) / 2) * ' ' + string[:i] + rc)
 
             i += 1
-            sleep(0.03)
+            time.sleep(0.03)
 
     # Style 2
     if animation == 2:
         char_l = len(string) * ['']
 
         while True:
-            stdout.write("\x1b[1A" + ' ')
-            stdout.flush()
+            sys.stdout.write("\x1b[1A" + ' ')
+            sys.stdout.flush()
             st = ''
 
             for i in range(len(string)):
                 if char_l[i] != string[i]:
-                    char_l[i] = chr(randrange(32, 126))
+                    char_l[i] = chr(random.randrange(32, 126))
                 else:
                     char_l[i] = string[i]
                 st += char_l[i]
 
-            print((width - len(string)) / 2) * ' ' + st
+            print(((width - len(string)) / 2) * ' ' + st)
 
-            sleep(0.004)
+            time.sleep(0.004)
             if st == string:
                 break
 
     # Style 3
     if animation == 3:
 
-        string = "Tinfoil Chat NaCl 0.16.1"
         dropping_chars = 50
         random_cleanup = 80
         min_speed = 3
@@ -304,7 +305,7 @@ def print_banner():
                 self.completed = []
 
             def reset(self, c_width, speed_min, speed_max):
-                self.char = choice(FChar.list_chr)
+                self.char = random.choice(FChar.list_chr)
                 self.x = randint(1, c_width - 1)
                 self.y = 0
                 self.speed = randint(speed_min, speed_max)
@@ -335,9 +336,9 @@ def print_banner():
                                 self.char = final_string[self.x]
                                 self.completed.append(self.x)
                             except IndexError:
-                                self.char = choice(FChar.list_chr)
+                                self.char = random.choice(FChar.list_chr)
                     else:
-                        self.char = choice(FChar.list_chr)
+                        self.char = random.choice(FChar.list_chr)
 
                     if not self.out_of_bounds_reset(win_w, win_h):
                         scr.addstr(self.y, self.x, self.char, curses.A_NORMAL)
@@ -358,7 +359,7 @@ def print_banner():
 
         # Use insecure but fast PRNG
         def rand():
-            p = sysrandint(0, 1000000000)
+            p = random.randint(0, 1000000000)
             while True:
                 p ^= (p << 21) & 0xffffffffffffffff
                 p ^= (p >> 35)
@@ -429,7 +430,7 @@ def print_banner():
                         window_animation = None
 
                 scr.refresh()
-                sleep(sleep_ms)
+                time.sleep(sleep_ms)
                 steps += 1
         try:
             r = rand()
@@ -439,10 +440,10 @@ def print_banner():
             curses.curs_set(1)
             curses.reset_shell_mode()
             curses.echo()
-            system("clear")
+            os.system("clear")
 
-    sleep(0.3)
-    system("clear")
+    time.sleep(0.3)
+    os.system("clear")
     return None
 
 
@@ -454,7 +455,7 @@ def get_serial_interfaces():
              rx_if: Serial interface that connects to RxM.
     """
 
-    dev_files = [df for df in listdir("/dev/")]
+    dev_files = [df for df in os.listdir("/dev/")]
     dev_files.sort()
 
     tx_if = ''
@@ -492,10 +493,10 @@ def get_serial_interfaces():
         adapters.sort()
 
         if not adapters:
-            clean_exit("Error: No USB-serial adapters were not found.")
+            graceful_exit("Error: No USB-serial adapters were not found.")
 
         if len(adapters) < 2:
-            clean_exit("Error: Settings require two USB-serial adapters.")
+            graceful_exit("Error: Settings require two USB-serial adapters.")
 
         tx_if = "/dev/%s" % adapters[0]
         rx_if = "/dev/%s" % adapters[1]
@@ -513,12 +514,12 @@ def get_serial_interfaces():
         if s0_found:
             tx_if = "/dev/ttyS0"
         else:
-            clean_exit("Error: /dev/ttyS0 not found.")
+            graceful_exit("Error: /dev/ttyS0 not found.")
 
         if s1_found:
             rx_if = "/dev/ttyS1"
         else:
-            clean_exit("Error: /dev/ttyS1 not found.")
+            graceful_exit("Error: /dev/ttyS1 not found.")
 
     return tx_if, rx_if
 
@@ -534,8 +535,8 @@ def dbus_receiver():
     :return: [no return value]
     """
 
-    DBusQtMainLoop(set_as_default=True)
-    bus = SessionBus()
+    dbus.mainloop.qt.DBusQtMainLoop(set_as_default=True)
+    bus = dbus.SessionBus()
     bus.add_signal_receiver(pidgin_to_rxm_queue,
                             dbus_interface="im.pidgin.purple.PurpleInterface",
                             signal_name="ReceivedImMsg")
@@ -559,7 +560,7 @@ def pidgin_to_rxm_queue(account, sender, message, conversation, flags):
         print(account, conversation, flags)
 
     sender = sender.split('/')[0]
-    tstamp = datetime.now().strftime(t_fmt)
+    tstamp = datetime.datetime.now().strftime(t_fmt)
 
     if message.startswith("TFC|N|%s|P|" % int_version):
         to_rxm = str("%s|rx.%s" % (message, sender))  # Unicode to string conv.
@@ -580,10 +581,10 @@ def pidgin_receiver_process():
     """
 
     try:
-        app = QApplication(argv)
+        app = QApplication(sys.argv)
         dbus_receiver()
         app.exec_()
-    except DBusException:
+    except dbus.exceptions.DBusException:
         pass
 
 
@@ -599,17 +600,17 @@ def header_printer_process():
     """
 
     try:
-        bus = SessionBus()
+        bus = dbus.SessionBus()
         obj = bus.get_object("im.pidgin.purple.PurpleService",
                              "/im/pidgin/purple/PurpleObject")
-        purple = Interface(obj, "im.pidgin.purple.PurpleInterface")
+        purple = dbus.Interface(obj, "im.pidgin.purple.PurpleInterface")
         active = purple.PurpleAccountsGetAllActive()[0]
         acco_u = purple.PurpleAccountGetUsername(active)[:-1]
 
         print("TFC-NaCl %s | NH.py\n" % str_version)
         print("Active account: %s\n" % acco_u)
 
-    except DBusException:
+    except dbus.exceptions.DBusException:
         raise CriticalError("header_printer_process", "DBusException. Ensure "
                                                       "Pidgin is running.")
 
@@ -621,15 +622,15 @@ def nh_side_command_process():
     :return: [no return value]
     """
 
-    bus = SessionBus()
+    bus = dbus.SessionBus()
     obj = bus.get_object("im.pidgin.purple.PurpleService",
                          "/im/pidgin/purple/PurpleObject")
-    purple = Interface(obj, "im.pidgin.purple.PurpleInterface")
+    purple = dbus.Interface(obj, "im.pidgin.purple.PurpleInterface")
     account = purple.PurpleAccountsGetAllActive()[0]
 
     while True:
         if nh_side_command.empty():
-            sleep(0.001)
+            time.sleep(0.001)
             continue
 
         cmd = nh_side_command.get()
@@ -638,7 +639,7 @@ def nh_side_command_process():
             contact = cmd.split('|')[5]
             new_conv = purple.PurpleConversationNew(1, account, contact)
             purple.PurpleConversationClearMessageHistory(new_conv)
-            system("clear")
+            os.system("clear")
 
 
 def queue_to_pidgin_process():
@@ -648,15 +649,15 @@ def queue_to_pidgin_process():
     :return: [no return value]
     """
 
-    bus = SessionBus()
+    bus = dbus.SessionBus()
     obj = bus.get_object("im.pidgin.purple.PurpleService",
                          "/im/pidgin/purple/PurpleObject")
-    purple = Interface(obj, "im.pidgin.purple.PurpleInterface")
+    purple = dbus.Interface(obj, "im.pidgin.purple.PurpleInterface")
     account = purple.PurpleAccountsGetAllActive()[0]
 
     while True:
         if message_to_pidgin.empty():
-            sleep(0.001)
+            time.sleep(0.001)
             continue
 
         message = message_to_pidgin.get()
@@ -689,7 +690,7 @@ def nh_to_rxm_sender_process():
 
     while True:
         if packet_to_rxm.empty():
-            sleep(0.001)
+            time.sleep(0.001)
             continue
 
         packet = packet_to_rxm.get()
@@ -717,7 +718,7 @@ def choose_txm_packet_queues(packet):
     if not isinstance(packet, str):
         raise FunctionParameterTypeError("choose_txm_packet_queues")
 
-    timestamp = datetime.now().strftime(t_fmt)
+    timestamp = datetime.datetime.now().strftime(t_fmt)
 
     if packet.startswith("TFC|N|%s|M|" % int_version):
         recipient = packet.split('|')[6]
@@ -726,23 +727,14 @@ def choose_txm_packet_queues(packet):
         packet_to_rxm.put(to_rxm)
         message_to_pidgin.put(packet)
 
-    elif packet.startswith("TFC|N|%s|P|" % int_version):
-        recipient = packet.split('|')[5]
-        print("%s - pub key TxM > %s" % (timestamp, recipient))
-        message_to_pidgin.put(packet)
-
     elif packet.startswith("TFC|N|%s|C|" % int_version):
         print("%s - command TxM > RxM" % timestamp)
         packet_to_rxm.put(packet)
 
-    elif packet.startswith("TFC|N|%s|L|" % int_version):
-        print("%s - Local key TxM > RxM" % timestamp)
-        packet_to_rxm.put(packet)
-
     elif packet.startswith("TFC|N|%s|U|EXIT" % int_version):
-        sleep(0.5)  # Time for nh_to_rxm_sender_process() to send exit-packet.
-        system("clear")
-        graceful_exit()
+        time.sleep(0.5)     # Time for nh_to_rxm_sender_process()
+        os.system("clear")  # to send exit-packet.
+        graceful_exit(queue=True)
 
     elif packet.startswith("TFC|N|%s|U|" % int_version):
         packet_to_rxm.put(packet)
@@ -751,6 +743,15 @@ def choose_txm_packet_queues(packet):
     elif packet.startswith("TFC|N|%s|I|" % int_version):
         # Skip interface configuration packet
         pass
+
+    elif packet.startswith("TFC|N|%s|P|" % int_version):
+        recipient = packet.split('|')[5]
+        print("%s - pub key TxM > %s" % (timestamp, recipient))
+        message_to_pidgin.put(packet)
+
+    elif packet.startswith("TFC|N|%s|L|" % int_version):
+        print("%s - Local key TxM > RxM" % timestamp)
+        packet_to_rxm.put(packet)
 
     else:
         print("Illegal packet from TxM:\n%s" % packet)
@@ -775,7 +776,7 @@ def txm_packet_load_process():
             """
 
             while True:
-                sleep(0.001)
+                time.sleep(0.001)
                 pkg = str(conn.recv())
 
                 if pkg == '':
@@ -787,17 +788,15 @@ def txm_packet_load_process():
                 choose_txm_packet_queues(pkg[:-9])
 
         try:
-            l = Listener(('', 5001))
+            l = multiprocessing.connection.Listener(('', 5001))
             while True:
                 ipc_to_queue(l.accept())
         except EOFError:
-            system("clear")
-            print("\nTxM <> NH IPC disconnected.\n")
-            graceful_exit()
+            graceful_exit("TxM <> NH IPC disconnected.", queue=True)
 
     else:
         while True:
-            sleep(0.001)
+            time.sleep(0.001)
             packet = port_to_txm.readline()
 
             if packet == '':
@@ -820,8 +819,8 @@ def rxm_port_listener():
     while True:
         data = port_to_rxm.readline()
         if data:
-            configure_queue.put('FLIP')
-        sleep(0.001)
+            configure_queue.put("FLIP")
+        time.sleep(0.001)
 
 
 def txm_port_listener():
@@ -835,19 +834,20 @@ def txm_port_listener():
     while True:
         data = port_to_txm.readline()
         if data:
-            configure_queue.put('OK')
-        sleep(0.001)
+            configure_queue.put("OK")
+        time.sleep(0.001)
 
 
-###############################################################################
-#                                     MAIN                                    #
-###############################################################################
+def process_arguments():
+    """
+    Define NH.py settings from arguments passed from command line.
 
-unittesting = False  # Alters function input during unittesting
+    :return: None
+    """
 
-if __name__ == "__main__":
-
-    parser = ArgumentParser("python NH.py", usage="%(prog)s [OPTION]")
+    parser = argparse.ArgumentParser("python NH.py",
+                                     usage="%(prog)s [OPTION]",
+                                     description="More options inside NH.py")
 
     parser.add_argument("-p",
                         action="store_true",
@@ -869,6 +869,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    global dd_sockets
+    global output_pidgin
+    global local_testing
+
     if args.ddsockets:
         dd_sockets = True
 
@@ -877,6 +881,17 @@ if __name__ == "__main__":
 
     if args.local:
         local_testing = True
+
+
+###############################################################################
+#                                     MAIN                                    #
+###############################################################################
+
+unittesting = False  # Alters function input during unittesting
+
+if __name__ == "__main__":
+
+    process_arguments()
 
     if startup_banner:
         print_banner()
@@ -890,42 +905,45 @@ if __name__ == "__main__":
 
         try:
             phase("\nWaiting for socket from Rx.py...", 35)
-            ipc_rx = Client(("localhost", rx_socket))
+            ipc_rx = multiprocessing.connection.Client(("localhost", 
+                                                        rx_socket))
             print("Connection established.\n")
-            sleep(0.5)
-            system("clear")
+            time.sleep(0.5)
+            os.system("clear")
 
         except KeyboardInterrupt:
-            clean_exit()
+            graceful_exit()
 
     else:
         serial_tx, serial_rx = get_serial_interfaces()
 
         try:
-            port_to_txm = Serial(serial_tx, baud_rate, timeout=0.1)
-            port_to_rxm = Serial(serial_rx, baud_rate, timeout=0.1)
+            port_to_txm = serial.Serial(serial_tx, baud_rate, timeout=0.1)
+            port_to_rxm = serial.Serial(serial_rx, baud_rate, timeout=0.1)
 
-        except serialutil.SerialException:
-            clean_exit("Error: Serial interfaces are set incorrectly.")
+        except SerialException:
+            graceful_exit("Error: Serial interfaces are set incorrectly.")
 
         # Auto configure NH side serial ports
         phase("Waiting for configuration packet from TxM...", 46)
 
-        configure_queue = Queue()
-        tl = Process(target=txm_port_listener)
-        rl = Process(target=rxm_port_listener)
+        configure_queue = multiprocessing.Queue()
+        tl = multiprocessing.Process(target=txm_port_listener)
+        rl = multiprocessing.Process(target=rxm_port_listener)
         tl.start()
         rl.start()
 
         try:
             while True:
-                sleep(0.001)
+                time.sleep(0.001)
                 if not configure_queue.empty():
                     command = configure_queue.get()
 
                     if command == "FLIP":
-                        port_to_txm = Serial(serial_rx, baud_rate, timeout=0.1)
-                        port_to_rxm = Serial(serial_tx, baud_rate, timeout=0.1)
+                        port_to_txm = serial.Serial(serial_rx, baud_rate,
+                                                    timeout=0.1)
+                        port_to_rxm = serial.Serial(serial_tx, baud_rate,
+                                                    timeout=0.1)
                         print("Interfaces flipped.\n")
                         tl.terminate()
                         rl.terminate()
@@ -940,25 +958,25 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             tl.terminate()
             rl.terminate()
-            clean_exit()
+            graceful_exit()
 
-    exit_queue = Queue()
-    packet_to_rxm = Queue()
-    packet_from_txm = Queue()
-    nh_side_command = Queue()
-    message_to_pidgin = Queue()
-    message_from_pidgin = Queue()
+    pc_queue = multiprocessing.Queue()
+    packet_to_rxm = multiprocessing.Queue()
+    packet_from_txm = multiprocessing.Queue()
+    nh_side_command = multiprocessing.Queue()
+    message_to_pidgin = multiprocessing.Queue()
+    message_from_pidgin = multiprocessing.Queue()
 
-    hp = Process(target=header_printer_process)
-    sm = Process(target=txm_packet_load_process)
-    po = Process(target=queue_to_pidgin_process)
-    cp = Process(target=nh_side_command_process)
-    nr = Process(target=pidgin_receiver_process)
-    rs = Process(target=nh_to_rxm_sender_process)
+    hp = multiprocessing.Process(target=header_printer_process)
+    sm = multiprocessing.Process(target=txm_packet_load_process)
+    po = multiprocessing.Process(target=queue_to_pidgin_process)
+    cp = multiprocessing.Process(target=nh_side_command_process)
+    nr = multiprocessing.Process(target=pidgin_receiver_process)
+    rs = multiprocessing.Process(target=nh_to_rxm_sender_process)
 
     hp.start()
-    sleep(0.5)  # Allow header_printer_process() time to catch DBusException.
-    sm.start()
+    time.sleep(0.5)  # Allow header_printer_process()
+    sm.start()       # time to catch DBusException.
     po.start()
     cp.start()
     nr.start()
@@ -966,17 +984,18 @@ if __name__ == "__main__":
 
     try:
         while True:
-            if not exit_queue.empty():
-                command = exit_queue.get()
-                if command == "exit":
+            if not pc_queue.empty():
+                command = pc_queue.get()
+                if command.startswith("exit"):
+                    exit_msg = command.split('|')[1]
                     hp.terminate()
                     sm.terminate()
                     po.terminate()
                     cp.terminate()
                     nr.terminate()
                     rs.terminate()
-                    clean_exit()
-            sleep(0.001)
+                    graceful_exit(exit_msg)
+            time.sleep(0.001)
 
     except KeyboardInterrupt:
         hp.terminate()
@@ -985,4 +1004,4 @@ if __name__ == "__main__":
         cp.terminate()
         nr.terminate()
         rs.terminate()
-        clean_exit()
+        graceful_exit()

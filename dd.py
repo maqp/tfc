@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# TFC-NaCl 0.16.01 beta || dd.py
+# TFC-NaCl 0.16.05 || dd.py
 
 """
 GPL License
@@ -17,11 +17,13 @@ A PARTICULAR PURPOSE. See the GNU General Public License for more details. For
 a copy of the GNU General Public License, see <http://www.gnu.org/licenses/>.
 """
 
-from os import system
-from time import sleep
-from multiprocessing.connection import Client, Listener
-from multiprocessing import Process, Queue
-from sys import argv
+import multiprocessing.connection
+import multiprocessing
+import os
+import shlex
+import subprocess
+import sys
+import time
 
 
 ###############################################################################
@@ -99,25 +101,25 @@ GND──┤  Rx──┤   ┝━┿━━━GND
 ###############################################################################
 
 def lr():
-    for i in range(10):
-        system('clear')
+    for _ in range(10):
+        os.system("clear")
         lr_lower()
-        sleep(0.04)
-        system('clear')
+        time.sleep(0.04)
+        os.system("clear")
         lr_upper()
-        sleep(0.04)
-    system("clear")
+        time.sleep(0.04)
+    os.system("clear")
 
 
 def rl():
-    for i in range(10):
-        system('clear')
+    for _ in range(10):
+        os.system("clear")
         rl_lower()
-        sleep(0.04)
-        system('clear')
+        time.sleep(0.04)
+        os.system("clear")
         rl_upper()
-        sleep(0.04)
-    system("clear")
+        time.sleep(0.04)
+    os.system("clear")
 
 
 ###############################################################################
@@ -134,7 +136,7 @@ def tx_process():
 
     while True:
         if io_queue.empty():
-            sleep(0.001)
+            time.sleep(0.001)
             continue
 
         msg = io_queue.get()
@@ -154,11 +156,11 @@ def rx_process():
 
     def ipc_to_queue(conn):
         while True:
-            sleep(0.001)
+            time.sleep(0.001)
             pkg = str(conn.recv())
             io_queue.put(pkg)
     try:
-        l = Listener(('', input_socket))
+        l = multiprocessing.connection.Listener(('', input_socket))
         while True:
             ipc_to_queue(l.accept())
     except EOFError:
@@ -173,55 +175,63 @@ nh_rx_rl = False
 input_socket = 0
 output_socket = 0
 
+# Resize terminal
+id_cmd = "xdotool getactivewindow"
+resize_cmd = "xdotool windowsize --usehints {id} 25 12"
+proc = subprocess.Popen(shlex.split(id_cmd), stdout=subprocess.PIPE)
+windowid, err = proc.communicate()
+proc = subprocess.Popen(shlex.split(resize_cmd.format(id=windowid)))
+proc.communicate()
+
 try:
     # Simulates data diode between Tx.py on left, NH.py on right.
-    if str(argv[1]) == "txnhlr":
+    if str(sys.argv[1]) == "txnhlr":
         tx_nh_lr = True
         input_socket = 5000
         output_socket = 5001
 
     # Simulates data diode between Tx.py on right, NH.py on left.
-    elif str(argv[1]) == "txnhrl":
+    elif str(sys.argv[1]) == "txnhrl":
         tx_nh_rl = True
         input_socket = 5000
         output_socket = 5001
 
     # Simulates data diode between Rx.py on left, NH.py on right.
-    elif str(argv[1]) == "nhrxlr":
+    elif str(sys.argv[1]) == "nhrxlr":
         nh_rx_lr = True
         input_socket = 5002
         output_socket = 5003
 
     # Simulates data diode between Rx.py on right, NH.py on left.
-    elif str(argv[1]) == "nhrxrl":
+    elif str(sys.argv[1]) == "nhrxrl":
         nh_rx_rl = True
         input_socket = 5002
         output_socket = 5003
 
     else:
-        system("clear")
-        print "\nUsage: python dd.py {txnh{lr,rl}, nhrx{lr,rl}\n"
+        os.system("clear")
+        print("\nUsage: python dd.py {txnh{lr,rl}, nhrx{lr,rl}\n")
         exit()
 
 except IndexError:
-    system("clear")
-    print "\nUsage: python dd.py {txnh{lr,rl}, nhrx{lr,rl}}\n"
+    os.system("clear")
+    print("\nUsage: python dd.py {txnh{lr,rl}, nhrx{lr,rl}}\n")
     exit()
 
 try:
-    print('Waiting for socket"')
-    ipx_send = Client(("localhost", output_socket))
+    print("Waiting for socket")
+    ipx_send = multiprocessing.connection.Client(("localhost", output_socket))
     print("Connection established.")
-    sleep(0.3)
-    system("clear")
+    time.sleep(0.3)
+    os.system("clear")
 except KeyboardInterrupt:
     exit()
 
-exit_queue = Queue()
-io_queue = Queue()
+exit_queue = multiprocessing.Queue()
+io_queue = multiprocessing.Queue()
 
-txp = Process(target=tx_process)
-rxp = Process(target=rx_process)
+txp = multiprocessing.Process(target=tx_process)
+rxp = multiprocessing.Process(target=rx_process)
 
 txp.start()
 rxp.start()
@@ -234,7 +244,7 @@ try:
                 txp.terminate()
                 rxp.terminate()
                 exit()
-        sleep(0.01)
+        time.sleep(0.01)
 
 except KeyboardInterrupt:
     txp.terminate()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# TFC-NaCl 0.16.01 beta || Rx.py
+# TFC-NaCl 0.16.05 || Rx.py
 
 """
 GPL License
@@ -17,37 +17,44 @@ A PARTICULAR PURPOSE. See the GNU General Public License for more details. For
 a copy of the GNU General Public License, see <http://www.gnu.org/licenses/>.
 """
 
-from argparse import ArgumentParser
-from base64 import b64decode
-from binascii import hexlify, unhexlify
-from csv import reader, writer
-from datetime import datetime
-from fcntl import ioctl
-from multiprocessing import Process, Queue
-from multiprocessing.connection import Listener
-from os import chdir, listdir, makedirs, rename, system
-from os.path import dirname, exists, isfile
-from random import choice, randrange, randint as sysrandint
-from readline import clear_history
-from serial import Serial, serialutil
-from struct import unpack
-from subprocess import Popen, check_output
-from sys import path, stdin, stdout
-from termios import TIOCGWINSZ
-from threading import Thread
-from time import sleep
-from hashlib import sha256
+import argparse
+import base64
+import binascii
+import csv
 import curses
+import datetime
+import fcntl
+import multiprocessing.connection
+import multiprocessing
+import os.path
+import os
+import random
+import re
+import readline
+import serial
+import struct
+import subprocess
+import sys
+import termios
+import threading
+import time
+import Tkinter
+import _tkinter
+import tkFileDialog
 
-from simplesha3 import sha3256
-from passlib.hash import pbkdf2_sha256
-from passlib.utils import ab64_decode
-from nacl.exceptions import CryptoError
-from nacl.secret import SecretBox
+from serial.serialutil import SerialException
 
+# Import crypto libraries
+import hashlib
+import nacl.exceptions
+import nacl.secret
+import passlib.hash
+import passlib.utils
+import simplesha3
 
-str_version = "0.16.01 beta"
-int_version = 1601
+str_version = "0.16.05"
+int_version = 1605
+
 
 ###############################################################################
 #                                CONFIGURATION                                #
@@ -105,9 +112,8 @@ class CriticalError(Exception):
     """
 
     def __init__(self, function_name, error_message):
-        system("clear")
-        print("\nError: M(%s): %s\n" % (function_name, error_message))
-        graceful_exit()
+        graceful_exit("Error: F(%s): %s" % (function_name, error_message),
+                      queue=True)
 
 
 class FunctionParameterTypeError(Exception):
@@ -117,20 +123,8 @@ class FunctionParameterTypeError(Exception):
     """
 
     def __init__(self, function_name):
-        system("clear")
-        print("\nError: M(%s): Wrong input type.\n" % function_name)
-        graceful_exit()
-
-
-class InvalidDecryptionKeyError(Exception):
-    """
-    Rx.py should gracefully exit if loaded key is invalid.
-    """
-
-    def __init__(self, account):
-        system("clear")
-        print("\nError: Invalid key in keyfile 'keys/%s.e.'\n" % account)
-        graceful_exit()
+        graceful_exit("Error: F(%s): Wrong input type." % function_name,
+                      queue=True)
 
 
 ###############################################################################
@@ -148,9 +142,9 @@ def sha2_256(message):
     if not isinstance(message, str):
         raise FunctionParameterTypeError("sha2_256")
 
-    h_function = sha256()
+    h_function = hashlib.sha256()
     h_function.update(message)
-    hex_digest = hexlify(h_function.digest())
+    hex_digest = binascii.hexlify(h_function.digest())
 
     return hex_digest
 
@@ -166,7 +160,7 @@ def sha3_256(message):
     if not isinstance(message, str):
         raise FunctionParameterTypeError("sha3_256")
 
-    return hexlify(sha3256(message))
+    return binascii.hexlify(simplesha3.sha3256(message))
 
 
 def pbkdf2_hmac_sha256(key, rounds=1000, salt=''):
@@ -191,15 +185,15 @@ def pbkdf2_hmac_sha256(key, rounds=1000, salt=''):
         raise FunctionParameterTypeError("pbkdf2_hmac_sha256")
 
     if rounds < 1:
-        raise CriticalError("pbkdf2_hmac_sha256", "Rounds < 1")
+        raise CriticalError("pbkdf2_hmac_sha256", "Number of rounds < 1")
 
-    derived_key = pbkdf2_sha256.encrypt(key, rounds=rounds, salt=salt)
-
+    derived_key = passlib.hash.pbkdf2_sha256.encrypt(key, rounds=rounds,
+                                                     salt=salt)
     # Separate hash from derived key
     parted_hash = derived_key.split('$')[4]
 
-    hash_bin = ab64_decode(parted_hash)
-    hash_hex = hexlify(hash_bin)
+    hash_bin = passlib.utils.ab64_decode(parted_hash)
+    hash_hex = binascii.hexlify(hash_bin)
 
     return hash_hex
 
@@ -208,7 +202,7 @@ def auth_and_decrypt(account, ct_tag, keyid):
     """
     Authenticate Poly1305 MAC and decrypt XSalsa20 ciphertext.
 
-    :param account: The contact's account name (i.e. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :param ct_tag:  Encrypted packet; nonce||ciphertext||tag.
     :param keyid:   The purported keyID for packet.
     :return:        MAC verification success boolean, plaintext/error message.
@@ -243,7 +237,7 @@ def auth_and_decrypt(account, ct_tag, keyid):
         # Iterate key through PBKDF2 until there is no offset
         i = 0
         while i < offset:
-            stdout.write("\x1b[1A")
+            sys.stdout.write("\x1b[1A")
             print("Key catch up: %s/%s iterations left"
                   % ((offset - i), offset))
 
@@ -254,7 +248,7 @@ def auth_and_decrypt(account, ct_tag, keyid):
 
     try:
         # Construct new crypto_box
-        box = SecretBox(unhexlify(hex_key))
+        box = nacl.secret.SecretBox(binascii.unhexlify(hex_key))
 
         # Authenticate and decrypt ciphertext
         plaintext = box.decrypt(ct_tag)
@@ -265,14 +259,11 @@ def auth_and_decrypt(account, ct_tag, keyid):
         # Store keyID
         write_keyid(account, keyid + 1)
 
-        # Remove padding
-        plaintext = rm_padding(plaintext)
-
         # Log information about missing messages to user's logfile
         if offset > 0:
                 write_log_entry('', account, '', str(offset))
 
-    except CryptoError:
+    except nacl.exceptions.CryptoError:
         return False, "MAC_FAIL"
 
     return True, plaintext
@@ -292,7 +283,7 @@ def get_keyfile_list():
     ensure_dir("keys/")
     kf_list = []
 
-    for f in listdir("keys/"):
+    for f in os.listdir("keys/"):
         if f.endswith(".e"):
             if f.startswith("me.") or f.startswith("rx."):
                 kf_list.append(f)
@@ -306,7 +297,7 @@ def get_key(account):
     """
     Load decryption key for selected contact.
 
-    :param account: The sender's account name (i.e. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :return:        Stored decryption key.
     """
 
@@ -319,8 +310,7 @@ def get_key(account):
     except IOError:
         raise CriticalError("get_key", "%s.e IOError." % account)
 
-    if not validate_key(key):
-        raise InvalidDecryptionKeyError(account)
+    validate_key(key, account)
 
     return key
 
@@ -329,7 +319,7 @@ def key_writer(account, key):
     """
     Write symmetric key to keyfile.
 
-    :param account: The recipient's account name (e.g. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :param key:     Symmetric key to write.
     :return:        None
     """
@@ -337,17 +327,170 @@ def key_writer(account, key):
     if not isinstance(account, str) or not isinstance(key, str):
         raise FunctionParameterTypeError("key_writer")
 
-    ensure_dir("keys/")
-
     try:
-        open("keys/%s" % account, "w+").write(key)
-        written_key = open("keys/%s" % account).readline()
+        ensure_dir("keys/")
+        validate_key(key)
+        open("keys/%s.e" % account, "w+").write(key)
+        written = open("keys/%s.e" % account).readline()
 
     except IOError:
         raise CriticalError("key_writer", "%s.e IOError." % account)
 
-    if written_key != key:
+    if written != key:
         raise CriticalError("key_writer", "Key writing failed.")
+
+    return None
+
+
+def add_rx_keyfile():
+    """
+    Ask for me.xmpp.e keyfile dir, copy keyfile, shred original and create
+    contact.
+
+    :return:    None
+    """
+
+    try:
+        root_ = Tkinter.Tk()
+        root_.withdraw()
+        rx_kf = tkFileDialog.askopenfilename(title="Select keyfile from cont"
+                                                   "act's transmission media")
+        root_.destroy()
+
+        if not rx_kf:
+            print("\nImport aborted.\n")
+            return None
+
+    except _tkinter.TclError:
+        print("\nError: No file dialog available. Manually copy key "
+              "to directory 'keys/' and restart Rx.py.\n")
+        return None
+
+    file_ = rx_kf.split('/')[-1]
+
+    if "Give this file to" in file_:
+        file_ = file_.split(" - Give this file to")[0]
+
+    if not file_.endswith(".e"):
+        print("\nError: Invalid file extension\n")
+        return None
+
+    acco = file_[:-2]
+
+    a_re_rule = "(^(rx)+\..+@.+\..+$)"
+    if not re.match(a_re_rule, acco):
+        print("\nError: Invalid account name in keyfile\n")
+        return None
+
+    nick = file_.split('@')[0][3:]
+    add_contact(acco, nick)
+
+    if not rx_kf:
+        print("\nImport aborted.\n")
+        return None
+
+    pwd = os.getcwd()
+    subprocess.Popen("cp '%s' '%s/keys/%s'" % (rx_kf, pwd, file_),
+                     shell=True).wait()
+    subprocess.Popen("shred -n 3 -z -u '%s'" % rx_kf, shell=True).wait()
+
+    if os.path.isfile(rx_kf):
+        raise CriticalError("process_command", "Keyfile shred failed.")
+    else:
+        print("\nKeyfile copied. Physically destroy the keyfile\n"
+              "transmission media to ensure no copies exists.\n")
+
+    global l_msg_coming
+    global msg_received
+    global m_dictionary
+    global l_file_onway
+    global filereceived
+    global acco_store_f
+    global f_dictionary
+
+    # Initialize data storage dictionaries
+    # Manually prepend {me.,rx.} headers to improve kf name security.
+    l_msg_coming[("rx." + acco[3:])] = False
+    msg_received[("rx." + acco[3:])] = False
+    m_dictionary[("rx." + acco[3:])] = ''
+
+    l_file_onway[("rx." + acco[3:])] = False
+    filereceived[("rx." + acco[3:])] = False
+    f_dictionary[("rx." + acco[3:])] = ''
+    acco_store_f[("me." + acco[3:])] = True
+
+    if file_saving:
+        acco_store_f[("rx." + acco[3:])] = True
+    else:
+        acco_store_f[("rx." + acco[3:])] = False
+
+    if log_messages:
+        acco_store_l[("rx." + acco[3:])] = True
+        acco_store_l[("me." + acco[3:])] = True
+    else:
+        acco_store_l[("rx." + acco[3:])] = False
+        acco_store_l[("me." + acco[3:])] = False
+
+    return None
+
+
+def psk_command(packet):
+    """
+    Add PSK and contact defined in encrypted packet.
+
+    :param packet: Packet to process.
+    :return:       None
+    """
+
+    if not isinstance(packet, str):
+        raise FunctionParameterTypeError("psk_command")
+
+    global l_msg_coming
+    global msg_received
+    global m_dictionary
+
+    try:
+        header, account, nick, psk, = packet.split('|')
+
+    except (ValueError, IndexError):
+        print("\nError: Received invalid packet from TxM.\n")
+        return None
+
+    if not validate_key(psk):
+        print("\nError: Received invalid PSK from TxM\n")
+        return None
+
+    ensure_dir("keys/")
+
+    write_t = threading.Thread(target=key_writer,
+                               args=("me.%s" % account, psk))
+    write_t.start()
+    write_t.join()
+
+    add_contact(("me." + account), nick)
+    time.sleep(0.5)
+
+    # Initialize data storage dictionaries
+    l_msg_coming[("me." + account)] = False
+    msg_received[("me." + account)] = False
+    m_dictionary[("me." + account)] = ''
+
+    l_file_onway[("me." + account)] = False
+    filereceived[("me." + account)] = False
+    f_dictionary[("me." + account)] = ''
+
+    acco_store_f[("me." + account)] = True
+    acco_store_f[("rx." + account)] = False  # Enable only when adding Rx kf
+
+    if log_messages:
+        acco_store_l[("me." + account)] = True
+        acco_store_l[("rx." + account)] = True
+    else:
+        acco_store_l[("me." + account)] = False
+        acco_store_l[("rx." + account)] = False
+
+    os.system("clear")
+    print("\nAdded keys for %s (%s).\n" % (nick, account))
 
     return None
 
@@ -356,7 +499,7 @@ def rotate_key(account, old_key):
     """
     Derive next decryption with PBKDF2-HMAC-SHA256.
 
-    :param account: The sender's account name (e.g. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :param old_key: Old key to pass through HKDF.
     :return:        None
     """
@@ -366,9 +509,24 @@ def rotate_key(account, old_key):
 
     new_key = pbkdf2_hmac_sha256(old_key)
 
-    write_t = Thread(target=key_writer, args=("%s.e" % account, new_key))
+    write_t = threading.Thread(target=key_writer, args=(account, new_key))
     write_t.start()
     write_t.join()
+
+    return None
+
+
+def remove_instructions():
+    """
+    Remove placement instructions that trail keyfile names.
+
+    :return: None
+    """
+
+    for f in os.listdir("keys/"):
+        if "Give this file to" in f:
+            new_name = f.split(" - Give this file to")[0]
+            os.rename("keys/%s" % f, "keys/%s" % new_name)
 
     return None
 
@@ -444,11 +602,13 @@ def ecdhe_command(packet):
     ensure_dir("keys/")
 
     # Write keys using threads
-    write_t = Thread(target=key_writer, args=("me.%s.e" % account, ssk_me))
+    write_t = threading.Thread(target=key_writer, 
+                               args=("me.%s" % account, ssk_me))
     write_t.start()
     write_t.join()
 
-    write_t = Thread(target=key_writer, args=("rx.%s.e" % account, ssk_rx))
+    write_t = threading.Thread(target=key_writer, 
+                               args=("rx.%s" % account, ssk_rx))
     write_t.start()
     write_t.join()
 
@@ -484,79 +644,8 @@ def ecdhe_command(packet):
     else:
         acco_store_f[("rx." + account)] = False
 
-    system("clear")
+    os.system("clear")
     print("\nAdded %s (%s).\n" % (nick, account))
-
-    return None
-
-
-def psk_command(packet):
-    """
-    Add PSK and contact defined in encrypted packet.
-
-    :param packet: Packet to process.
-    :return:       None
-    """
-
-    if not isinstance(packet, str):
-        raise FunctionParameterTypeError("ecdhe_command")
-
-    global l_msg_coming
-    global msg_received
-    global m_dictionary
-
-    try:
-        header, account, nick, psk, = packet.split('|')
-
-    except (ValueError, IndexError):
-        print("\nError: Received invalid packet from TxM.\n")
-        return None
-
-    if not validate_key(psk):
-        print("\nError: PSK received from TxM was invalid.\n")
-        return None
-
-    ensure_dir("keys/")
-
-    write_t = Thread(target=key_writer, args=("me.%s.e" % account, psk))
-    write_t.start()
-    write_t.join()
-
-    add_contact(("me." + account), nick)
-    sleep(0.5)
-
-    # Initialize data storage dictionaries
-    l_msg_coming[("me." + account)] = False
-    msg_received[("me." + account)] = False
-    m_dictionary[("me." + account)] = ''
-
-    l_file_onway[("me." + account)] = False
-    filereceived[("me." + account)] = False
-    acco_store_f[("me." + account)] = True
-    f_dictionary[("me." + account)] = ''
-
-    if log_messages:
-        acco_store_l[("me." + account)] = True
-    else:
-        acco_store_l[("me." + account)] = False
-
-    system("clear")
-    print("\nAdded PSK for %s (%s).\n" % (nick, account))
-
-    return None
-
-
-def remove_instructions():
-    """
-    Remove placement instructions that trail PSK file names.
-
-    :return: None
-    """
-
-    for f in listdir('keys/'):
-        if 'Give this file to' in f:
-            new_name = f.split(' - Give this file to')[0]
-            rename('keys/%s' % f, 'keys/%s' % new_name)
 
     return None
 
@@ -631,7 +720,7 @@ def packet_anomaly(error_type='', packet_type=''):
 
     if create_syslog:
 
-        ts = datetime.now().strftime(l_ts)
+        ts = datetime.datetime.now().strftime(l_ts)
         try:
             with open("syslog.tfc", "a+") as f:
                 f.write("%s Automatic log entry: %s\n" % (ts, log_msg))
@@ -643,62 +732,67 @@ def packet_anomaly(error_type='', packet_type=''):
     return None
 
 
-def clean_exit(message=''):
+def graceful_exit(message='', queue=False):
     """
-    Print message and exit Rx.py.
+    Display a message and exit Rx.py.
 
-    :param message: Message to print.
-    :return:        [no return value]
-    """
+    If queue is True, put an exit command to exit_queue
+    so main loop can kill processes and exit Rx.py.
 
-    if not isinstance(message, str):
-        raise FunctionParameterTypeError("clean_exit")
-
-    system("clear")
-
-    if message:
-        print("\n%s\n" % message)
-
-    print("\nExiting TFC-NaCl.\n")
-    exit()
-
-
-def graceful_exit():
-    """
-    Input exit command to queue.
-
-    :return: None
+    :param: message: Message to print.
+    :param: queue:   Add command to exit_queue when True.
+    :return:         None
     """
 
-    if unittesting:
-        raise SystemExit
+    if not isinstance(message, str) or not isinstance(queue, bool):
+        raise FunctionParameterTypeError("graceful_exit")
+
+    os.system("clear")
+
+    if queue and not unittesting:
+        pc_queue.put("exit|%s" % message)
+
     else:
-        pc_queue.put("exit")
-        sleep(2)
+        if message:
+            print("\n%s" % message)
+        print("\nExiting TFC-NaCl.\n")
+        exit()
 
 
-def validate_key(key):
+def validate_key(key, account=''):
     """
-    Check that hex representation of key was valid.
+    Check that key is valid. Gracefully exit if keys have a problem.
 
-    :param key: Key to validate.
-    :return:    None
+    :param key:     Key to validate.
+    :param account: Origin of key.
+    :return:        True/False depending on key validation.
     """
 
-    if not isinstance(key, str):
+    if not isinstance(key, str) or not isinstance(account, str):
         raise FunctionParameterTypeError("validate_key")
 
     # Verify key consists only from hex chars
     if not set(key.lower()).issubset("abcdef0123456789"):
-        print("\nError: Illegal character detected.\n")
-        return False
+        if not account:
+            print("\nError: Illegal character in key.\n")
+            return False
+
+        raise CriticalError("validate_key",
+                            "Illegal character in %s.e" % account)
 
     # Verify key length
     if len(key) != 64:
-        print("\nError: Illegal length key.\n")
-        return False
+        if not account:
+            print("\nError: Illegal length key.\n")
+            return False
 
-    return True
+        raise CriticalError("validate_key",
+                            "Illegal key length in %s.e" % account)
+
+    if not account:
+        return True
+
+    return None
 
 
 ###############################################################################
@@ -720,7 +814,7 @@ def add_contact(account, nick):
     if not isinstance(account, str) or not isinstance(nick, str):
         raise FunctionParameterTypeError("add_contact")
 
-    if not isfile(".rx_contacts"):
+    if not os.path.isfile(".rx_contacts"):
         open(".rx_contacts", "a+").close()
 
     try:
@@ -751,7 +845,7 @@ def add_keyfiles():
 
     try:
         with open(".rx_contacts", "a+") as f:
-            for row in reader(f):
+            for row in csv.reader(f):
                 c_list.append(row)
 
     except IOError:
@@ -766,7 +860,6 @@ def add_keyfiles():
                 existing = True
 
         if not existing:
-
             if account == "me.local":
                 add_contact("me.local", "local")
 
@@ -776,7 +869,7 @@ def add_keyfiles():
                 continue
 
             elif account.startswith("me."):
-                system("clear")
+                os.system("clear")
                 print("TFC-NaCl %s || Rx.py\n" % str_version)
                 print("New contact '%s' found." % account)
                 def_nick = account.split('@')[0][3:]
@@ -819,7 +912,7 @@ def get_keyid(account):
     to be iterated through PBKDF2-HMAC-SHA256 to produce current key. keyID is
     increased by one after every message and command decryption.
 
-    :param account: The recipient's account name (e.g. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :return:        The keyID (integer).
     """
 
@@ -832,7 +925,7 @@ def get_keyid(account):
         id_fnd = False
 
         with open(".rx_contacts") as f:
-            for row in reader(f):
+            for row in csv.reader(f):
                 c_list.append(row)
 
         for i in range(len(c_list)):
@@ -843,7 +936,6 @@ def get_keyid(account):
         if not id_fnd:
             return -1
 
-        # Verify keyID is positive
         if key_id > 0:
             return key_id
         else:
@@ -876,7 +968,7 @@ def get_nick(account):
 
     try:
         with open(".rx_contacts") as f:
-            for row in reader(f):
+            for row in csv.reader(f):
                 clst.append(row)
 
         for i in range(len(clst)):
@@ -891,7 +983,7 @@ def get_nick(account):
         raise CriticalError("get_nick", ".rx_contacts IndexError.")
 
     if nick == '' or keyid == '':
-        raise CriticalError("get_nick", "Found no nick for %s." % account)
+        raise CriticalError("get_nick", "Couldn't find nick for %s." % account)
 
     return nick
 
@@ -900,7 +992,7 @@ def write_keyid(account, keyid):
     """
     Write new keyID for contact to .rx_contacts.
 
-    :param account: The recipient's account name (e.g. alice@jabber.org).
+    :param account: The contacts's account name (e.g. alice@jabber.org).
     :param keyid:   The counter of message, defines the offset in keyfile.
     :return:        None
     """
@@ -909,13 +1001,13 @@ def write_keyid(account, keyid):
         raise FunctionParameterTypeError("write_keyid")
 
     if keyid < 1:
-        raise CriticalError("write_keyid", "Keyid less than 1.")
+        raise CriticalError("write_keyid", "KeyID less than 1.")
 
     try:
         c_list = []
 
         with open(".rx_contacts") as f:
-            for row in reader(f):
+            for row in csv.reader(f):
                 c_list.append(row)
 
         account_found = False
@@ -930,7 +1022,7 @@ def write_keyid(account, keyid):
                                 % account)
 
         with open(".rx_contacts", 'w') as f:
-            writer(f).writerows(c_list)
+            csv.writer(f).writerows(c_list)
 
     except IOError:
         raise CriticalError("write_keyid", ".rx_contacts IOError.")
@@ -957,7 +1049,7 @@ def write_nick(account, nick):
         c_list = []
 
         with open(".rx_contacts") as f:
-            for row in reader(f):
+            for row in csv.reader(f):
                 c_list.append(row)
 
         account_found = False
@@ -972,7 +1064,7 @@ def write_nick(account, nick):
                                 % account)
 
         with open(".rx_contacts", 'w') as f:
-            writer(f).writerows(c_list)
+            csv.writer(f).writerows(c_list)
 
     except IOError:
         raise CriticalError("write_nick", ".rx_contacts IOError.")
@@ -993,7 +1085,7 @@ def get_list_of_accounts():
     account_list = []
     ensure_dir("keys/")
 
-    for f in listdir("keys/"):
+    for f in os.listdir("keys/"):
         if f.endswith(".e") and (f.startswith("me.") or f.startswith("rx.")):
             account_list.append(f[:-2])
 
@@ -1012,11 +1104,11 @@ def check_keyfile_parity():
     me_list = []
     rx_list = []
 
-    for f in listdir("keys/"):
+    for f in os.listdir("keys/"):
         if f.endswith(".e") and f.startswith("me.") and f != "me.local.e":
             me_list.append(f[3:][:-2])
 
-    for f in listdir("keys/"):
+    for f in os.listdir("keys/"):
         if f.endswith(".e") and f.startswith("rx."):
             rx_list.append(f[3:][:-2])
 
@@ -1045,7 +1137,7 @@ def rm_contact(parameters):
     """
     Remove account and keyfile from TxM and RxM.
 
-    :param parameters: User account to be separated from command.
+    :param parameters: Contact's account to be separated from command.
     :return:           None
     """
 
@@ -1074,11 +1166,13 @@ def rm_contact(parameters):
         print("\nRxM has no contact %s to remove.\n" % account)
         return None
 
-    if isfile("keys/me.%s.e" % account):
-        Popen("shred -n 3 -z -u keys/me.%s.e" % account, shell=True).wait()
+    if os.path.isfile("keys/me.%s.e" % account):
+        subprocess.Popen("shred -n 3 -z -u keys/me.%s.e" % account,
+                         shell=True).wait()
 
-    if isfile("keys/rx.%s.e" % account):
-        Popen("shred -n 3 -z -u keys/rx.%s.e" % account, shell=True).wait()
+    if os.path.isfile("keys/rx.%s.e" % account):
+        subprocess.Popen("shred -n 3 -z -u keys/rx.%s.e" % account,
+                         shell=True).wait()
 
     print("\n%s removed.\n" % account)
     return None
@@ -1100,7 +1194,7 @@ def base64_decode(content):
         raise FunctionParameterTypeError("base64_decode")
 
     try:
-        decoded = b64decode(content)
+        decoded = base64.b64decode(content)
     except TypeError:
         return "B64D_ERROR"
 
@@ -1122,16 +1216,15 @@ def rm_padding(string):
 
 
 ###############################################################################
-#                           COMMANDS AND FUNCTIONS                            #
+#                                    MISC                                     #
 ###############################################################################
-
 
 def write_log_entry(nick, account, message, dropped=''):
     """
     Write log file to store conversations.
 
     :param nick:    Nickname for contact.
-    :param account: The contact's account name (i.e. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :param message: Message to store in log file.
     :param dropped: Number of dropped messages.
     :return:        None
@@ -1144,7 +1237,7 @@ def write_log_entry(nick, account, message, dropped=''):
         raise FunctionParameterTypeError("write_log_entry")
 
     message = message.strip('\n')
-    t_stamp = datetime.now().strftime(l_ts)
+    t_stamp = datetime.datetime.now().strftime(l_ts)
     ensure_dir("logs/")
 
     try:
@@ -1195,7 +1288,8 @@ def yes(prompt):
 def phase(string, dist):
     """
     Print name of next phase. Next message (about completion), printed after
-    the phase will be printed on same line as the name specified by 'string'.
+    the phase will be printed on same line as the name specified by 'string'
+    at same distance regardless of leading newlines.
 
     :param string: String to be printed.
     :param dist:   Indentation of completion message.
@@ -1205,9 +1299,16 @@ def phase(string, dist):
     if not isinstance(string, str) or not isinstance(dist, (int, long)):
         raise FunctionParameterTypeError("phase")
 
-    stdout.write(string + ((dist - len(string)) * ' '))
-    stdout.flush()
-    sleep(0.02)
+    n = 0
+    for i in range(len(string)):
+        if string[i] == '\n':
+            n += 1
+        else:
+            break
+
+    spaces = (dist - len(string) + n) * ' '
+    sys.stdout.write(string + spaces)
+    sys.stdout.flush()
 
     return None
 
@@ -1227,7 +1328,7 @@ def get_tty_wh():
         :return:   Width and height.
         """
 
-        return unpack("hh", ioctl(fd, TIOCGWINSZ, "1234"))
+        return struct.unpack("hh", fcntl.ioctl(fd, termios.TIOCGWINSZ, "1234"))
 
     cr = ioctl_gwin_size(0) or ioctl_gwin_size(1) or ioctl_gwin_size(2)
 
@@ -1250,54 +1351,53 @@ def print_banner():
 
     string = "Tinfoil Chat NaCl %s" % str_version
 
-    system("clear")
+    os.system("clear")
     width, height = get_tty_wh()
 
-    print((height / 2) - 1) * '\n'
+    print(((height / 2) - 1) * '\n')
 
     # Style 1
-    animation = sysrandint(1, 3)
+    animation = random.randint(1, 3)
     if animation == 1:
         i = 0
         while i <= len(string):
-            stdout.write("\x1b[1A" + ' ')
-            stdout.flush()
+            sys.stdout.write("\x1b[1A" + ' ')
+            sys.stdout.flush()
 
             if i == len(string):
-                print((width - len(string)) / 2) * ' ' + string[:i]
+                print(((width - len(string)) / 2) * ' ' + string[:i])
             else:
-                rc = chr(randrange(32, 126))
-                print((width - len(string)) / 2) * ' ' + string[:i] + rc
+                rc = chr(random.randrange(32, 126))
+                print(((width - len(string)) / 2) * ' ' + string[:i] + rc)
 
             i += 1
-            sleep(0.03)
+            time.sleep(0.03)
 
     # Style 2
     if animation == 2:
         char_l = len(string) * ['']
 
         while True:
-            stdout.write("\x1b[1A" + ' ')
-            stdout.flush()
+            sys.stdout.write("\x1b[1A" + ' ')
+            sys.stdout.flush()
             st = ''
 
             for i in range(len(string)):
                 if char_l[i] != string[i]:
-                    char_l[i] = chr(randrange(32, 126))
+                    char_l[i] = chr(random.randrange(32, 126))
                 else:
                     char_l[i] = string[i]
                 st += char_l[i]
 
-            print((width - len(string)) / 2) * ' ' + st
+            print(((width - len(string)) / 2) * ' ' + st)
 
-            sleep(0.004)
+            time.sleep(0.004)
             if st == string:
                 break
 
     # Style 3
     if animation == 3:
 
-        string = "Tinfoil Chat NaCl 0.16.1"
         dropping_chars = 50
         random_cleanup = 80
         min_speed = 3
@@ -1324,7 +1424,7 @@ def print_banner():
                 self.completed = []
 
             def reset(self, c_width, speed_min, speed_max):
-                self.char = choice(FChar.list_chr)
+                self.char = random.choice(FChar.list_chr)
                 self.x = randint(1, c_width - 1)
                 self.y = 0
                 self.speed = randint(speed_min, speed_max)
@@ -1355,9 +1455,9 @@ def print_banner():
                                 self.char = final_string[self.x]
                                 self.completed.append(self.x)
                             except IndexError:
-                                self.char = choice(FChar.list_chr)
+                                self.char = random.choice(FChar.list_chr)
                     else:
-                        self.char = choice(FChar.list_chr)
+                        self.char = random.choice(FChar.list_chr)
 
                     if not self.out_of_bounds_reset(win_w, win_h):
                         scr.addstr(self.y, self.x, self.char, curses.A_NORMAL)
@@ -1378,7 +1478,7 @@ def print_banner():
 
         # Use insecure but fast PRNG
         def rand():
-            p = sysrandint(0, 1000000000)
+            p = random.randint(0, 1000000000)
             while True:
                 p ^= (p << 21) & 0xffffffffffffffff
                 p ^= (p >> 35)
@@ -1449,7 +1549,7 @@ def print_banner():
                         window_animation = None
 
                 scr.refresh()
-                sleep(sleep_ms)
+                time.sleep(sleep_ms)
                 steps += 1
         try:
             r = rand()
@@ -1459,10 +1559,10 @@ def print_banner():
             curses.curs_set(1)
             curses.reset_shell_mode()
             curses.echo()
-            system("clear")
+            os.system("clear")
 
-    sleep(0.3)
-    system("clear")
+    time.sleep(0.3)
+    os.system("clear")
     return None
 
 
@@ -1501,13 +1601,148 @@ def ensure_dir(directory):
         raise FunctionParameterTypeError("ensure_dir")
 
     try:
-        name = dirname(directory)
-        if not exists(name):
-            makedirs(name)
+        name = os.path.dirname(directory)
+        if not os.path.exists(name):
+            os.makedirs(name)
     except OSError:
         raise CriticalError("ensure_dir", "No directory specified.")
 
     return None
+
+
+def print_headers():
+    """
+    Print headers.
+
+    :return: None
+    """
+
+    logs_b = "on" if log_messages else "off"
+    file_b = "on" if file_saving else "off"
+
+    os.system("clear")
+    print("TFC-NaCl %s || Rx.py || Logging %s || File "
+          "reception %s\n" % (str_version, logs_b, file_b))
+
+    return None
+
+
+def process_arguments():
+    """
+    Define Rx.py settings from arguments passed from command line.
+
+    :return: None
+    """
+
+    parser = argparse.ArgumentParser("python Tx.py",
+                                     usage="%(prog)s [OPTION]",
+                                     description="More options inside Tx.py")
+
+    parser.add_argument("-i",
+                        action="store_true",
+                        default=False,
+                        dest="l_t_notify",
+                        help="do not notify about incoming long transmissions")
+
+    parser.add_argument("-f",
+                        action="store_true",
+                        default=False,
+                        dest="f_save",
+                        help="enable file saving during start")
+
+    parser.add_argument("-k",
+                        action="store_true",
+                        default=False,
+                        dest="keep_l_f",
+                        help="enable storage of locally received files")
+
+    parser.add_argument("-m",
+                        action="store_true",
+                        default=False,
+                        dest="m_logging",
+                        help="enable message logging by default")
+
+    parser.add_argument("-l", action="store_true",
+                        default=False,
+                        dest="local_t",
+                        help="enable local testing mode")
+
+    parser.add_argument("-a", action="store_true",
+                        default=False,
+                        dest="auto_close_fr",
+                        help="auto-close file reception after receiving file")
+
+    args = parser.parse_args()
+
+    global l_message_incoming
+    global file_saving
+    global keep_local_files
+    global log_messages
+    global local_testing
+    global a_close_f_recv
+
+    if args.l_t_notify:
+        l_message_incoming = False
+
+    if args.f_save:
+        file_saving = True
+
+    if args.keep_l_f:
+        keep_local_files = True
+
+    if args.m_logging:
+        log_messages = True
+
+    if args.local_t:
+        local_testing = True
+
+    if args.auto_close_fr:
+        a_close_f_recv = True
+
+
+def search_serial_interfaces():
+    """
+    Search serial interfaces.
+
+    :return: Serial interface to use.
+    """
+
+    dev_files = [df for df in os.listdir("/dev/")]
+    dev_files.sort()
+    serial_iface = ''
+
+    if nh_usb_adapter:
+        for dev_file in dev_files:
+            if dev_file.startswith("ttyUSB"):
+                serial_iface = "/dev/%s" % dev_file
+                break
+
+        if not serial_iface:
+            graceful_exit("Error: No USB-serial adapter was not found.")
+
+    else:
+        os_name = subprocess.check_output(["grep", "PRETTY_NAME",
+                                           "/etc/os-release"])
+        rpi_distros = ["Raspbian GNU/Linux"]
+
+        rpi_in_use = False
+        for distro in rpi_distros:
+            if distro in os_name:
+                rpi_in_use = True
+
+        integrated_if = "ttyAMA0" if rpi_in_use else "ttyS0"
+
+        integrated_found = False
+        for dev_file in dev_files:
+            if dev_file == integrated_if:
+                integrated_found = True
+
+        if integrated_found:
+            serial_iface = "/dev/%s" % integrated_if
+        else:
+            graceful_exit("Error: /dev/%s was not found." % integrated_if)
+
+        return serial_iface
 
 
 ###############################################################################
@@ -1521,7 +1756,7 @@ def noise_packet(account):
     If print_noise_pkg is True, show a notification about noise packet.
     Discard long messages being received from sender.
 
-    :param account: Sender's account (e.g. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :return:        None
     """
 
@@ -1552,7 +1787,7 @@ def cancel_message(account):
 
     Discard long messages being received from sender.
 
-    :param account: Sender's account (e.g. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :return:        None
     """
 
@@ -1575,7 +1810,7 @@ def cancel_file(account):
     """
     Process cancel file packet.
 
-    :param account: Sender's account (e.g. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :return:        None
     """
 
@@ -1603,7 +1838,7 @@ def short_message(account, packet):
 
     Strip header from packet and add message to m_dictionary.
 
-    :param account: Sender's account (e.g. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :param packet:  Packet to process.
     :return:        None
     """
@@ -1629,7 +1864,7 @@ def short_file(account, packet):
 
     Strip header from packet and add file to m_dictionary.
 
-    :param account: Sender's account (e.g. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :param packet:  Packet to process.
     :return:        None
     """
@@ -1640,10 +1875,10 @@ def short_file(account, packet):
     if file_saving or acco_store_f[account]:
         if l_file_onway[account]:
             if account.startswith("me."):
-                print("\nFile transmission to %s cancelled.\n" 
+                print("\nFile transmission to %s cancelled.\n"
                       % get_nick(account))
             if account.startswith("rx."):
-                print("\n%s cancelled file transmission.\n" 
+                print("\n%s cancelled file transmission.\n"
                       % get_nick(account))
 
         filereceived[account] = True
@@ -1651,8 +1886,13 @@ def short_file(account, packet):
         f_dictionary[account] = packet[1:]
 
     else:
-        print("\n%s tried to send a file but file reception is disabled.\n"
-              % get_nick(account))
+        if account.startswith("rx."):
+            print("\n%s is sending file but file reception is disabled.\n"
+                  % get_nick(account))
+
+        elif account.startswith("me.") and keep_local_files:
+            print("\nReceiving copy of sent file "
+                  "but file reception is disabled.\n")
 
     return None
 
@@ -1663,7 +1903,7 @@ def long_message_start(account, packet):
 
     Strip header from packet and add first part of message to m_dictionary.
 
-    :param account: Sender's account (e.g. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :param packet:  Packet to process.
     :return:        None
     """
@@ -1691,7 +1931,7 @@ def long_file_start(account, packet):
 
     Strip header from packet and add first part of file to f_dictionary.
 
-    :param account: Sender's account (e.g. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :param packet:  Packet to process.
     :return:        None
     """
@@ -1702,10 +1942,10 @@ def long_file_start(account, packet):
     if file_saving or acco_store_f[account]:
         if l_file_onway[account]:
             if account.startswith("me."):
-                print("\nFile transmission to %s cancelled.\n" 
+                print("\nFile transmission to %s cancelled.\n"
                       % get_nick(account))
             if account.startswith("rx."):
-                print("\n%s cancelled file transmission.\n" 
+                print("\n%s cancelled file transmission.\n"
                       % get_nick(account))
 
         name, size, p_count, eta, data = packet.split('|')
@@ -1741,7 +1981,7 @@ def long_message_append(account, packet):
 
     Strip header from packet and append part of message to m_dictionary.
 
-    :param account: Sender's account (e.g. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :param packet:  Packet to process.
     :return:        None
     """
@@ -1761,7 +2001,7 @@ def long_file_append(account, packet):
 
     Strip header from packet and append part of file to f_dictionary.
 
-    :param account: Sender's account (e.g. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :param packet:  Packet to process.
     :return:        None
     """
@@ -1783,7 +2023,7 @@ def long_message_end(account, packet):
 
     Strip header from packet and append last part of message to m_dictionary.
 
-    :param account: Sender's account (e.g. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :param packet:  Packet to process.
     :return:        None
     """
@@ -1796,7 +2036,7 @@ def long_message_end(account, packet):
     hash_of_message = m_dictionary[account][-64:]
 
     if sha3_256(message_content) != hash_of_message:
-        system("clear")
+        os.system("clear")
         packet_anomaly("hash", "message")
         return None
 
@@ -1816,7 +2056,7 @@ def long_file_end(account, packet):
 
     Strip header from packet and append last part of file to f_dictionary.
 
-    :param account: Sender's account (e.g. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :param packet:  Packet to process.
     :return:        None
     """
@@ -1830,7 +2070,7 @@ def long_file_end(account, packet):
         hash_of_file = f_dictionary[account][-64:]
 
         if sha3_256(file_content) != hash_of_file:
-            system("clear")
+            os.system("clear")
             packet_anomaly("hash", "file")
             return None
 
@@ -1846,7 +2086,7 @@ def process_received_messages(account):
     """
     Show message and if log_messages is True, add message to logfile.
 
-    :param account: Sender's account (e.g. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :return:        None
     """
 
@@ -1865,7 +2105,7 @@ def process_received_messages(account):
 
         # Print timestamp and message to user
         if display_time:
-            ts = datetime.now().strftime(d_ts)
+            ts = datetime.datetime.now().strftime(d_ts)
             print("%s  %s:  %s" % (ts, nick, m_dictionary[account]))
         else:
             print("%s:  %s" % (nick, m_dictionary[account]))
@@ -1890,7 +2130,7 @@ def process_received_files(account):
     """
     Decode and store received file.
 
-    :param account: Sender's account (e.g. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :return:        None
     """
 
@@ -1906,8 +2146,10 @@ def process_received_files(account):
                 ensure_dir("files/")
 
                 packet = str(f_dictionary[account])
-                f_data = packet.split('|')[4]
                 f_name = packet.split('|')[0]
+                f_data = packet.split('|')[4]
+                if f_name.startswith('.'):
+                    f_name = "Dotfile %s" % f_name[1:]
                 f_orig = f_name
 
                 if account.startswith("me."):
@@ -1915,20 +2157,34 @@ def process_received_files(account):
 
                 # Concatenate '(n)' for duplicate file names
                 fn_lst = f_name.split('.')
-                filext = fn_lst[-1]
-                fn_lst.pop(-1)
-                f_name = '.'.join(fn_lst)
-                f_init = f_name
 
-                if isfile("files/%s.%s" % (f_name, filext)):
-                    i = 1
-                    while isfile("files/%s.%s" % (f_name, filext)):
-                        f_name = "%s(%s)" % (f_init, i)
-                        i += 1
+                if len(fn_lst) > 1:
+                    filext = fn_lst[-1]
+                    fn_lst.pop(-1)
+                    f_name = '.'.join(fn_lst)
+                    f_init = f_name
+
+                    if os.path.isfile("files/%s.%s" % (f_name, filext)):
+                        i = 1
+                        while os.path.isfile("files/%s.%s" % (f_name, filext)):
+                            f_name = "%s(%s)" % (f_init, i)
+                            i += 1
+
+                    final_name = "%s.%s" % (f_name, filext)
+
+                else:
+                    f_init = f_name
+                    if os.path.isfile("files/%s" % f_name):
+                        i = 1
+                        while os.path.isfile("files/%s" % f_name):
+                            f_name = "%s(%s)" % (f_init, i)
+                            i += 1
+
+                    final_name = f_name
 
                 # Decode and store file data
                 decoded = base64_decode(f_data)
-                open("files/%s.%s" % (f_name, filext), "w+").write(decoded)
+                open("files/%s" % final_name, "w+").write(decoded)
 
                 # Print notification
                 if account.startswith("me."):
@@ -1977,7 +2233,7 @@ def nh_packet_loading_process(ret=False):
     if local_testing:
         try:
             while True:
-                sleep(0.001)
+                time.sleep(0.001)
                 packet = str(conn.recv())
 
                 if packet == '':
@@ -1986,18 +2242,16 @@ def nh_packet_loading_process(ret=False):
                 packet = packet.strip('\n')
                 if verify_checksum(packet):
                     if ret:
-                        return packet[:-9]                    
+                        return packet[:-9]
                     else:
                         nh_queue.put(packet[:-9])
 
         except EOFError:
-            system("clear")
-            print("\nNH <> RxM IPC disconnected.\n")
-            graceful_exit()
+            graceful_exit("NH <> RxM IPC disconnected.", queue=True)
 
     else:
         while True:
-            sleep(0.001)
+            time.sleep(0.001)
             packet = port_to_nh.readline()
 
             if packet == '':
@@ -2040,7 +2294,7 @@ def message_packet(packet):
         # Check that keyID for account exists
         if get_keyid(account) == -1:
             print("\nFailed to load key ID for %s.\n"
-                  "Message/file could not be decrypted.\n") % account[3:]
+                  "Message/file could not be decrypted.\n" % account[3:])
             return None
 
         # Check that purported keyID is greater than stored one
@@ -2067,19 +2321,22 @@ def message_packet(packet):
         return None
 
     # Check that keyfile for decryption exists
-    if not isfile("keys/%s.e" % account):
+    if not os.path.isfile("keys/%s.e" % account):
         print("\nError: keyfile for contact %s was not found.\n"
               "Message could not be decrypted.\n" % account)
         return None
 
     # Decrypt message if MAC verification succeeds
-    valid_mac, packet = auth_and_decrypt(account, ct_tag, keyid)
+    valid_mac, decrypted_packet = auth_and_decrypt(account, ct_tag, keyid)
 
     if not valid_mac:
         packet_anomaly("MAC", "message")
         return None
 
-    process_message(packet, account)
+    # Remove padding
+    decrypted_packet = rm_padding(decrypted_packet)
+
+    process_message(decrypted_packet, account)
     return None
 
 
@@ -2088,7 +2345,7 @@ def process_message(packet, account):
     Process messages / files received from TxM / contact.
 
     :param packet:  Message /file packet.
-    :param account: Sender's account (e.g. alice@jabber.org).
+    :param account: The contact's account name (e.g. alice@jabber.org).
     :return:        None
     """
 
@@ -2183,7 +2440,7 @@ def command_packet(packet):
         return None
 
     # Check that RxM side local keyfile exists
-    if not isfile("keys/me.local.e"):
+    if not os.path.isfile("keys/me.local.e"):
         print("\nError: me.local.e was not found.\n"
               "Command could not be decrypted.\n")
         return None
@@ -2194,6 +2451,9 @@ def command_packet(packet):
     if not valid_mac:
         packet_anomaly("MAC", "command")
         return None
+
+    # Remove padding
+    decrypted_cmd = rm_padding(decrypted_cmd)
 
     # Process command
     process_command(decrypted_cmd)
@@ -2211,42 +2471,62 @@ def process_command(cmd):
     if not isinstance(cmd, str):
         raise FunctionParameterTypeError("process_command")
 
-    global file_saving
-    global l_file_onway
-    global filereceived
-    global f_dictionary
-    global acco_store_f
-    global acco_store_l
-
-    # Discard noise commands
     if cmd == 'N':
         if print_noise_pkg:
             print("Received noise command from local TxM.")
         return None
 
-    # New contact public keys
-    elif cmd.startswith('A'):
-        ecdhe_command(cmd)
+    elif cmd.startswith("EXIT"):
+        graceful_exit(queue=True)
 
-    # Contact PSK
-    elif cmd.startswith("PSK"):
-        psk_command(cmd)
+    elif cmd == "CLEAR":
+        os.system("clear")
 
-    # Remove contact
+    elif cmd.startswith("LOGGING"):
+        control_logging(cmd)
+
+    elif cmd.startswith("STORE"):
+        control_storing(cmd)
+
+    elif cmd.startswith("ASKRXKF"):
+        add_rx_keyfile()
+
     elif cmd.startswith("REMOVE"):
         rm_contact(cmd)
 
-    # Exit Rx.py
-    elif cmd.startswith("EXIT"):
-        system("clear")
-        graceful_exit()
+    elif cmd.startswith('A'):
+        ecdhe_command(cmd)
 
-    # Encrypted screen clearing
-    elif cmd == "CLEAR":
-        system("clear")
+    elif cmd.startswith("PSK"):
+        psk_command(cmd)
+
+    elif cmd.startswith("NICK"):
+        header, account, nick = cmd.split('|')
+        write_nick(account, nick)
+        stored_nick = get_nick(account)
+        print("\nChanged %s nick to %s.\n" % (account[3:], stored_nick))
+
+    else:
+        raise CriticalError("process_command", "Invalid command.")
+
+    return None
+
+
+def control_logging(cmd):
+    """
+    Enable logging for user / all.
+
+    :param cmd: Parameters not yet separated.
+    :return:    None
+    """
+
+    if not isinstance(cmd, str):
+        raise FunctionParameterTypeError("control_logging")
+
+    global acco_store_l
 
     # Global message logging
-    elif cmd == "LOGGING|ENABLE":
+    if cmd == "LOGGING|ENABLE":
         all_enabled = True
         for account in get_list_of_accounts():
             if not acco_store_l[account]:
@@ -2279,10 +2559,10 @@ def process_command(cmd):
             if account not in get_list_of_accounts():
                 raise IndexError
         except IndexError:
-            print("\nError: Invalid account.\n")
+            print("\nError: No receiving keyfile for account found.\n")
             return None
 
-        if acco_store_l[account] and acco_store_l["rx." + account[3:]]:
+        if acco_store_l[account] and acco_store_l["me." + account[3:]]:
             print("\nLogging for %s is already enabled.\n" % account[3:])
         else:
             print("\nLogging for %s has been enabled.\n" % account[3:])
@@ -2295,22 +2575,44 @@ def process_command(cmd):
             if account not in get_list_of_accounts():
                 raise IndexError
         except IndexError:
-            print("\nError: Invalid account.\n")
+            print("\nError: No receiving keyfile for account found.\n")
             return None
 
-        if acco_store_l[account] or acco_store_l["rx." + account[3:]]:
+        if acco_store_l[account] or acco_store_l["me." + account[3:]]:
             print("\nLogging for %s has been disabled.\n" % account[3:])
             acco_store_l["me." + account[3:]] = False
             acco_store_l["rx." + account[3:]] = False
         else:
             print("\nLogging for %s is already disabled.\n" % account[3:])
 
+    return None
+
+
+def control_storing(cmd):
+    """
+    Enable logging for user / all.
+
+    :param cmd: Parameters not yet separated.
+    :return:    None
+    """
+
+    if not isinstance(cmd, str):
+        raise FunctionParameterTypeError("control_storing")
+
+    global l_file_onway
+    global filereceived
+    global acco_store_f
+    global f_dictionary
+
     # Global store control
-    elif cmd == "STORE|ENABLE":
+    if cmd == "STORE|ENABLE":
         all_enabled = True
         for account in get_list_of_accounts():
-            if not acco_store_f[account]:
-                all_enabled = False
+            try:
+                if not acco_store_f[account]:
+                    all_enabled = False
+            except KeyError:
+                acco_store_f[account] = False
 
         if all_enabled:
             print("\nFile reception is already enabled for every contact.\n")
@@ -2325,8 +2627,11 @@ def process_command(cmd):
     elif cmd == "STORE|DISABLE":
         all_disabled = True
         for account in get_list_of_accounts():
-            if acco_store_f[account]:
-                all_disabled = False
+            try:
+                if acco_store_f[account]:
+                    all_disabled = False
+            except KeyError:
+                acco_store_f[account] = False
 
         if all_disabled:
             print("\nFile reception is already disabled for every contact.\n")
@@ -2342,7 +2647,7 @@ def process_command(cmd):
             if account not in get_list_of_accounts():
                 raise IndexError
         except IndexError:
-            print("\nError: Invalid account.\n")
+            print("\nError: No receiving keyfile for account found.\n")
             return None
 
         if acco_store_f[account]:
@@ -2361,7 +2666,7 @@ def process_command(cmd):
             if account not in get_list_of_accounts():
                 raise IndexError
         except IndexError:
-            print("\nInvalid account.\n")
+            print("\nError: No receiving keyfile for account found.\n")
             return None
 
         if not acco_store_f[account]:
@@ -2371,17 +2676,6 @@ def process_command(cmd):
             print("\nFile reception for %s has been disabled.\n"
                   % account[3:])
             acco_store_f[account] = False
-
-    # Change nick
-    elif cmd.startswith("NICK|"):
-        header, account, nick = cmd.split('|')
-
-        write_nick(account, nick)
-        stored_nick = get_nick(account)
-        print("\nChanged %s nick to %s.\n" % (account[3:], stored_nick))
-
-    else:
-        raise CriticalError("process_command", "Invalid command.")
 
     return None
 
@@ -2410,7 +2704,7 @@ def process_local_key(packet, kdk_in_q=False):
         # Wait for key decryption key from input process
         try:
             while True:
-                sleep(0.1)
+                time.sleep(0.1)
                 if not kdk_queue.empty():
                     kdk = kdk_queue.get()
                     break
@@ -2419,7 +2713,7 @@ def process_local_key(packet, kdk_in_q=False):
             return None
     else:
         # Get key decryption key from user
-        print("\n    Received encrypted local key. "
+        print("\nReceived encrypted local key. "
               "Enter key decryption key from TxM:")
         while True:
             try:
@@ -2433,12 +2727,12 @@ def process_local_key(packet, kdk_in_q=False):
                 return None
 
             if not validate_key(kdk[:-8]):
-                sleep(1)
+                time.sleep(1)
                 continue
 
             if sha3_256(kdk[:-8])[:8] != kdk[64:]:
                 print("\nKey decryption key checksum fail. Try again.")
-                sleep(1)
+                time.sleep(1)
                 continue
             else:
                 break
@@ -2450,12 +2744,12 @@ def process_local_key(packet, kdk_in_q=False):
             print("Key B64 Decoding error.")
             return None
         # Construct new Secret Box
-        box = SecretBox(unhexlify(kdk[:-8]))
+        box = nacl.secret.SecretBox(binascii.unhexlify(kdk[:-8]))
 
         # Authenticate and decrypt ciphertext
         padded_key = box.decrypt(ct_tag)
 
-    except CryptoError:
+    except nacl.exceptions.CryptoError:
         print("\nLocal key decryption error.\n")
         if kdk_in_q:
             return 'MAC_FAIL'
@@ -2469,16 +2763,16 @@ def process_local_key(packet, kdk_in_q=False):
         print("\nError: Received invalid local key from TxM.\n")
         return None
 
-    print("\nLocal key added. Device code for TxM: %s\n" % device_code)
+    print("\nLocal key added. Device code (to TxM): %s\n" % device_code)
 
     ensure_dir("/keys")
 
-    write_t = Thread(target=key_writer, args=("me.local.e", local_key))
+    write_t = threading.Thread(target=key_writer, args=("me.local", local_key))
     write_t.start()
     write_t.join()
 
     add_contact("me.local", "local")
-    sleep(0.5)
+    time.sleep(0.5)
 
     return "SUCCESS"
 
@@ -2507,7 +2801,7 @@ def get_local_key_packet():
                     return None
 
             elif lkey_packet.startswith("TFC|N|%s|U|CLEAR" % int_version):
-                system("clear")
+                os.system("clear")
 
             if lkey_packet.startswith("TFC|N|%s|P|" % int_version):
                 display_pub_key(lkey_packet)
@@ -2519,11 +2813,9 @@ def get_local_key_packet():
         pass
 
     except KeyboardInterrupt:
-        system("clear")
-        exit()
+        graceful_exit(queue=True)
 
 
-# Main loop
 def main_loop_process():
     """
     Load messages from TxM and RxM queues and process them.
@@ -2535,23 +2827,14 @@ def main_loop_process():
 
     try:
         while True:
-            sleep(0.01)
+            time.sleep(0.01)
 
             if nh_queue.empty():
-                sleep(0.1)
+                time.sleep(0.1)
                 continue
             nh_packet = nh_queue.get()
 
-            if nh_packet.startswith("TFC|N|%s|P|" % int_version):
-                display_pub_key(nh_packet)
-                accept_new_local_keys = True
-
-            elif nh_packet.startswith("TFC|N|%s|L|" % int_version):
-                if accept_new_local_keys:
-                    pc_queue.put("start_kdk_input_process")
-                    _ = process_local_key(nh_packet, kdk_in_q=True)
-
-            elif nh_packet.startswith("TFC|N|%s|C|" % int_version):
+            if nh_packet.startswith("TFC|N|%s|C|" % int_version):
                 command_packet(nh_packet)
                 accept_new_local_keys = True
 
@@ -2560,14 +2843,23 @@ def main_loop_process():
                 accept_new_local_keys = True
 
             elif nh_packet.startswith("TFC|N|%s|U|CLEAR" % int_version):
-                system("clear")
+                os.system("clear")
                 accept_new_local_keys = True
+
+            elif nh_packet.startswith("TFC|N|%s|P|" % int_version):
+                display_pub_key(nh_packet)
+                accept_new_local_keys = True
+
+            elif nh_packet.startswith("TFC|N|%s|L|" % int_version):
+                if accept_new_local_keys:
+                    pc_queue.put("start_kdk_input_process")
+                    _ = process_local_key(nh_packet, kdk_in_q=True)
+
             else:
                 print("Error: Incorrect message header.")
 
     except KeyboardInterrupt:
-        system("clear")
-        graceful_exit()
+        graceful_exit(queue=True)
 
 
 def kdk_input_process(file_no, _):
@@ -2579,7 +2871,6 @@ def kdk_input_process(file_no, _):
     :return:        None
     """
 
-    import sys
     import os
 
     sys.stdin = os.fdopen(file_no)
@@ -2597,40 +2888,23 @@ def kdk_input_process(file_no, _):
             kdk = raw_input(' ').replace(' ', '')
 
             if not validate_key(kdk[:-8]):
-                sleep(1)
+                time.sleep(1)
                 continue
 
             if sha3_256(kdk[:-8])[:8] != kdk[64:]:
                 print("\nKey decryption key checksum fail. Try again.")
-                sleep(1)
+                time.sleep(1)
                 continue
             else:
                 break
 
         kdk_queue.put(kdk)
         pc_queue.put("terminate_kdk_input_process")
-        sleep(1)
+        time.sleep(1)
 
     except KeyboardInterrupt:
         pc_queue.put("terminate_kdk_input_process")
-        sleep(1)
-
-
-def print_headers():
-    """
-    Print headers.
-
-    :return: None
-    """
-
-    logs_b = "on" if log_messages else "off"
-    file_b = "on" if file_saving else "off"
-
-    system("clear")
-    print("TFC-NaCl %s || Rx.py || Logging %s || File "
-          "reception %s\n" % (str_version, logs_b, file_b))
-
-    return None
+        time.sleep(1)
 
 
 ###############################################################################
@@ -2651,63 +2925,7 @@ acco_store_l = {}
 
 if __name__ == "__main__":
 
-    parser = ArgumentParser("python Tx.py",
-                            usage="%(prog)s [OPTION]",
-                            description="More options inside Tx.py")
-
-    parser.add_argument("-i",
-                        action="store_true",
-                        default=False,
-                        dest="l_t_notify",
-                        help="do not notify about incoming long transmissions")
-
-    parser.add_argument("-f",
-                        action="store_true",
-                        default=False,
-                        dest="f_save",
-                        help="enable file saving during start")
-
-    parser.add_argument("-k",
-                        action="store_true",
-                        default=False,
-                        dest="keep_l_f",
-                        help="enable storage of locally received files")
-
-    parser.add_argument("-m",
-                        action="store_true",
-                        default=False,
-                        dest="m_logging",
-                        help="enable message logging by default")
-
-    parser.add_argument("-l", action="store_true",
-                        default=False,
-                        dest="local_t",
-                        help="enable local testing mode")
-
-    parser.add_argument("-a", action="store_true",
-                        default=False,
-                        dest="auto_close_fr",
-                        help="auto-close file reception after receiving file")
-
-    args = parser.parse_args()
-
-    if args.l_t_notify:
-        l_message_incoming = False
-
-    if args.f_save:
-        file_saving = True
-
-    if args.keep_l_f:
-        keep_local_files = True
-
-    if args.m_logging:
-        log_messages = True
-
-    if args.local_t:
-        local_testing = True
-
-    if args.auto_close_fr:
-        a_close_f_recv = True
+    process_arguments()
 
     if unittesting:
         print("\nError: Variable unittesting is set true.\n")
@@ -2717,54 +2935,18 @@ if __name__ == "__main__":
         print_banner()
 
     # Set default directory
-    chdir(path[0])
+    os.chdir(sys.path[0])
 
     # Enable serial port if local testing is disabled
     if local_testing:
-        l = Listener(('', 5003))
+        l = multiprocessing.connection.Listener(('', 5003))
         conn = l.accept()
-
     else:
-
-        # Auto-pick correct serial interface
-        dev_files = [df for df in listdir("/dev/")]
-        dev_files.sort()
-        serial_nh = ''
-
-        if nh_usb_adapter:
-            for dev_file in dev_files:
-                if dev_file.startswith("ttyUSB"):
-                    serial_nh = "/dev/%s" % dev_file
-                    break
-
-            if not serial_nh:
-                clean_exit("Error: No USB-serial adapter was not found.")
-
-        else:
-            os_name = check_output(["grep", "PRETTY_NAME",
-                                    "/etc/os-release"])
-            rpi_distros = ["Raspbian GNU/Linux"]
-
-            rpi_in_use = False
-            for distro in rpi_distros:
-                if distro in os_name:
-                    rpi_in_use = True
-
-            integrated_if = "ttyAMA0" if rpi_in_use else "ttyS0"
-
-            integrated_found = False
-            for dev_file in dev_files:
-                if dev_file == integrated_if:
-                    integrated_found = True
-
-            if integrated_found:
-                serial_nh = "/dev/%s" % integrated_if
-            else:
-                clean_exit("Error: /dev/%s was not found." % integrated_if)
         try:
-            port_to_nh = Serial(serial_nh, baud_rate, timeout=0.1)
-        except serialutil.SerialException:
-            clean_exit("Error: Serial interface to NH was not found.")
+            serial_nh = search_serial_interfaces()
+            port_to_nh = serial.Serial(serial_nh, baud_rate, timeout=0.1)
+        except SerialException:
+            graceful_exit("Error: Serial interface to NH was not found.")
 
     # Create necessary directories
     ensure_dir("keys/")
@@ -2772,7 +2954,7 @@ if __name__ == "__main__":
     ensure_dir("files/")
 
     # Clear readline history
-    clear_history()
+    readline.clear_history()
 
     # Remove relocation instructions from PSK files
     remove_instructions()
@@ -2781,14 +2963,14 @@ if __name__ == "__main__":
     add_keyfiles()
 
     # Initialize queues for messages
-    nh_queue = Queue()
-    pc_queue = Queue()
-    kdk_queue = Queue()
+    nh_queue = multiprocessing.Queue()
+    pc_queue = multiprocessing.Queue()
+    kdk_queue = multiprocessing.Queue()
 
     # Display configuration on header during start of program
     print_headers()
 
-    if not isfile("keys/me.local.e"):
+    if not os.path.isfile("keys/me.local.e"):
         get_local_key_packet()
 
     # Check that me. and rx. keyfiles have their counterpart
@@ -2818,9 +3000,10 @@ if __name__ == "__main__":
             else:
                 acco_store_f[sender] = False
 
-    nhplp = Process(target=nh_packet_loading_process)
-    mainl = Process(target=main_loop_process)
-    inptp = Process(target=kdk_input_process, args=(stdin.fileno(), ''))
+    nhplp = multiprocessing.Process(target=nh_packet_loading_process)
+    mainl = multiprocessing.Process(target=main_loop_process)
+    inptp = multiprocessing.Process(target=kdk_input_process, 
+                                    args=(sys.stdin.fileno(), ''))
 
     nhplp.start()
     mainl.start()
@@ -2829,24 +3012,28 @@ if __name__ == "__main__":
         while True:
             if not pc_queue.empty():
                 command = pc_queue.get()
-                if command == "exit":
+                if command.startswith("exit"):
+                    exit_msg = command.split('|')[1]
                     nhplp.terminate()
                     mainl.terminate()
                     try:
                         inptp.terminate()
                     except (AttributeError, NameError):
                         pass
-                    clean_exit()
+                    graceful_exit(exit_msg)
+
                 if command == "start_kdk_input_process":
-                    inptp = Process(target=kdk_input_process,
-                                    args=(stdin.fileno(), ''))
+                    inptp = multiprocessing.Process(target=kdk_input_process,
+                                                    args=(sys.stdin.fileno(), 
+                                                          ''))
                     inptp.start()
+
                 if command == "terminate_kdk_input_process":
                     try:
                         inptp.terminate()
                     except AttributeError:
                         pass
-            sleep(0.1)
+            time.sleep(0.1)
 
     except KeyboardInterrupt:
         nhplp.terminate()
@@ -2855,4 +3042,4 @@ if __name__ == "__main__":
             inptp.terminate()
         except (AttributeError, NameError):
             pass
-        clean_exit()
+        graceful_exit()
