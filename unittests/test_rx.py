@@ -409,14 +409,15 @@ class TestAddRxKeyfile(unittest.TestCase):
     def test_1_no_path(self):
 
         # Setup
-        original_aofn = tkFileDialog.askopenfilename
-        tkFileDialog.askopenfilename = lambda title: ''
+        Rx.show_file_prompts = False
+        orig_rawinput = __builtins__.raw_input
+        __builtins__.raw_input = lambda x: ''
 
         # Test
         self.assertIsNone(add_rx_keyfile())
 
         # Teardown
-        tkFileDialog.askopenfilename = original_aofn
+        __builtins__.raw_input = orig_rawinput
 
     def test_2_valid_path(self):
 
@@ -429,6 +430,10 @@ class TestAddRxKeyfile(unittest.TestCase):
         fname = "rx.bob@jabber.org.e - Give this file to alice@jabber.org"
         open("test_dir/%s" % fname, 'w+').write('\n'.join(test_set))
 
+        orig_rawinput = __builtins__.raw_input
+        __builtins__.raw_input = lambda x: 'test_dir/%s' % fname
+
+        Rx.show_file_prompts = False
         Rx.file_saving = False
         Rx.log_messages = True
 
@@ -443,9 +448,6 @@ class TestAddRxKeyfile(unittest.TestCase):
         Rx.acco_store_f["me.bob@jabber.org"] = True
         Rx.acco_store_l["rx.bob@jabber.org"] = False
         Rx.acco_store_l["me.bob@jabber.org"] = False
-
-        original_aofn = tkFileDialog.askopenfilename
-        tkFileDialog.askopenfilename = lambda title: 'test_dir/%s' % fname
 
         # Test
         self.assertIsNone(add_rx_keyfile())
@@ -468,7 +470,7 @@ class TestAddRxKeyfile(unittest.TestCase):
         self.assertTrue(Rx.acco_store_l["rx.bob@jabber.org"])
 
         # Teardown
-        tkFileDialog.askopenfilename = original_aofn
+        __builtins__.raw_input = orig_rawinput
         shutil.rmtree("test_dir")
         shutil.rmtree("keys")
 
@@ -2140,7 +2142,7 @@ class TestMessagePacket(unittest.TestCase):
                   "k8daJs1+gBDcGOZIdIRrwnmTyk5v3QxeKcOjyDcOBTn5MFSGt2Q/WcRPcw"
                   "ph0cbJzaAVyQj1expHHnlksxJ7ac1MSEIvx5ykR/6TMMPzGqMtrNH0DpAQ"
                   "E00JmCyYoaZ1+LF8SmEQTI2i0NaTdKPpXa/wVDhvCbhQVIK9Fh0W7Tbo7|"
-                  "400|me.alice@jabber.org")
+                  "100|me.alice@jabber.org")
 
         self.assertIsNone(message_packet(packet))
 
@@ -2338,7 +2340,7 @@ class TestCommandPacket(unittest.TestCase):
                   "k8daJs1+gBDcGOZIdIRrwnmTyk5v3QxeKcOjyDcOBTn5MFSGt2Q/WcRPcw"
                   "ph0cbJzaAVyQj1expHHnlksxJ7ac1MSEIvx5ykR/6TMMPzGqMtrNH0DpAQ"
                   "E00JmCyYoaZ1+LF8SmEQTI2i0NaTdKPpXa/wVDhvCbhQVIK9Fh0W7Tbo7|"
-                  "400")
+                  "100")
 
         self.assertIsNone(command_packet(packet))
 

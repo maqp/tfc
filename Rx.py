@@ -75,6 +75,8 @@ print_noise_pkg = False     # True displays trickle connection noise packets
 
 disp_opsec_warning = True   # False disables warning when receiving files
 
+show_file_prompts = True    # Prompt keyfile location instead of def. folders
+
 
 # File settings
 file_saving = False         # True permanently enables file reception for all
@@ -350,21 +352,38 @@ def add_rx_keyfile():
     :return:    None
     """
 
-    try:
-        root_ = Tkinter.Tk()
-        root_.withdraw()
-        rx_kf = tkFileDialog.askopenfilename(title="Select keyfile from cont"
-                                                   "act's transmission media")
-        root_.destroy()
+    if show_file_prompts:
+        try:
+            root_ = Tkinter.Tk()
+            root_.withdraw()
+            rx_kf = tkFileDialog.askopenfilename(title="Select keyfile from "
+                                                       "contact's transmission"
+                                                       " media")
+            root_.destroy()
 
-        if not rx_kf:
-            print("\nImport aborted.\n")
+            if not rx_kf:
+                print("\nImport aborted.\n")
+                return None
+
+        except _tkinter.TclError:
+            print("\nError: No file dialog available. Manually copy key "
+                  "to directory 'keys/' and restart Rx.py.\n")
             return None
 
-    except _tkinter.TclError:
-        print("\nError: No file dialog available. Manually copy key "
-              "to directory 'keys/' and restart Rx.py.\n")
-        return None
+    else:
+        print('')
+        rx_kf = ''
+        while True:
+            rx_kf = raw_input("Specify path of new keyfile: ")
+
+            if not rx_kf:
+                print("\nImport aborted.\n")
+                return None
+
+            if not os.path.isfile(rx_kf):
+                print("\nError: Keyfile does not exist\n")
+                continue
+            break
 
     file_ = rx_kf.split('/')[-1]
 
@@ -1356,44 +1375,53 @@ def print_banner():
 
     print(((height / 2) - 1) * '\n')
 
-    # Style 1
     animation = random.randint(1, 3)
+
+    # Style 1
     if animation == 1:
-        i = 0
-        while i <= len(string):
-            sys.stdout.write("\x1b[1A" + ' ')
-            sys.stdout.flush()
+        try:
+            i = 0
+            while i <= len(string):
+                sys.stdout.write("\x1b[1A" + ' ')
+                sys.stdout.flush()
 
-            if i == len(string):
-                print(((width - len(string)) / 2) * ' ' + string[:i])
-            else:
-                rc = chr(random.randrange(32, 126))
-                print(((width - len(string)) / 2) * ' ' + string[:i] + rc)
+                if i == len(string):
+                    print(((width - len(string)) / 2) * ' ' + string[:i])
+                else:
+                    rc = chr(random.randrange(32, 126))
+                    print(((width - len(string)) / 2) * ' ' + string[:i] + rc)
 
-            i += 1
-            time.sleep(0.03)
+                i += 1
+                time.sleep(0.03)
+        except KeyboardInterrupt:
+            os.system("clear")
+            return None
 
     # Style 2
     if animation == 2:
-        char_l = len(string) * ['']
+        try:
+            char_l = len(string) * ['']
 
-        while True:
-            sys.stdout.write("\x1b[1A" + ' ')
-            sys.stdout.flush()
-            st = ''
+            while True:
+                sys.stdout.write("\x1b[1A" + ' ')
+                sys.stdout.flush()
+                st = ''
 
-            for i in range(len(string)):
-                if char_l[i] != string[i]:
-                    char_l[i] = chr(random.randrange(32, 126))
-                else:
-                    char_l[i] = string[i]
-                st += char_l[i]
+                for i in range(len(string)):
+                    if char_l[i] != string[i]:
+                        char_l[i] = chr(random.randrange(32, 126))
+                    else:
+                        char_l[i] = string[i]
+                    st += char_l[i]
 
-            print(((width - len(string)) / 2) * ' ' + st)
+                print(((width - len(string)) / 2) * ' ' + st)
 
-            time.sleep(0.004)
-            if st == string:
-                break
+                time.sleep(0.004)
+                if st == string:
+                    break
+        except KeyboardInterrupt:
+            os.system("clear")
+            return None
 
     # Style 3
     if animation == 3:

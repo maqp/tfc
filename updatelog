@@ -7,10 +7,13 @@ Removed from x import y to avoid conflicts in namespace etc.
 
 Refactored code here and there.
 
-Added unittests. test_tx.py and test_rx.py now evaluate XSalsa20-Poly1305
-implementation in PyNaCl using official test vectors by djb.
+Added more unittests. test_tx.py and test_rx.py now evaluate XSalsa20-Poly1305
+implementation in PyNaCl using official test vectors by djb. Unittests can now
+be run from RPi over SSH.
 
 Improved LUI here and there.
+
+Banner can now be skipped with keyboard interrupt
 
 -------------------------------------------------------------------------------
 Tx.py
@@ -30,6 +33,11 @@ Disallowed ':' and '/' chars in accounts to fix crashes.
 Reversed PSK and ECDHE key choice answer to more intuitive order.
 
 Fixed issues when sending dotfiles.
+
+Changed trickle delay's time's constant delay time exceeding from critical
+error to soft warning. Raspberry Pi tends to send first packet with greater
+delay. User will now be prompted to increase trickle_c_delay if the problem
+persists.
 
 -------------------------------------------------------------------------------
 Rx.py
@@ -55,6 +63,8 @@ Reduced window of compromise time to minimum: setup.py now first downloads
 apt-packets. It then downloads and verifies crypto libraries and TFC.
 Finally, the installer runs 'sudo ifconfig down' on every interface excluding
 'lo', listed by 'ifconfig -a', before extracting and building libraries.
+
+Fixed issues with file permissions when running installer as superuser.
 
 -------------------------------------------------------------------------------
 hwrng-nacl.py

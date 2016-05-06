@@ -237,44 +237,53 @@ def print_banner():
 
     print(((height / 2) - 1) * '\n')
 
-    # Style 1
     animation = random.randint(1, 3)
+
+    # Style 1
     if animation == 1:
-        i = 0
-        while i <= len(string):
-            sys.stdout.write("\x1b[1A" + ' ')
-            sys.stdout.flush()
+        try:
+            i = 0
+            while i <= len(string):
+                sys.stdout.write("\x1b[1A" + ' ')
+                sys.stdout.flush()
 
-            if i == len(string):
-                print(((width - len(string)) / 2) * ' ' + string[:i])
-            else:
-                rc = chr(random.randrange(32, 126))
-                print(((width - len(string)) / 2) * ' ' + string[:i] + rc)
+                if i == len(string):
+                    print(((width - len(string)) / 2) * ' ' + string[:i])
+                else:
+                    rc = chr(random.randrange(32, 126))
+                    print(((width - len(string)) / 2) * ' ' + string[:i] + rc)
 
-            i += 1
-            time.sleep(0.03)
+                i += 1
+                time.sleep(0.03)
+        except KeyboardInterrupt:
+            os.system("clear")
+            return None
 
     # Style 2
     if animation == 2:
-        char_l = len(string) * ['']
+        try:
+            char_l = len(string) * ['']
 
-        while True:
-            sys.stdout.write("\x1b[1A" + ' ')
-            sys.stdout.flush()
-            st = ''
+            while True:
+                sys.stdout.write("\x1b[1A" + ' ')
+                sys.stdout.flush()
+                st = ''
 
-            for i in range(len(string)):
-                if char_l[i] != string[i]:
-                    char_l[i] = chr(random.randrange(32, 126))
-                else:
-                    char_l[i] = string[i]
-                st += char_l[i]
+                for i in range(len(string)):
+                    if char_l[i] != string[i]:
+                        char_l[i] = chr(random.randrange(32, 126))
+                    else:
+                        char_l[i] = string[i]
+                    st += char_l[i]
 
-            print(((width - len(string)) / 2) * ' ' + st)
+                print(((width - len(string)) / 2) * ' ' + st)
 
-            time.sleep(0.004)
-            if st == string:
-                break
+                time.sleep(0.004)
+                if st == string:
+                    break
+        except KeyboardInterrupt:
+            os.system("clear")
+            return None
 
     # Style 3
     if animation == 3:

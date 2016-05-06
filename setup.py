@@ -23,7 +23,7 @@ import subprocess
 import time
 
 
-repository = "https://cs.helsinki.fi/u/oottela/tfc-nacl/"
+repository = "https://raw.githubusercontent.com/maqp/tfc-nacl/master/"
 str_version = "0.16.05"
 
 
@@ -116,13 +116,14 @@ be2623c41873e8e8a512a77f93edb301f64377331714b71116f7c30ea4fe6e2a  pyc.zip
 402c44cd30284a6acf80fdb4de56de44b879049f4d0342e28c84ef60223113bc  paramiko.zip
 249db300d1fe395ac1c31d08e91a3a31b473214b5da06002503e01229e44ae03  dd.py
 45f2c3b9790a0b831609b0cd0b28517c7d0fc5412d8cae3af4f01a99bed554e3  hwrng-nacl.py
-fbbd1dac1c4bd63b7f3ede0f65881a8e28cf5a4212dc45b65c7cda35195353cd  NH.py
-f55a2b8c84e81400a9c2ef1183deb791f6e8f48280853451fefd20e42e4d338b  Rx.py
-e777f8034a924e8df184e5cde54a5a48f0356aa506f255d4dcbdbd3c849c4d1a  setup.py
+d00ec5e0b776699e00682631a7f858dd852f809eec1fbd9ac5f19349fb03e9ce  NH.py
+d722061bb76a7a1a2e1b34c564046b70ac8125f1ba7ccabb740a3c6bb8af44b2  Rx.py
 6c3586d1cbd8f0a388a40c326faf4da2799dc3a88e235addb0efc819156fa211  test_nh.py
-1200902f4569373597dc66f555c0a8fce087fcfd1392f2ea5367a0ace1858cb1  test_rx.py
-3faf6d2a9ad83e314809605bc1d41bce58565fbe6bc346e5de225832ab610ddc  test_tx.py
-6817de77dbf1c2c22dda6951c1c662899cca6e5ca34823bdf4e7a61fb46d5d38  Tx.py
+35fc1c0c08d0c3048d9ce42df82dfbd64caece4334ecd7687943846a7c94a19a  test_rx.py
+18e56bb13946acd0b649b26448d603d1bc8ebe12755974393ff2fce96617eb39  test_tx.py
+8d8d483c49a10e547b2b2d4e675d4803e1facf9d96b41d15133a10ebfed2d3a2  Tx.py
+
+
 """)
 
 
@@ -370,6 +371,9 @@ def get_tx():
         "Downloading test_tx.py (TxM)")
     check_file_hash("test_tx.py")
 
+    fix_ownership("Tx.py")
+    fix_ownership("test_tx.py")
+
 
 def get_rx():
     cmd("wget %sRx.py" % repository, "Downloading Rx.py (RxM)")
@@ -378,6 +382,9 @@ def get_rx():
     cmd("wget %sunittests/test_rx.py" % repository,
         "Downloading test_rx.py (RxM)")
     check_file_hash("test_rx.py")
+
+    fix_ownership("Rx.py")
+    fix_ownership("test_rx.py")
 
 
 def get_nh():
@@ -388,15 +395,22 @@ def get_nh():
         "Downloading test_nh.py (NH)")
     check_file_hash("test_nh.py")
 
+    fix_ownership("NH.py")
+    fix_ownership("test_nh.py")
+
 
 def get_hwrng():
     cmd("wget %shwrng-nacl.py" % repository, "Downloading hwrng-nacl.py")
     check_file_hash("hwrng-nacl.py")
 
+    fix_ownership("hwrng-nacl.py")
+
 
 def get_dd():
     cmd("wget %sdd.py" % repository, "Downloading dd.py (NH)")
     check_file_hash("dd.py")
+
+    fix_ownership("dd.py")
 
 
 ###############################################################################
@@ -666,7 +680,7 @@ Select a device-OS configuration (tested distros are listed):
           Lubuntu 15.04
           Linux Mint 17.3 Rosa
 
-      8.  Tails 2.2.1
+      8.  Tails 2.3
 
     Local Testing (insecure)
       9.  Ubuntu  16.04 LTS
@@ -720,6 +734,22 @@ def disable_network_interfaces():
         cmd("sudo ifconfig %s down" % i, "Disabling %s network interface" % i)
 
 
+def fix_ownership(path):
+    """
+    Change the owner of the file to SUDO_UID.
+
+    :return: None
+    """
+
+    uid = os.environ.get('SUDO_UID')
+    gid = os.environ.get('SUDO_GID')
+
+    if uid is not None:
+        os.chown(path, int(uid), int(gid))
+
+    return None
+
+
 ###############################################################################
 #                              INSTALL ROUTINES                               #
 ###############################################################################
@@ -731,6 +761,12 @@ def raspbian_txm():
             print("\nError: Raspbian installer requires root privileges.\n"
                   "\nExiting.\n")
             exit()
+
+        kill = False
+        if kill_ifaces:
+            if yes("Disable networking from this "
+                   "device after downloads complete?"):
+                kill = True
 
         update_repositories()
 
@@ -749,9 +785,11 @@ def raspbian_txm():
         cmd("mkdir tfc-nacl")
         root_dir = os.getcwd()
         os.chdir("tfc-nacl/")
+        fix_ownership('.')
         get_tx()
 
-        disable_network_interfaces()
+        if kill:
+            disable_network_interfaces()
 
         os.chdir(root_dir)
         passlib_install()
@@ -779,6 +817,12 @@ def ubuntu_txm():
                   "\nExiting.\n")
             exit()
 
+        kill = False
+        if kill_ifaces:
+            if yes("Disable networking from this "
+                   "device after downloads complete?"):
+                kill = True
+
         update_repositories()
 
         install_python_setuptools()
@@ -799,10 +843,11 @@ def ubuntu_txm():
         cmd("mkdir tfc-nacl")
         root_dir = os.getcwd()
         os.chdir("tfc-nacl/")
-
+        fix_ownership('.')
         get_tx()
 
-        disable_network_interfaces()
+        if kill:
+            disable_network_interfaces()
 
         os.chdir(root_dir)
         passlib_install()
@@ -854,6 +899,12 @@ def raspbian_rxm():
                   "\nExiting.\n")
             exit()
 
+        kill = False
+        if kill_ifaces:
+            if yes("Disable networking from this "
+                   "device after downloads complete?"):
+                kill = True
+
         update_repositories()
 
         install_python_setuptools()
@@ -871,9 +922,11 @@ def raspbian_rxm():
         cmd("mkdir tfc-nacl")
         root_dir = os.getcwd()
         os.chdir("tfc-nacl/")
+        fix_ownership('.')
         get_rx()
 
-        disable_network_interfaces()
+        if kill:
+            disable_network_interfaces()
 
         os.chdir(root_dir)
         passlib_install()
@@ -903,6 +956,12 @@ def ubuntu_rxm():
                   "\nExiting.\n")
             exit()
 
+        kill = False
+        if kill_ifaces:
+            if yes("Disable networking from this "
+                   "device after downloads complete?"):
+                kill = True
+
         update_repositories()
 
         install_python_setuptools()
@@ -920,9 +979,11 @@ def ubuntu_rxm():
         cmd("mkdir tfc-nacl")
         root_dir = os.getcwd()
         os.chdir("tfc-nacl/")
+        fix_ownership('.')
         get_rx()
 
-        disable_network_interfaces()
+        if kill:
+            disable_network_interfaces()
 
         os.chdir(root_dir)
         passlib_install()
@@ -1059,6 +1120,7 @@ def local_testing():
 
     subprocess.Popen("mkdir tfc-nacl", shell=True).wait()
     os.chdir("tfc-nacl/")
+    fix_ownership('.')
 
     get_tx()
     get_rx()

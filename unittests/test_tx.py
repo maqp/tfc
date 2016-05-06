@@ -498,11 +498,17 @@ class TestNewPSK(unittest.TestCase):
         Tx.unittesting = True
         Tx.txm_side_logging = True
         Tx.use_ssh_hwrng = False
+
         Tx.acco_store_l["bob@jabber.org"] = False
         Tx.recipient_acco = "bob@jabber.org"
         Tx.recipient_nick = "Robert"
+
         origin_raw_input = __builtins__.raw_input
         __builtins__.raw_input = lambda x: "alice@jabber.org"
+
+        original_genkey = Tx.generate_key
+        Tx.generate_key = lambda x: 64 * 'a'
+
         create_contact_db(["local", "bob"])
         create_test_keys(["local", "bob"])
 
@@ -548,6 +554,7 @@ class TestNewPSK(unittest.TestCase):
         os.remove(".tx_contacts")
         os.remove("unitt_txm_out")
         __builtins__.raw_input = origin_raw_input
+        Tx.generate_key = original_genkey
         Tx.acco_store_l["bob@jabber.org"] = False
         Tx.local_testing = False
         Tx.show_file_prompts = True
@@ -562,11 +569,17 @@ class TestNewPSK(unittest.TestCase):
         Tx.unittesting = True
         Tx.use_ssh_hwrng = False
         Tx.txm_side_logging = False
+
         Tx.acco_store_l["bob@jabber.org"] = True
         Tx.recipient_acco = "bob@jabber.org"
         Tx.recipient_nick = "Robert"
+
         origin_raw_input = __builtins__.raw_input
         __builtins__.raw_input = lambda x: "alice@jabber.org"
+
+        original_genkey = Tx.generate_key
+        Tx.generate_key = lambda x: 64 * 'a'
+
         create_contact_db(["local"])
         create_test_keys(["local"])
 
@@ -612,6 +625,7 @@ class TestNewPSK(unittest.TestCase):
         os.remove(".tx_contacts")
         os.remove("unitt_txm_out")
         __builtins__.raw_input = origin_raw_input
+        Tx.generate_key = original_genkey
         Tx.acco_store_l["bob@jabber.org"] = False
         Tx.local_testing = False
         Tx.show_file_prompts = True
@@ -647,9 +661,14 @@ class TestGenerateKey(unittest.TestCase):
 
         # Setup
         Tx.use_ssh_hwrng = False
+        original_yes = Tx.yes
+        Tx.yes = lambda x, y: False
 
         # Test
         self.assertTrue(ut_validate_key(generate_key("test")))
+
+        # Teardown
+        Tx.yes = original_yes
 
 
 class TestNewLocalKey(unittest.TestCase):
@@ -671,6 +690,9 @@ class TestNewLocalKey(unittest.TestCase):
             Tx.use_ssh_hwrng = False
             origin_raw_input = __builtins__.raw_input
             __builtins__.raw_input = lambda x: ''
+
+            original_genkey = Tx.generate_key
+            Tx.generate_key = lambda x: 64 * 'a'
 
             # Test command returns None
             self.assertIsNone(new_local_key())
@@ -699,6 +721,7 @@ class TestNewLocalKey(unittest.TestCase):
             os.remove("unitt_txm_out")
             Tx.local_testing = False
             Tx.unittesting = False
+            Tx.generate_key = original_genkey
             __builtins__.raw_input = origin_raw_input
 
 
@@ -919,6 +942,10 @@ class TestStartKeyExchange(unittest.TestCase):
             "7ecd61cdb590266b59fa7610b901e6c132e3"
         original_yes = Tx.yes
         Tx.yes = lambda x, y: True
+
+        original_genkey = Tx.generate_key
+        Tx.generate_key = lambda x: 64 * 'a'
+
         Tx.recipient_acco = "bob@jabber.org"
         Tx.unittesting = True
         create_test_keys(["bob", "local"])
@@ -949,6 +976,7 @@ class TestStartKeyExchange(unittest.TestCase):
 
         # Teardown
         __builtins__.raw_input = origin_raw_input
+        Tx.generate_key = original_genkey
         Tx.yes = original_yes
         os.remove("unitt_txm_out")
         os.remove(".tx_contacts")
@@ -2967,9 +2995,10 @@ class TestHeads(unittest.TestCase):
 
 class TestGetMS(unittest.TestCase):
 
-    def test_1_output(self):
+    def test_1_output_type(self):
+        self.assertTrue(isinstance(get_ms(), (int, long)))
 
-        self.assertTrue(isinstance(get_ms(), int))
+    def test_2_output_len(self):
         self.assertEqual(len(str(get_ms())), 13)
 
 

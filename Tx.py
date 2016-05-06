@@ -46,22 +46,21 @@ from serial.serialutil import SerialException
 
 try:
     import RPi.GPIO as GPIO
-except ImportError:
+except ImportError:  # Import Non-RPi libraries
     GPIO = None
+    import paramiko
+    import Crypto.Cipher.AES
+    orig_new = Crypto.Cipher.AES.new
 
 # Import crypto libraries
-import Crypto.Cipher.AES
 import hashlib
 import nacl.encoding
 import nacl.public
 import nacl.secret
 import nacl.utils
-import paramiko
 from passlib.hash import pbkdf2_sha256
 from passlib.utils import ab64_decode
 import simplesha3
-
-orig_new = Crypto.Cipher.AES.new
 
 str_version = "0.16.05"
 int_version = 1605
@@ -474,7 +473,7 @@ def new_psk(parameters, first_account=False):
         # Create copy of key for contact
         dest = '' if show_file_prompts else " to 'keys_to_contact'"
         phase("Copying key for contact%s..." % dest, 61)
-
+        error = False
         if show_file_prompts:
             try:
                 root = Tkinter.Tk()
@@ -486,9 +485,10 @@ def new_psk(parameters, first_account=False):
                 if not store_d:
                     raise KeyboardInterrupt
             except _tkinter.TclError:
-                print("\nError: No file dialog available. Storing key to "
-                      "directory 'keys_to_contact/'\n")
+                print("Done.\n\nError: No file dialog available. Storing "
+                      "key to directory 'keys_to_contact/'")
                 store_d = "keys_to_contact/"
+                error = True
 
         else:
             store_d = "keys_to_contact/"
@@ -498,7 +498,8 @@ def new_psk(parameters, first_account=False):
         wt = threading.Thread(target=key_writer, args=(f_name, psk))
         wt.start()
         wt.join()
-        print("Done.")
+        if not error:
+            print("Done.")
 
         # Send PSK to RxM
         if not unittesting:
@@ -584,7 +585,7 @@ def generate_key(key_purpose):
     pretty_name = subprocess.check_output(["grep", "PRETTY_NAME",
                                            "/etc/os-release"])
     try:
-        if pretty_name == "Raspbian GNU/Linux" and GPIO:
+        if "Raspbian GNU/Linux" in pretty_name and GPIO:
             if not yes(question, (24 - len(key_purpose))):
                 key = sha3_256(os.urandom(32))
                 return key
@@ -595,7 +596,7 @@ def generate_key(key_purpose):
             GPIO.setmode(GPIO.BCM)
             GPIO.setup(gpio_port, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
-            phase("\nWaiting for HWRNG signal from GPIO...", 61)
+            phase("Waiting for HWRNG signal from GPIO...", 61)
             warmup_zero = 0
             warmup_one = 0
 
@@ -633,15 +634,16 @@ def generate_key(key_purpose):
 
             GPIO.cleanup()
             ent = digits_to_bytes(vn_digits)
-            ent = binascii.hexlify(ent)
-
             if len(ent) != 32:
                 raise CriticalError("generate_key",
                                     "Entropy collection failed.")
+            ent = binascii.hexlify(ent)
 
         else:
             if not use_ssh_hwrng or not yes(question, (24 - len(key_purpose))):
+                phase("Loading key data from /dev/urandom...", 61)
                 key = sha3_256(os.urandom(32))
+                print("Done.")
                 return key
 
             # Load entropy over SSH using hwrng-nacl.py on Raspberry Pi.
@@ -723,8 +725,8 @@ def new_local_key(bootstrap=False):
         s_box = nacl.secret.SecretBox(binascii.unhexlify(key_e_key))
         nonce = nacl.utils.random(nacl.secret.SecretBox.NONCE_SIZE)
         ct_tag = s_box.encrypt(padded, nonce)
-        raw_input("\n%sBypass NH if needed and press <Enter> to send key.%s"
-                  % ((6 * ' '), (5 * ' ')))
+        raw_input("\n      Bypass NH if needed and press <Enter> to send "
+                  "key.     ")
         packet = "TFC|N|%s|L|%s" % (int_version, base64.b64encode(ct_tag))
         transmit(packet)
 
@@ -3211,44 +3213,53 @@ def print_banner():
 
     print(((height / 2) - 1) * '\n')
 
-    # Style 1
     animation = random.randint(1, 3)
+
+    # Style 1
     if animation == 1:
-        i = 0
-        while i <= len(string):
-            sys.stdout.write("\x1b[1A" + ' ')
-            sys.stdout.flush()
+        try:
+            i = 0
+            while i <= len(string):
+                sys.stdout.write("\x1b[1A" + ' ')
+                sys.stdout.flush()
 
-            if i == len(string):
-                print(((width - len(string)) / 2) * ' ' + string[:i])
-            else:
-                rc = chr(random.randrange(32, 126))
-                print(((width - len(string)) / 2) * ' ' + string[:i] + rc)
+                if i == len(string):
+                    print(((width - len(string)) / 2) * ' ' + string[:i])
+                else:
+                    rc = chr(random.randrange(32, 126))
+                    print(((width - len(string)) / 2) * ' ' + string[:i] + rc)
 
-            i += 1
-            time.sleep(0.03)
+                i += 1
+                time.sleep(0.03)
+        except KeyboardInterrupt:
+            os.system("clear")
+            return None
 
     # Style 2
     if animation == 2:
-        char_l = len(string) * ['']
+        try:
+            char_l = len(string) * ['']
 
-        while True:
-            sys.stdout.write("\x1b[1A" + ' ')
-            sys.stdout.flush()
-            st = ''
+            while True:
+                sys.stdout.write("\x1b[1A" + ' ')
+                sys.stdout.flush()
+                st = ''
 
-            for i in range(len(string)):
-                if char_l[i] != string[i]:
-                    char_l[i] = chr(random.randrange(32, 126))
-                else:
-                    char_l[i] = string[i]
-                st += char_l[i]
+                for i in range(len(string)):
+                    if char_l[i] != string[i]:
+                        char_l[i] = chr(random.randrange(32, 126))
+                    else:
+                        char_l[i] = string[i]
+                    st += char_l[i]
 
-            print(((width - len(string)) / 2) * ' ' + st)
+                print(((width - len(string)) / 2) * ' ' + st)
 
-            time.sleep(0.004)
-            if st == string:
-                break
+                time.sleep(0.004)
+                if st == string:
+                    break
+        except KeyboardInterrupt:
+            os.system("clear")
+            return None
 
     # Style 3
     if animation == 3:
@@ -3527,14 +3538,12 @@ def search_serial_interfaces():
             graceful_exit("Error: No USB-serial adapter was not found.")
 
     else:
-        os_name = subprocess.check_output(["grep", "PRETTY_NAME",
-                                           "/etc/os-release"])
-        rpi_distros = ["Raspbian GNU/Linux"]
+        pretty_name = subprocess.check_output(["grep", "PRETTY_NAME",
+                                               "/etc/os-release"])
 
         rpi_in_use = False
-        for distro in rpi_distros:
-            if distro in os_name:
-                rpi_in_use = True
+        if "Raspbian GNU/Linux" in pretty_name:
+            rpi_in_use = True
 
         integrated_if = "ttyAMA0" if rpi_in_use else "ttyS0"
 
@@ -3548,7 +3557,7 @@ def search_serial_interfaces():
         else:
             graceful_exit("Error: /dev/%s was not found." % integrated_if)
 
-        return serial_iface
+    return serial_iface
 
 
 ###############################################################################
@@ -3613,35 +3622,35 @@ def trickle_delay(start):
     f_duration = (final_time - start) / 1000.0
     ct_filler = trickle_c_delay - f_duration
 
-    if ct_filler < 0:
-        raise CriticalError("trickle_delay",
-                            "Function execute time exceeded trickle_c_delay.\n"
-                            "Increase the value from settings and restart.\n")
+    if ct_filler < 0:  # Soft warning only: RPi's initial lag won't raise error
+        print("\nWarning! Trickle delay exceeded. If this warning\n"
+              "repeats, increase trickle_c_delay from settings.\n")
 
-    time.sleep(ct_filler)
-    t_after_ct_sleep = get_ms() - start
+    else:
+        time.sleep(ct_filler)
+        t_after_ct_sleep = get_ms() - start
 
-    t_r_delay = random.SystemRandom().uniform(0, trickle_r_delay)
-    time.sleep(t_r_delay)
+        t_r_delay = random.SystemRandom().uniform(0, trickle_r_delay)
+        time.sleep(t_r_delay)
 
-    l_t_delay = 0
-    if lt_random_delay:
-        l_t_delay = random.SystemRandom().uniform(0, lt_max_delay)
-        time.sleep(l_t_delay)
-
-    if print_ct_stats:
-        print("Time after constant time delay %sms (setting=%sms)" %
-              (t_after_ct_sleep, trickle_c_delay * 1000))
-
-        print("(Packet process time: %sms, CT delay length: %sms)" %
-              (f_duration * 1000, ct_filler * 1000))
-
-        print("Trickle random delay: %sms\n" % (t_r_delay * 1000))
-
+        l_t_delay = 0
         if lt_random_delay:
-            print("Random lt_delay: %sms" % l_t_delay * 1000)
+            l_t_delay = random.SystemRandom().uniform(0, lt_max_delay)
+            time.sleep(l_t_delay)
 
-    return None
+        if print_ct_stats:
+            print("Time after constant time delay %sms (setting=%sms)" %
+                  (t_after_ct_sleep, trickle_c_delay * 1000))
+
+            print("(Packet process time: %sms, CT delay length: %sms)" %
+                  (f_duration * 1000, ct_filler * 1000))
+
+            print("Trickle random delay: %sms\n" % (t_r_delay * 1000))
+
+            if lt_random_delay:
+                print("Random lt_delay: %sms" % l_t_delay * 1000)
+
+        return None
 
 
 def sender_process():
