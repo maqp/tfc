@@ -108,7 +108,7 @@ def install_build_essential():
 ###############################################################################
 
 hash_list = ("""
-8b0963956bef053454647af16765ca3178749c8a1e773d85a483971870791e74  tfc-mods.zip
+5e38c7738f15a05d5bd43a6ff729e47711dc214f4b71d99bdd11f48e17cb558a  tfc-mods.zip
 a83d34f53dc9b17aa42c9a35c3fbcc5120f3fcb07f7f8721ec45e6a27be347fc  passlb.tar.gz
 1898d64e22c03aadce9e6b2936897a4bdc125f17ebbd15a96bdc3f71d7f69cf6  sha3.tar.bz2
 be2623c41873e8e8a512a77f93edb301f64377331714b71116f7c30ea4fe6e2a  pyc.zip
