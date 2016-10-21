@@ -111,24 +111,24 @@ the laws of physics.
 
 ###More information
 
-[Threat model](https://github.com/maqp/tfc-backup/wiki/Threat-model)<br>
-[FAQ](https://github.com/maqp/tfc-backup/wiki/FAQ)<br>
+[Threat model](https://github.com/maqp/tfc/wiki/Threat-model)<br>
+[FAQ](https://github.com/maqp/tfc/wiki/FAQ)<br>
 
 In depth<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[Security design](https://github.com/maqp/tfc-backup/wiki/Security-design)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[Protocol](https://github.com/maqp/tfc-backup/wiki/Protocol)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Security design](https://github.com/maqp/tfc/wiki/Security-design)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Protocol](https://github.com/maqp/tfc/wiki/Protocol)<br>
 
 Hardware<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[Hardware configurations](https://github.com/maqp/tfc-backup/wiki/Hardware-configurations)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Hardware configurations](https://github.com/maqp/tfc/wiki/Hardware-configurations)<br>
 
-&nbsp;&nbsp;&nbsp;&nbsp;[Data diode (perfboard)](https://github.com/maqp/tfc-backup/wiki/Data-Diode-(perfboard))<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[Data diode (point to point)](https://github.com/maqp/tfc-backup/wiki/Data-diode-(point-to-point))<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Data diode (perfboard)](https://github.com/maqp/tfc/wiki/Data-Diode-(perfboard))<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Data diode (point to point)](https://github.com/maqp/tfc/wiki/Data-diode-(point-to-point))<br>
 
-&nbsp;&nbsp;&nbsp;&nbsp;[HWRNG (perfboard)](https://github.com/maqp/tfc-backup/wiki/HWRNG-(perfboard))<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[HWRNG (breadboard)](https://github.com/maqp/tfc-backup/wiki/HWRNG-(breadboard))<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[HWRNG (perfboard)](https://github.com/maqp/tfc/wiki/HWRNG-(perfboard))<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[HWRNG (breadboard)](https://github.com/maqp/tfc/wiki/HWRNG-(breadboard))<br>
 
 Software<Br>
-&nbsp;&nbsp;&nbsp;&nbsp;[Installation](https://github.com/maqp/tfc-backup/wiki/Installation)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[How to use](https://github.com/maqp/tfc-backup/wiki/How-to-use)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Installation](https://github.com/maqp/tfc/wiki/Installation)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[How to use](https://github.com/maqp/tfc/wiki/How-to-use)<br>
 
-[Update Log](https://github.com/maqp/tfc-backup/wiki/Update-Log)<br>
+[Update Log](https://github.com/maqp/tfc/wiki/Update-Log)<br>
