@@ -1,109 +1,134 @@
 <img align="right" src="https://cs.helsinki.fi/u/oottela/tfclogo.png" style="position: relative; top: 0; left: 0;">
 
 
-###Tinfoil Chat NaCl
+###Tinfoil Chat
 
+Tinfoil Chat (TFC) is a high assurance encrypted messaging system that
+operates on top of existing IM clients. The 
+[free and open source software](https://en.wikipedia.org/wiki/Free_and_open-source_software) 
+is used together with free hardware to protect users from 
+[passive eavesdropping](https://en.wikipedia.org/wiki/Upstream_collection), 
+[active MITM attacks](https://en.wikipedia.org/wiki/Man-in-the-middle_attack)
+and [remote CNE](https://www.youtube.com/watch?v=3euYBPlX9LM) practised by
+organized crime and nation state attackers.
 
-TFC-NaCl is a high assurance encrypted messaging system that operates on top of
-existing IM clients. The free and open source software is used in conjunction
-with free hardware to protect users from passive eavesdropping, active MITM
-attacks and remote CNE practised by organized crime and state-level adversaries.
+[XSalsa20](https://cr.yp.to/snuffle/salsafamily-20071225.pdf) encryption
+and [Poly1305-AES](https://cr.yp.to/mac/poly1305-20050329.pdf) MACs provide
+[end-to-end encrypted](https://en.wikipedia.org/wiki/End-to-end_encryption)
+communication with [deniable authentication](https://en.wikipedia.org/wiki/Deniable_encryption#Deniable_authentication): Symmetric keys are either 
+pre-shared, or exchanged using [Curve25519 ECDHE](https://cr.yp.to/ecdh/curve25519-20060209.pdf), the public 
+keys of which are verified via off-band channel.
 
-TFC-NaCl uses XSalsa-20-Poly1305 AEAD that provides forward secrecy and
-deniability. Symmetric keys are either pre-shared, or agreed using Curve25519
-ECDHE key exchange.
+Key generation relies on Kernel CSPRNG, but also supports mixing of 
+external entropy from [open circuit design HWRNG](http://holdenc.altervista.org/avalanche/),
+that is sampled by a [RPi](https://www.raspberrypi.org/) through it's 
+GPIO interface either natively, or remotely (SSH over direct ethernet 
+cable). TFC provides per-message forward secrecy with PBKDF2-HMAC-SHA256 
+[hash ratchet](https://en.wikipedia.org/wiki/Double_Ratchet_Algorithm).
 
-Key generation utilizes Kernel CSPRNG, but additionally, further entropy can be
-loaded from open circuit design HWRNG, that is sampled by a [RPi](https://www.raspberrypi.org/)
-through it's GPIO pins either natively, or via SSH. Forward secrecy is obtained
-with hash ratchet based on PBKDF2-HMAC-SHA256, where the 256-bit key is changed
-after every message.
+The software is used in hardware configuration that provides strong 
+endpoint security: Encryption and decryption are separated on two 
+isolated computers. The split [TCB](https://en.wikipedia.org/wiki/Trusted_computing_base)
+interacts with a third, networked computer through unidirectional [serial](https://en.wikipedia.org/wiki/RS-232)
+interfaces. Direction of data flow is enforced with free hardware design
+[data diodes](https://en.wikipedia.org/wiki/Unidirectional_network); Lack
+of bidirectional channels to isolated computers prevents insertion of 
+malware to the encrypting computer and exfiltration of keys and plaintexts
+from the decrypting computer -- even with exploits against [zero-day vulnerabilities](https://en.wikipedia.org/wiki/Zero-day_(computing))
+in software and operating systems of the TCB halves.
 
-The software is used in configuration that provides strong endpoint security.
-It does this by separating encryption and decryption on separate, isolated
-computers, that interact with a networked computer through unidirectional
-serial interfaces. Direction of data flow is enforced with open circuit design
-hardware data diodes; lack of bidirectional channels prevents exfiltration of
-keys and plaintexts even with exploits against zero-day vulnerabilities in
-software and operating systems of TCBs.
+TFC supports multiple IM accounts per user to hide the network structure
+of communicating parties, even during end-to-end encrypted group 
+conversations.
 
-TFC defeats metadata about quantity and schedule of communication with trickle
-connection that outputs constant stream of encrypted noise data. Covert file
-transfer can take place in background during the trickle connection.
-
-TFC also supports multicasting of messages to enable basic group messaging.
-
+TFC allows a group or two parties to defeat metadata about quantity and 
+schedule of communication with trickle connection, where messages are 
+inserted into a constant stream of encrypted noise traffic. Covert file 
+transfer can take place in background during conversation over the 
+trickle connection.
 
 ###How it works
 
-![](https://cs.helsinki.fi/u/oottela/tfc_graph2.png)
+![](https://cs.helsinki.fi/u/oottela/tfcwiki/tfc_overview.png)
 
-TFC uses three computers per endpoint. Alice enters her commands and messages to
-program Tx.py running on her Transmitter computer (TxM), a [TCB](https://en.wikipedia.org/wiki/Trusted_computing_base)
-separated from network. Tx.py encrypts and signs plaintext data and relays it
-to receiver computers (RxM) via networked computer (NH) through RS-232 interface
-and a data diode.
+TFC uses three computers per endpoint. Alice enters her messages and 
+commands to program Tx.py running on her transmitter computer (TxM), a 
+TCB separated from network. Tx.py encrypts and signs plaintext data and
+relays the ciphertext from TxM to her networked computer (NH) trough a
+serial (RS-232) interface and a hardware data diode.
 
-Depending on packet type, the program NH.py running on Alice's NH forwards
-packets from TxM-side serial interface to Pidgin and local RxM (through another
-RS-232 interface and data diode). Local RxM authenticates and decrypts received
-data before processing it.
+Messages and commands received to NH are relayed to IM client (Pidgin or
+Finch), and to Alice's receiver computer (RxM) via another serial interface
+and data diode. The program Rx.py on Alice's RxM authenticates, decrypts
+and processes the received messages and commands. 
 
-Pidgin sends the packet either directly or through Tor network to IM server,
-that then forwards it directly (or again through Tor) to Bob.
+The IM client sends the packet either directly or through Tor network to
+IM server, that then forwards it directly (or again through Tor) to Bob.
 
-NH.py on Bob's NH receives Alice's packet from Pidgin, and forwards it through
-RS-232 interface and data diode to Bob's RxM, where the ciphertext is
-authenticated, decrypted, and processed. When the Bob responds, he will send
-the message/file using his TxM and in the end Alice reads the message from her RxM.
+IM client on Bob's NH forwards packet to NH.py, that then forwards it to
+Bob's RxM (again through data diode enforced serial interface). Bob's 
+Rx.py on his RxM then authenticates, decrypts, and processes the packet.
+
+When the Bob responds, he will send the message using Tx.py on his 
+TxM and in the end, Alice reads the message from Rx.py on her RxM.
 
 
 ###Why keys can not be exfiltrated
 
-1. Malware that exploits an unknown vulnerability in RxM can infiltrate to
-the system, but is unable to exfiltrate keys or plaintexts, as data diode prevents
-all outbound traffic.
+1. Malware that exploits an unknown vulnerability in RxM can infiltrate
+the system, but is unable to exfiltrate keys or plaintexts, as data
+diode prevents all outbound traffic.
 
-2. Malware can not breach TxM as data diode prevents all inbound traffic. The
-only data input from RxM to TxM is the 72 char public key, manually typed by 
-user.
+2. Malware can not infiltrate TxM as data diode prevents all inbound 
+traffic. The only data input to TxM is the public key of contact, which 
+is manually typed by the user.
 
-3. The NH is assumed to be compromised, but unencrypted data never touches it.
+3. The NH is assumed to be compromised: all sensitive data that passes
+through NH is always encrypted and signed.
 
-![](https://cs.helsinki.fi/u/oottela/tfc_attacks2.png)
+![](https://cs.helsinki.fi/u/oottela/tfcwiki/tfc_attacks.png)
 
-Optical repeater inside the optocoupler of the data diode (below) enforces
-direction of data transmission.
+Optical repeater inside the [optocoupler](https://en.wikipedia.org/wiki/Opto-isolator)
+of the data diode (below) enforces direction of data transmission with
+the laws of physics.
 
-<img src="https://cs.helsinki.fi/u/oottela/data_diode.png" align="center" width="74%" height="74%"/>
+<img src="https://cs.helsinki.fi/u/oottela/tfcwiki/pbdd.jpg" align="center" width="74%" height="74%"/>
 
 ###Supported Operating Systems
 
 ####TxM and RxM
 - *buntu 16.04
-- Linux Mint 17.3 Rosa
-- Raspbian Jessie
+- Linux Mint 18 Sarah
+- Raspbian Jessie (Only use RPi version 
+[1](https://www.raspberrypi.org/products/model-b-plus/) or 
+[2](https://www.raspberrypi.org/products/raspberry-pi-2-model-b/))
 
 ####NH
-- Tails 2.3
-- *buntu 16.04,
-- Linux Mint 17.3 Rosa
+- Tails 2.6
+- *buntu 16.04
+- Linux Mint 18 Sarah
 - Raspbian Jessie
-
-###Installation
-[![Installation](http://img.youtube.com/vi/D5pDoJZj2Uw/0.jpg)](http://www.youtube.com/watch?v=D5pDoJZj2Uw)
-
-
-###How to use
-[![Use](http://img.youtube.com/vi/tH8qbl1USoo/0.jpg)](http://www.youtube.com/watch?v=tH8qbl1USoo)
-
 
 ###More information
 
-White paper and manual for previous versions are listed below. Version specific
-updates are listed in the updatelog. Updated white paper and documentation are
-under work.
+[Threat model](https://github.com/maqp/tfc-backup/wiki/Threat-model)<br>
+[FAQ](https://github.com/maqp/tfc-backup/wiki/FAQ)<br>
 
-White paper: https://cs.helsinki.fi/u/oottela/tfc.pdf
+In depth<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Security design](https://github.com/maqp/tfc-backup/wiki/Security-design)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Protocol](https://github.com/maqp/tfc-backup/wiki/Protocol)<br>
 
-Manual: https://cs.helsinki.fi/u/oottela/tfc-manual.pdf
+Hardware<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Hardware configurations](https://github.com/maqp/tfc-backup/wiki/Hardware-configurations)<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;[Data diode (perfboard)](https://github.com/maqp/tfc-backup/wiki/Data-Diode-(perfboard))<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Data diode (point to point)](https://github.com/maqp/tfc-backup/wiki/Data-diode-(point-to-point))<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;[HWRNG (perfboard)](https://github.com/maqp/tfc-backup/wiki/HWRNG-(perfboard))<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[HWRNG (breadboard)](https://github.com/maqp/tfc-backup/wiki/HWRNG-(breadboard))<br>
+
+Software<Br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Installation](https://github.com/maqp/tfc-backup/wiki/Installation)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[How to use](https://github.com/maqp/tfc-backup/wiki/How-to-use)<br>
+
+[Update Log](https://github.com/maqp/tfc-backup/wiki/Update-Log)<br>

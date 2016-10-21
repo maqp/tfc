@@ -1,20 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# TFC-NaCl 0.16.05 || test_tx.py
+# TFC 0.16.10 || test_tx.py
 
 """
-GPL License
+Copyright (C) 2013-2016  Markus Ottela
 
-This software is part of the TFC application, which is free software: You can
-redistribute it and/or modify it under the terms of the GNU General Public
-License as published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
+This file is part of TFC.
+
+TFC is free software: you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software Foundation,
+either version 3 of the License, or (at your option) any later version.
 
 TFC is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-A PARTICULAR PURPOSE. See the GNU General Public License for more details. For
-a copy of the GNU General Public License, see <http://www.gnu.org/licenses/>.
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+TFC. If not, see <http://www.gnu.org/licenses/>.
 """
 
 import Tx
@@ -22,79 +25,144 @@ from Tx import *
 import binascii
 import os.path
 import os
+import re
 import shutil
 import sys
-import time
 import unittest
-
-# Import crypto libraries
-import hashlib
-import simplesha3
 
 
 ###############################################################################
 #                               UNITTEST HELPERS                              #
 ###############################################################################
 
-def create_test_keys(nick_list, key=(64*'a')):
-    """
-    Create test keyfiles.
+Tx.trickle_connection = False
+Tx.m_members_in_group = 20
+Tx.m_number_of_groups = 20
+Tx.m_number_of_accnts = 20
 
-    :param nick_list: List of nicks based on what accounts are created.
-    :param key:       Keys to write into keyfiles.
+Tx.master_key = 64 * 'f'
+Tx.rpi_os = False
+not_bool = [1.0, "string", 1]
+not_str = [1, 1.0, True]
+not_int = ["string", 1.0]
+not_tuple = [1.0, "string", 1, True]
+reed_solomon = RSCodec(2 * e_correction_ratio)
+
+
+class ExtendedTestCase(unittest.TestCase):
+
+    def assertFR(self, msg, func, *args, **kwargs):
+        e_raised = False
+        try:
+            func(*args, **kwargs)
+        except FunctionReturn as inst:
+            e_raised = True
+            self.assertEqual(inst.message, msg)
+        self.assertTrue(e_raised)
+
+    def assertPacketOutput(self, i, t):
+
+        data = bytearray(b64d(open("unitt_txm_out_%s" % i).readline()))
+        data = str(reed_solomon.decode(data))
+
+        self.assertEqual(data[0], '1')
+        self.assertEqual(data[1], 'N')
+
+        if t == 'l':
+            self.assertEqual(data[2], 'L')
+            self.assertEqual(len(data), 173)
+
+        if t == 'm':
+            self.assertEqual(data[2], 'M')
+
+        if t == 'c':
+            self.assertEqual(len(data), 357)
+            self.assertEqual(data[2], 'C')
+            self.assertEqual(data[-11:], "local" + us + "local")
+
+        if t == 'e':
+            self.assertEqual(data, "1NUEX")
+
+        if t == 'd':
+            self.assertEqual(data[2], 'U')
+            self.assertTrue(data[3:5] in ["SC", "SR"])
+
+        if t == 'p':
+            self.assertEqual(data[2], 'P')
+            self.assertTrue(ut_validate_key(data[3:67]))
+            u, a = data[67:].split(us)
+            self.assertTrue(re.match("(^.[^/:,]*@.[^/:,]*\.[^/:,]*.$)", u))
+            self.assertTrue(re.match("(^.[^/:,]*@.[^/:,]*\.[^/:,]*.$)", a))
+
+
+def create_contact(nick_list, user="user@jabber.org",
+                   key=64 * 'a', hek=64 * 'b', store=False):
+    """
+    Add entry to contact database.
+
+    :param nick_list: List of nicks based on which accounts are created
+    :param user:      Account of user associated with contact's account
+    :param key:       Forward secret key
+    :param hek:       Static header encryption key
+    :param store:     When True, writes database to file
     :return:          None
     """
 
-    ut_ensure_dir("keys/")
-
     for nick in nick_list:
+
         if nick == "local":
-            open("keys/tx.local.e", "w+").write(key)
+            c_dictionary["local"] = dict(user="local", nick="local",
+                                         harac=1, 
+                                         key=key, hek=hek,
+                                         txpk="psk", rxpk="psk",
+                                         logging=Tx.txm_side_m_logging)
+
         else:
-            open("keys/tx.%s@jabber.org.e" % nick, "w+").write(key)
-    return None
+            c_dictionary["%s@jabber.org" % nick] = \
+                dict(user=user, nick=nick, 
+                     harac=1, 
+                     key=key, hek=hek,
+                     txpk="psk", rxpk="psk", 
+                     logging=Tx.txm_side_m_logging)
+
+    if store:
+        contact_db(write_db=c_dictionary)
 
 
-def create_contact_db(nick_list):
+def create_group(group_data, store=False):
     """
-    Create contact database.
+    Add entry to group database.
 
-    :param nick_list:  List of nicks based on what accounts are created.
+    :param group_data: List of tuples containing group name and list of members
+    :param store:      When True, writes database to file
     :return:           None
     """
 
-    with open(".tx_contacts", "w+") as f:
-        for nick in nick_list:
-            if nick == "local":
-                f.write("%s,%s,1\n" % (nick, nick))
-            else:
-                f.write("%s@jabber.org,%s,1\n" % (nick, nick))
-    return None
+    for group_name, nick_list in group_data:
+        members = ["%s@jabber.org" % nick for nick in nick_list]
+        g_dictionary[group_name] = dict(logging=Tx.txm_side_m_logging,
+                                        members=members)
 
+    # Add dummy groups
+    for i in xrange(m_number_of_groups - len(g_dictionary)):
+        g_dictionary["dummy_group_%s" % i] = dict(logging="False",
+                                                  members=[])
 
-def create_group_db(group_name, nick_list):
-    """
-    Create group database.
+    # Add dummy members
+    for g in g_dictionary:
+        dummy_count = m_members_in_group - len(g_dictionary[g]["members"])
+        g_dictionary[g]["members"] += dummy_count * ["dummy_member"]
 
-    :param group_name: Name of created group.
-    :param nick_list:  List of nicks based on what accounts are created.
-    :return:           None
-    """
-
-    ut_ensure_dir("groups/")
-
-    with open("groups/g.%s.tfc" % group_name, "w+") as f:
-        for nick in nick_list:
-            f.write("%s@jabber.org\n" % nick)
-    return None
+    if store:
+        group_db(write_db=g_dictionary)
 
 
 def ut_validate_key(key):
     """
-    Test key is valid.
+    Test that encryption key is valid.
 
-    :param key: Key to test.
-    :return:    Boolean on test success.
+    :param key: Key to test
+    :return:    True if key was valid, else False.
     """
 
     if not set(key.lower()).issubset("abcdef0123456789"):
@@ -104,35 +172,11 @@ def ut_validate_key(key):
     return True
 
 
-def ut_sha3_256(message):
-    """
-    SHA3-256 digest.
-
-    :param message: Message to calculate digest from.
-    :return:        Digest (hex format).
-    """
-
-    return binascii.hexlify(simplesha3.sha3256(message))
-
-
-def ut_sha2_256(message):
-    """
-    SHA256 digest.
-
-    :param message: Message to calculate digest from.
-    :return:        Digest (hex format).
-    """
-
-    h_function = hashlib.sha256()
-    h_function.update(message)
-    return binascii.hexlify(h_function.digest())
-
-
 def ut_ensure_dir(directory):
     """
-    Ensure directory.
+    Ensure directory exists.
 
-    :param directory: Directory the existence of which to ensure.
+    :param directory: Directory the existence of which to ensure
     :return:          None
     """
 
@@ -141,67 +185,77 @@ def ut_ensure_dir(directory):
         os.makedirs(name)
 
 
+def ut_cleanup():
+    """
+    Remove files and directories created by tests.
+
+    :return: None
+    """
+
+    for directory in ["unittest_directory", "keys_to_contact"]:
+        try:
+            shutil.rmtree(directory)
+        except OSError:
+            pass
+
+    for f in [Tx.ssh_l_file, Tx.login_file, Tx.datab_file,
+              Tx.group_file, Tx.txlog_file, "tfc_unittest_doc.txt"]:
+        try:
+            os.remove(f)
+        except OSError:
+            pass
+
+    for ut_f in os.listdir('.'):
+        if ut_f.startswith("unitt_txm_out_"):
+            os.remove(ut_f)
+
+    for key in g_dictionary.keys():
+        del g_dictionary[key]
+
+    for key in c_dictionary.keys():
+        del c_dictionary[key]
+
+
 ###############################################################################
 #                                CRYPTOGRAPHY                                 #
 ###############################################################################
 
-class TestSHA256(unittest.TestCase):
+class TestSHA3256(ExtendedTestCase):
 
     def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                sha2_256(a)
-
-    def test_2_SHA256_vector(self):
-        """
-        Test SHA256 with official test vector:
-        http://csrc.nist.gov/groups/ST/toolkit/
-        documents/Examples/SHA_All.pdf // page 14
-        """
-
-        self.assertEqual(sha2_256("abc"), "ba7816bf8f01cfea414140de5dae2223"
-                                          "b00361a396177a9cb410ff61f20015ad")
-
-
-class TestSHA3256(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
+        for a in not_str:
             with self.assertRaises(SystemExit):
                 sha3_256(a)
 
-    def test_2_SHA3_256_vector(self):
+    def test_2_SHA3_256_KAT(self):
         """
-        Test SHA3-256 with official test vector:
-        http://csrc.nist.gov/groups/ST/toolkit/
-        documents/Examples/SHA3-256_Msg0.pdf
+        Test SHA3-256 with official KAT:
+
+        csrc.nist.gov/groups/ST/toolkit/documents/Examples/SHA3-256_Msg0.pdf
         """
 
-        self.assertEqual(sha3_256(''),
-                         "a7ffc6f8bf1ed76651c14756a061d662"
-                         "f580ff4de43b49fa82d80a4b80f8434a")
+        self.assertEqual(sha3_256(''), "a7ffc6f8bf1ed76651c14756a061d662"
+                                       "f580ff4de43b49fa82d80a4b80f8434a")
 
 
-class TestPBKDF2HMACSHA256(unittest.TestCase):
+class TestPBKDF2HMACSHA256(ExtendedTestCase):
 
     def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in ["string", 1.0, True]:
-                for c in [1, 1.0, True]:
+        for a in not_str:
+            for b in not_int:
+                for c in not_str:
                     with self.assertRaises(SystemExit):
                         pbkdf2_hmac_sha256(a, b, c)
 
-    def test_2_no_rounds(self):
-        with self.assertRaises(SystemExit):
-            pbkdf2_hmac_sha256("password", 0, "salt")
+    def test_2_invalid_rounds(self):
+        for i in [-1, 0]:
+            with self.assertRaises(AssertionError):
+                pbkdf2_hmac_sha256("password", i, "salt")
 
-    def test_3_negative_rounds(self):
-        with self.assertRaises(SystemExit):
-            pbkdf2_hmac_sha256("password", -1, "salt")
-
-    def test_4_pbkdf2_hmac_sha256_test_vectors(self):
+    def test_3_pbkdf2_hmac_sha256_kat(self):
         """
-        Testing with only vectors that could be found:
+        Testing with only KAT that could be found:
+
         https://stackoverflow.com/questions/5130513/
         pbkdf2-hmac-sha2-test-vectors/5136918#5136918
         """
@@ -215,551 +269,1246 @@ class TestPBKDF2HMACSHA256(unittest.TestCase):
                          "962893a001ce4e11a4963873aa98134a")
 
 
-class TestEncryptAndSign(unittest.TestCase):
+class TestEncryptAndSign(ExtendedTestCase):
 
     def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in [1, 1.0, True]:
-                with self.assertRaises(SystemExit):
-                    encrypt_and_sign(a, b)
+        for a in not_str:
+            for b in not_str:
+                for c in not_str:
+                    for d in not_bool:
+                        with self.assertRaises(SystemExit):
+                            encrypt_and_sign(a, b, c, d)
 
     def test_2_ct_length(self):
         """
-        len(nonce) == 24,
-        len(tag)   == 16,
-        len(CT)    == 17.
-                      57 in total.
-        Padding is done separately, so len(PT) == len(CT).
+        len(nonce)           == 24
+        len("plaintext msg") == 13
+        len(tag)             == 16
+                                53 in total.
         """
 
-        # Setup
-        create_test_keys(["bob"])
-        create_contact_db(["bob"])
+        output = encrypt_and_sign("plaintext msg", key=(64 * 'f'), pad=False)
 
-        # Test
-        output = encrypt_and_sign("bob@jabber.org", "plaintext message")
-        self.assertEqual(len(output), 57)
-
-        # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
+        self.assertEqual(len(base64.b64decode(output)), 53)
 
     def test_3_next_key(self):
 
         # Setup
-        create_test_keys(["bob"])
-        create_contact_db(["bob"])
+        create_contact(["bob"])
+
+        o_nacl_utils_random = Tx.nacl.utils.random
+        Tx.nacl.utils.random = lambda x: 24 * 'a'
 
         # Test
-        encrypt_and_sign("bob@jabber.org", "plaintext message")
-        next_key = open("keys/tx.bob@jabber.org.e").readline()
-        self.assertEqual(next_key, "93539718242c02c6698778c25a292a11"
-                                   "4c42df327db8be31d5a0cf303573923e")
+        encrypt_and_sign("plaintext message", "bob@jabber.org")
+
+        next_key = c_dictionary["bob@jabber.org"]["key"]
+
+        self.assertEqual(next_key, pbkdf2_hmac_sha256(64 * 'a', rounds=1))
 
         # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
+        ut_cleanup()
+        Tx.nacl.utils.random = o_nacl_utils_random
 
     def test_4_official_test_vectors(self):
         """
         Test vectors:
+
         https://cr.yp.to/highspeed/naclcrypto-20090310.pdf // page 35
         """
 
+        # Setup
+        nonce = ("69696ee955b62b73"
+                 "cd62bda875fc73d6"
+                 "8219e0036b7a0b37")
+
+        o_nacl_utils_random = Tx.nacl.utils.random
+        Tx.nacl.utils.random = lambda x: binascii.unhexlify(nonce)
+
         # Test
-        original_naclrandom = Tx.nacl.utils.random
+        key_tv_hex = ("1b27556473e985d4"
+                      "62cd51197a9a46c7"
+                      "6009549eac6474f2"
+                      "06c4ee0844f68389")
 
-        iv_hex = "69696ee955b62b73cd62bda875fc73d68219e0036b7a0b37"
-        iv_bin = binascii.unhexlify(iv_hex)
-        Tx.nacl.utils.random = lambda x: iv_bin
+        pt_tv_hex = ("be075fc53c81f2d5"
+                     "cf141316ebeb0c7b"
+                     "5228c52a4c62cbd4"
+                     "4b66849b64244ffc"
+                     "e5ecbaaf33bd751a"
+                     "1ac728d45e6c6129"
+                     "6cdc3c01233561f4"
+                     "1db66cce314adb31"
+                     "0e3be8250c46f06d"
+                     "ceea3a7fa1348057"
+                     "e2f6556ad6b1318a"
+                     "024a838f21af1fde"
+                     "048977eb48f59ffd"
+                     "4924ca1c60902e52"
+                     "f0a089bc76897040"
+                     "e082f93776384864"
+                     "5e0705")
 
-        key_hex = ("1b27556473e985d462cd51197a9a46c7"
-                   "6009549eac6474f206c4ee0844f68389")
-
-        create_test_keys(['bob'], key_hex)
-        create_contact_db(['bob'])
-
-        pt_tv_hex = ("be075fc53c81f2d5cf141316"
-                     "ebeb0c7b5228c52a4c62cbd4"
-                     "4b66849b64244ffce5ecbaaf"
-                     "33bd751a1ac728d45e6c6129"
-                     "6cdc3c01233561f41db66cce"
-                     "314adb310e3be8250c46f06d"
-                     "ceea3a7fa1348057e2f6556a"
-                     "d6b1318a024a838f21af1fde"
-                     "048977eb48f59ffd4924ca1c"
-                     "60902e52f0a089bc76897040"
-                     "e082f937763848645e0705")
-
-        ct_tv_hex = ("f3ffc7703f9400e52a7dfb4b"
-                     "3d3305d98e993b9f48681273"
-                     "c29650ba32fc76ce48332ea7"
-                     "164d96a4476fb8c531a1186a"
-                     "c0dfc17c98dce87b4da7f011"
-                     "ec48c97271d2c20f9b928fe2"
-                     "270d6fb863d51738b48eeee3"
-                     "14a7cc8ab932164548e526ae"
-                     "90224368517acfeabd6bb373"
-                     "2bc0e9da99832b61ca01b6de"
-                     "56244a9e88d5f9b37973f622"
-                     "a43d14a6599b1f654cb45a74"
+        ct_tv_hex = ("f3ffc7703f9400e5"
+                     "2a7dfb4b3d3305d9"
+                     "8e993b9f48681273"
+                     "c29650ba32fc76ce"
+                     "48332ea7164d96a4"
+                     "476fb8c531a1186a"
+                     "c0dfc17c98dce87b"
+                     "4da7f011ec48c972"
+                     "71d2c20f9b928fe2"
+                     "270d6fb863d51738"
+                     "b48eeee314a7cc8a"
+                     "b932164548e526ae"
+                     "90224368517acfea"
+                     "bd6bb3732bc0e9da"
+                     "99832b61ca01b6de"
+                     "56244a9e88d5f9b3"
+                     "7973f622a43d14a6"
+                     "599b1f654cb45a74"
                      "e355a5")
 
-        ct_purp_bin = encrypt_and_sign("bob@jabber.org",
-                                       binascii.unhexlify(pt_tv_hex))
-        ct_purp_hex = binascii.hexlify(ct_purp_bin)
-        self.assertEqual(ct_purp_hex, (iv_hex + ct_tv_hex))
+        ct_purp_b64 = encrypt_and_sign(binascii.unhexlify(pt_tv_hex),
+                                       key=key_tv_hex,
+                                       pad=False)
+
+        ct_purp_hex = binascii.hexlify(base64.b64decode(ct_purp_b64))
+        self.assertEqual(ct_purp_hex, (nonce + ct_tv_hex))
 
         # Teardown
-        Tx.nacl.utils.random = original_naclrandom
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
+        Tx.nacl.utils.random = o_nacl_utils_random
+        ut_cleanup()
+
+
+class TestPadding(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_bool:
+                with self.assertRaises(SystemExit):
+                    padding(a, b)
+
+    def test_2_oversize_pt(self):
+        for s in range(255, 260):
+            with self.assertRaises(AssertionError):
+                padding(s * 'm')
+
+    def test_3_padding_with_length_check(self):
+        for s in range(0, 255):
+            string = s * 'm'
+            padded = padding(string)
+            self.assertEqual(len(padded), 255)
+
+            # Verify removal of padding doesn't alter the string.
+            self.assertEqual(string, padded[:-ord(padded[-1:])])
+
+    def test_4_padding_with_no_length_check(self):
+        for s in range(0, 1000):
+            string = s * 'm'
+            padded = padding(string, len_check=False)
+            self.assertTrue(len(padded) % 255 == 0)
+
+            # Verify removal of padding doesn't alter the string.
+            self.assertEqual(string, padded[:-ord(padded[-1:])])
+
+
+class TestRmPadding(unittest.TestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                rm_padding(a)
+
+    def test_2_padding_removal(self):
+        for i in range(0, 1000):
+            string = i * 'm'
+            length_of_padding = 255 - (len(string) % 255)
+            padded_string = string + length_of_padding * chr(length_of_padding)
+            self.assertEqual(rm_padding(padded_string), string)
+
+
+class TestEncryptData(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_str:
+                for c in not_str:
+                    for d in not_str:
+                        with self.assertRaises(SystemExit):
+                            encrypt_data(a, b, c, d)
+
+    def test_2_no_path(self):
+
+        # Test
+        self.assertIsNone(encrypt_data("bob@jabber.org.psk",
+                                       (64 * 'a'), Tx.master_key))
+
+        key_from_file = open("bob@jabber.org.psk").readline()
+        self.assertEqual(len(key_from_file), 140)
+
+        # Teardown
+        os.remove("bob@jabber.org.psk")
+        ut_cleanup()
+
+    def test_3_with_path(self):
+
+        # Setup
+        ut_ensure_dir("unittest_directory/")
+
+        # Test
+        self.assertIsNone(encrypt_data("unittest_directory/bob@jabber.org.psk",
+                                       (64 * 'a')))
+
+        key_from_file = open("unittest_directory/"
+                             "bob@jabber.org.psk").readline()
+        self.assertEqual(len(key_from_file), 140)
+
+        # Teardown
+        ut_cleanup()
+
+    def test_4_with_path_and_salt(self):
+
+        # Setup
+        ut_ensure_dir("unittest_directory/")
+
+        # Test
+        self.assertIsNone(encrypt_data("unittest_directory/bob@jabber.org.psk",
+                                       (64 * 'a'), salt="saltsalt"))
+
+        key_from_file = open("unittest_directory/"
+                             "bob@jabber.org.psk").readline()
+
+        self.assertEqual(len(key_from_file), 148)
+        self.assertEqual(key_from_file[:8], "saltsalt")
+
+        # Teardown
+        ut_cleanup()
+
+
+class TestDecryptData(ExtendedTestCase):
+    """
+    Test vectors:
+
+    https://cr.yp.to/highspeed/naclcrypto-20090310.pdf // page 35
+    """
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_str:
+                with self.assertRaises(SystemExit):
+                    decrypt_data(a, b)
+
+    def test_2_official_test_vector(self):
+
+        # Setup
+        o_master_key = Tx.master_key
+
+        # Test
+        nonce = ("69696ee955b62b73"
+                 "cd62bda875fc73d6"
+                 "8219e0036b7a0b37")
+
+        iv_bin = binascii.unhexlify(nonce)
+
+        Tx.master_key = ("1b27556473e985d4"
+                         "62cd51197a9a46c7"
+                         "6009549eac6474f2"
+                         "06c4ee0844f68389")
+
+        ct_tv_hex = ("f3ffc7703f9400e5"
+                     "2a7dfb4b3d3305d9"
+                     "8e993b9f48681273"
+                     "c29650ba32fc76ce"
+                     "48332ea7164d96a4"
+                     "476fb8c531a1186a"
+                     "c0dfc17c98dce87b"
+                     "4da7f011ec48c972"
+                     "71d2c20f9b928fe2"
+                     "270d6fb863d51738"
+                     "b48eeee314a7cc8a"
+                     "b932164548e526ae"
+                     "90224368517acfea"
+                     "bd6bb3732bc0e9da"
+                     "99832b61ca01b6de"
+                     "56244a9e88d5f9b3"
+                     "7973f622a43d14a6"
+                     "599b1f654cb45a74"
+                     "e355a5")
+
+        pt_tv_hex = ("be075fc53c81f2d5"
+                     "cf141316ebeb0c7b"
+                     "5228c52a4c62cbd4"
+                     "4b66849b64244ffc"
+                     "e5ecbaaf33bd751a"
+                     "1ac728d45e6c6129"
+                     "6cdc3c01233561f4"
+                     "1db66cce314adb31"
+                     "0e3be8250c46f06d"
+                     "ceea3a7fa1348057"
+                     "e2f6556ad6b1318a"
+                     "024a838f21af1fde"
+                     "048977eb48f59ffd"
+                     "4924ca1c60902e52"
+                     "f0a089bc76897040"
+                     "e082f93776384864"
+                     "5e0705")
+
+        ct_tv_bin = binascii.unhexlify(ct_tv_hex)
+
+        pt = decrypt_data(base64.b64encode(iv_bin + ct_tv_bin))
+
+        self.assertEqual(binascii.hexlify(pt), pt_tv_hex)
+
+        with self.assertRaises(SystemExit):
+            decrypt_data(base64.b64encode(iv_bin + ct_tv_bin + 'a'))
+
+        with self.assertRaises(SystemExit):
+            decrypt_data(base64.b64encode('€' + iv_bin + ct_tv_bin))
+
+        # Teardown
+        Tx.master_key = o_master_key
 
 
 ###############################################################################
-#                                KEY MANAGEMENT                               #
+#                                KEY GENERATION                               #
 ###############################################################################
 
-class TestGetKeyfileList(unittest.TestCase):
-
-    def setUp(self):
-        ut_ensure_dir("keys/")
-        open("keys/tx.1.e", "w+").close()
-        open("keys/tx.2.e", "w+").close()
-        open("keys/tx.3.e", "w+").close()
-        open("keys/me.3.e", "w+").close()
-        open("keys/rx.3.e", "w+").close()
-        open("keys/tx.local.e", "w+").close()
-        open("keys/rx.local.e", "w+").close()
-        open("keys/me.local.e", "w+").close()
-
-    def tearDown(self):
-        shutil.rmtree("keys")
-
-    def test_1_input_parameter(self):
-        for a in ["string", 1, 1.0]:
-            with self.assertRaises(SystemExit):
-                get_keyfile_list(a)
-
-    def test_2_keyfile_loading(self):
-
-        self.assertEqual(get_keyfile_list(),
-                         ["tx.1.e", "tx.2.e", "tx.3.e"])
-
-        self.assertEqual(get_keyfile_list(include_local=True),
-                         ["tx.1.e", "tx.2.e", "tx.3.e", "tx.local.e"])
-
-
-class TestGetKey(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                get_key(a)
-
-    def test_2_no_key(self):
-
-        # Test
-        with self.assertRaises(SystemExit):
-            get_key("bob@jabber.org")
-
-    def test_3_valid_key(self):
-
-        # Setup
-        create_test_keys(["bob"])
-
-        # Test
-        self.assertEqual(get_key("bob@jabber.org"), "%s" % (64 * 'a'))
-
-        # Teardown
-        shutil.rmtree("keys")
-
-    def test_4_short_key(self):
-
-        # Setup
-        create_test_keys(["bob"], (63 * 'a'))
-
-        # Test
-        with self.assertRaises(SystemExit):
-            get_key("bob@jabber.org")
-
-        # Teardown
-        shutil.rmtree("keys")
-
-    def test_5_long_key(self):
-
-        # Setup
-        create_test_keys(["bob"], (65 * 'a'))
-
-        # Test
-        with self.assertRaises(SystemExit):
-            get_key("bob@jabber.org")
-
-        # Teardown
-        shutil.rmtree("keys")
-
-    def test_6_invalid_key_content(self):
-
-        # Setup
-        create_test_keys(["bob"], ("%sg" % (63 * 'a')))
-
-        # Test
-        with self.assertRaises(SystemExit):
-            get_key("bob@jabber.org")
-
-        # Teardown
-        shutil.rmtree("keys")
-
-
-class TestKeyWriter(unittest.TestCase):
+class TestNativeSampler(ExtendedTestCase):
 
     def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in [1, 1.0, True]:
+        for a in not_str:
+            for b in not_int:
                 with self.assertRaises(SystemExit):
-                    key_writer(a, b)
+                    native_sampler(a, b)
 
-    def test_2_key_writing(self):
+    def test_2_invalid_ent_size(self):
+        for i in [255, 511, 767]:
+            with self.assertRaises(AssertionError):
+                native_sampler("test", i)
 
-        # Test
-        self.assertIsNone(key_writer("bob@jabber.org", (64 * 'a')))
-        key_from_file = open("keys/tx.bob@jabber.org.e").readline()
-        self.assertEqual(key_from_file, (64 * 'a'))
-
-        # Teardown
-        shutil.rmtree("keys")
-
-    def test_3_path_as_account(self):
+    def test_3_mock_hwrng_input(self):
 
         # Setup
-        ut_ensure_dir("utest/")
+        class GPIOMock(object):
+
+            def __init__(self):
+                pass
+
+            @staticmethod
+            def setmode(_):
+                pass
+
+            @staticmethod
+            def BCM():
+                pass
+
+            @staticmethod
+            def setup(port, inp, pull_up_down):
+                _ = port
+                _ = inp
+                _ = pull_up_down
+                return None
+
+            @staticmethod
+            def IN():
+                pass
+
+            @staticmethod
+            def PUD_DOWN():
+                pass
+
+            @staticmethod
+            def input(_):
+                return ord(os.urandom(1)) % 2
+
+            @staticmethod
+            def cleanup():
+                pass
+
+        Tx.sample_delay = 0.0001
+        o_gpio = Tx.GPIO
+        Tx.GPIO = GPIOMock
 
         # Test
-        self.assertIsNone(key_writer("utest/tx.bob@jabber.org.e", (64 * 'a')))
-        key_from_file = open("utest/tx.bob@jabber.org.e").readline()
-        self.assertEqual(key_from_file, (64 * 'a'))
+        ent = native_sampler("test", 256)
+        self.assertTrue(ut_validate_key(ent[0]))
+
+        ent = native_sampler("test", 512)
+        self.assertTrue(ut_validate_key(ent[0]))
+        self.assertTrue(ut_validate_key(ent[1]))
+
+        ent = native_sampler("test", 768)
+        self.assertTrue(ut_validate_key(ent[0]))
+        self.assertTrue(ut_validate_key(ent[1]))
+        self.assertTrue(ut_validate_key(ent[2]))
 
         # Teardown
-        shutil.rmtree("utest")
+        Tx.GPIO = o_gpio
 
-    def test_4_invalid_key_exits(self):
+
+class TestFixedAESNew(ExtendedTestCase):
+    """
+    This function doesn't have any tests yet.
+    """
+
+
+class TestSSHpwd(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_bool:
+            with self.assertRaises(SystemExit):
+                ssh_pwd(a)
+
+    def test_2_new_password(self):
+
+        # Setup
+        o_new_password = Tx.new_password
+        Tx.new_password = lambda x: "testpassword"
+
+        # Test
+        loaded = ssh_pwd()
+        self.assertEqual(loaded, "testpassword")
+
+        # Teardown
+        ut_cleanup()
+        Tx.new_password = o_new_password
+
+    def test_3_long_password(self):
+
+        # Setup
+        o_new_password = Tx.new_password
+        Tx.new_password = lambda x: 500 * 'a'
+
+        # Test
+        loaded = ssh_pwd()
+        self.assertEqual(loaded, 500 * 'a')
+
+        # Teardown
+        ut_cleanup()
+        Tx.new_password = o_new_password
+
+    def test_4_existing_password(self):
+
+        # Setup
+        pwd_ct = ("F9TpSQAMHplT5xYjXy5Bxh3WnbuiOp9l5Z+UBsY0D6mm7y3SIc/+PelT+Rx"
+                  "1LnZM8r1J72KwzR3I39SketrtqsERR2soVM72sT/1emIrGtlVP9HKG6lOYQ"
+                  "28pWLUkxqj+ZCNm5JijsKkr9N0KXh5Ev7dVnlouDFq5Pk/X+yXsLRzGPKr2"
+                  "AkxrjZB28gC327sPuRKxJxjLyHm5DDz8VjaTYIi1EP0B2Wmq1kszEJmoaSd"
+                  "ZgrpMsOqTsSJyaYMZmy2q+upzFglFwkqKK0tUgKM5qW7EtxGbCP6uxo5tHt"
+                  "Bi2G26G7lyXDWdtv2C5m9Ly49tUZ9mbqJUwqTvawkJyqnHMKC5380C8Gf+8"
+                  "zUcqUtQO2TB7jnoy2c/Du9LVEtL20y35ha25467g==")
+
+        open(Tx.ssh_l_file, "w+").write(pwd_ct)
+
+        # Test
+        self.assertEqual(ssh_pwd(), "testpassword")
+
+        # Teardown
+        ut_cleanup()
+
+    def test_5_invalid_login_data_exits(self):
+
+        # Setup
+        pwd_ct = ("A9TpSQAMHplT5xYjXy5Bxh3WnbuiOp9l5Z+UBsY0D6mm7y3SIc/+PelT+Rx"
+                  "1LnZM8r1J72KwzR3I39SketrtqsERR2soVM72sT/1emIrGtlVP9HKG6lOYQ"
+                  "28pWLUkxqj+ZCNm5JijsKkr9N0KXh5Ev7dVnlouDFq5Pk/X+yXsLRzGPKr2"
+                  "AkxrjZB28gC327sPuRKxJxjLyHm5DDz8VjaTYIi1EP0B2Wmq1kszEJmoaSd"
+                  "ZgrpMsOqTsSJyaYMZmy2q+upzFglFwkqKK0tUgKM5qW7EtxGbCP6uxo5tHt"
+                  "Bi2G26G7lyXDWdtv2C5m9Ly49tUZ9mbqJUwqTvawkJyqnHMKC5380C8Gf+8"
+                  "zUcqUtQO2TB7jnoy2c/Du9LVEtL20y35ha25467g==")
+
+        open(Tx.ssh_l_file, "w+").write(pwd_ct)
 
         # Test
         with self.assertRaises(SystemExit):
-            key_writer("bob@jabber.org", (64 * 'g'))
+            ssh_pwd()
+
+        # Teardown
+        ut_cleanup()
+
+    def test_6_invalid_login_data_encoding_exits(self):
+
+        # Setup
+        pwd_ct = ("€9TpSQAMHplT5xYjXy5Bxh3WnbuiOp9l5Z+UBsY0D6mm7y3SIc/+PelT+Rx"
+                  "1LnZM8r1J72KwzR3I39SketrtqsERR2soVM72sT/1emIrGtlVP9HKG6lOYQ"
+                  "28pWLUkxqj+ZCNm5JijsKkr9N0KXh5Ev7dVnlouDFq5Pk/X+yXsLRzGPKr2"
+                  "AkxrjZB28gC327sPuRKxJxjLyHm5DDz8VjaTYIi1EP0B2Wmq1kszEJmoaSd"
+                  "ZgrpMsOqTsSJyaYMZmy2q+upzFglFwkqKK0tUgKM5qW7EtxGbCP6uxo5tHt"
+                  "Bi2G26G7lyXDWdtv2C5m9Ly49tUZ9mbqJUwqTvawkJyqnHMKC5380C8Gf+8"
+                  "zUcqUtQO2TB7jnoy2c/Du9LVEtL20y35ha25467g==")
+
+        open(Tx.ssh_l_file, "w+").write(pwd_ct)
+
+        # Test
+        with self.assertRaises(SystemExit):
+            ssh_pwd()
+
+        # Teardown
+        ut_cleanup()
 
 
-class TestRotateKey(unittest.TestCase):
-
-    def setUp(self):
-        create_test_keys(["bob"])
-
-    def tearDown(self):
-        shutil.rmtree("keys")
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                rotate_key(a)
-
-    def test_2_function(self):
-        self.assertIsNone(rotate_key("bob@jabber.org"))
-
-        new_key = open("keys/tx.bob@jabber.org.e").readline()
-        self.assertEqual(new_key, "93539718242c02c6698778c25a292a11"
-                                  "4c42df327db8be31d5a0cf303573923e")
-
-
-class TestNewPSK(unittest.TestCase):
+class TestSamplingOverSSH(ExtendedTestCase):
 
     def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in [1.0, 1, "string"]:
+        for a in not_str:
+            for b in not_int:
                 with self.assertRaises(SystemExit):
-                    new_psk(a, b)
+                    sampling_over_ssh(a, b)
 
-    def test_2_no_account(self):
+    def test_2_invalid_ent_size(self):
+        for i in [255, 511, 767]:
+            with self.assertRaises(AssertionError):
+                sampling_over_ssh("test", i)
 
-        # Test
-        self.assertIsNone(new_psk("/psk"))
-        self.assertIsNone(new_psk("/psk "))
-
-    def test_3_invalid_account_chars(self):
-
-        # Test
-        self.assertIsNone(new_psk("/psk alice:@jabber.org"))
-        self.assertIsNone(new_psk("/psk alice/@jabber.org"))
-
-    def test_3_test_key_generation_predetermined_nick(self):
+    def test_3_sample_loading(self):
 
         # Setup
-        Tx.local_testing = True
-        Tx.show_file_prompts = False
-        Tx.unittesting = True
-        Tx.txm_side_logging = True
-        Tx.use_ssh_hwrng = False
+        class MockParamiko(object):
 
-        Tx.acco_store_l["bob@jabber.org"] = False
-        Tx.recipient_acco = "bob@jabber.org"
-        Tx.recipient_nick = "Robert"
+            @staticmethod
+            def AutoAddPolicy():
+                pass
 
-        origin_raw_input = __builtins__.raw_input
-        __builtins__.raw_input = lambda x: "alice@jabber.org"
+            class util(object):
 
-        original_genkey = Tx.generate_key
-        Tx.generate_key = lambda x: 64 * 'a'
+                @staticmethod
+                def log_to_file(target_f):
+                    _ = target_f
 
-        create_contact_db(["local", "bob"])
-        create_test_keys(["local", "bob"])
+            class SSHClient(object):
 
-        # Create PSKs
-        self.assertIsNone(new_psk("/psk bob@jabber.org"))
+                def __init__(self):
+                    self.shell_cmd = ''
 
-        # Test validity of contact's key
-        kf = "rx.alice@jabber.org.e - Give this file to bob@jabber.org"
-        contact_key = open("keys_to_contact/%s" % kf).readline()
-        self.assertTrue(ut_validate_key(contact_key))
+                @staticmethod
+                def connect(hostname, username, password):
+                    _ = hostname
+                    _ = username
+                    _ = password
 
-        # Test RxM packet content
-        rxm_packet = open("unitt_txm_out").readline()
-        s, t, v, p, ct, i, c = rxm_packet.split('|')
-        self.assertEqual(s, "TFC")
-        self.assertEqual(t, 'N')
-        self.assertEqual(v, str(Tx.int_version))
-        self.assertEqual(p, 'C')
-        self.assertEqual(len(ct), 392)
-        self.assertEqual(i, '1')
-        self.assertEqual(len(c.strip('\n')), 8)
+                @staticmethod
+                def set_missing_host_key_policy(policy):
+                    _ = policy
 
-        # Test TxM side key
-        user_key = open("keys/tx.bob@jabber.org.e").readline()
-        self.assertTrue(ut_validate_key(user_key))
+                def exec_command(self, shell_cmd):
+                    self.shell_cmd = shell_cmd
+                    ent_size = int(shell_cmd.split()[1])
 
-        # Test contact database
-        written = open(".tx_contacts").readlines()
-        self.assertTrue("bob@jabber.org,bob,1\r\n" in written or
-                        "bob@jabber.org,bob,1\n" in written or
-                        "bob@jabber.org,bob,1\r" in written or
-                        "bob@jabber.org,bob,1" in written)
+                    class STDINMock(object):
 
-        # Test logging dictionary
-        self.assertTrue(Tx.acco_store_l["bob@jabber.org"])
+                        def __init__(self):
+                            pass
 
-        # Test change of global nick
-        self.assertEqual(Tx.recipient_nick, "bob")
+                        @staticmethod
+                        def flush():
+                            pass
 
-        # Teardown
-        shutil.rmtree("keys")
-        shutil.rmtree("keys_to_contact")
-        os.remove(".tx_contacts")
-        os.remove("unitt_txm_out")
-        __builtins__.raw_input = origin_raw_input
-        Tx.generate_key = original_genkey
-        Tx.acco_store_l["bob@jabber.org"] = False
-        Tx.local_testing = False
-        Tx.show_file_prompts = True
-        Tx.unittesting = False
-        Tx.txm_side_logging = False
+                    class STDOUTMock(object):
 
-    def test_4_test_key_generation_nick_from_parameter(self):
+                        def __init__(self):
+                            pass
 
-        # Setup
-        Tx.local_testing = True
-        Tx.show_file_prompts = False
-        Tx.unittesting = True
-        Tx.use_ssh_hwrng = False
-        Tx.txm_side_logging = False
+                        def generator(self, size):
+                            ent_str = size * 'N'
+                            ent_str += binascii.hexlify(os.urandom(size / 8))
+                            for c in ent_str:
+                                yield c
 
-        Tx.acco_store_l["bob@jabber.org"] = True
-        Tx.recipient_acco = "bob@jabber.org"
-        Tx.recipient_nick = "Robert"
+                        g = generator(self, ent_size)
 
-        origin_raw_input = __builtins__.raw_input
-        __builtins__.raw_input = lambda x: "alice@jabber.org"
+                        @staticmethod
+                        def read(_):
+                            return STDOUTMock.g.next()
 
-        original_genkey = Tx.generate_key
-        Tx.generate_key = lambda x: 64 * 'a'
+                    return STDINMock(), STDOUTMock(), ''
 
-        create_contact_db(["local"])
-        create_test_keys(["local"])
+                def get_cmd(self):
+                    return self.shell_cmd
 
-        # Create PSKs
-        self.assertIsNone(new_psk("/psk bob@jabber.org bob", True))
+        o_paramiko = None
+        if not rpi_os:
+            o_paramiko = Tx.paramiko
+        Tx.paramiko = MockParamiko
 
-        # Test validity of contact's key
-        kf = "rx.alice@jabber.org.e - Give this file to bob@jabber.org"
-        contact_key = open("keys_to_contact/%s" % kf).readline()
-        self.assertTrue(ut_validate_key(contact_key))
-
-        # Test RxM packet content
-        rxm_packet = open("unitt_txm_out").readline()
-        s, t, v, p, ct, i, c = rxm_packet.split('|')
-        self.assertEqual(s, "TFC")
-        self.assertEqual(t, 'N')
-        self.assertEqual(v, str(Tx.int_version))
-        self.assertEqual(p, 'C')
-        self.assertEqual(len(ct), 392)
-        self.assertEqual(i, '1')
-        self.assertEqual(len(c.strip('\n')), 8)
-
-        # Test TxM side key
-        user_key = open("keys/tx.bob@jabber.org.e").readline()
-        self.assertTrue(ut_validate_key(user_key))
-
-        # Test contact database
-        written = open(".tx_contacts").readlines()
-        self.assertTrue("bob@jabber.org,bob,1\r\n" in written or
-                        "bob@jabber.org,bob,1\n" in written or
-                        "bob@jabber.org,bob,1\r" in written or
-                        "bob@jabber.org,bob,1" in written)
-
-        # Test logging dictionary
-        self.assertFalse(Tx.acco_store_l["bob@jabber.org"])
-
-        # Test nick has not changed.
-        self.assertEqual(Tx.recipient_nick, "Robert")
-
-        # Teardown
-        shutil.rmtree("keys")
-        shutil.rmtree("keys_to_contact")
-        os.remove(".tx_contacts")
-        os.remove("unitt_txm_out")
-        __builtins__.raw_input = origin_raw_input
-        Tx.generate_key = original_genkey
-        Tx.acco_store_l["bob@jabber.org"] = False
-        Tx.local_testing = False
-        Tx.show_file_prompts = True
-        Tx.unittesting = False
-
-
-class TestDigitsToBytes(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                digits_to_bytes(a)
-
-    def test_2_test_valid_decode(self):
+        o_new_password = Tx.new_password
+        Tx.new_password = lambda x: "test"
 
         # Test
-        self.assertEqual(digits_to_bytes('010101000100011001000011'), 'TFC')
+        ent1 = sampling_over_ssh("test", 256)
+        self.assertTrue(ut_validate_key(ent1[0]))
 
-    def test_2_test_invalid_decode(self):
+        ent1, ent2 = sampling_over_ssh("test", 512)
+        self.assertTrue(ut_validate_key(ent1))
+        self.assertTrue(ut_validate_key(ent2))
+
+        ent1, ent2, ent3 = sampling_over_ssh("test", 768)
+        self.assertTrue(ut_validate_key(ent1))
+        self.assertTrue(ut_validate_key(ent2))
+        self.assertTrue(ut_validate_key(ent3))
+
+        # Teardown
+        ut_cleanup()
+        Tx.new_password = o_new_password
+        if not rpi_os:
+            Tx.paramiko = o_paramiko
+
+
+class TestCSPRNGSampler(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_int:
+                with self.assertRaises(SystemExit):
+                    csprng_sampler(a, b)
+
+    def test_2_invalid_ent_size(self):
+        for i in [255, 511, 767]:
+            with self.assertRaises(AssertionError):
+                csprng_sampler("test", i)
+
+    def test_3_valid_entropy(self):
 
         # Test
-        self.assertNotEqual(digits_to_bytes('010101000100011001000010'), 'TFC')
+        key1 = csprng_sampler("test", 256)
+        self.assertTrue(ut_validate_key(key1[0]))
+
+        key1, key2 = csprng_sampler("test", 512)
+        self.assertTrue(ut_validate_key(key1))
+        self.assertTrue(ut_validate_key(key2))
+
+        key1, key2, key3 = csprng_sampler("test", 768)
+        self.assertTrue(ut_validate_key(key1))
+        self.assertTrue(ut_validate_key(key2))
+        self.assertTrue(ut_validate_key(key3))
 
 
-class TestGenerateKey(unittest.TestCase):
+class TestGenerateKey(ExtendedTestCase):
 
     def test_1_input_parameter(self):
-        for a in [1.0, 1, True]:
+        for a in not_str:
             with self.assertRaises(SystemExit):
                 generate_key(a)
 
-    def test_2_return_valid_key_when_no_hwrng(self):
+    def test_2_csprng_standard_key(self):
 
         # Setup
-        Tx.use_ssh_hwrng = False
-        original_yes = Tx.yes
-        Tx.yes = lambda x, y: False
+        Tx.ssh_hwrng_sampling = False
 
         # Test
-        self.assertTrue(ut_validate_key(generate_key("test")))
+        key = generate_key("private key")
+        self.assertTrue(ut_validate_key(key[0]))
+
+    def test_3_PSK_keys(self):
+
+        # Setup
+        Tx.ssh_hwrng_sampling = False
+
+        # Test
+        key1, key2 = generate_key("PSK")
+        self.assertTrue(ut_validate_key(key1))
+        self.assertTrue(ut_validate_key(key2))
+
+    def test_4_csprng_local_keys(self):
+
+        # Setup
+        Tx.ssh_hwrng_sampling = False
+
+        # Test
+        key1, key2, key3 = generate_key("local key")
+        self.assertTrue(ut_validate_key(key1))
+        self.assertTrue(ut_validate_key(key2))
+        self.assertTrue(ut_validate_key(key3))
+
+
+###############################################################################
+#                               PASSWORD LOGIN                                #
+###############################################################################
+
+class TestLoginScreen(ExtendedTestCase):
+    """
+    This function doesn't have any tests yet.
+    """
+
+
+class TestNewMasterPWD(ExtendedTestCase):
+
+    def test_1_new_master_password(self):
+
+        # Setup
+        o_new_password = Tx.new_password
+        Tx.new_password = lambda x: "test"
+
+        # Test
+        new_master_pwd()
+        data = open(Tx.login_file).readline()
+        rounds, salt, keyh = data.split('|')
+
+        self.assertTrue(str(rounds).isdigit())
+        self.assertTrue(ut_validate_key(salt))
+        self.assertTrue(ut_validate_key(keyh))
 
         # Teardown
-        Tx.yes = original_yes
+        Tx.new_password = o_new_password
+        ut_cleanup()
 
 
-class TestNewLocalKey(unittest.TestCase):
+class TestCheckMasterPWD(ExtendedTestCase):
 
-        def test_1_input_parameter(self):
-            for a in [1.0, 1, "string"]:
-                with self.assertRaises(SystemExit):
-                    new_local_key(a)
+    def test_1_correct_pwd(self):
 
-        def test_2_new_local_key(self):
-            """
-            Device code verification is disabled during unittesting
-            as mock input of random device code would be difficult.
-            """
+        # Setup
+        class QueueMock(object):
 
-            # Setup
-            Tx.unittesting = True
-            Tx.local_testing = True
-            Tx.use_ssh_hwrng = False
-            origin_raw_input = __builtins__.raw_input
-            __builtins__.raw_input = lambda x: ''
+            def __init__(self):
+                self.value = ''
 
-            original_genkey = Tx.generate_key
-            Tx.generate_key = lambda x: 64 * 'a'
+            @staticmethod
+            def empty():
+                return False
 
-            # Test command returns None
-            self.assertIsNone(new_local_key())
+            @staticmethod
+            def get():
+                return "test"
 
-            # Test RxM packet content
-            rxm_packet = open("unitt_txm_out").readline()
-            s, t, v, p, ct, c = rxm_packet.split('|')
-            self.assertEqual(s, "TFC")
-            self.assertEqual(t, 'N')
-            self.assertEqual(v, str(Tx.int_version))
-            self.assertEqual(p, 'L')
-            self.assertEqual(len(ct), 392)
-            self.assertEqual(len(c.strip('\n')), 8)
+            def put(self, value):
+                self.value = value
 
-            # Test local key
-            localkey = open("keys/tx.local.e").readline()
-            ut_validate_key(localkey)
+            def test(self):
+                return self.value
 
-            # Test contact database
-            written = open(".tx_contacts").readlines()
-            self.assertTrue("local,local,1\n" in written)
+        Tx.pwd_queue = QueueMock()
+        Tx.key_queue = QueueMock()
 
-            # Teardown
-            shutil.rmtree("keys")
-            os.remove(".tx_contacts")
-            os.remove("unitt_txm_out")
-            Tx.local_testing = False
-            Tx.unittesting = False
-            Tx.generate_key = original_genkey
-            __builtins__.raw_input = origin_raw_input
+        data = ("262144|"
+                "79e098346bd45faf91bc599f2579c06f"
+                "0a2b22a4b83cc3f25a5123380a3cc7b2|"
+                "4ea8a5662ac638819789dc84104aa320"
+                "d53a6bb633603771054b1332d29e9384")
+
+        open(Tx.login_file, "w+").write(data)
+
+        # Test
+        check_master_pwd()
+        tv = "346e12134edf2c4105be018745cd80f5a50041d21b771e1c6fd3f9151cfc1a08"
+        key = Tx.key_queue.test()
+        self.assertEqual(key, tv)
+
+        # Teardown
+        ut_cleanup()
+
+    def test_2_incorrect_pwd(self):
+
+        # Setup
+        class QueueMock(object):
+
+            def __init__(self):
+                self.value = ''
+
+            @staticmethod
+            def empty():
+                return False
+
+            @staticmethod
+            def get():
+                return "incorrect"
+
+            def put(self, value):
+                self.value = value
+
+            def test(self):
+                return self.value
+
+        Tx.pwd_queue = QueueMock()
+        Tx.key_queue = QueueMock()
+
+        data = ("262144|"
+                "79e098346bd45faf91bc599f2579c06f"
+                "0a2b22a4b83cc3f25a5123380a3cc7b2|"
+                "4ea8a5662ac638819789dc84104aa320"
+                "d53a6bb633603771054b1332d29e9384")
+
+        open(Tx.login_file, "w+").write(data)
+
+        # Test
+        check_master_pwd()
+        key = Tx.key_queue.test()
+        self.assertEqual(key, '')
+
+        # Teardown
+        ut_cleanup()
+
+    def test_3_missing_login_data(self):
+        with self.assertRaises(SystemExit):
+            check_master_pwd()
+
+    def test_4_incoherent_login_data(self):
+
+        # Setup
+        data = ("262144|"
+                "79e098346bd45faf91bc599f2579c06f"
+                "0a2b22a4b83cc3f25a5123380a3cc7b2")
+
+        open(Tx.login_file, "w+").write(data)
+
+        # Test
+        with self.assertRaises(ValueError):
+            check_master_pwd()
+
+        # Teardown
+        ut_cleanup()
+
+    def test_5_invalid_salt(self):
+
+        # Setup
+        data = ("262144|"
+                "79e098346bd45faf91bc599f2579c06f"
+                "0a2b22a4b83cc3f25a5123380a3cc7bG|"
+                "4ea8a5662ac638819789dc84104aa320"
+                "d53a6bb633603771054b1332d29e9385")
+
+        open(Tx.login_file, "w+").write(data)
+
+        # Test
+        with self.assertRaises(SystemExit):
+            check_master_pwd()
+
+        # Teardown
+        ut_cleanup()
+
+    def test_6_invalid_master_key_hash(self):
+
+        # Setup
+        data = ("262144|"
+                "G9e098346bd45faf91bc599f2579c06f"
+                "0a2b22a4b83cc3f25a5123380a3cc7b2|"
+                "4ea8a5662ac638819789dc84104aa320"
+                "d53a6bb633603771054b1332d29e9385")
+
+        open(Tx.login_file, "w+").write(data)
+
+        # Test
+        with self.assertRaises(SystemExit):
+            check_master_pwd()
+
+        # Teardown
+        ut_cleanup()
+
+    def test_7_non_digit_rounds(self):
+
+        # Setup
+        data = ("A62144|"
+                "79e098346bd45faf91bc599f2579c06f"
+                "0a2b22a4b83cc3f25a5123380a3cc7b2|"
+                "4ea8a5662ac638819789dc84104aa320"
+                "d53a6bb633603771054b1332d29e9385")
+
+        open(Tx.login_file, "w+").write(data)
+
+        # Test
+        with self.assertRaises(AssertionError):
+            check_master_pwd()
+
+        # Teardown
+        ut_cleanup()
+
+
+###############################################################################
+#                                 KEY EXCHANGE                                #
+###############################################################################
+
+# Local Key
+class TestNHBypassMSG(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                nh_bypass_msg(a)
+
+    def test_2_bypass_start(self):
+
+        # Setup
+        Tx.nh_bypass_messages = True
+        o_raw_input = __builtins__.raw_input
+        __builtins__.raw_input = lambda x: ''
+
+        # Test
+        self.assertIsNone(nh_bypass_msg('s'))
+
+        # Teardown
+        __builtins__.raw_input = o_raw_input
+
+    def test_3_bypass_finish(self):
+
+        # Setup
+        Tx.nh_bypass_messages = True
+        o_raw_input = __builtins__.raw_input
+        __builtins__.raw_input = lambda x: ''
+
+        # Test
+        self.assertIsNone(nh_bypass_msg('f'))
+
+        # Teardown
+        __builtins__.raw_input = o_raw_input
+
+
+class TestPrintKDK(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                print_kdk(a)
+
+    def test_2_local_testing_on(self):
+        Tx.local_testing_mode = True
+        self.assertIsNone(print_kdk(binascii.hexlify(os.urandom(32))))
+
+    def test_3_local_testing_off(self):
+        Tx.local_testing_mode = False
+        self.assertIsNone(print_kdk(binascii.hexlify(os.urandom(32))))
+
+
+class TestAskConfirmationCode(ExtendedTestCase):
+
+    def test_1_get_confirmation_code(self):
+
+        # Setup
+        o_raw_input = __builtins__.raw_input
+        __builtins__.raw_input = lambda x: "Testinput"
+
+        # Test
+        self.assertEqual(ask_confirmation_code(), "Testinput")
+
+        # Teardown
+        __builtins__.raw_input = o_raw_input
+
+
+class TestGenerateConfirmationCode(ExtendedTestCase):
+
+    def test_1_generate_confirmation_code(self):
+        conf_code = generate_confirmation_code()
+        self.assertEqual(len(conf_code), 2)
+        self.assertTrue(set(conf_code.lower()).issubset("0123456789abcdef"))
+
+    def test_2_mock_result(self):
+
+        # Setup
+        o_os_urandom = os.urandom
+        os.urandom = lambda x: 'a'
+
+        # Test
+        code = generate_confirmation_code()
+        self.assertEqual(code, "61")
+
+        # Teardown
+        os.urandom = o_os_urandom
+
+
+class TestNewContact(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_str:
+                for c in not_str:
+                    for d in not_str:
+                        for e in not_str:
+                            for f in not_str:
+                                for g in not_str:
+                                    with self.assertRaises(SystemExit):
+                                        new_contact(a, b, c, d, e, f, g)
+
+    def test_2_no_previous_contact(self):
+
+        # Setup
+        Tx.txm_side_m_logging = True
+
+        # Test
+        self.assertIsNone(new_contact("bob@jabber.org", "user@jabber.org",
+                                      "Bob", 64 * 'a', 64 * 'b', "psk", "psk"))
+
+        self.assertEqual(c_dictionary["bob@jabber.org"],
+                         dict(user="user@jabber.org", nick="Bob",
+                              harac=1,
+                              key=(64 * 'a'), hek=(64 * 'b'),
+                              txpk="psk", rxpk="psk",
+                              logging=True))
+
+        # Teardown
+        ut_cleanup()
+
+    def test_3_previous_contact(self):
+
+        # Setup
+        Tx.txm_side_m_logging = True
+
+        # Test
+        self.assertIsNone(new_contact("bob@jabber.org", "user@jabber.org",
+                                      "Bob", 64 * 'a', 64 * 'b', "psk", "psk"))
+
+        c_dictionary["bob@jabber.org"]["logging"] = False
+        c_dictionary["bob@jabber.org"]["harac"] = 5
+
+        self.assertIsNone(new_contact("bob@jabber.org", "user@jabber.org",
+                                      "Bob", 64 * 'a', 64 * 'b', "psk", "psk"))
+
+        self.assertEqual(c_dictionary["bob@jabber.org"],
+                         dict(user="user@jabber.org", nick="Bob",
+                              harac=1,
+                              key=(64 * 'a'), hek=(64 * 'b'),
+                              txpk="psk", rxpk="psk",
+                              logging=False))
+        # Teardown
+        ut_cleanup()
+
+
+class TestNewLocalKey(ExtendedTestCase):
+
+    def test_1_new_local_key(self):
+
+        # Setup
+        Tx.ssh_hwrng_sampling = False
+        Tx.txm_side_m_logging = False
+
+        o_generate_key = Tx.generate_key
+        Tx.generate_key = lambda x: 3 * [64 * 'a']
+
+        o_generate_confirmation_code = Tx.generate_confirmation_code
+        Tx.generate_confirmation_code = lambda: "ff"
+
+        o_raw_input = __builtins__.raw_input
+        __builtins__.raw_input = lambda x: ''
+
+        o_ask_confirmation_code = Tx.ask_confirmation_code
+        Tx.ask_confirmation_code = lambda: "ff"
+
+        # Test
+        self.assertIsNone(new_local_key())
+
+        self.assertPacketOutput(0, 'l')
+        self.assertPacketOutput(1, 'c')
+
+        tdb = contact_db()
+        self.assertEqual(tdb["local"]["nick"], "local")
+        self.assertEqual(tdb["local"]["harac"], 2)
+
+        self.assertEqual(tdb["local"]["key"],
+                         "34f944624b341062a06e9afd4b00e041"
+                         "5817414e4c4463fb2c5d7079b312bda8")
+
+        self.assertEqual(tdb["local"]["hek"],
+                         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+
+        self.assertEqual(tdb["local"]["txpk"], "psk")
+        self.assertEqual(tdb["local"]["rxpk"], "psk")
+        self.assertEqual(tdb["local"]["logging"], False)
+
+        # Teardown
+        ut_cleanup()
+
+        Tx.ask_confirmation_code = o_ask_confirmation_code
+        __builtins__.raw_input = o_raw_input
+        Tx.generate_confirmation_code = o_generate_confirmation_code
+        Tx.generate_key = o_generate_key
+
+
+# ECDHE
+class TestGetContactPublicKey(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_bool:
+            with self.assertRaises(SystemExit):
+                get_contact_public_key(a)
+
+    def test_2_return_value(self):
+
+        # Setup
+        o_raw_input = __builtins__.raw_input
+        key = "2JAT9y2EcnV6DPUGikLJYjWwk5UmUEFXRiQVmTbfSLbL4A4CMp"
+        __builtins__.raw_input = lambda x: key
+
+        # Test
+        self.assertEqual(get_contact_public_key(), 64 * 'a')
+
+        # Teardown
+        __builtins__.raw_input = o_raw_input
+
+
+class TestVerifyPublicKeys(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_str:
+                for c in not_str:
+                    with self.assertRaises(SystemExit):
+                        verify_public_keys(a, b, c)
+
+    def test_2_function(self):
+
+        # Setup
+        o_yes = Tx.yes
+        Tx.yes = lambda x, y: True
+
+        # Test
+        a = verify_public_keys(64 * 'a', 64 * 'b', "alice@jabber.org")
+        self.assertEqual(a, 64 * 'b')
+
+        # Teardown
+        Tx.yes = o_yes
+
+
+class TestStartKeyExchange(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_str:
+                for c in not_str:
+                    with self.assertRaises(SystemExit):
+                        start_key_exchange(a, b, c)
+
+    def test_2_public_key(self):
+
+        # Setup
+        o_raw_input = __builtins__.raw_input
+        pub_key = "2JAT9y2EcnV6DPUGikLJYjWwk5UmUEFXRiQVmTbfSLbL4A4CMp"
+        __builtins__.raw_input = lambda x: pub_key
+
+        Tx.txm_side_m_logging = True
+
+        o_yes = Tx.yes
+        Tx.yes = lambda x, y: True
+
+        o_generate_key = Tx.generate_key
+        Tx.generate_key = lambda x: [64 * 'a']
+
+        Tx.active_c['a'] = "bob@jabber.org"
+
+        create_contact(["local", "bob"])
+
+        # Test
+        self.assertIsNone(start_key_exchange("bob@jabber.org",
+                                             "david@jabber.org",
+                                             "bob"))
+        self.assertPacketOutput(0, 'p')
+        self.assertPacketOutput(1, 'c')
+        self.assertPacketOutput(2, 'c')
+
+        self.assertTrue(ut_validate_key(c_dictionary["bob@jabber.org"]["key"]))
+        self.assertEqual(c_dictionary["bob@jabber.org"]["nick"], "bob")
+        self.assertEqual(c_dictionary["bob@jabber.org"]["harac"], 1)
+        self.assertEqual(c_dictionary["bob@jabber.org"]["logging"], True)
+
+        # Teardown
+        ut_cleanup()
+
+        Tx.generate_key = o_generate_key
+        Tx.yes = o_yes
+        __builtins__.raw_input = o_raw_input
+        Tx.txm_side_m_logging = False
+
+
+# PSK
+class TestNewPSK(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_str:
+                for c in not_str:
+                    with self.assertRaises(SystemExit):
+                        new_psk(a, b, c)
+
+    def test_2_function(self):
+
+        # Setup
+        Tx.disable_gui_dialog = False
+        Tx.txm_side_m_logging = True
+
+        create_contact(["local", "alice"])
+
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "Alice"
+
+        o_generate_key = Tx.generate_key
+        Tx.generate_key = lambda x: [64 * 'a', 64 * 'a']
+
+        o_new_password = Tx.new_password
+        Tx.new_password = lambda x: "test"
+
+        o_ask_path_gui = Tx.ask_path_gui
+        Tx.ask_path_gui = lambda x: "keys_to_contact/"
+
+        # Test
+        self.assertIsNone(new_psk("bob@jabber.org", "user@jabber.org", "bob"))
+
+        kf = "user@jabber.org.psk - Give to bob@jabber.org"
+        contact_key = open("keys_to_contact/%s" % kf).readline()
+
+        self.assertEqual(len(contact_key), 288)
+
+        self.assertPacketOutput(0, 'c')
+
+        self.assertEqual(c_dictionary["bob@jabber.org"]["key"], 64 * 'a')
+        self.assertEqual(c_dictionary["bob@jabber.org"]["nick"], "bob")
+        self.assertEqual(c_dictionary["bob@jabber.org"]["harac"], 1)
+        self.assertEqual(c_dictionary["bob@jabber.org"]["logging"], True)
+        self.assertEqual(Tx.active_c['n'], "Alice")
+
+        # Teardown
+        ut_cleanup()
+
+        Tx.ask_path_gui = o_ask_path_gui
+        Tx.new_password = o_new_password
+        Tx.generate_key = o_generate_key
+
+        Tx.txm_side_m_logging = False
+        Tx.disable_gui_dialog = True
 
 
 ###############################################################################
 #                               SECURITY RELATED                              #
 ###############################################################################
 
-class TestFixedAESkey(unittest.TestCase):
-    """
-    This function doesn't have any tests yet.
-    """
+class TestPubKeys(ExtendedTestCase):
 
-
-class TestGracefulExit(unittest.TestCase):
-
-    def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in [1, 1.0, "string"]:
-                with self.assertRaises(SystemExit):
-                    graceful_exit(a, b)
-
-    def test_2_function(self):
+    def test_1_group_selected(self):
 
         # Setup
-        Tx.trickle_connection = False
+        active_c['g'] = "testgroup"
 
         # Test
-        with self.assertRaises(SystemExit):
-            graceful_exit()
+        self.assertFR("Error: Group is selected.", pub_keys)
+
+    def test_2_psk(self):
+
+        # Setup
+        create_contact(["bob"])
+        active_c['g'] = ''
+        active_c['a'] = "bob@jabber.org"
+
+        # Test
+        self.assertIsNone(pub_keys())
+
+    def test_3_ecdhe(self):
+
+        # Setup
+        create_contact(["bob"])
+        c_dictionary["bob@jabber.org"]["txpk"] = 64 * 'a'
+        c_dictionary["bob@jabber.org"]["rxpk"] = 64 * 'b'
+        Tx.active_c['g'] = ''
+        Tx.active_c['a'] = "bob@jabber.org"
+
+        # Test
+        self.assertIsNone(pub_keys())
 
 
-class TestValidateKey(unittest.TestCase):
+class TestValidateKey(ExtendedTestCase):
 
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            for b in [1, 1.0, True]:
-                with self.assertRaises(SystemExit):
-                    validate_key(a, b)
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_str:
+                for c in not_bool:
+                    with self.assertRaises(SystemExit):
+                        validate_key(a, b, c)
 
     def test_2_illegal_key_length(self):
         for b in range(0, 64):
@@ -786,2114 +1535,1277 @@ class TestValidateKey(unittest.TestCase):
             self.assertTrue(validate_key(64 * c), "alice@jabber.org")
 
 
-class TestKeySearcher(unittest.TestCase):
+class TestInputValidation(ExtendedTestCase):
 
     def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
+        for a in not_tuple:
+            with self.assertRaises(TypeError):
+                input_validation(a)
+
+    def test_2_function(self):
+        with self.assertRaises(SystemExit):
+            input_validation(("string", int))
+
+
+class TestGracefulExit(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
             with self.assertRaises(SystemExit):
-                key_searcher(a)
+                graceful_exit(a)
 
-    def test_2_bounds(self):
-        for l in range(0, 63):
-            self.assertFalse(key_searcher("teststring%s" % (l * 'a')))
-
-        for l in range(63, 74):
-            self.assertTrue(key_searcher("teststring%s" % (l * 'a')))
-
-        for l in range(74, 250):
-            self.assertFalse(key_searcher("teststring%s" % (l * 'a')))
+    def test_2_function(self):
+        with self.assertRaises(SystemExit):
+            graceful_exit()
 
 
-class TestWriteLogEntry(unittest.TestCase):
+class TestWriteLogEntry(ExtendedTestCase):
 
     def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in [1, 1.0, True]:
-                for c in [1, 1.0, True]:
-                    for d in [1, 1.0, True]:
-                        for e in [1, 1.0, True]:
-                            with self.assertRaises(SystemExit):
-                                write_log_entry(a, b, c, d, e)
+        for a in not_str:
+            for b in not_str:
+                with self.assertRaises(SystemExit):
+                    write_log_entry(a, b)
 
     def test_2_log_entry(self):
 
-        # Test
-        write_log_entry("alice@jabber.org", "alice", "message")
-        logged = str(open("logs/TxM - logs.alice@jabber.org.tfc").readline())
-        split = logged.split()
-        self.assertEqual(split[2], "Me")
-        self.assertEqual(split[3], '>')
-        self.assertEqual(split[4], "alice:")
-        self.assertEqual(split[5], "message")
-
-        # Teardown
-        shutil.rmtree("logs")
-
-    def test_3_write_key_exchange(self):
+        # Setup
+        create_contact(["alice"])
+        c_dictionary["alice@jabber.org"]["logging"] = True
+        c_dictionary["alice@jabber.org"]["logging"] = True
 
         # Test
-        write_log_entry("alice@jabber.org", pk_user=(64*'a'),
-                        pk_contact=(64*'b'))
+        self.assertIsNone(write_log_entry("alice@jabber.org", "aMessage"))
+        logged = str(open(Tx.txlog_file).read().splitlines())
 
-        logf = open("logs/TxM - logs.alice@jabber.org.tfc").read().splitlines()
-
-        self.assertEqual(logf[2], "       My pub key:  "
-                                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-                                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-
-        self.assertEqual(logf[3], "Contact's pub key:  "
-                                  "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-                                  "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+        self.assertEqual(len(logged), 1080)
 
         # Teardown
-        shutil.rmtree("logs")
+        ut_cleanup()
 
 
-class TestGetContactPublicKeyHex(unittest.TestCase):
+class TestAccessHistory(ExtendedTestCase):
 
-    def test_1_return_value(self):
+    def test_1_input_parameter(self):
+        for a in not_bool:
+            with self.assertRaises(SystemExit):
+                access_history(a)
+
+    def test_2_user_cancels(self):
 
         # Setup
-        origin_raw_input = __builtins__.raw_input
-        __builtins__.raw_input = lambda x: \
-            "2bd5ddebf03917df47cece8044e4f2dc81a4" \
-            "7ecd61cdb590266b59fa7610b901e6c132e3"
+        o_yes = Tx.yes
+        Tx.yes = lambda x: False
+        Tx.active_c['a'] = "bob@jabber.org"
 
         # Test
-        self.assertEqual(get_contact_public_key_hex(),
-                         "2bd5ddebf03917df47cece8044e4f2dc"
-                         "81a47ecd61cdb590266b59fa7610b901")
+        self.assertFR("Export aborted by user.", access_history, True)
 
         # Teardown
-        __builtins__.raw_input = origin_raw_input
+        ut_cleanup()
+        Tx.yes = o_yes
 
-
-class TestManualPublicKeyEntry(unittest.TestCase):
-
-    def test_1_return_value(self):
+    def test_3_no_log_file(self):
 
         # Setup
-        origin_raw_input = __builtins__.raw_input
-        original_yes = Tx.yes
+        create_contact(["local"])
+        Tx.active_c['a'] = "bob@jabber.org"
+
+        # Test
+        self.assertFR("Error: Could not find '.tx_logs'.",
+                      access_history)
+
+        # Teardown
+        ut_cleanup()
+
+    def test_4_short_message_to_contact_print(self):
+
+        # Setup
+        create_contact(["local", "alice"])
+        c_dictionary["alice@jabber.org"]["logging"] = True
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "alice"
+        Tx.active_c['g'] = ''
+        recipient_chooser("Short message", 'm')
+        recipient_chooser("Short message", 'm')
+
+        # Test
+        self.assertIsNone(access_history())
+        self.assertPacketOutput(2, 'c')
+
+        # Teardown
+        ut_cleanup()
+
+    def test_5_short_message_to_group_print(self):
+
+        # Setup
+        create_contact(["local", "alice", "bob"])
+        create_group([("testgroup", ["alice", "bob"])])
+        g_dictionary["testgroup"]["logging"] = True
+
+        Tx.active_c['a'] = ''
+        Tx.active_c['g'] = "testgroup"
+
+        recipient_chooser("Short message", 'm')
+
+        # Test
+        self.assertIsNone(access_history())
+
+        # Teardown
+        ut_cleanup()
+
+    def test_6_long_message_to_contact_print(self):
+
+        # Setup
+        create_contact(["local", "bob"])
+        Tx.active_c['a'] = "bob@jabber.org"
+        Tx.active_c['g'] = ''
+        c_dictionary["bob@jabber.org"]["logging"] = True
+
+        long_message = ("Lorem ipsum dolor sit amet, consectetur adipiscing "
+                        "elit. Suspendisse quis lacus euismod, gravida neque "
+                        "non, scelerisque ex. Sed imperdiet elit nec enim "
+                        "ultricies sodales. Nullam ipsum augue, egestas sit "
+                        "amet eros at, facilisis scelerisque odio. Nulla nec "
+                        "justo erat. Etiam id ultrices mi. Proin semper ex eu "
+                        "justo tincidunt, eu volutpat libero venenatis. "
+                        "Maecenas dignissim pharetra purus lacinia mattis. In "
+                        "ligula dolor, viverra a diam fermentum, placerat "
+                        "sodales magna. Vivamus ac tellus non velit porta "
+                        "condimentum. Quisque iaculis metus sit amet "
+                        "facilisis ullamcorper. Cum sociis natoque penatibus "
+                        "et magnis dis parturient montes, nascetur ridiculus "
+                        "mus.")
+
+        recipient_chooser(long_message, 'm')
+        recipient_chooser(long_message, 'm')
+
+        # Test
+        self.assertIsNone(access_history())
+
+        # Teardown
+        ut_cleanup()
+
+    def test_7_long_message_to_group_print(self):
+
+        # Setup
+        create_contact(["local", "alice", "bob"])
+        create_group([("testgroup", ["alice", "bob"])])
+
+        g_dictionary["testgroup"]["logging"] = True
+        Tx.active_c['a'] = ''
+        Tx.active_c['g'] = "testgroup"
+
+        long_message = ("Lorem ipsum dolor sit amet, consectetur adipiscing "
+                        "elit. Suspendisse quis lacus euismod, gravida neque "
+                        "non, scelerisque ex. Sed imperdiet elit nec enim "
+                        "ultricies sodales. Nullam ipsum augue, egestas sit "
+                        "amet eros at, facilisis scelerisque odio. Nulla nec "
+                        "justo erat. Etiam id ultrices mi. Proin semper ex eu "
+                        "justo tincidunt, eu volutpat libero venenatis. "
+                        "Maecenas dignissim pharetra purus lacinia mattis. In "
+                        "ligula dolor, viverra a diam fermentum, placerat "
+                        "sodales magna. Vivamus ac tellus non velit porta "
+                        "condimentum. Quisque iaculis metus sit amet "
+                        "facilisis ullamcorper. Cum sociis natoque penatibus "
+                        "et magnis dis parturient montes, nascetur ridiculus "
+                        "mus.")
+
+        recipient_chooser(long_message, 'm')
+        recipient_chooser(long_message, 'm')
+
+        # Test
+        self.assertIsNone(access_history())
+
+        # Teardown
+        ut_cleanup()
+
+    def test_8_long_message_to_group_export(self):
+
+        # Setup
+        create_contact(["local", "alice", "bob"])
+        create_group([("testgroup", ["alice", "bob"])])
+
+        g_dictionary["testgroup"]["logging"] = True
+        Tx.active_c['a'] = ''
+        Tx.active_c['g'] = "testgroup"
+
+        o_yes = Tx.yes
         Tx.yes = lambda x: True
-        __builtins__.raw_input = lambda x: \
-            "2bd5ddebf03917df47cece8044e4f2dc81a4" \
-            "7ecd61cdb590266b59fa7610b901e6c132e3"
+
+        long_message = ("Lorem ipsum dolor sit amet, consectetur adipiscing "
+                        "elit. Suspendisse quis lacus euismod, gravida neque "
+                        "non, scelerisque ex. Sed imperdiet elit nec enim "
+                        "ultricies sodales. Nullam ipsum augue, egestas sit "
+                        "amet eros at, facilisis scelerisque odio. Nulla nec "
+                        "justo erat. Etiam id ultrices mi. Proin semper ex eu "
+                        "justo tincidunt, eu volutpat libero venenatis. "
+                        "Maecenas dignissim pharetra purus lacinia mattis. In "
+                        "ligula dolor, viverra a diam fermentum, placerat "
+                        "sodales magna. Vivamus ac tellus non velit porta "
+                        "condimentum. Quisque iaculis metus sit amet "
+                        "facilisis ullamcorper. Cum sociis natoque penatibus "
+                        "et magnis dis parturient montes, nascetur ridiculus "
+                        "mus.")
+
+        recipient_chooser(long_message, 'm')
+        recipient_chooser(long_message, 'm')
 
         # Test
-        self.assertEqual(manual_public_key_entry(),
-                         "2bd5ddebf03917df47cece8044e4f2dc"
-                         "81a47ecd61cdb590266b59fa7610b901")
+        self.assertIsNone(access_history(export=True))
+        self.assertTrue(os.path.isfile("TxM - Plaintext log (testgroup)"))
 
         # Teardown
-        __builtins__.raw_input = origin_raw_input
-        Tx.yes = original_yes
-
-
-class TestVerifyPublicKeys(unittest.TestCase):
-
-    def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in [1, 1.0, True]:
-                for c in [1, 1.0, True]:
-                    with self.assertRaises(SystemExit):
-                        verify_public_keys(a, b, c)
-
-    def test_2_public_key_successful_verification(self):
-
-        # Setup
-        original_yes = Tx.yes
-        Tx.yes = lambda x, y: True
-
-        # Test
-        self.assertEqual(verify_public_keys(64 * 'a', 64 * 'b',
-                                            "bob@jabber.org"), 64 * 'b')
-
-        # Teardown
-        Tx.yes = original_yes
-
-
-class TestStartKeyExchange(unittest.TestCase):
-
-    def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in [1, 1.0, "string"]:
-                with self.assertRaises(SystemExit):
-                    start_key_exchange(a, b)
-
-    def test_2_invalid_commands(self):
-
-        # Setup
-        ut_ensure_dir("keys/")
-
-        # Test
-        self.assertIsNone(start_key_exchange("/dh"))
-        self.assertIsNone(start_key_exchange("/dh "))
-
-        # Teardown
-        shutil.rmtree("keys")
-
-    def test_3_public_key(self):
-
-        # Setup
-        origin_raw_input = __builtins__.raw_input
-        __builtins__.raw_input = lambda x: \
-            "2bd5ddebf03917df47cece8044e4f2dc81a4" \
-            "7ecd61cdb590266b59fa7610b901e6c132e3"
-        original_yes = Tx.yes
-        Tx.yes = lambda x, y: True
-
-        original_genkey = Tx.generate_key
-        Tx.generate_key = lambda x: 64 * 'a'
-
-        Tx.recipient_acco = "bob@jabber.org"
-        Tx.unittesting = True
-        create_test_keys(["bob", "local"])
-        create_contact_db(["bob", "local"])
-
-        # Create public keys
-        self.assertIsNone(start_key_exchange("/dh bob@jabber.org"))
-
-        # Verify public key packet content
-        ssk_data = open("unitt_txm_out").readline()
-        header, model, ver, p_type, ct, account, chksum = ssk_data.split('|')
-        self.assertEqual(header, "TFC")
-        self.assertEqual(model, 'N')
-        self.assertEqual(ver, str(Tx.int_version))
-
-        # Verify public key packet hash
-        calc = ut_sha2_256("%s|%s|%s|%s|%s|%s"
-                           % (header, model, ver, p_type,
-                              ct, account))[:Tx.checksum_len]
-        self.assertEqual(chksum, calc + '\n')
-
-        # Verify public keys were written to TxM side logfile
-        logdata = open("logs/TxM - logs.bob@jabber.org.tfc").readlines()
-        self.assertTrue(ut_validate_key(str(logdata[2]).split()[3]))
-        self.assertTrue(ut_validate_key(str(logdata[3]).split()[3]))
-        self.assertNotEqual(str(logdata[2]).split()[3],
-                            str(logdata[3]).split()[3])
-
-        # Teardown
-        __builtins__.raw_input = origin_raw_input
-        Tx.generate_key = original_genkey
-        Tx.yes = original_yes
-        os.remove("unitt_txm_out")
-        os.remove(".tx_contacts")
-        shutil.rmtree("logs")
-        shutil.rmtree("keys")
-        Tx.unittesting = False
+        ut_cleanup()
+        Tx.yes = o_yes
+        os.remove("TxM - Plaintext log (testgroup)")
 
 
 ###############################################################################
 #                             CONTACT MANAGEMENT                              #
 ###############################################################################
 
-class TestChangeRecipient(unittest.TestCase):
+class TestSelectKeyExchange(ExtendedTestCase):
 
-    def setUp(self):
-        create_test_keys(["alice", "bob"])
-        create_group_db("testgroup", ["alice", "bob"])
-        create_contact_db(["alice", "bob"])
+    def test_1_select_key_exchange(self):
 
-        Tx.recipient_acco = ''
-        Tx.recipient_nick = ''
-        Tx.group = ''
+        for a in ['e', "ecdhe"]:
 
-    def tearDown(self):
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
+            # Setup
+            o_raw_input = __builtins__.raw_input
+            __builtins__.raw_input = lambda x: a
+
+            # Test
+            self.assertEqual(select_key_exchange(), "ecdhe")
+
+            # Teardown
+            __builtins__.raw_input = o_raw_input
+
+        for a in ['p', "psk"]:
+
+            # Setup
+            o_raw_input = __builtins__.raw_input
+            __builtins__.raw_input = lambda x: a
+
+            # Test
+            self.assertEqual(select_key_exchange(), "psk")
+
+            # Teardown
+            __builtins__.raw_input = o_raw_input
+
+
+class TestAddNewContact(ExtendedTestCase):
 
     def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                add_new_contact(a)
+
+    def test_2_full_contact_list(self):
+
+        # Setup
+        o_m_number_of_accnts = Tx.m_number_of_accnts
+        Tx.m_number_of_accnts = 2
+
+        create_contact(["alice", "bob"])
+
+        # Test
+        self.assertFR("Error: TFC settings only allow 2 contacts.",
+                      add_new_contact, "/add charlie@jabber.org")
+
+        # Teardown
+        ut_cleanup()
+        Tx.m_number_of_accnts = o_m_number_of_accnts
+
+
+class TestRmContact(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                rm_contact(a)
+
+    def test_2_missing_account(self):
+        self.assertFR("Error: No account specified.", rm_contact, "/rm")
+
+    def test_3_invalid_account(self):
+        self.assertFR("Invalid account", rm_contact, "/rm alicejabber.org")
+
+    def test_4_user_aborted_remove(self):
+
+        # Setup
+        o_yes = Tx.yes
+        Tx.yes = lambda x: False
+
+        create_contact(["bob", "local"])
+
+        # Test
+        self.assertFR("Removal of contact aborted.", rm_contact,
+                      "/rm bob@jabber.org")
+
+        # Teardown
+        ut_cleanup()
+        Tx.yes = o_yes
+
+    def test_5_rm_non_existing_contact_no_group_file(self):
+
+        # Setup
+        o_yes = Tx.yes
+        Tx.yes = lambda x: True
+
+        create_contact(["alice", "local"])
+
+        # Test
+        self.assertIsNone(rm_contact("/rm bob@jabber.org"))
+
+        # Teardown
+        ut_cleanup()
+        Tx.yes = o_yes
+
+    def test_6_rm_non_existing_contact_with_group_file(self):
+
+        # Setup
+        o_yes = Tx.yes
+        Tx.yes = lambda x: True
+
+        create_contact(["alice", "local"])
+        create_group([("testgroup", ["bob"])])
+
+        # Test
+        self.assertIsNone(rm_contact("/rm bob@jabber.org"))
+        self.assertTrue("bob@jabber.org"
+                        not in g_dictionary["testgroup"]["members"])
+        # Teardown
+        ut_cleanup()
+        Tx.yes = o_yes
+
+    def test_7_rm_existing_contact(self):
+
+        # Setup
+        create_contact(["alice", "bob", "local"])
+        create_group([("testgroup1", ["alice", "bob"]),
+                      ("testgroup2", ["alice"]),
+                      ("testgroup3", ["bob"])])
+
+        o_yes = Tx.yes
+        Tx.yes = lambda x: True
+
+        # Test
+        self.assertIsNone(rm_contact("/rm bob@jabber.org"))
+
+        for g in ["testgroup1", "testgroup2", "testgroup3"]:
+            members = g_dictionary[g]["members"]
+            self.assertTrue("bob@jabber.org" not in members)
+
+        self.assertPacketOutput(0, 'c')
+
+        # Teardown
+        ut_cleanup()
+        Tx.yes = o_yes
+
+
+class TestGetNickInput(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                get_nick_input(a)
+
+    def test_2_valid_nickname(self):
+
+        # Setup
+        o_raw_input = __builtins__.raw_input
+        __builtins__.raw_input = lambda x: "ALICE"
+
+        # Test
+        self.assertEqual(get_nick_input("alice@jabber.org"), "ALICE")
+
+        # Teardown
+        __builtins__.raw_input = o_raw_input
+
+    def test_3_default_nickname(self):
+
+        # Setup
+        o_raw_input = __builtins__.raw_input
+        __builtins__.raw_input = lambda x: ''
+
+        # Test
+        self.assertEqual(get_nick_input("alice@jabber.org"), "Alice")
+
+        # Teardown
+        __builtins__.raw_input = o_raw_input
+
+
+class TestValidateAccount(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_int:
+                with self.assertRaises(SystemExit):
+                    validate_account(a, b)
+
+    def test_2_valid_account(self):
+        self.assertTrue(validate_account("alice@jabber.org", 1))
+
+    def test_3_invalid_account(self):
+        for a in ["alice@jabber.", "alice@jabber", "@jabber.org",
+                  "alicejabber.org", "alice@.org", "alice@org",
+                  "%s@jabber.org" % (245 * 'a'), "bob\x1f@jabber.org"]:
+            self.assertFalse(validate_account(a))
+
+
+class TestValidateNick(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_str:
+                with self.assertRaises(SystemExit):
+                    validate_nick(a, b)
+
+    def test_2_invalid_nick(self):
+
+        # Setup
+        create_contact(["alice"])
+        create_group([("testgroup", ["alice"])])
+
+        # Test
+        for n in [255 * 'a', "Alice\x1f", '', "me", "ME", "Me", "local",
+                  "local", "alice@jabber.org", "alice", "testgroup"]:
+            self.assertFalse(validate_nick(n, print_m=False))
+
+        # Teardown
+        ut_cleanup()
+
+
+class TestGetListOf(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_str:
+                with self.assertRaises(SystemExit):
+                    get_list_of(a, b)
+
+    def test_2_invalid_key(self):
+        with self.assertRaises(KeyError):
+            get_list_of("invalid_key")
+
+    def test_3_list_of_accounts(self):
+
+        # Setup
+        create_contact(["local", "alice", "bob", "charlie"])
+
+        # Test
+        self.assertEqual(get_list_of("accounts"),
+                         ["alice@jabber.org", "bob@jabber.org",
+                          "charlie@jabber.org"])
+        # Teardown
+        ut_cleanup()
+
+    def test_4_list_of_nicks(self):
+
+        # Setup
+        create_contact(["local", "alice", "bob", "charlie"])
+
+        # Test
+        self.assertEqual(get_list_of("nicks"),
+                         ["alice", "bob", "charlie"])
+
+        # Teardown
+        ut_cleanup()
+
+    def test_5_list_of_groups(self):
+
+        # Setup
+        create_group([("testgroup1", ["alice", "bob"]),
+                      ("testgroup2", ["alice"]),
+                      ("testgroup3", ["bob"])])
+
+        # Test
+        self.assertEqual(get_list_of("groups"),
+                         ["testgroup1", "testgroup2", "testgroup3"])
+
+        # Teardown
+        ut_cleanup()
+
+    def test_6_list_of_members(self):
+
+        # Setup
+        create_group([("testgroup1", ["alice", "bob"]),
+                      ("testgroup2", ["alice"]),
+                      ("testgroup3", ["bob"])])
+
+        # Test
+        self.assertEqual(get_list_of("members", "testgroup1"),
+                         ["alice@jabber.org", "bob@jabber.org"])
+
+        self.assertEqual(get_list_of("members", "testgroup2"),
+                         ["alice@jabber.org"])
+
+        self.assertEqual(get_list_of("members", "testgroup3"),
+                         ["bob@jabber.org"])
+
+        # Teardown
+        ut_cleanup()
+
+
+###############################################################################
+#                             CONTACT SELECTION                              #
+###############################################################################
+
+class TestChangeRecipient(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
             with self.assertRaises(SystemExit):
                 change_recipient(a)
 
-    def test_2_function(self):
+    def test_2_no_contact_specified(self):
+        self.assertFR("Error: Invalid command.", change_recipient, "/msg ")
 
-        # Test invalid commands
-        for p in ["/m", "/ms", "/msg", "/msg ",
-                  "/msg -1", "/msg one", "/msg 3"]:
-            self.assertEqual(change_recipient("/msg %s" % p), ('', '', ''))
-
-        # Test recipient changing
-        self.assertEqual(change_recipient("/msg bob@jabber.org"),
-                         ("bob@jabber.org", "bob", ''))
-
-        self.assertEqual(change_recipient("/msg alice@jabber.org"),
-                         ("alice@jabber.org", "alice", ''))
-
-        self.assertEqual(change_recipient("/msg jack@jabber.org"),
-                         ('', '', ''))
-
-        self.assertEqual(change_recipient("/msg 1"),
-                         ("bob@jabber.org", "bob", ''))
-
-        self.assertEqual(change_recipient("/msg 0"),
-                         ("alice@jabber.org", "alice", ''))
-
-        self.assertEqual(change_recipient("/msg testgroup"),
-                         ('', "testgroup", "testgroup"))
-
-        # Switch away from group
-        self.assertEqual(change_recipient("/msg alice@jabber.org"),
-                         ("alice@jabber.org", "alice", ''))
-
-        # Test trickle_connection prevents selecting group
-        Tx.trickle_connection = True
-        self.assertEqual(change_recipient("/msg testgroup"), ('', '', ''))
-        Tx.trickle_connection = False
-
-        # Test test non-existing groups are not selected
-        shutil.rmtree("groups")
-        ut_ensure_dir("groups/")
-        self.assertEqual(change_recipient("/msg testgroup"), ('', '', ''))
-
-        shutil.rmtree("groups")
-        self.assertEqual(change_recipient("/msg testgroup"), ('', '', ''))
-
-
-class TestGetContactQuantity(unittest.TestCase):
-
-    def test_1_no_members(self):
+    def test_3_non_existing_account(self):
 
         # Setup
-        open(".tx_contacts", "w+").close()
+        create_contact(["alice", "bob", "local"])
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "alice"
+        Tx.active_c['g'] = ''
 
         # Test
-        self.assertEqual(get_contact_quantity(), 0)
+        self.assertFR("Error: Invalid contact / group selection.",
+                      change_recipient, "/msg charlie@jabber.org")
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "alice"
+        Tx.active_c['g'] = ''
 
         # Teardown
-        os.remove(".tx_contacts")
+        ut_cleanup()
 
-    def test_2_single_member(self):
+    def test_4_existing_account(self):
 
         # Setup
-        create_contact_db(["alice"])
+        create_contact(["alice", "bob", "local"])
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "alice"
+        Tx.active_c['g'] = ''
 
         # Test
-        self.assertEqual(get_contact_quantity(), 1)
+        self.assertIsNone(change_recipient("/msg bob@jabber.org"))
+        self.assertEqual(Tx.active_c['a'], "bob@jabber.org")
+        self.assertEqual(Tx.active_c['n'], "bob")
+        self.assertEqual(Tx.active_c['g'], '')
 
         # Teardown
-        os.remove(".tx_contacts")
+        ut_cleanup()
 
-    def test_3_two_members(self):
+    def test_5_existing_group(self):
 
         # Setup
-        create_contact_db(["alice", "bob"])
+        create_contact(["alice", "bob", "local"])
+        create_group([("testgroup", ["alice", "bob"])])
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "alice"
+        Tx.active_c['g'] = ''
 
         # Test
-        self.assertEqual(get_contact_quantity(), 2)
+        self.assertIsNone(change_recipient("/msg testgroup"))
+        self.assertEqual(Tx.active_c['a'], '')
+        self.assertEqual(Tx.active_c['n'], "testgroup")
+        self.assertEqual(Tx.active_c['g'], "testgroup")
 
         # Teardown
-        os.remove(".tx_contacts")
-
-    def test_4_two_members_and_local(self):
-
-        # Setup
-        create_contact_db(["alice", "bob", "local"])
-
-        # Test
-        self.assertEqual(get_contact_quantity(), 2)
-
-        # Teardown
-        os.remove(".tx_contacts")
+        ut_cleanup()
 
 
-class TestGetListOfAccounts(unittest.TestCase):
-
-    def setUp(self):
-        ut_ensure_dir("keys/")
-        open("keys/tx.1.e", "w+").close()
-        open("keys/tx.2.e", "w+").close()
-        open("keys/tx.3.e", "w+").close()
-        open("keys/me.3.e", "w+").close()
-        open("keys/rx.3.e", "w+").close()
-        open("keys/tx.local.e", "w+").close()
-        open("keys/rx.local.e", "w+").close()
-        open("keys/me.local.e", "w+").close()
-
-    def tearDown(self):
-        shutil.rmtree("keys")
-
-    def test_1_function(self):
-        self.assertEqual(get_list_of_accounts(), ['1', '2', '3'])
-
-
-class TestPrintContactList(unittest.TestCase):
+class TestPrintContactList(ExtendedTestCase):
 
     def test_1_input_parameter(self):
-        for a in [1, 1.0, "string"]:
+        for a in not_bool:
             with self.assertRaises(SystemExit):
                 print_contact_list(a)
 
     def test_2_with_spacing(self):
 
         # Setup
-        create_test_keys(["alice", "bob", "charlie"])
-        create_contact_db(["alice", "bob", "charlie"])
+        create_contact(["alice", "bob", "charlie"])
+        create_group([("testgroup1", ["alice", "bob"]),
+                      ("testgroup2", ["alice", "bob"])])
+
+        c_dictionary["bob@jabber.org"]["txpk"] = 64 * 'a'
+        c_dictionary["bob@jabber.org"]["rxpk"] = 64 * 'b'
+        c_dictionary["bob@jabber.org"]["logging"] = True
 
         # Test
         self.assertIsNone(print_contact_list(spacing=True))
+        self.assertIsNone(print_contact_list())
 
         # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-
-    def test_3_without_spacing(self):
-
-        # Setup
-        create_test_keys(["alice", "bob", "charlie"])
-        create_contact_db(["alice", "bob", "charlie"])
-
-        # Test
-        self.assertEqual(print_contact_list(), 21)
-
-        # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-
-    def test_4_no_accounts(self):
-
-        # Setup
-        ut_ensure_dir("keys/")
-
-        # Test
-        self.assertIsNone(print_contact_list(True))
-        self.assertEqual(print_contact_list(), 0)
-
-        # Teardown
-        shutil.rmtree("keys")
+        ut_cleanup()
 
 
-class TestPrintSelectionError(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                print_selection_error(a)
-
-    def test_2_functioN(self):
-
-        # Setup
-        ut_ensure_dir("keys/")
-
-        # Test
-        self.assertIsNone(print_selection_error("invalid"))
-
-        # Teardown
-        shutil.rmtree("keys")
-
-
-class TestSelectContact(unittest.TestCase):
+class TestSelectContact(ExtendedTestCase):
 
     def setUp(self):
-        create_test_keys(["alice", "bob"])
-        create_contact_db(["alice", "bob"])
+        create_contact(["alice", "bob"])
+        create_group([("testgroup", ["alice", "bob"])])
 
     def tearDown(self):
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
+        ut_cleanup()
 
     def test_1_input_parameters(self):
-        for a in ["string", 0.0, True]:
-            for b in [0, 0.0, True]:
-                for c in ["string", 0.0, 0]:
-                    with self.assertRaises(SystemExit):
-                        select_contact(a, b, c)
-
-    def test_1_no_0(self):
-        self.assertEqual(select_contact(selection='0',
-                                        menu=False),
-                         ("alice@jabber.org", "alice"))
-
-    def test_2_no_1(self):
-        self.assertEqual(select_contact(selection='1',
-                                        menu=False),
-                         ("bob@jabber.org", "bob"))
-
-    def test_3_alice(self):
-        self.assertEqual(select_contact(selection="alice@jabber.org",
-                                        menu=False),
-                         ("alice@jabber.org", "alice"))
-
-    def test_4_bob(self):
-        self.assertEqual(select_contact(selection="bob@jabber.org",
-                                        menu=False),
-                         ("bob@jabber.org", "bob"))
-
-    def test_5_invalid_numbers(self):
-        for i in ["-1", '2', '3', '4']:
-            with self.assertRaises(ValueError):
-                select_contact(selection=i, menu=False)
-
-    def test_6_invalid_contact(self):
-        with self.assertRaises(ValueError):
-            select_contact(selection="jack@jabber.org", menu=False)
-
-
-class TestGetListOfTargets(unittest.TestCase):
-
-    def setUp(self):
-        create_test_keys(["alice", "bob"])
-        create_contact_db(["alice", "bob"])
-        create_group_db("testgroup", ["alice", "bob"])
-
-    def tearDown(self):
-        shutil.rmtree("groups")
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-
-    def test_1_groups_and_accounts_are_found(self):
-        self.assertEqual(get_list_of_targets(), ["alice", "bob", "testgroup"])
-
-
-# .tx_contacts management
-class TestAddFirstContact(unittest.TestCase):
-    """
-    This function doesn't have any tests yet.
-    """
-
-
-class TestAddContact(unittest.TestCase):
-
-    def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in [1, 1.0, True]:
+        for a in not_str:
+            for b in not_bool:
                 with self.assertRaises(SystemExit):
-                    add_contact(a, b)
+                    select_contact(a, b)
 
-    def test_2_valid_contact_adding(self):
+    def test_2_alice(self):
+
+        Tx.active_c['a'] = ''
+        Tx.active_c['n'] = ''
+        Tx.active_c['g'] = ''
+
+        self.assertIsNone(select_contact("alice@jabber.org", False))
+        self.assertEqual(Tx.active_c['a'], "alice@jabber.org")
+        self.assertEqual(Tx.active_c['n'], "alice")
+
+    def test_3_bob(self):
+
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "alice"
+        Tx.active_c['g'] = ''
+
+        self.assertIsNone(select_contact("bob@jabber.org", False))
+        self.assertEqual(Tx.active_c['a'], "bob@jabber.org")
+        self.assertEqual(Tx.active_c['n'], "bob")
+        self.assertEqual(Tx.active_c['g'], '')
+
+    def test_4_invalid_contact(self):
+        with self.assertRaises(ValueError):
+            select_contact("jack@jabber.org", False)
+            select_contact("group", False)
+
+    def test_5_group(self):
+        self.assertIsNone(select_contact("testgroup", False))
+        self.assertEqual(Tx.active_c['a'], '')
+        self.assertEqual(Tx.active_c['g'], "testgroup")
+        self.assertEqual(Tx.active_c['n'], "testgroup")
+
+    def test_6_nick(self):
+
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "alice"
+        Tx.active_c['g'] = ''
+
+        self.assertIsNone(select_contact("bob", False))
+        self.assertEqual(Tx.active_c['a'], "bob@jabber.org")
+        self.assertEqual(Tx.active_c['n'], "bob")
+        self.assertEqual(Tx.active_c['g'], '')
+
+
+###############################################################################
+#                             DATABASE MANAGEMENT                             #
+###############################################################################
+
+class TestContactDB(ExtendedTestCase):
+
+    def test_1_database_content(self):
 
         # Setup
-        add_contact("alice@jabber.org", "alice")
+        Tx.txm_side_m_logging = True
 
         # Test
-        csv_data = open(".tx_contacts").readline()
-        self.assertEqual(csv_data, "alice@jabber.org,alice,1\n")
+        a_data = dict(user="user@jabber.org", nick="Alice",
+                      harac=1,
+                      key=64 * 'a', hek=64 * 'b',
+                      txpk=64 * 'c', rxpk=64 * 'd',
+                      logging=True)
+        c_data = dict(user="user@jabber.org", nick="Charlie",
+                      harac=1,
+                      key=64 * 'a', hek=64 * 'b',
+                      txpk=64 * 'c', rxpk=64 * 'd',
+                      logging=True)
+
+        acco_dict = {"alice@jabber.org": a_data,
+                     "charlie@jabber.org": c_data}
+
+        self.assertIsNone(contact_db(write_db=acco_dict))
+
+        data = contact_db()
+
+        self.assertEqual(data["alice@jabber.org"], a_data)
+        self.assertEqual(data["charlie@jabber.org"], c_data)
+
+        f_data = open(datab_file).read()
+        db_len = len(base64.b64encode(
+            ((m_number_of_accnts * 9 * 255) + 16 + 24) * 'a'))
+        self.assertEqual(len(f_data), db_len)
 
         # Teardown
-        os.remove(".tx_contacts")
+        ut_cleanup()
 
-    def test_3_contact_reset(self):
+    def test_2_increased_database(self):
 
         # Setup
-        open(".tx_contacts", "w+").write("alice@jabber.org,alice,5\n")
+        o_m_number_of_accnts = Tx.m_number_of_accnts
+        Tx.m_number_of_accnts = 3
 
         # Test
-        add_contact("alice@jabber.org", "alice")
-        csv_data = open(".tx_contacts").readline()
-        self.assertEqual(csv_data, "alice@jabber.org,alice,1\r\n")
+        a_data = dict(user="user@jabber.org", nick="Alice",
+                      harac=1,
+                      key=64 * 'a', hek=64 * 'b',
+                      txpk=64 * 'c', rxpk=64 * 'd',
+                      logging=True)
+        c_data = dict(user="user@jabber.org", nick="Charlie",
+                      harac=1,
+                      key=64 * 'a', hek=64 * 'b',
+                      txpk=64 * 'c', rxpk=64 * 'd',
+                      logging=True)
+        l_data = dict(user="local", nick="local",
+                      harac=1,
+                      key=64 * 'a', hek=64 * 'b',
+                      txpk="psk", rxpk="psk",
+                      logging=False)
+
+        acco_dict = {"alice@jabber.org": a_data,
+                     "charlie@jabber.org": c_data,
+                     "local": l_data}
+
+        self.assertIsNone(contact_db(write_db=acco_dict))
+
+        self.assertEqual(len(open(Tx.datab_file).read()), 9236)
+
+        Tx.m_number_of_accnts = 6
+        data = contact_db()
+        self.assertEqual(set(data.keys()),
+                         {"alice@jabber.org", "charlie@jabber.org", "local"})
+        self.assertEqual(len(open(Tx.datab_file).read()), 18416)
 
         # Teardown
-        os.remove(".tx_contacts")
+        ut_cleanup()
+        Tx.m_number_of_accnts = o_m_number_of_accnts
 
-
-class TestAddKeyfiles(unittest.TestCase):
-
-    def test_1_function(self):
+    def test_3_reduced_database(self):
 
         # Setup
-        origin_raw_input = __builtins__.raw_input
-        __builtins__.raw_input = lambda x: "bob"
-        create_test_keys(["bob"])
+        o_m_number_of_accnts = Tx.m_number_of_accnts
+        Tx.m_number_of_accnts = 3
 
         # Test
-        add_keyfiles()
-        contact_db = open(".tx_contacts").readline()
-        self.assertEqual(contact_db, "bob@jabber.org,bob,1\n")
+        a_data = dict(user="user@jabber.org", nick="Alice",
+                      harac=1,
+                      key=64 * 'a', hek=64 * 'b',
+                      txpk=64 * 'c', rxpk=64 * 'd',
+                      logging=True)
+        c_data = dict(user="user@jabber.org", nick="Charlie",
+                      harac=1,
+                      key=64 * 'a', hek=64 * 'b',
+                      txpk=64 * 'c', rxpk=64 * 'd',
+                      logging=True)
+        l_data = dict(user="local", nick="local",
+                      harac=1,
+                      key=64 * 'a', hek=64 * 'b',
+                      txpk="psk", rxpk="psk",
+                      logging=False)
 
-        # Teardown
-        __builtins__.raw_input = origin_raw_input
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
+        acco_dict = {"alice@jabber.org": a_data,
+                     "charlie@jabber.org": c_data,
+                     "local": l_data}
 
+        self.assertIsNone(contact_db(write_db=acco_dict))
 
-class TestGetKeyID(unittest.TestCase):
+        self.assertEqual(len(open(Tx.datab_file).read()), 9236)
 
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                get_keyid(a)
+        Tx.m_number_of_accnts = 1
 
-    def test_2_missing_keyID(self):
-
-        # Setup
-        open(".tx_contacts", "w+").write("alice@jabber.org,alice")
-
-        # Test
         with self.assertRaises(SystemExit):
-            get_keyid("alice@jabber.org")
+            contact_db()
 
         # Teardown
-        os.remove(".tx_contacts")
+        ut_cleanup()
+        Tx.m_number_of_accnts = o_m_number_of_accnts
 
-    def test_3_invalid_keyID_value(self):
 
-        # Setup
-        open(".tx_contacts", "w+").write("alice@jabber.org,alice,a")
+class TestGroupDB(ExtendedTestCase):
+
+    def test_1_database_content(self):
 
         # Test
+        g1_data = dict(logging=True, members=["alice@jabber.org",
+                                              "bob@jabber.org"])
+        g2_data = dict(logging=False, members=["charlie@jabber.org",
+                                               "bob@jabber.org"])
+        group_dict = dict()
+        group_dict["testgroup1"] = g1_data
+        group_dict["testgroup2"] = g2_data
+
+        self.assertIsNone(group_db(write_db=group_dict))
+
+        data = group_db()
+
+        self.assertEqual(data["testgroup1"]["logging"], True)
+        self.assertEqual(data["testgroup2"]["logging"], False)
+
+        self.assertEqual(data["testgroup1"]["members"],
+                         (["alice@jabber.org", "bob@jabber.org"]
+                          + (m_members_in_group - 2) * ["dummy_member"]))
+
+        self.assertEqual(data["testgroup2"]["members"],
+                         (["charlie@jabber.org", "bob@jabber.org"]
+                          + (m_members_in_group - 2) * ["dummy_member"]))
+
+    def test_2_increased_number_of_groups(self):
+
+        # Setup
+        o_m_number_of_groups = Tx.m_number_of_groups
+        Tx.m_number_of_groups = 2
+
+        # Test
+        g1_data = dict(logging=True, members=["alice@jabber.org",
+                                              "bob@jabber.org"])
+        g2_data = dict(logging=False, members=["charlie@jabber.org",
+                                               "bob@jabber.org"])
+        group_dict = dict()
+        group_dict["testgroup1"] = g1_data
+        group_dict["testgroup2"] = g2_data
+
+        self.assertIsNone(group_db(write_db=group_dict))
+
+        self.assertEqual(len(open(Tx.group_file).read()), 20060)
+
+        Tx.m_number_of_groups = 4
+        data = group_db()
+
+        self.assertEqual(len(data.keys()), 2)
+        self.assertEqual(len(open(Tx.group_file).read()), 40064)
+
+        # Teardown
+        Tx.m_number_of_groups = o_m_number_of_groups
+
+    def test_3_reduced_number_of_groups(self):
+
+        # Setup
+        o_m_number_of_groups = Tx.m_number_of_groups
+        Tx.m_number_of_groups = 2
+
+        # Test
+        g1_data = dict(logging=True, members=["alice@jabber.org",
+                                              "bob@jabber.org"])
+        g2_data = dict(logging=False, members=["charlie@jabber.org",
+                                               "bob@jabber.org"])
+        group_dict = dict()
+        group_dict["testgroup1"] = g1_data
+        group_dict["testgroup2"] = g2_data
+
+        self.assertIsNone(group_db(write_db=group_dict))
+
+        self.assertEqual(len(open(Tx.group_file).read()), 20060)
+
+        Tx.m_number_of_groups = 1
+
         with self.assertRaises(SystemExit):
-            get_keyid("alice@jabber.org")
+            group_db()
 
         # Teardown
-        os.remove(".tx_contacts")
+        Tx.m_number_of_groups = o_m_number_of_groups
 
-    def test_4_keyID_zero(self):
+    def test_4_increased_number_of_members(self):
 
         # Setup
-        open(".tx_contacts", "w+").write("alice@jabber.org,alice,0")
+        o_m_members_in_group = Tx.m_members_in_group
+        o_m_number_of_groups = Tx.m_number_of_groups
+        Tx.m_number_of_groups = 2
+        Tx.m_members_in_group = 2
 
         # Test
+        g1_data = dict(logging=True, members=["alice@jabber.org",
+                                              "bob@jabber.org"])
+        g2_data = dict(logging=False, members=["charlie@jabber.org",
+                                               "bob@jabber.org"])
+        group_dict = dict()
+        group_dict["testgroup1"] = g1_data
+        group_dict["testgroup2"] = g2_data
+
+        self.assertIsNone(group_db(write_db=group_dict))
+        self.assertEqual(len(open(Tx.group_file).read()), 3692)
+
+        Tx.m_members_in_group = 3
+
+        data = group_db()
+
+        self.assertEqual(len(data.keys()), 2)
+        self.assertEqual(len(data["testgroup1"]["members"]), 3)
+        self.assertEqual(len(open(Tx.group_file).read()), 4600)
+
+        # Teardown
+        Tx.m_members_in_group = o_m_members_in_group
+        Tx.m_number_of_groups = o_m_number_of_groups
+
+    def test_5_reduced_number_of_members(self):
+
+        # Setup
+        o_m_members_in_group = Tx.m_members_in_group
+        o_m_number_of_groups = Tx.m_number_of_groups
+        Tx.m_number_of_groups = 2
+        Tx.m_members_in_group = 2
+
+        # Test
+        g1_data = dict(logging=True, members=["alice@jabber.org",
+                                              "bob@jabber.org"])
+        g2_data = dict(logging=False, members=["charlie@jabber.org",
+                                               "bob@jabber.org"])
+        group_dict = dict()
+        group_dict["testgroup1"] = g1_data
+        group_dict["testgroup2"] = g2_data
+
+        self.assertIsNone(group_db(write_db=group_dict))
+
+        self.assertEqual(len(open(Tx.group_file).read()), 3692)
+
+        Tx.m_members_in_group = 1
+
         with self.assertRaises(SystemExit):
-            get_keyid("alice@jabber.org")
+            group_db()
 
         # Teardown
-        os.remove(".tx_contacts")
-
-    def test_5_correct_keyID(self):
-
-        # Setup
-        open(".tx_contacts", "w+").write("alice@jabber.org,alice,1")
-
-        # Test
-        self.assertEqual(get_keyid("alice@jabber.org"), 1)
-
-        # Teardown
-        os.remove(".tx_contacts")
+        Tx.m_members_in_group = o_m_members_in_group
+        Tx.m_number_of_groups = o_m_number_of_groups
 
 
-class TestGetNick(unittest.TestCase):
+###############################################################################
+#                               LOCAL COMMANDS                                #
+###############################################################################
 
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                get_nick(a)
+class TestPrintAbout(ExtendedTestCase):
 
-    def test_2_missing_nick(self):
-        for p in ['', ',']:
+    def test_1_return_type(self):
+        self.assertIsNone(print_about())
+
+
+class TestPrintHelp(ExtendedTestCase):
+
+    def test_1_print_help(self):
+
+        for Tx.trickle_connection in [True, False]:
 
             # Setup
-            open(".tx_contacts", "w+").write("alice@jabber.org%s,1" % p)
+            o_get_tty_wh = Tx.get_tty_w
+            Tx.get_tty_w = lambda: get_tty_w()
 
             # Test
-            with self.assertRaises(SystemExit):
-                get_nick("alice@jabber.org")
+            self.assertIsNone(print_help())
 
             # Teardown
-            os.remove(".tx_contacts")
-
-    def test_3_correct_nick(self):
-
-        # Setup
-        create_contact_db(["alice"])
-
-        # Test
-        self.assertEqual(get_nick("alice@jabber.org"), "alice")
-
-        # Teardown
-        os.remove(".tx_contacts")
-
-
-class TestGetNickInput(unittest.TestCase):
-
-    def test_1_function(self):
-
-        # Setup
-        ut_ensure_dir("keys/")
-        origin_raw_input = __builtins__.raw_input
-
-        # Test user entered nickname
-        __builtins__.raw_input = lambda x: "robert"
-        self.assertEqual(get_nick_input("bob@jabber.org"), "robert")
-
-        # Test automatic nickname parsing
-        __builtins__.raw_input = lambda x: ''
-        self.assertEqual(get_nick_input("bob@jabber.org"), "Bob")
-
-        # Teardown
-        __builtins__.raw_input = origin_raw_input
-        shutil.rmtree("keys")
-
-
-class TestWriteKeyID(unittest.TestCase):
-
-    def setUp(self):
-        create_contact_db(["alice"])
-
-    def tearDown(self):
-        os.remove(".tx_contacts")
-
-    def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in ["string", 1.0, True]:
-                with self.assertRaises(SystemExit):
-                    write_keyid(a, b)
-
-    def test_2_keyID_less_than_one(self):
-        for i in [-1, 0]:
-            with self.assertRaises(SystemExit):
-                write_keyid("alice@jabber.org", i)
-
-    def test_3_valid_keyid(self):
-        write_keyid("alice@jabber.org", 2)
-        written_data = open(".tx_contacts").readline()
-        self.assertEqual(written_data, "alice@jabber.org,alice,2\r\n")
-
-
-class TestWriteNick(unittest.TestCase):
-
-    def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in [1, 1.0, True]:
-                with self.assertRaises(SystemExit):
-                    write_nick(a, b)
-
-    def test_2_no_db_gracefully_exits(self):
-        with self.assertRaises(SystemExit):
-            write_nick("alice@jabber.org", "alice")
-
-    def test_3_correct_nick_writing(self):
-
-        # Setup
-        create_contact_db(["alice"])
-
-        # Test
-        write_nick("alice@jabber.org", "ALICE")
-        written_data = open(".tx_contacts").readline()
-        self.assertEqual(written_data, "alice@jabber.org,ALICE,1\r\n")
-
-        # Teardown
-        os.remove(".tx_contacts")
-
-
-class TestRmContact(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                rm_contact(a)
-
-    def test_2_function(self):
-
-        # Setup
-        create_test_keys(["alice", "bob"])
-        create_contact_db(["alice", "bob"])
-        create_group_db("test_group1", ["alice", "bob"])
-        create_group_db("test_group2", ["alice"])
-        create_group_db("test_group3", ["bob"])
-        original_yes = Tx.yes
-        Tx.yes = lambda x: True
-
-        # Test invalid commands return None
-        self.assertIsNone(rm_contact("/rm"))
-        self.assertIsNone(rm_contact("/rm "))
-        self.assertIsNone(rm_contact("/rm lo"))
-        self.assertIsNone(rm_contact("/rm local"))
-        self.assertIsNone(rm_contact("/rm me.local"))
-        self.assertIsNone(rm_contact("/rm bob@jabber.org"))
-
-        # Test that command removes Bob's kf and data from .tx_contacts/groups.
-        rm_success = True
-        for f in ["groups/g.test_group1.tfc",
-                  "groups/g.test_group2.tfc",
-                  "groups/g.test_group3.tfc",
-                  ".tx_contacts"]:
-            members = open(f).read().splitlines()
-            for m in members:
-                if "bob" in m:
-                    rm_success = False
-            self.assertTrue(rm_success)
-        self.assertFalse(os.path.isfile("keys/tx.bob@jabber.org.e"))
-
-        # Teardown
-        shutil.rmtree("keys")
-        shutil.rmtree("groups")
-        os.remove(".tx_contacts")
-        Tx.yes = original_yes
-
-
-###############################################################################
-#                               MSG PROCESSING                                #
-###############################################################################
-
-class TestLongTpreProcess(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                long_t_pre_process(a)
-
-    def test_2_invalid_header(self):
-        with self.assertRaises(SystemExit):
-            long_t_pre_process('a')
-
-    def test_3_long_message_packet_splitting(self):
-
-        self.assertEqual(long_t_pre_process("m%s" % (900 * 'x')),
-                         ["lxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "xxx",
-                          "axxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "xxx",
-                          "axxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "xxx",
-                          "exxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          "dc5ef393e71ae0f98bd6a72ecb7a0d7e"
-                          "1698756ea1a9605ad7846e68c7a251e2"])
-
-    def test_4_long_file_packet_splitting(self):
-
-        self.assertEqual(long_t_pre_process("f%s" % (900 * 'z')),
-                         ["Lzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "zzz",
-                          "Azzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "zzz",
-                          "Azzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "zzz",
-                          "Ezzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-                          "3ce204a25f89be1ca7877aea8c09d141"
-                          "cf7916851fd06c6cb722af1fd3d0b0fb"])
-
-
-class TestPadding(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                padding(a)
-
-    def test_2_oversize_pt_detection(self):
-        for s in range(255, 260):
-            with self.assertRaises(SystemExit):
-                padding(255 * 'm')
-
-    def test_3_padding(self):
-        for s in range(0, 254):
-            self.assertEqual(len(padding(s * 'm')), 254)
+            Tx.get_tty_w = o_get_tty_wh
 
 
 ###############################################################################
 #                              ENCRYPTED COMMANDS                             #
 ###############################################################################
 
-class TestChangeLogging(unittest.TestCase):
+class TestChangeNick(ExtendedTestCase):
 
-    def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in ["string", 1, 1.0]:
-                with self.assertRaises(SystemExit):
-                    change_logging(a, b)
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                change_nick(a)
 
-    def test_2_missing_local_key(self):
-        with self.assertRaises(NoLocalKeyError):
-            change_logging("/logging on")
+    def test_2_no_nick_specified(self):
+        self.assertFR("Error: No nick specified.", change_nick, "/nick ")
 
-    def test_3_invalid_commands(self):
-        for s in ['', ' ', 'o']:
-            self.assertIsNone(change_logging("/logging%s" % s))
-
-    def test_4_logging_enable_with_kf(self):
+    def test_3_group_is_active(self):
 
         # Setup
-        create_test_keys(["local", "alice", "bob"])
-        create_contact_db(["local", "alice", "bob"])
-        Tx.acco_store_l["alice@jabber.org"] = False
-        Tx.acco_store_l["bob@jabber.org"] = False
+        create_contact(["alice"])
+        Tx.active_c['a'] = ''
+        Tx.active_c['n'] = "group"
+        Tx.active_c['g'] = "group"
 
         # Test
-        self.assertEqual(change_logging("/logging on", ret=True),
-                         "C|LOGGING|ENABLE")
-        self.assertTrue(Tx.acco_store_l["alice@jabber.org"])
-        self.assertTrue(Tx.acco_store_l["bob@jabber.org"])
+        self.assertFR("Error: Group is selected.",
+                      change_nick, "/nick Alice")
+
+        self.assertEqual(Tx.active_c['a'], '')
+        self.assertEqual(Tx.active_c['n'], "group")
+        self.assertEqual(Tx.active_c['g'], "group")
 
         # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
+        ut_cleanup()
 
-    def test_5_logging_disable_with_kf(self):
+    def test_4_invalid_nick(self):
 
         # Setup
-        create_test_keys(["local", "alice", "bob"])
-        create_contact_db(["local", "alice", "bob"])
-        Tx.acco_store_l["alice@jabber.org"] = True
-        Tx.acco_store_l["bob@jabber.org"] = True
+        create_contact(["alice", "local"])
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "alice"
+        Tx.active_c['g'] = ''
 
         # Test
-        self.assertEqual(change_logging("/logging off", ret=True),
-                         "C|LOGGING|DISABLE")
-        self.assertFalse(Tx.acco_store_l["alice@jabber.org"])
-        self.assertFalse(Tx.acco_store_l["bob@jabber.org"])
+        self.assertFR("invalid nick", change_nick, "/nick alice@jabber.org")
+
+        self.assertEqual(Tx.active_c['a'], "alice@jabber.org")
+        self.assertEqual(Tx.active_c['n'], "alice")
+        self.assertEqual(Tx.active_c['g'], '')
 
         # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
+        ut_cleanup()
 
-    def test_6_logging_enable_for_contact(self):
+    def test_5_nick_successful_change(self):
 
         # Setup
-        create_test_keys(["local", "alice", "bob"])
-        create_contact_db(["local", "alice", "bob"])
-        Tx.acco_store_l["alice@jabber.org"] = False
-        Tx.acco_store_l["bob@jabber.org"] = False
+        create_contact(["alice", "local"])
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "alice"
+        Tx.active_c['g'] = ''
 
         # Test
-        self.assertEqual(change_logging("/logging on bob@jabber.org",
-                                        ret=True),
-                         "C|LOGGING|ENABLE|me.bob@jabber.org")
-        self.assertFalse(Tx.acco_store_l["alice@jabber.org"])
-        self.assertTrue(Tx.acco_store_l["bob@jabber.org"])
+        self.assertIsNone(change_nick("/nick Alice"))
+        self.assertEqual(Tx.active_c['a'], "alice@jabber.org")
+        self.assertEqual(Tx.active_c['n'], "Alice")
+        self.assertEqual(Tx.active_c['g'], '')
+
+        self.assertPacketOutput(0, 'c')
 
         # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
+        ut_cleanup()
 
-    def test_7_logging_enable_for_contact(self):
+
+class TestChangeSetting(ExtendedTestCase):
+
+    def test_01_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                change_setting(a)
+
+    def test_02_invalid_commands(self):
+        for s in ["/loging", "/logging", "/logging ", "/logging o"]:
+            self.assertFR("Error: Invalid command.", change_setting, s)
+
+    def test_03_invalid_second_parameter(self):
+        self.assertFR("Error: Invalid command.",
+                      change_setting, "/logging on bad")
+
+    def test_04_enable_logging_for_account(self):
 
         # Setup
-        create_test_keys(["local", "alice", "bob"])
-        create_contact_db(["local", "alice", "bob"])
-        Tx.acco_store_l["alice@jabber.org"] = True
-        Tx.acco_store_l["bob@jabber.org"] = True
+        create_contact(["local", "alice", "bob"])
+        c_dictionary["alice@jabber.org"]["logging"] = False
+        c_dictionary["bob@jabber.org"]["logging"] = False
+
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "alice"
+        Tx.active_c['g'] = ''
 
         # Test
-        self.assertEqual(change_logging("/logging off bob@jabber.org",
-                                        ret=True),
-                         "C|LOGGING|DISABLE|me.bob@jabber.org")
-        self.assertTrue(Tx.acco_store_l["alice@jabber.org"])
-        self.assertFalse(Tx.acco_store_l["bob@jabber.org"])
+        self.assertIsNone(change_setting("/logging on"))
+        self.assertTrue(c_dictionary["alice@jabber.org"]["logging"])
+        self.assertFalse(c_dictionary["bob@jabber.org"]["logging"])
+        self.assertPacketOutput(0, 'c')
 
         # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
+        ut_cleanup()
 
-
-class TestChangeNick(unittest.TestCase):
-
-    def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in [1, 1.0, True]:
-                for c in ["string", 1, 1.0]:
-                    with self.assertRaises(SystemExit):
-                        change_nick(a, b, c)
-
-    def test_2_function_returns_none_when_group_is_selected(self):
+    def test_05_disable_logging_for_account(self):
 
         # Setup
-        create_test_keys(["alice"])
-        create_contact_db(["alice"])
-        Tx.group = "group"
-        Tx.recipient_nick = "group"
+        create_contact(["local", "alice", "bob"])
+        c_dictionary["alice@jabber.org"]["logging"] = True
+        c_dictionary["bob@jabber.org"]["logging"] = True
+
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "alice"
+        Tx.active_c['g'] = ''
 
         # Test
-        self.assertIsNone(change_nick("alice@jabber.org", "/nick Alice",
-                                      ret=True))
-        self.assertEqual(Tx.group, "group")
-        self.assertEqual(Tx.recipient_nick, "group")
+        self.assertIsNone(change_setting("/logging off"))
+        self.assertFalse(c_dictionary["alice@jabber.org"]["logging"])
+        self.assertTrue(c_dictionary["bob@jabber.org"]["logging"])
+        self.assertPacketOutput(0, 'c')
 
         # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-        Tx.group = ''
+        ut_cleanup()
 
-    def test_3_no_keyfile(self):
+    def test_06_enable_logging_for_group(self):
 
         # Setup
-        create_test_keys(["alice"])
-        create_contact_db(["alice"])
+        create_contact(["local", "alice", "bob"])
+        c_dictionary["alice@jabber.org"]["logging"] = False
+        c_dictionary["bob@jabber.org"]["logging"] = False
+
+        create_group([("testgroup", ["alice", "bob"])])
+        g_dictionary["testgroup"]["logging"] = False
+
+        Tx.active_c['a'] = ''
+        Tx.active_c['n'] = "testgroup"
+        Tx.active_c['g'] = "testgroup"
 
         # Test
-        with self.assertRaises(NoLocalKeyError):
-            change_nick("alice@jabber.org", "/nick Alice", ret=True)
+        self.assertIsNone(change_setting("/logging on"))
+        self.assertTrue(g_dictionary["testgroup"]["logging"])
+        self.assertFalse(c_dictionary["alice@jabber.org"]["logging"])
+        self.assertFalse(c_dictionary["bob@jabber.org"]["logging"])
+        self.assertPacketOutput(0, 'c')
 
         # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
+        ut_cleanup()
 
-    def test_4_none_when_no_nick_is_specified(self):
+    def test_07_disable_logging_for_group(self):
 
         # Setup
-        create_test_keys(["alice", "local"])
-        create_contact_db(["local", "alice"])
+        create_contact(["local", "alice", "bob"])
+        c_dictionary["alice@jabber.org"]["logging"] = True
+        c_dictionary["bob@jabber.org"]["logging"] = True
+
+        create_group([("testgroup", ["alice", "bob"])])
+        g_dictionary["testgroup"]["logging"] = True
+
+        Tx.active_c['a'] = ''
+        Tx.active_c['n'] = "testgroup"
+        Tx.active_c['g'] = "testgroup"
 
         # Test
-        for c in ["/nick", "/nick "]:
-            self.assertIsNone(change_nick("alice@jabber.org", c, ret=True))
+        self.assertIsNone(change_setting("/logging off"))
+        self.assertFalse(g_dictionary["testgroup"]["logging"])
+        self.assertTrue(c_dictionary["alice@jabber.org"]["logging"])
+        self.assertTrue(c_dictionary["bob@jabber.org"]["logging"])
+        self.assertPacketOutput(0, 'c')
 
         # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
+        ut_cleanup()
 
-    def test_5_too_long_nick(self):
-        """
-        Nick length depends on new account creation. Combined maximum length of
-        nick and account is 121 chars.
-        """
+    def test_08_enable_logging_for_all(self):
 
         # Setup
-        create_test_keys(["alice", "local"])
-        create_contact_db(["alice", "local"])
+        create_contact(["local", "alice", "bob"])
+        c_dictionary["alice@jabber.org"]["logging"] = False
+        c_dictionary["bob@jabber.org"]["logging"] = False
+
+        create_group([("testgroup1", ["alice", "bob"]),
+                      ("testgroup2", ["alice", "bob"])])
+        g_dictionary["testgroup1"]["logging"] = False
+        g_dictionary["testgroup2"]["logging"] = False
+
+        Tx.active_c['a'] = ''
+        Tx.active_c['n'] = "testgroup"
+        Tx.active_c['g'] = "testgroup"
 
         # Test
-        self.assertEqual(change_nick("alice@jabber.org", "/nick %s"
-                                     % (106 * 'n'), ret=True), '')
+        self.assertIsNone(change_setting("/logging on all"))
+        self.assertTrue(g_dictionary["testgroup1"]["logging"])
+        self.assertTrue(g_dictionary["testgroup2"]["logging"])
+        self.assertTrue(c_dictionary["alice@jabber.org"]["logging"])
+        self.assertTrue(c_dictionary["bob@jabber.org"]["logging"])
+
+        self.assertPacketOutput(0, 'c')
 
         # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
+        ut_cleanup()
 
-    def test_6_success_with_max_length_nick(self):
+    def test_09_disable_logging_for_all(self):
 
         # Setup
-        create_test_keys(["alice", "local"])
-        create_contact_db(["alice", "local"])
+        create_contact(["local", "alice", "bob"])
+        c_dictionary["alice@jabber.org"]["logging"] = True
+        c_dictionary["bob@jabber.org"]["logging"] = True
+
+        create_group([("testgroup1", ["alice", "bob"]),
+                      ("testgroup2", ["alice", "bob"])])
+        g_dictionary["testgroup1"]["logging"] = True
+        g_dictionary["testgroup2"]["logging"] = True
+
+        Tx.active_c['a'] = ''
+        Tx.active_c['n'] = "testgroup1"
+        Tx.active_c['g'] = "testgroup1"
 
         # Test
-        self.assertEqual(change_nick("alice@jabber.org", "/nick %s"
-                                     % (105 * 'n'), ret=True),
-                         "C|NICK|me.alice@jabber.org|%s" % (105 * 'n'))
+        self.assertIsNone(change_setting("/logging off all"))
+        self.assertFalse(g_dictionary["testgroup1"]["logging"])
+        self.assertFalse(g_dictionary["testgroup2"]["logging"])
+        self.assertFalse(c_dictionary["alice@jabber.org"]["logging"])
+        self.assertFalse(c_dictionary["bob@jabber.org"]["logging"])
+
+        self.assertPacketOutput(0, 'c')
 
         # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
+        ut_cleanup()
 
-    def test_7_local_can_not_be_nick(self):
+    def test_10_change_store(self):
 
-        # Setup
-        create_test_keys(["alice", "local"])
-        create_contact_db(["alice", "local"])
+        for c in ["/store on", "/store on all",
+                  "/store off", "/store off all"]:
 
-        # Test
-        self.assertEqual(change_nick("alice@jabber.org",
-                                     "/nick local", ret=True), '')
+            # Setup
+            create_contact(["local", "alice", "bob"])
+            c_dictionary["alice@jabber.org"]["logging"] = False
+            c_dictionary["bob@jabber.org"]["logging"] = False
 
-        # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
+            create_group([("testgroup", ["alice", "bob"])])
 
-    def test_8_disallowed_chars(self):
+            Tx.active_c['a'] = ''
+            Tx.active_c['n'] = "testgroup"
+            Tx.active_c['g'] = "testgroup"
 
-        # Setup
-        create_test_keys(["alice", "local"])
-        create_contact_db(["alice", "local"])
+            # Test
+            self.assertIsNone(change_setting(c))
+            self.assertFalse(g_dictionary["testgroup"]["logging"])
+            self.assertFalse(c_dictionary["alice@jabber.org"]["logging"])
+            self.assertFalse(c_dictionary["bob@jabber.org"]["logging"])
 
-        # Test
-        for c in [',', '|']:
-            self.assertEqual(change_nick("alice@jabber.org", "/nick alice%s"
-                                         % c, ret=True), '')
-        # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
+            self.assertPacketOutput(0, 'c')
 
-    def test_9_nick_not_account(self):
-
-        # Setup
-        create_test_keys(["alice", "local"])
-        create_contact_db(["alice", "local"])
-
-        # Test
-        self.assertEqual(change_nick("alice@jabber.org",
-                                     "/nick alice@jabber.org", ret=True), '')
-
-        # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
+            # Teardown
+            ut_cleanup()
 
 
-class TestChangeFileStoring(unittest.TestCase):
+class TestClearDisplays(ExtendedTestCase):
 
-    def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in ["string", 1, 1.0]:
-                with self.assertRaises(SystemExit):
-                    change_file_storing(a, b)
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                clear_displays(a)
 
-    def test_2_no_local_kf(self):
-        for b in [True, False]:
-            with self.assertRaises(NoLocalKeyError):
-                change_file_storing("/store on", ret=b)
+    def test_2_empty_group(self):
+        for cmd in ["SC", "SR"]:
 
-    def test_3_invalid_commands(self):
+            # Setup
+            create_contact(["local"])
+            create_group([("testgroup", [])])
+            Tx.active_c['a'] = ''
+            Tx.active_c['n'] = "testgroup"
+            Tx.active_c['g'] = "testgroup"
 
-        # Setup
-        create_test_keys(["local"])
+            # Test
+            clear_displays(cmd)
+            self.assertPacketOutput(0, 'c')
 
-        # Test
-        self.assertEqual(change_file_storing("/store", ret=True), '')
-        self.assertEqual(change_file_storing("/store ", ret=True), '')
-        self.assertIsNone(change_file_storing("/store"))
-        self.assertIsNone(change_file_storing("/store "))
+            # Teardown
+            ut_cleanup()
 
-        # Teardown
-        shutil.rmtree("keys")
+    def test_3_account(self):
+        for cmd in ["SC", "SR"]:
 
-    def test_4_store_on(self):
+            # Setup
+            create_contact(["local", "alice"])
+            create_group([("testgroup", [])])
+            Tx.active_c['a'] = "alice@jabber.org"
+            Tx.active_c['g'] = ''
 
-        # Setup
-        create_test_keys(["local"])
+            # Test
+            clear_displays(cmd)
 
-        # Test
-        self.assertEqual(change_file_storing("/store on", ret=True),
-                         "C|STORE|ENABLE")
+            self.assertPacketOutput(0, 'c')
+            self.assertPacketOutput(1, 'd')
 
-        # Teardown
-        shutil.rmtree("keys")
-
-    def test_5_store_off(self):
-
-        # Setup
-        create_test_keys(["local"])
-
-        # Test
-        self.assertEqual(change_file_storing("/store off", ret=True),
-                         "C|STORE|DISABLE")
-
-        # Teardown
-        shutil.rmtree("keys")
-
-    def test_6_store_on_for_contact(self):
-
-        # Setup
-        create_test_keys(["local", "bob"])
-
-        # Test
-        self.assertEqual(change_file_storing("/store on bob@jabber.org",
-                                             ret=True),
-                         "C|STORE|ENABLE|rx.bob@jabber.org")
-        # Teardown
-        shutil.rmtree("keys")
-
-    def test_7_store_off_for_contact(self):
-
-        # Setup
-        create_test_keys(["local", "bob"])
-
-        # Test
-        self.assertEqual(change_file_storing("/store off bob@jabber.org",
-                                             ret=True),
-                         "C|STORE|DISABLE|rx.bob@jabber.org")
-
-        # Teardown
-        shutil.rmtree("keys")
-
-
-class TestClearDisplays(unittest.TestCase):
-
-    def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in ["string", 1.0]:
-                with self.assertRaises(SystemExit):
-                    clear_displays(a, b)
-
-    def test_2_no_local_kf(self):
-        with self.assertRaises(NoLocalKeyError):
-            clear_displays(trickle=True)
-
-    def test_3_test_unencrypted_clearing(self):
-        self.assertEqual(clear_displays("alice@jabber.org"),
-                         "TFC|N|%s|U|CLEAR|%s" % (Tx.int_version,
-                                                  "alice@jabber.org"))
-
-    def test_4_test_encrypted_clearing(self):
-
-        # Setup
-        create_test_keys(["local"])
-
-        # Test
-        self.assertEqual(clear_displays(trickle=True), "C|CLEAR")
-
-        # Teardown
-        shutil.rmtree("keys")
+            # Teardown
+            ut_cleanup()
 
 
 ###############################################################################
 #                    COMMAND / MESSAGE / FILE TRANSMISSION                    #
 ###############################################################################
 
-class TestCommandThread(unittest.TestCase):
-
-    def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in [1, 1.0, True]:
-                with self.assertRaises(SystemExit):
-                    command_thread(a, b)
-
-    def test_2_packet_content(self):
-
-        # Setup
-        Tx.unittesting = True
-        create_test_keys(["local"])
-        create_contact_db(["local"])
-
-        # Send command
-        command_thread("STORE|ENABLE|RECEPTION")
-
-        # Test packet content
-        packetdata = open("unitt_txm_out").readline()
-        hd, sw, ver, p_type, ct, k_id, chksum = packetdata.split('|')
-        calc = ut_sha2_256(packetdata[:-10])[:Tx.checksum_len]
-
-        self.assertEqual(len(packetdata), 417)
-        self.assertEqual(hd, "TFC")
-        self.assertEqual(sw, 'N')
-        self.assertEqual(p_type, 'C')
-        self.assertEqual(ver, str(Tx.int_version))
-        self.assertEqual(k_id, '1')
-        self.assertEqual(chksum, calc + '\n')
-
-        # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-        os.remove("unitt_txm_out")
-        Tx.unittesting = False
-
-
-class TestCommandTransmit(unittest.TestCase):
+class TestReadableSize(ExtendedTestCase):
 
     def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                command_transmit(a)
-
-    def test_2_run_thread(self):
-
-        # Setup
-        Tx.unittesting = True
-        create_test_keys(["local"])
-        create_contact_db(["local"])
-
-        # Test
-        self.assertIsNone(command_transmit("Testcommand"))
-
-        # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-        os.remove("unitt_txm_out")
-        Tx.unittesting = False
-
-
-class TestMessageThread(unittest.TestCase):
-
-    def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in [1, 1.0, True]:
-                with self.assertRaises(SystemExit):
-                    message_thread(a, b)
-
-    def test_2_packet_content(self):
-
-        # Setup
-        Tx.unittesting = True
-        create_test_keys(["alice"])
-        create_contact_db(["alice"])
-
-        # Send message
-        message_thread("plaintextmessage", "alice@jabber.org")
-
-        # Test packet content
-        packetdata = open("unitt_txm_out").readline()
-        hd, sw, ver, p_type, ct, k_id, accoun, chksum = packetdata.split('|')
-        calc = ut_sha2_256(packetdata[:-10])[:Tx.checksum_len]
-
-        self.assertEqual(len(packetdata), 434)
-        self.assertEqual(hd, "TFC")
-        self.assertEqual(sw, 'N')
-        self.assertEqual(ver, str(Tx.int_version))
-        self.assertEqual(p_type, 'M')
-        self.assertEqual(k_id, '1')
-        self.assertEqual(accoun, "alice@jabber.org")
-        self.assertEqual(chksum, calc + '\n')
-
-        # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-        os.remove("unitt_txm_out")
-        Tx.unittesting = False
-
-
-class TestMessageTransmit(unittest.TestCase):
-
-    def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in [1, 1.0, True]:
-                with self.assertRaises(SystemExit):
-                    message_transmit(a, b)
-
-    def test_2_run_thread(self):
-
-        # Setup
-        Tx.unittesting = True
-        create_test_keys(["alice"])
-        create_contact_db(["alice"])
-
-        # Test
-        self.assertIsNone(message_transmit("plaintextmessage",
-                                           "alice@jabber.org"))
-        # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-        os.remove("unitt_txm_out")
-        Tx.unittesting = False
-
-
-class TestLongMsgTransmit(unittest.TestCase):
-
-    def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in [1, 1.0, True]:
-                with self.assertRaises(SystemExit):
-                    long_msg_transmit(a, b)
-
-    def test_2_function(self):
-        """
-        Send only one packet as it needs to be read from file.
-        Pre-processing of long messages is tested separately.
-        """
-
-        # Setup
-        Tx.unittesting = True
-        create_test_keys(["alice"])
-        create_contact_db(["alice"])
-
-        # Test
-        long_msg_transmit("m%s" % (150 * 'G'), "alice@jabber.org")
-        packetdata = open("unitt_txm_out").readline()
-        hd, sw, ver, p_type, ct, k_id, accoun, chksum = packetdata.split('|')
-        calc = ut_sha2_256(packetdata[:-10])[:Tx.checksum_len]
-
-        self.assertEqual(len(packetdata), 434)
-        self.assertEqual(hd, "TFC")
-        self.assertEqual(sw, 'N')
-        self.assertEqual(ver, str(Tx.int_version))
-        self.assertEqual(p_type, 'M')
-        self.assertEqual(k_id, '1')
-        self.assertEqual(accoun, "alice@jabber.org")
-        self.assertEqual(chksum, calc + '\n')
-
-        # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-        os.remove("unitt_txm_out")
-        Tx.unittesting = False
-
-
-class TestTransmitExit(unittest.TestCase):
-
-    def test_1_function(self):
-
-        # Setup
-        Tx.unittesting = True
-
-        # Test function raises SystemExit
-        with self.assertRaises(SystemExit):
-            transmit_exit()
-        Tx.unittesting = False
-
-        # Test function output packet
-        packetdata = open("unitt_txm_out").readline()
-        hd, sw, ver, p_type, pt, chksum = packetdata.split('|')
-        calc = ut_sha2_256(packetdata[:-10])[:Tx.checksum_len]
-
-        self.assertEqual(hd, "TFC")
-        self.assertEqual(sw, 'N')
-        self.assertEqual(ver, str(Tx.int_version))
-        self.assertEqual(p_type, 'U')
-        self.assertEqual(pt, "EXIT")
-        self.assertEqual(chksum, calc + '\n')
-
-        # Teardown
-        os.remove("unitt_txm_out")
-        Tx.unittesting = False
-
-
-class TestRecipientChooser(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                recipient_chooser(a)
-
-    def test_2_empty_group(self):
-
-        # Setup
-        Tx.unittesting = True
-        Tx.group = "test_group"
-        create_contact_db(["alice", "bob"])
-        create_test_keys(["alice", "bob"])
-        create_group_db("test_group", [])
-
-        # Test
-        self.assertIsNone(recipient_chooser("Testmessage"))
-        self.assertFalse(os.path.isfile("unitt_txm_out"))
-
-        # Teardown
-        Tx.unittesting = False
-        os.remove(".tx_contacts")
-        shutil.rmtree("groups")
-        shutil.rmtree("keys")
-
-
-class TestLoadFileData(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                load_file_data(a)
-
-    def test_2_missing_filename_aborts(self):
-
-        # Setup
-        Tx.confirm_file = False
-
-        # Test
-        self.assertEqual(load_file_data("/file "), "ABORT")
-
-        # Teardown
-        Tx.confirm_file = True
-
-    def test_3_empty_file(self):
-
-        # Setup
-        Tx.confirm_file = False
-        open("doc.txt", "w+").close()
-
-        # Test
-        self.assertEqual(load_file_data("/file doc.txt"), "ABORT")
-
-        # Teardown
-        os.remove("doc.txt")
-        Tx.confirm_file = True
-
-    def test_4_test_file_loading(self):
-
-        # Setup
-        original_yes = Tx.yes
-        Tx.yes = lambda x: True
-        open("doc.txt", "w+").write("%s" % (20 * "data"))
-
-        # Test
-        filedata = load_file_data("/file doc.txt")
-        split_data = filedata.split('|')
-
-        self.assertEqual(split_data[0], "doc.txt")
-        self.assertEqual(split_data[1], "80.0B")
-        self.assertEqual(split_data[2], '1')
-
-        self.assertEqual(split_data[4], "ZGF0YWRhdGFkYXRhZGF0YWRhdGFkYXRhZGF0Y"
-                                        "WRhdGFkYXRhZGF0YWRhdGFkYXRhZGF0YWRhdG"
-                                        "Fk\nYXRhZGF0YWRhdGFkYXRhZGF0YWRhdGE="
-                                        "\n")
-
-        self.assertFalse(os.path.isfile(".tfc_tmp_file"))
-
-        # Teardown
-        Tx.yes = original_yes
-        os.remove("doc.txt")
-
-
-class TestTransmit(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                transmit(a)
-
-    def test_2_checksum(self):
-
-        # Setup
-        Tx.unittesting = True
-
-        # Test
-        transmit("plaintext")
-        packetdata = open("unitt_txm_out").readline()
-        content, checksum = packetdata.split('|')
-        self.assertEqual(ut_sha2_256(content)[:Tx.checksum_len] + '\n',
-                         checksum)
-
-        # Teardown
-        os.remove("unitt_txm_out")
-        Tx.unittesting = False
-
-
-###############################################################################
-#                              GROUP MANAGEMENT                               #
-###############################################################################
-
-class TestGetGroupMembers(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                get_group_members(a)
-
-    def test_2_no_members(self):
-
-        # Setup
-        ut_ensure_dir("groups/")
-        open("groups/g.testgroup.tfc", "w+").close()
-
-        # Test
-        self.assertEqual(get_group_members("testgroup"), [])
-
-        # Teardown
-        shutil.rmtree("groups")
-
-    def test_3_load_members(self):
-
-        # Setup
-        create_group_db("testgroup", ["alice", "bob", "charlie"])
-
-        # Test
-        self.assertEqual(get_group_members("testgroup"),
-                         ["alice@jabber.org",
-                          "bob@jabber.org",
-                          "charlie@jabber.org"])
-        # Teardown
-        shutil.rmtree("groups")
-
-
-class TestGetListOfGroups(unittest.TestCase):
-
-    def test_1_no_groups_folder(self):
-        self.assertEqual(get_list_of_groups(), [])
-
-    def test2_get_list(self):
-
-        # Setup
-        create_group_db("group1", ["alice", "bob", "charlie"])
-        create_group_db("group2", ["alice", "bob", "charlie"])
-        create_group_db("group3", ["alice", "bob", "charlie"])
-
-        # Test
-        self.assertEqual(get_list_of_groups(), ["group1", "group2", "group3"])
-
-        # Teardown
-        shutil.rmtree("groups")
-
-
-class TestGroupCreate(unittest.TestCase):
-
-    def test_01_input_parameters(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                group_create(a)
-
-    def test_02_missing_group_name(self):
-        with self.assertRaises(GroupError):
-            group_create("/group create ")
-
-    def test_03_overwrite_group_no(self):
-
-        # Setup
-        raw_input_original = __builtins__.raw_input
-        __builtins__.raw_input = lambda x: "no"
-        create_group_db("test", ["bob@jabber.org"])
-
-        # Test
-        self.assertIsNone(group_create("/group create test alice@jabber.org"))
-
-        # Teardown
-        __builtins__.raw_input = raw_input_original
-        shutil.rmtree("groups")
-
-    def test_04_overwrite_group_yes(self):
-
-        # Setup
-        raw_input_original = __builtins__.raw_input
-        __builtins__.raw_input = lambda x: "yes"
-        create_test_keys(["alice", "bob"])
-        create_contact_db(["alice", "bob"])
-        create_group_db("test", ["bob@jabber.org"])
-
-        # Test
-        self.assertIsNone(group_create("/group create test alice@jabber.org"))
-        groupfiledata = open("groups/g.test.tfc").read().splitlines()
-        self.assertEqual(groupfiledata, ["alice@jabber.org"])
-
-        # Teardown
-        __builtins__.raw_input = raw_input_original
-        shutil.rmtree("groups")
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-
-    def test_05_group_name_is_command(self):
-
-        for g_name in ["create", "add", "rm"]:
-            with self.assertRaises(GroupError):
-                group_create("/group create %s" % g_name)
-
-    def test_06_group_name_is_empty(self):
-
-        with self.assertRaises(GroupError):
-            group_create("/group create ")
-
-    def test_07_group_name_is_nick(self):
-
-        # Setup
-        create_contact_db(["alice"])
-        create_test_keys(["alice"])
-
-        # Test
-        with self.assertRaises(GroupError):
-            group_create("/group create alice")
-
-        # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-
-    def test_08_group_name_is_account(self):
-
-        # Setup
-        create_contact_db(["alice"])
-        create_test_keys(["alice"])
-
-        # Test
-        with self.assertRaises(GroupError):
-            group_create("/group create alice@jabber.org")
-
-        # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-
-    def test_09_group_name_is_keyfile(self):
-
-        # Setup
-        create_contact_db(["alice"])
-        create_test_keys(["alice"])
-
-        # Test
-        with self.assertRaises(GroupError):
-            group_create("/group create tx.alice@jabber.org.e")
-
-        # Teardown
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-
-    def test_10_successful_group_creation_no_members(self):
-
-        # Setup
-        create_contact_db(["alice"])
-        create_test_keys(["alice"])
-
-        # Test
-        group_create("/group create testgroup")
-        group_content = open("groups/g.testgroup.tfc").readlines()
-        self.assertEqual(group_content, [])
-
-        # Setup
-        shutil.rmtree("groups")
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-
-    def test_11_successful_group_creation_add_contact(self):
-
-        # Setup
-        create_contact_db(["alice"])
-        create_test_keys(["alice"])
-
-        # Test
-        group_create("/group create testgroup alice@jabber.org")
-        group_content = open("groups/g.testgroup.tfc").read().splitlines()
-        self.assertEqual(group_content, ["alice@jabber.org"])
-
-        # Teardown
-        shutil.rmtree("groups")
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-
-    def test_12_add_contact_and_nonexistent(self):
-
-        # Setup
-        create_contact_db(["alice"])
-        create_test_keys(["alice"])
-
-        # Test
-        group_create("/group create testgroup alice@jabber.org bob@jabber.org")
-        group_content = open("groups/g.testgroup.tfc").read().splitlines()
-        self.assertEqual(group_content, ["alice@jabber.org"])
-
-        # Teardown
-        shutil.rmtree("groups")
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-
-    def test_13_add_contact_and_local(self):
-
-        # Setup
-        create_contact_db(["alice"])
-        create_test_keys(["alice"])
-
-        # Test
-        group_create("/group create testgroup alice@jabber.org local")
-        group_content = open("groups/g.testgroup.tfc").read().splitlines()
-        self.assertEqual(group_content, ["alice@jabber.org"])
-
-        # Teardown
-        shutil.rmtree("groups")
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-
-
-class TestGroupAddMember(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                group_add_member(a)
-
-    def test_2_missing_group_name(self):
-        for s in ['', ' ']:
-            with self.assertRaises(GroupError):
-                group_add_member("/group add%s" % s)
-
-    def test_3_missing_members(self):
-        for s in ['', ' ']:
-            with self.assertRaises(GroupError):
-                group_add_member("/group add testgroup%s" % s)
-
-    def test_4_group_add_existing_contact(self):
-
-        # Setup
-        create_test_keys(["alice", "bob", "charlie"])
-        create_contact_db(["alice", "bob", "charlie"])
-        create_group_db("testgroup", ["alice", "bob"])
-
-        # Test
-        group_add_member("/group add testgroup charlie@jabber.org")
-        grouplist = open("groups/g.testgroup.tfc").read().splitlines()
-        self.assertEqual(grouplist, ["alice@jabber.org", "bob@jabber.org",
-                                     "charlie@jabber.org"])
-        # Teardown
-        shutil.rmtree("keys")
-        shutil.rmtree("groups")
-        os.remove(".tx_contacts")
-
-    def test_5_group_add_existing_and_unknown_contact(self):
-
-        # Setup
-        create_test_keys(["alice", "bob", "charlie"])
-        create_contact_db(["alice", "bob", "charlie"])
-        create_group_db("testgroup", ["alice", "bob"])
-
-        # Test
-        group_add_member("/group add testgroup "
-                         "charlie@jabber.org david@jabber.org")
-
-        grouplist = open("groups/g.testgroup.tfc").read().splitlines()
-        self.assertEqual(grouplist, ["alice@jabber.org", "bob@jabber.org",
-                                     "charlie@jabber.org"])
-
-        # Teardown
-        shutil.rmtree("keys")
-        shutil.rmtree("groups")
-        os.remove(".tx_contacts")
-
-    def test_6_group_add_existing_unknown_and_group_member(self):
-
-        # Setup
-        create_test_keys(["alice", "bob", "charlie"])
-        create_contact_db(["alice", "bob", "charlie"])
-        create_group_db("testgroup", ["alice", "bob"])
-
-        # Test
-        group_add_member("/group add testgroup "
-                         "charlie@jabber.org david@jabber.org bob@jabber.org")
-        grouplist = open("groups/g.testgroup.tfc").read().splitlines()
-        self.assertEqual(grouplist, ["alice@jabber.org", "bob@jabber.org",
-                                     "charlie@jabber.org"])
-
-        # Teardown
-        shutil.rmtree("keys")
-        shutil.rmtree("groups")
-        os.remove(".tx_contacts")
-
-    def test_7_group_add_existing_and_local(self):
-
-        # Setup
-        create_test_keys(["alice", "bob", "charlie"])
-        create_contact_db(["alice", "bob", "charlie"])
-        create_group_db("testgroup", ["alice", "bob"])
-
-        # Test
-        group_add_member("/group add testgroup "
-                         "charlie@jabber.org local")
-        grouplist = open("groups/g.testgroup.tfc").read().splitlines()
-        self.assertEqual(grouplist, ["alice@jabber.org", "bob@jabber.org",
-                                     "charlie@jabber.org"])
-        # Teardown
-        shutil.rmtree("keys")
-        shutil.rmtree("groups")
-        os.remove(".tx_contacts")
-
-    def test_8_no_existing_group_no_creation(self):
-
-        # Setup
-        create_test_keys(["alice", "bob", "charlie"])
-        create_contact_db(["alice", "bob", "charlie"])
-        raw_input_original = __builtins__.raw_input
-        __builtins__.raw_input = lambda x: "no"
-
-        # Test
-        self.assertIsNone(group_add_member(
-                "/group add testgroup bob@jabber.org"))
-
-        # Teardown
-        __builtins__.raw_input = raw_input_original
-        shutil.rmtree("keys")
-        os.remove(".tx_contacts")
-
-    def test_9_no_existing_group_create(self):
-
-        # Setup
-        create_test_keys(["alice", "bob", "charlie"])
-        create_contact_db(["alice", "bob", "charlie"])
-        raw_input_original = __builtins__.raw_input
-        __builtins__.raw_input = lambda x: "yes"
-
-        # Test
-        group_add_member("/group add testgroup bob@jabber.org")
-        grouplist = open("groups/g.testgroup.tfc").read().splitlines()
-        self.assertEqual(grouplist, ["bob@jabber.org"])
-
-        # Teardown
-        __builtins__.raw_input = raw_input_original
-        shutil.rmtree("keys")
-        shutil.rmtree("groups")
-        os.remove(".tx_contacts")
-
-
-class TestGroupRmMember(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                group_rm_member(a)
-
-    def test_2_missing_group_name(self):
-        for s in ['', ' ']:
-            with self.assertRaises(GroupError):
-                group_rm_member("/group rm%s" % s)
-
-    def test_3_remove_group_member(self):
-
-        # Setup
-        create_test_keys(["alice", "bob"])
-        create_contact_db(["alice", "bob"])
-        create_group_db("testgroup", ["alice", "bob"])
-
-        # Test
-        group_rm_member("/group rm testgroup alice@jabber.org")
-        grouplist = open("groups/g.testgroup.tfc").readlines()
-        self.assertEqual(grouplist, ["bob@jabber.org\n"])
-
-        # Teardown
-        shutil.rmtree("keys")
-        shutil.rmtree("groups")
-        os.remove(".tx_contacts")
-
-    def test_4_remove_contact_not_in_group(self):
-
-        # Setup
-        create_test_keys(["alice", "bob"])
-        create_contact_db(["alice", "bob"])
-        create_group_db("testgroup", ["alice"])
-
-        # Test
-        group_rm_member("/group rm testgroup bob@jabber.org")
-        grouplist = open("groups/g.testgroup.tfc").readlines()
-        self.assertEqual(grouplist, ["alice@jabber.org\n"])
-
-        # Teardown
-        shutil.rmtree("keys")
-        shutil.rmtree("groups")
-        os.remove(".tx_contacts")
-
-    def test_5_remove_unknown_contact(self):
-
-        # Setup
-        create_test_keys(["alice", "bob"])
-        create_contact_db(["alice", "bob"])
-        create_group_db("testgroup", ["alice", "bob"])
-
-        # Test
-        group_rm_member("/group rm testgroup charlie@jabber.org")
-        grouplist = open("groups/g.testgroup.tfc").readlines()
-        self.assertEqual(grouplist, ["alice@jabber.org\n", "bob@jabber.org\n"])
-
-        # Teardown
-        shutil.rmtree("keys")
-        shutil.rmtree("groups")
-        os.remove(".tx_contacts")
-
-    def test_6_remove_group_no(self):
-
-        # Setup
-        create_test_keys(["alice", "bob"])
-        create_contact_db(["alice", "bob"])
-        create_group_db("testgroup", ["alice", "bob"])
-        raw_input_original = __builtins__.raw_input
-        __builtins__.raw_input = lambda x: "no"
-
-        group_rm_member("/group rm testgroup")
-        self.assertTrue(os.path.isfile("groups/g.testgroup.tfc"))
-
-        # Teardown
-        shutil.rmtree("keys")
-        shutil.rmtree("groups")
-        os.remove(".tx_contacts")
-        __builtins__.raw_input = raw_input_original
-
-    def test_7_remove_group_yes(self):
-
-        # Setup
-        create_test_keys(["alice", "bob"])
-        create_contact_db(["alice", "bob"])
-        create_group_db("testgroup", ["alice", "bob"])
-        raw_input_original = __builtins__.raw_input
-        __builtins__.raw_input = lambda x: "yes"
-
-        group_rm_member("/group rm testgroup")
-        self.assertFalse(os.path.isfile("groups/g.testgroup.tfc"))
-
-        # Teardown
-        shutil.rmtree("keys")
-        shutil.rmtree("groups")
-        os.remove(".tx_contacts")
-        __builtins__.raw_input = raw_input_original
-
-
-class TestPrintGroupList(unittest.TestCase):
-
-    def test_1_function(self):
-
-        # Setup
-        Tx.group = ''
-        create_group_db("testgroup", ["alice", "bob"])
-
-        # Test
-        self.assertIsNone(print_group_list())
-
-        # Teardown
-        shutil.rmtree("groups")
-
-
-class TestPrintGroupMembers(unittest.TestCase):
-
-    def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in ["string", 1, 1.0]:
-                with self.assertRaises(SystemExit):
-                    print_group_members(a, b)
-
-    def test_2_no_group(self):
-        Tx.group = ''
-        self.assertIsNone(print_group_members(''))
-
-    def test_3_group_list_printing(self):
-
-        # Setup
-        create_test_keys(["alice", "bob"])
-        create_contact_db(["alice", "bob"])
-        create_group_db("testgroup", ["alice", "bob"])
-
-        # Test
-        self.assertIsNone(print_group_members("/group testgroup"))
-
-        # Teardown
-        shutil.rmtree("keys")
-        shutil.rmtree("groups")
-        os.remove(".tx_contacts")
-
-
-class TestSortGroup(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                sort_group(a)
-
-    def test_2_no_group(self):
-
-        # Setup
-        ut_ensure_dir("groups/")
-
-        # Test
-        with self.assertRaises(SystemExit):
-            sort_group("testgroup")
-
-        # Teardown
-        shutil.rmtree("groups")
-
-    def test_3_one_contact(self):
-
-        # Setup
-        create_group_db("testgroup", ["alice"])
-
-        # Test
-        sort_group("testgroup")
-        groupdata = open("groups/g.testgroup.tfc").read().splitlines()
-        self.assertEqual(groupdata, ["alice@jabber.org"])
-
-        # Teardown
-        shutil.rmtree("groups")
-
-    def test_4_three_contacts(self):
-
-        # Setup
-        create_group_db("testgroup", ["bob", "charlie", "alice"])
-
-        # Test
-        sort_group("testgroup")
-        groupdata = open("groups/g.testgroup.tfc").read().splitlines()
-        self.assertEqual(groupdata, ["alice@jabber.org", "bob@jabber.org",
-                                     "charlie@jabber.org"])
-
-        # Teardown
-        shutil.rmtree("groups")
-
-
-###############################################################################
-#                                    MISC                                     #
-###############################################################################
-
-class TestEnsureDir(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            with self.assertRaises(SystemExit):
-                ensure_dir(a)
-
-    def test_2_empty_dir_parameter(self):
-        with self.assertRaises(SystemExit):
-            ensure_dir('')
-
-    def test_3_function(self):
-        ensure_dir("directory/")
-        self.assertTrue(os.path.exists(os.path.dirname("directory/")))
-
-        # Teardown
-        shutil.rmtree("directory")
-
-
-class TestPrintAbout(unittest.TestCase):
-
-    def test_return_type(self):
-        self.assertIsNone(print_about())
-
-
-class TestPrintHelp(unittest.TestCase):
-
-    def test_1_narrow(self):
-        # Setup
-        original_get_tty_wh = Tx.get_tty_wh
-        Tx.get_tty_wh = lambda wo: 80
-
-        # Test
-        self.assertIsNone(print_help())
-
-        # Teardown
-        Tx.get_tty_wh = original_get_tty_wh
-
-    def test_2_wide(self):
-
-        # Setup
-        original_get_tty_wh = Tx.get_tty_wh
-        Tx.get_tty_wh = lambda wo: 81
-
-        # Test
-        self.assertIsNone(print_help())
-
-        # Teardown
-        Tx.get_tty_wh = original_get_tty_wh
-
-
-class TestTabComplete(unittest.TestCase):
-    """
-    This function doesn't have any tests yet.
-    """
-
-
-class TestGetTabCompleteList(unittest.TestCase):
-
-    def test_1_get_defaults(self):
-
-        # Test
-        tab_complete_list = get_tab_complete_list()
-        lst = ["about", "add ", "clear", "create ", "exit", "file ", "group ",
-               "help", "logging ", "msg ", "nick ", "quit", "rm ", "select ",
-               "store "]
-        self.assertTrue(set(lst).issubset(tab_complete_list))
-
-        # Teardown
-        shutil.rmtree("keys")
-        shutil.rmtree("groups")
-
-    def test_2_get_defaults_and_accounts(self):
-
-        # Setup
-        create_test_keys(["alice", "bob"])
-
-        # Test
-        tab_complete_list = get_tab_complete_list()
-        lst = ["about", "add ", "clear", "create ", "exit", "file ", "group ",
-               "help", "logging ", "msg ", "nick ", "quit", "rm ", "select ",
-               "store ", "alice@jabber.org ", "bob@jabber.org "]
-        self.assertTrue(set(lst).issubset(tab_complete_list))
-
-        # Teardown
-        shutil.rmtree("keys")
-        shutil.rmtree("groups")
-
-    def test_3_get_defaults_accounts_and_groups(self):
-
-        # Setup
-        create_group_db("testgroup", ["alice", "bob"])
-        create_test_keys(["alice", "bob"])
-
-        # Test
-        tab_complete_list = set(get_tab_complete_list())
-        lst = ["about", "add ", "clear", "create ", "exit", "file ", "group ",
-               "help", "logging ", "msg ", "nick ", "quit", "rm ", "select ",
-               "store ", "alice@jabber.org ", "bob@jabber.org ", "testgroup "]
-        self.assertTrue(set(lst).issubset(tab_complete_list))
-
-        # Teardown
-        shutil.rmtree("keys")
-        shutil.rmtree("groups")
-
-
-class TestReadableSize(unittest.TestCase):
-
-    def test_1_input_parameter(self):
-        for a in ["string", 1.0]:
+        for a in not_int:
             with self.assertRaises(SystemExit):
                 readable_size(a)
 
@@ -2909,18 +2821,1134 @@ class TestReadableSize(unittest.TestCase):
         self.assertEqual(readable_size(1024**8), "1.0YB")
 
 
-class TestYes(unittest.TestCase):
+class TestTtime(ExtendedTestCase):
 
     def test_1_input_parameter(self):
-        for a in [1, 1.0, True]:
-            for b in ["string", 1.0, True]:
+        for a in not_int:
+            with self.assertRaises(SystemExit):
+                t_time(a)
+
+    def test_2_negative_packet_count(self):
+        with self.assertRaises(AssertionError):
+            t_time(-1)
+
+    def test_3_single_recipient(self):
+
+        # Setup
+        Tx.trickle_connection = False
+        Tx.fixed_packet_delay = 0.5
+        Tx.long_packet_rand_d = True
+        Tx.max_val_for_rand_d = 1.0
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "alice"
+        Tx.active_c['g'] = ''
+
+        # Test
+        for i in range(500):
+            self.assertIsInstance(t_time(i), tuple)
+
+        # Teardown
+        Tx.max_val_for_rand_d = 10.0
+        Tx.long_packet_rand_d = False
+
+    def test_4_multiple_recipient(self):
+
+        # Setup
+        Tx.trickle_connection = False
+        Tx.fixed_packet_delay = 0.5
+        Tx.long_packet_rand_d = True
+        Tx.max_val_for_rand_d = 1.0
+
+        create_group([("testgroup", ["alice", "bob"])])
+
+        Tx.active_c['a'] = ''
+        Tx.active_c['n'] = "testgroup"
+        Tx.active_c['g'] = "testgroup"
+
+        # Test
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "alice"
+        Tx.active_c['g'] = ''
+
+        for i in range(500):
+            self.assertIsInstance(t_time(i), tuple)
+
+        # Teardown
+        Tx.max_val_for_rand_d = 10.0
+        Tx.long_packet_rand_d = False
+
+
+class TestLoadFileData(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                load_file_data(a)
+
+    def test_2_missing_file_aborts(self):
+
+        # Setup
+        Tx.confirm_file = False
+        o_ask_path_gui = Tx.ask_path_gui
+        Tx.ask_path_gui = lambda x, get_file: ''
+
+        # Test
+        self.assertFR("Error: File not found.", load_file_data, "/file")
+
+        # Teardown
+        Tx.ask_path_gui = o_ask_path_gui
+        Tx.confirm_file = True
+
+    def test_3_empty_file(self):
+
+        # Setup
+        Tx.confirm_file = False
+        o_ask_path_gui = Tx.ask_path_gui
+        Tx.ask_path_gui = lambda x, get_file: "tfc_unittest_doc.txt"
+        open("tfc_unittest_doc.txt", "w+").close()
+
+        # Test
+        self.assertFR("Error: Target file is empty. No file was sent.",
+                      load_file_data, "/file")
+
+        # Teardown
+        ut_cleanup()
+        Tx.confirm_file = True
+        Tx.ask_path_gui = o_ask_path_gui
+
+    def test_4__short_file(self):
+
+        # Setup
+        Tx.confirm_file = False
+
+        o_ask_path_gui = Tx.ask_path_gui
+        Tx.ask_path_gui = lambda x, get_file: "tfc_unittest_doc.txt"
+
+        o_yes = Tx.yes
+        Tx.yes = lambda x: True
+
+        o_os_urandom = os.urandom
+        os.urandom = lambda x: 32 * 'f'
+
+        o_nacl_utils_random = Tx.nacl.utils.random
+        Tx.nacl.utils.random = lambda x: (24 * 'a')
+
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "alice"
+        Tx.active_c['g'] = ''
+
+        open("tfc_unittest_doc.txt", "w+").write("%s" % (20 * "data"))
+
+        # Test
+        file_data = load_file_data("/file")
+        split_data = file_data.split('\x1f')
+        self.assertEqual(split_data[0], "tfc_unittest_doc.txt")
+        self.assertEqual(split_data[1], "80.0B")
+        self.assertEqual(split_data[2], "00d 00h 00m 00s")
+        self.assertEqual(len(split_data[3]), 140)
+
+        # Teardown
+        ut_cleanup()
+        Tx.confirm_file = True
+        Tx.yes = o_yes
+        Tx.ask_path_gui = o_ask_path_gui
+        Tx.nacl.utils.random = o_nacl_utils_random
+        os.urandom = o_os_urandom
+
+    def test_5_long_file(self):
+
+        # Setup
+        Tx.confirm_file = False
+
+        o_ask_path_gui = Tx.ask_path_gui
+        Tx.ask_path_gui = lambda x, get_file: "tfc_unittest_doc.txt"
+
+        o_yes = Tx.yes
+        Tx.yes = lambda x: True
+
+        o_os_urandom = os.urandom
+        os.urandom = lambda x: 32 * 'f'
+
+        o_nacl_utils_random = Tx.nacl.utils.random
+        Tx.nacl.utils.random = lambda x: (24 * 'a')
+
+        open("tfc_unittest_doc.txt", "w+").write("%s" % (200000 * "data"))
+
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "alice"
+        Tx.active_c['g'] = ''
+
+        # Test
+        file_data = load_file_data("/file tfc_unittest_doc.txt")
+        split_data = file_data.split('\x1f')
+        self.assertEqual(split_data[0], "tfc_unittest_doc.txt")
+        self.assertEqual(split_data[1], "781.2KB")
+        self.assertEqual(split_data[2], "00d 00h 00m 01s")
+
+        self.assertEqual(len(split_data[3]), 1188)
+
+        # Teardown
+        ut_cleanup()
+        Tx.confirm_file = True
+        Tx.yes = o_yes
+        Tx.ask_path_gui = o_ask_path_gui
+        Tx.nacl.utils.random = o_nacl_utils_random
+        os.urandom = o_os_urandom
+
+
+class TestAddPacketAssemblyHeaders(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_str:
+                with self.assertRaises(SystemExit):
+                    add_packet_assembly_headers(a, b)
+
+    def test_2_invalid_header(self):
+        with self.assertRaises(KeyError):
+            add_packet_assembly_headers("test", 'a')
+
+    def test_3_long_message_packet_splitting(self):
+
+        # Setup
+        o_os_urandom = os.urandom
+        os.urandom = lambda x: 32 * 'f'
+
+        o_nacl_utils_random = Tx.nacl.utils.random
+        Tx.nacl.utils.random = lambda x: (24 * 'a')
+
+        # Test
+        splits = add_packet_assembly_headers("%s" % (550000 * 'x'), 'm')
+
+        self.assertEqual(len(splits), 4)
+        self.assertEqual(splits[0][0], 'b')
+        self.assertEqual(splits[1][0], 'c')
+        self.assertEqual(splits[2][0], 'c')
+        self.assertEqual(splits[3][0], 'd')
+
+        # Teardown
+        os.urandom = o_os_urandom
+        Tx.nacl.utils.random = o_nacl_utils_random
+
+    def test_4_long_file_packet_splitting(self):
+
+        splits = add_packet_assembly_headers("%s" % (900 * 'z'), 'f')
+
+        self.assertEqual(len(splits), 4)
+        self.assertEqual(splits[0][0], 'B')
+        self.assertEqual(splits[1][0], 'C')
+        self.assertEqual(splits[2][0], 'C')
+        self.assertEqual(splits[3][0], 'D')
+
+    def test_5_long_command_and_hash(self):
+
+        splits = add_packet_assembly_headers("%s" % (900 * 'z'), 'c')
+
+        self.assertEqual(len(splits), 4)
+        self.assertEqual(splits[0][0], '1')
+        self.assertEqual(splits[1][0], '2')
+        self.assertEqual(splits[2][0], '2')
+        self.assertEqual(splits[3][0], '3')
+        self.assertEqual(splits[-1][-64:], sha3_256(900*'z'))
+
+
+class TestRecipientChooser(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_str:
+                with self.assertRaises(SystemExit):
+                    recipient_chooser(a, b)
+
+    def test_2_invalid_header(self):
+        with self.assertRaises(KeyError):
+            recipient_chooser("TestMessage", 'a')
+
+    def test_3_empty_group(self):
+
+        # Setup
+        Tx.active_c['g'] = "testgroup"
+        create_contact(["alice", "bob"])
+        create_group([("testgroup", [])])
+
+        # Test
+        self.assertFR("Group is empty. No message was sent.",
+                      recipient_chooser, "Testmessage", 'm')
+
+        # Teardown
+        ut_cleanup()
+
+    def test_4_msg_to_group(self):
+
+        # Setup
+        create_contact(["alice", "bob"])
+        create_group([("testgroup", ["alice", "bob"])])
+        g_dictionary["testgroup"]["logging"] = True
+
+        Tx.active_c['a'] = ''
+        Tx.active_c['n'] = "testgroup"
+        Tx.active_c['g'] = "testgroup"
+
+        # Test
+        self.assertIsNone(recipient_chooser("Testmessage", 'm'))
+
+        self.assertPacketOutput(0, 'm')
+        self.assertPacketOutput(1, 'm')
+
+        # Teardown
+        ut_cleanup()
+
+    def test_5_msg_to_contact(self):
+
+        # Setup
+        create_contact(["alice", "bob"])
+        create_group([("testgroup", ["alice", "bob"])])
+        c_dictionary["alice@jabber.org"]["logging"] = True
+
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "alice"
+        Tx.active_c['g'] = ''
+
+        # Test
+        self.assertIsNone(recipient_chooser("Testmessage", 'm'))
+        self.assertPacketOutput(0, 'm')
+
+        # Teardown
+        ut_cleanup()
+
+
+class TestSendPacket(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_str:
+                for c in not_str:
+                    with self.assertRaises(SystemExit):
+                        send_packet(a, b, c)
+
+    def test_2_key_error(self):
+        with self.assertRaises(KeyError):
+            send_packet("test", 'a')
+
+
+class TestLongTransmit(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_str:
+                for c in not_str:
+                    with self.assertRaises(SystemExit):
+                        long_transmit(a, b, c)
+
+    def test_2_function(self):
+
+        # Setup
+        create_contact(["alice"])
+        Tx.long_packet_rand_d = False
+        Tx.cancel_lt = False
+
+        # Test
+        l = ["bcSJQB+ezvoriJMlf4PIw9Io2xcjl5TrTSz0Nvk/CorTJMGNu/s8rErl/PeH9EUE"
+             "exygtfCS1v1CaKCvB2ry7PjgCb1cOAKaDdz2yKDlFyjTYC0SMkivs3APAdx9BVJ1"
+             "zhpT2yMe+uA01Dy6XpXQZakFx9Nd+zm1OM55EjZ4eqa4lleMEXMRZbGo47U958W6"
+             "UkODdsndu2q1U8h988jQuxcq7m7lScJMcA41l/NWbPwOGqhxOLwgvqZdQzFW/B",
+             "c6HZaoJYwCIzMENlIpfjSk9JG+3D/drXikvFL3TmCQUL304/+BjpsxJTCuLQy9/z"
+             "lth/Bf9ns8FmYGP99ryYUDLUIoPnmcHoYevhwOOSIDt9OsQ+zYpANRyL5ynaeGts"
+             "KA/CI//ianig1e4Rnx2h8nQax+dRiBfMczbbH/6+KZGKuSAKht9luHJUpmp5Nj10"
+             "H+gxsDd/VJTeqvxxQdEJuf66H3HPM98a/YdXV+cIFTR8qzLCVN/TBdtNl9fWh2",
+             "dIKK42929104604b9b22e941023454b6aebb3f7219f18f43f53e892af071662e"
+             "37d71"]
+
+        long_transmit(l, 'm', "alice@jabber.org")
+
+        self.assertPacketOutput(0, 'm')
+        self.assertPacketOutput(1, 'm')
+        self.assertPacketOutput(2, 'm')
+
+        # Teardown
+        ut_cleanup()
+
+
+class TestPacketThread(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_str:
+                with self.assertRaises(SystemExit):
+                    packet_thread(a, b)
+
+    def test_2_command(self):
+
+        # Setup
+        create_contact(["local"])
+
+        # Test
+        packet_thread("CL|E|alice@jabber.org")
+        self.assertPacketOutput(0, 'c')
+
+        # Teardown
+        ut_cleanup()
+
+    def test_3_message(self):
+
+        # Setup
+        create_contact(["alice"])
+        Tx.active_c['a'] = "alice@jabber.org"
+        c_dictionary["alice@jabber.org"]["logging"] = False
+
+        # Test
+        packet_thread("plaintext message", "alice@jabber.org")
+        self.assertPacketOutput(0, 'm')
+
+        # Teardown
+        ut_cleanup()
+
+
+class TestExitProgram(ExtendedTestCase):
+
+    def test_1_function(self):
+
+        # Setup
+        create_contact(["local"])
+
+        # Test
+        with self.assertRaises(SystemExit):
+            exit_program()
+
+        self.assertPacketOutput(0, 'c')
+        self.assertPacketOutput(1, 'e')
+
+        # Teardown
+        ut_cleanup()
+
+
+###############################################################################
+#                            REED SOLOMON ENCODING                            #
+###############################################################################
+
+class TestRSEncode(ExtendedTestCase):
+
+    def test_1_correction(self):
+
+        string = 10 * "Testmessage"
+        print("Original: %s" % string)
+
+        encoded = reed_solomon.encode(string)
+        print ("After encoding: %s" % encoded)
+
+        error = Tx.e_correction_ratio
+        altered = os.urandom(error) + encoded[error:]
+        print("After errors: %s" % altered)
+
+        corrected = reed_solomon.decode(altered)
+        print("Corrected: %s" % corrected)
+
+        self.assertEqual(corrected, string)
+
+
+class TestTransmit(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                transmit(a)
+
+    def test_2_checksum(self):
+
+        # Test
+        transmit("teststring")
+        packetdata = bytearray(b64d(open("unitt_txm_out_0").read()))
+        decoded = reed_solomon.decode(packetdata)
+        self.assertEqual(decoded, bytearray("1Nteststring"))
+
+        # Teardown
+        ut_cleanup()
+
+
+###############################################################################
+#                              GROUP MANAGEMENT                               #
+###############################################################################
+
+class TestGroupCreate(ExtendedTestCase):
+
+    def test_01_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                group_create(a)
+
+    def test_02_missing_group_name(self):
+
+        # Setup
+        create_contact(["local"])
+
+        # Test
+        self.assertFR("No group name specified.",
+                      group_create, "/group create")
+
+        # Teardown
+        ut_cleanup()
+
+    def test_03_group_name_is_not_printable(self):
+
+        # Setup
+        create_contact(["local"])
+
+        # Test
+        self.assertFR("Group name must be printable.",
+                      group_create, "/group create a\x1f")
+
+        # Teardown
+        ut_cleanup()
+
+    def test_04_group_name_too_long(self):
+
+        # Setup
+        create_contact(["local"])
+
+        # Test
+        self.assertFR("Group name must be less than 255 chars long.",
+                      group_create, "/group create %s" % (255 * 'g'))
+
+        # Teardown
+        ut_cleanup()
+
+    def test_05_group_name_refers_to_dummy(self):
+
+        # Setup
+        create_contact(["local"])
+
+        # Test
+        self.assertFR("Group can't use the name reserved for padding.",
+                      group_create, "/group create dummy_group")
+
+        # Teardown
+        ut_cleanup()
+
+    def test_06_group_name_is_group_management_command(self):
+
+        for g_name in ["create", "add", "rm"]:
+
+            # Setup
+            create_contact(["local"])
+
+            # Test
+            self.assertFR("Group name can't be a group management command.",
+                          group_create, "/group create %s" % g_name)
+
+            # Teardown
+            ut_cleanup()
+
+    def test_07_group_name_is_account(self):
+
+        # Setup
+        create_contact(["local", "alice"])
+
+        # Test
+        self.assertFR("Group name can't be an account.",
+                      group_create, "/group create alice@jabber.org")
+        # Teardown
+        ut_cleanup()
+
+    def test_08_group_name_is_nick(self):
+
+        # Setup
+        create_contact(["local", "alice"])
+
+        # Test
+        self.assertFR("Group name can't be nick of contact.",
+                      group_create, "/group create alice")
+        # Teardown
+        ut_cleanup()
+
+    def test_09_user_refuses_to_overwrite_group(self):
+
+        # Setup
+        o_yes = Tx.yes
+        Tx.yes = lambda x: False
+
+        create_contact(["local", "alice", "bob"])
+        create_group([("testgroup", ["bob"])])
+
+        # Test
+        self.assertFR("Group creation aborted.", group_create,
+                      "/group create testgroup alice@jabber.org")
+
+        self.assertEqual(g_dictionary["testgroup"]["members"],
+                         ["bob@jabber.org"]
+                         + (m_members_in_group - 1) * ["dummy_member"])
+
+        # Teardown
+        Tx.yes = o_yes
+        ut_cleanup()
+
+    def test_10_successful_group_creation_no_members(self):
+
+        # Setup
+        create_contact(["local", "alice"])
+
+        # Test
+        self.assertIsNone(group_create("/group create testgroup"))
+
+        self.assertEqual(g_dictionary["testgroup"]["members"],
+                         20 * ["dummy_member"])
+
+        for i in range(m_number_of_groups - 1):
+            self.assertEqual(g_dictionary["dummy_group_%s" % i]["members"],
+                             20 * ["dummy_member"])
+        # Teardown
+        ut_cleanup()
+
+    def test_11_successful_group_creation_with_one_contact(self):
+
+        # Setup
+        o_yes = Tx.yes
+        Tx.yes = lambda x: True
+
+        create_contact(["local", "alice"])
+        c_dictionary["alice@jabber.org"]["logging"] = False
+        Tx.active_c['a'] = "alice@jabber.org"
+
+        # Test
+        self.assertIsNone(
+            group_create("/group create testgroup alice@jabber.org"))
+
+        self.assertEqual(g_dictionary["testgroup"]["members"],
+                         ["alice@jabber.org"]
+                         + 19 * ["dummy_member"])
+
+        for i in range(m_number_of_groups - 1):
+            self.assertEqual(g_dictionary["dummy_group_%s" % i]["members"],
+                             20 * ["dummy_member"])
+
+        self.assertPacketOutput(0, 'c')
+        self.assertPacketOutput(1, 'm')
+
+        # Teardown
+        Tx.yes = o_yes
+        ut_cleanup()
+
+    def test_12_add_contact_and_nonexistent(self):
+
+        # Setup
+        o_yes = Tx.yes
+        Tx.yes = lambda x: True
+
+        create_contact(["local", "alice"])
+
+        # Test
+        self.assertIsNone(group_create(
+            "/group create testgroup alice@jabber.org bob@jabber.org"))
+
+        self.assertEqual(g_dictionary["testgroup"]["members"],
+                         ["alice@jabber.org"]
+                         + 19 * ["dummy_member"])
+
+        for i in range(m_number_of_groups - 1):
+            self.assertEqual(g_dictionary["dummy_group_%s" % i]["members"],
+                             20 * ["dummy_member"])
+
+        self.assertPacketOutput(0, 'c')
+        self.assertPacketOutput(1, 'm')
+
+        # Teardown
+        Tx.yes = o_yes
+        ut_cleanup()
+
+    def test_13_overwrite_existing_group(self):
+
+        # Setup
+        o_yes = Tx.yes
+        Tx.yes = lambda x: True
+
+        create_contact(["local", "alice", "bob"])
+        create_group([("testgroup", ["bob"])])
+
+        # Test
+        self.assertIsNone(group_create(
+            "/group create testgroup alice@jabber.org"))
+
+        self.assertPacketOutput(0, 'c')
+        self.assertPacketOutput(1, 'm')
+
+        self.assertEqual(g_dictionary["testgroup"]["members"],
+                         ["alice@jabber.org"]
+                         + 19 * ["dummy_member"])
+
+        for i in range(m_number_of_groups - 1):
+            self.assertEqual(g_dictionary["dummy_group_%s" % i]["members"],
+                             20 * ["dummy_member"])
+
+        # Teardown
+        Tx.yes = o_yes
+        ut_cleanup()
+
+    def test_14_too_many_members(self):
+
+        # Setup
+        o_yes = Tx.yes
+        Tx.yes = lambda x: True
+        o_m_members_in_group = Tx.m_members_in_group
+        Tx.m_members_in_group = 2
+
+        create_contact(["local", "alice", "bob", "charlie"])
+        c_dictionary["alice@jabber.org"]["logging"] = False
+        Tx.active_c['a'] = "alice@jabber.org"
+
+        # Test
+        self.assertFR("Error: TFC settings only allow 2 members per group.",
+                      group_create, "/group create testgroup alice@jabber.org "
+                                    "bob@jabber.org charlie@jabber.org")
+
+        # Teardown
+        ut_cleanup()
+        Tx.yes = o_yes
+        Tx.m_members_in_group = o_m_members_in_group
+
+    def test_15_too_many_groups(self):
+
+        # Setup
+        o_yes = Tx.yes
+        Tx.yes = lambda x: True
+        o_m_number_of_groups = Tx.m_number_of_groups
+        Tx.m_number_of_groups = 2
+
+        create_contact(["local", "alice", "bob", "charlie"])
+        create_group([("testgroup1", ["alice"]),
+                      ("testgroup2", ["bob"])])
+        Tx.active_c['a'] = "alice@jabber.org"
+
+        # Test
+        self.assertFR("Error: TFC settings only allow 2 groups.",
+                      group_create, "/group create testgroup3 bob@jabber.org")
+
+        # Teardown
+        ut_cleanup()
+        Tx.yes = o_yes
+        Tx.m_number_of_groups = o_m_number_of_groups
+
+
+class TestGroupAddMember(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                group_add_member(a)
+
+    def test_2_no_group_name_specified(self):
+
+        # Setup
+        create_contact(["local"])
+
+        # Test
+        self.assertFR("Error: No group name specified.",
+                      group_add_member, "/group add")
+
+        # Teardown
+        ut_cleanup()
+
+    def test_3_unknown_group(self):
+
+        # Setup
+        create_contact(["local"])
+        create_group([("testgroup", ["alice", "bob"])])
+
+        # Test
+        self.assertFR("Error: Unknown group.",
+                      group_add_member, "/group add testroup ")
+
+        # Teardown
+        ut_cleanup()
+
+    def test_4_no_members(self):
+
+        # Setup
+        create_contact(["local"])
+        create_group([("testgroup", ["alice", "bob"])])
+
+        # Test
+        self.assertFR("Error: No members to add specified.",
+                      group_add_member, "/group add testgroup ")
+
+        # Teardown
+        ut_cleanup()
+
+    def test_5_group_add_existing_contact_no_notify(self):
+
+        # Setup
+        create_contact(["local", "alice", "bob", "charlie"])
+        create_group([("testgroup", ["alice", "bob"])])
+        o_yes = Tx.yes
+        Tx.yes = lambda x: False
+
+        # Test
+        self.assertIsNone(group_add_member(
+            "/group add testgroup charlie@jabber.org"))
+
+        self.assertEqual(g_dictionary["testgroup"]["members"],
+                         ["alice@jabber.org",
+                          "bob@jabber.org",
+                          "charlie@jabber.org"]
+                         + 17 * ["dummy_member"])
+
+        for i in range(m_number_of_groups - 1):
+            self.assertEqual(g_dictionary["dummy_group_%s" % i]["members"],
+                             20 * ["dummy_member"])
+
+        self.assertPacketOutput(0, 'c')
+
+        # Teardown
+        ut_cleanup()
+        Tx.yes = o_yes
+
+    def test_6_group_add_existing_contact_notify(self):
+
+        # Setup
+        create_contact(["local", "alice", "bob", "charlie"])
+        create_group([("testgroup", ["alice", "bob"])])
+        o_yes = Tx.yes
+        Tx.yes = lambda x: True
+
+        # Test
+        self.assertIsNone(group_add_member(
+            "/group add testgroup charlie@jabber.org"))
+
+        self.assertEqual(g_dictionary["testgroup"]["members"],
+                         ["alice@jabber.org",
+                          "bob@jabber.org",
+                          "charlie@jabber.org"]
+                         + 17 * ["dummy_member"])
+
+        for i in range(m_number_of_groups - 1):
+            self.assertEqual(g_dictionary["dummy_group_%s" % i]["members"],
+                             20 * ["dummy_member"])
+
+        self.assertPacketOutput(0, 'c')
+        self.assertPacketOutput(1, 'm')
+        self.assertPacketOutput(2, 'm')
+
+        # Teardown
+        ut_cleanup()
+        Tx.yes = o_yes
+
+    def test_7_group_add_existing_and_unknown_contact(self):
+
+        # Setup
+        create_contact(["local", "alice", "bob", "charlie"])
+        create_group([("testgroup", ["alice", "bob"])])
+        o_yes = Tx.yes
+        Tx.yes = lambda x: False
+
+        # Test
+        self.assertIsNone(
+            group_add_member("/group add testgroup charlie@jabber.org david"))
+
+        self.assertEqual(g_dictionary["testgroup"]["members"],
+                         ["alice@jabber.org",
+                          "bob@jabber.org",
+                          "charlie@jabber.org"]
+                         + 17 * ["dummy_member"])
+
+        for i in range(m_number_of_groups - 1):
+            self.assertEqual(g_dictionary["dummy_group_%s" % i]["members"],
+                             20 * ["dummy_member"])
+
+        # Teardown
+        ut_cleanup()
+        Tx.yes = o_yes
+
+    def test_8_too_many_members(self):
+
+        # Setup
+        o_yes = Tx.yes
+        Tx.yes = lambda x: True
+        o_m_members_in_group = Tx.m_members_in_group
+        Tx.m_members_in_group = 2
+
+        create_contact(["local", "alice", "bob", "charlie"])
+        create_group([("testgroup", ["alice", "bob"])])
+        c_dictionary["alice@jabber.org"]["logging"] = False
+        Tx.active_c['a'] = "alice@jabber.org"
+
+        # Test
+        self.assertFR("Error: TFC settings only allow 2 members per group.",
+                      group_add_member,
+                      "/group add testgroup charlie@jabber.org")
+
+        # Teardown
+        ut_cleanup()
+        Tx.yes = o_yes
+        Tx.m_members_in_group = o_m_members_in_group
+
+
+class TestGroupRmMember(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                group_rm_member(a)
+
+    def test_2_missing_group_name(self):
+
+        # Setup
+        create_contact(["local"])
+
+        # Test
+        self.assertFR("No group name specified.", group_rm_member, "/group rm")
+
+        # Teardown
+        ut_cleanup()
+
+    def test_3_remove_group_no(self):
+
+        # Setup
+        create_contact(["local", "alice", "bob"])
+        create_group([("testgroup", ["alice", "bob"])])
+        o_yes = Tx.yes
+        Tx.yes = lambda x: False
+
+        # Test
+        self.assertFR("Group removal aborted.", group_rm_member,
+                      "/group rm testgroup")
+
+        self.assertTrue("testgroup" in g_dictionary.keys())
+
+        # Teardown
+        ut_cleanup()
+        Tx.yes = o_yes
+
+    def test_4_remove_group_yes_not_on_txm(self):
+
+        # Setup
+        create_contact(["local", "alice", "bob"])
+        create_group([("differentgroup", ["alice", "bob"])])
+        o_yes = Tx.yes
+        Tx.yes = lambda x: True
+
+        # Test
+        self.assertFR("TxM has no group testgroup to remove.",
+                      group_rm_member, "/group rm testgroup")
+
+        self.assertPacketOutput(0, 'c')
+
+        # Teardown
+        ut_cleanup()
+        Tx.yes = o_yes
+
+    def test_5_remove_group_member(self):
+
+        # Setup
+        create_contact(["local", "alice", "bob"])
+        create_group([("testgroup", ["alice", "bob"])])
+
+        o_yes = Tx.yes
+        Tx.yes = lambda x: False
+
+        # Test
+        self.assertIsNone(
+            group_rm_member("/group rm testgroup alice@jabber.org"))
+
+        self.assertFalse("alice@jabber.org" in
+                         g_dictionary["testgroup"]["members"])
+
+        self.assertEqual(g_dictionary["testgroup"]["members"],
+                         ["bob@jabber.org"]
+                         + 19 * ["dummy_member"])
+
+        for i in range(m_number_of_groups - 1):
+            self.assertEqual(g_dictionary["dummy_group_%s" % i]["members"],
+                             20 * ["dummy_member"])
+
+        self.assertPacketOutput(0, 'c')
+
+        # Teardown
+        ut_cleanup()
+        Tx.yes = o_yes
+
+    def test_6_remove_unknown(self):
+
+        # Setup
+        create_contact(["local", "alice", "bob"])
+        create_group([("testgroup", ["alice", "bob"])])
+        o_yes = Tx.yes
+        Tx.yes = lambda x: False
+
+        # Test
+        self.assertIsNone(
+            group_rm_member("/group rm testgroup charlie@jabber.org"))
+
+        self.assertEqual(g_dictionary["testgroup"]["members"],
+                         ["alice@jabber.org", "bob@jabber.org"]
+                         + 18 * ["dummy_member"])
+
+        for i in range(m_number_of_groups - 1):
+            self.assertEqual(g_dictionary["dummy_group_%s" % i]["members"],
+                             20 * ["dummy_member"])
+
+        self.assertPacketOutput(0, 'c')
+
+        # Teardown
+        ut_cleanup()
+        Tx.yes = o_yes
+
+    def test_7_remove_group_yes(self):
+
+        # Setup
+        create_contact(["local", "alice", "bob"])
+        create_group([("testgroup", ["alice", "bob"])])
+        o_yes = Tx.yes
+        Tx.yes = lambda x: True
+
+        # Test
+        self.assertFR("Removed group testgroup.", group_rm_member,
+                      "/group rm testgroup")
+
+        self.assertFalse("testgroup" in g_dictionary.keys())
+
+        self.assertPacketOutput(0, 'c')
+        self.assertPacketOutput(1, 'm')
+        self.assertPacketOutput(2, 'm')
+
+        # Teardown
+        ut_cleanup()
+        Tx.yes = o_yes
+
+
+class TestGMgmtPrint(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_str:
+                for c in not_str:
+                    with self.assertRaises(SystemExit):
+                        g_mgmt_print(a, b, c)
+
+    def test_2_function(self):
+        for key in ["new-s", "add-s", "rem-s", "rem-n", "add-a", "unkwn"]:
+            self.assertIsNone(g_mgmt_print(key, ["alice@jabber.org"], "test"))
+
+
+class TestPrintGroupDetails(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_bool:
+                for c in not_bool:
+                    with self.assertRaises(SystemExit):
+                        print_group_details(a, b, c)
+
+    def test_2_no_groups(self):
+        self.assertFR("There are currently no groups.", print_group_details,
+                      '', True, False)
+
+    def test_3_list_of_groups(self):
+
+        # Setup
+        create_contact(["alice", "bob", "charlie"])
+
+        create_group([("testgroup1", ["alice"]),
+                      ("testgroup2", ["bob"]),
+                      ("testgroup3", ["alice", "bob"]),
+                      ("testgroup4", [])])
+
+        # Test
+        self.assertIsNone(print_group_details(all_g=True))
+
+        # Teardown
+        ut_cleanup()
+
+    def test_4_no_specified_group(self):
+        self.assertFR("No group specified.", print_group_details,
+                      "/group", False, False)
+
+    def test_5_no_specified_group(self):
+        self.assertFR("Group testgroup does not exist.", print_group_details,
+                      "/group testgroup", False, False)
+
+    def test_6_no_members_in_group(self):
+
+        # Setup
+        create_group([("testgroup", [])])
+
+        # Test
+        self.assertFR("Group testgroup is empty.", print_group_details,
+                      "/group testgroup", False, False)
+        # Teardown
+        ut_cleanup()
+
+    def test_7_list_members(self):
+
+        # Setup
+        create_contact(["alice", "bob"])
+
+        create_group([("testgroup", ["alice", "bob"])])
+
+        # Test
+        self.assertIsNone(print_group_details("/group testgroup"))
+
+        # Teardown
+        ut_cleanup()
+
+
+###############################################################################
+#                                    MISC                                     #
+###############################################################################
+
+class TestMessagePrinter(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                message_printer(a)
+
+    def test_2_print_message(self):
+        self.assertIsNone(message_printer("Test message in the middle"))
+
+
+class TestCprint(ExtendedTestCase):
+
+    def test_1_input_paramter(self):
+        for a in not_str:
+            for b in not_bool:
+                with self.assertRaises(SystemExit):
+                    c_print(a, b)
+
+    def test_2_function(self):
+        self.assertIsNone(c_print("test string"))
+
+
+class TestEnsureDir(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                ensure_dir(a)
+
+    def test_2_empty_dir_parameter(self):
+        with self.assertRaises(OSError):
+            ensure_dir('')
+
+    def test_3_function(self):
+
+        # Test
+        ensure_dir("unittest_directory/")
+        self.assertTrue(os.path.exists(os.path.dirname("unittest_directory/")))
+
+        # Teardown
+        ut_cleanup()
+
+
+class TestYes(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_int:
                 with self.assertRaises(SystemExit):
                     yes(a, b)
 
     def test_2_yes(self):
 
         # Setup
-        origin_raw_input = __builtins__.raw_input
+        o_raw_input = __builtins__.raw_input
 
         # Test
         for s in ["yes", "YES", 'y', 'Y']:
@@ -2928,12 +3956,12 @@ class TestYes(unittest.TestCase):
             self.assertTrue(yes("test prompt"))
 
         # Teardown
-        __builtins__.raw_input = origin_raw_input
+        __builtins__.raw_input = o_raw_input
 
     def test_3_no(self):
 
         # Setup
-        origin_raw_input = __builtins__.raw_input
+        o_raw_input = __builtins__.raw_input
 
         # Test
         for s in ["no", "NO", 'n', 'N']:
@@ -2941,59 +3969,54 @@ class TestYes(unittest.TestCase):
             self.assertFalse(yes("test prompt"))
 
         # Teardown
-        __builtins__.raw_input = origin_raw_input
+        __builtins__.raw_input = o_raw_input
 
 
-class TestPhase(unittest.TestCase):
+class TestNewPassword(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                new_password(a)
+
+    def test_2_function(self):
+
+        # Setup
+        o_getpass_getpass = getpass.getpass
+        getpass.getpass = lambda x: "test"
+
+        # Test
+        self.assertEqual(new_password("test"), "test")
+
+        # Teardown
+        getpass.getpass = o_getpass_getpass
+
+
+class TestRunAsThread(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        with self.assertRaises(SystemExit):
+            run_as_thread("string", "arg")
+
+
+class TestPhase(ExtendedTestCase):
 
     def test_1_input_parameters(self):
-        for a in [1, 1.0, True]:
-            for b in ["string", 1.0, True]:
+        for a in not_str:
+            for b in not_int:
                 with self.assertRaises(SystemExit):
                     phase(a, b)
 
     def test_2_output_type(self):
         self.assertIsNone(phase("test", 10))
+        print("Done.")
+        self.assertIsNone(phase("\ntest", 10))
+        print("Done.")
+        self.assertIsNone(phase("\n\n\ntest", 10))
+        print("Done.")
 
 
-class TestGetTTyWH(unittest.TestCase):
-
-    def test_output_types(self):
-        w, h = get_tty_wh()
-
-        self.assertTrue(isinstance(w, int))
-        self.assertTrue(isinstance(h, int))
-
-
-class TestPrintBanner(unittest.TestCase):
-
-    def test_output_type(self):
-        self.assertIsNone(print_banner())
-
-
-class TestProcessArguments(unittest.TestCase):
-    """
-    This function doesn't have any tests yet.
-    """
-
-
-class TestSearchInterfaces(unittest.TestCase):
-    """
-    This function doesn't have any tests yet.
-    """
-
-
-###############################################################################
-#                               TRICKLE CONNECTION                            #
-###############################################################################
-
-class TestHeads(unittest.TestCase):
-
-    def test_1_output_type(self):
-        self.assertTrue(isinstance(heads(), bool))
-
-
-class TestGetMS(unittest.TestCase):
+class TestGetMS(ExtendedTestCase):
 
     def test_1_output_type(self):
         self.assertTrue(isinstance(get_ms(), (int, long)))
@@ -3002,34 +4025,373 @@ class TestGetMS(unittest.TestCase):
         self.assertEqual(len(str(get_ms())), 13)
 
 
-class TestTrickleDelay(unittest.TestCase):
+class TestSplitString(ExtendedTestCase):
 
-    def test_1_constant_time_sleep(self):
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_int:
+                with self.assertRaises(SystemExit):
+                    split_string(a, b)
 
-        # Setup
-        Tx.trickle_r_delay = 0.0
+    def test_2_function(self):
 
-        # Test
-        time_before_test = int(round(time.time() * 1000))
+        string = "string to split"
+        split = split_string(string, 1)
 
-        trickle_delay(time_before_test)
-
-        time_after_test = int(round(time.time() * 1000))
-        error = time_after_test - time_before_test
-
-        self.assertTrue(2000 <= error <= 2005)  # milliseconds.
-
-        # Teardown
-        Tx.trickle_r_delay = 1.0
+        for s in string:
+            self.assertEqual(split[string.index(s)], s)
 
 
-class TestSenderProcess(unittest.TestCase):
+class TestGetTTyWH(ExtendedTestCase):
+
+    def test_1_function(self):
+        self.assertTrue(isinstance(get_tty_w(), int))
+
+
+class TestProcessArguments(ExtendedTestCase):
     """
     This function doesn't have any tests yet.
     """
 
 
-class TestInputProcess(unittest.TestCase):
+class TestClearScreen(ExtendedTestCase):
+
+    def test_1_function(self):
+        self.assertIsNone(clear_screen())
+
+
+class TestPrintOnPreviousLine(ExtendedTestCase):
+
+    def test_1_function(self):
+        self.assertIsNone(print_on_previous_line())
+
+
+class TestB58e(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                b58e(a)
+
+    def test_2_hash_and_encode(self):
+        """
+        Test vectors from https://en.bitcoin.it/wiki/Wallet_import_format
+        """
+
+        p_key = binascii.unhexlify("807542FB6685F9FD8F37D56FAF62F0BB45"
+                                   "63684A51539E4B26F0840DB361E0027C")
+
+        tv = "5JhvsapkHeHjy2FiUQYwXh1d74evuMd3rGcKGnifCdFR5G8e6nH"
+
+        self.assertEqual(b58e(p_key), tv)
+
+
+class TestB58d(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                b58d(a)
+
+    def test_2_valid_input(self):
+        """
+        Test vectors from https://en.bitcoin.it/wiki/Wallet_import_format
+        """
+
+        tv = "5JhvsapkHeHjy2FiUQYwXh1d74evuMd3rGcKGnifCdFR5G8e6nH"
+
+        p_key = binascii.unhexlify("807542FB6685F9FD8F37D56FAF62F0BB45"
+                                   "63684A51539E4B26F0840DB361E0027C")
+
+        self.assertEqual(b58d(tv), p_key)
+
+    def test_3_invalid_input(self):
+
+        with self.assertRaises(ValueError):
+            b58d("2JhvsapkHeHjy2FiUQYwXh1d74evuMd3rGcKGnifCdFR5G8e6nH")
+
+
+class TestB64e(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                b64e(a)
+
+
+class TestB64d(ExtendedTestCase):
+
+    def test_1_input_parameter(self):
+        for a in not_str:
+            with self.assertRaises(SystemExit):
+                b64e(a)
+
+
+class TestEstablishSocket(ExtendedTestCase):
+    """
+    This function doesn't have any tests yet
+    """
+
+
+class TestSearchSerialInterfaces(ExtendedTestCase):
+
+    def test_1_usb_iface(self):
+
+        # Setup
+        Tx.serial_usb_adapter = True
+
+        o_os_listdir = os.listdir
+        os.listdir = lambda x: ["ttyUSB0"]
+
+        # Test
+        self.assertEqual(search_serial_interfaces(), "/dev/ttyUSB0")
+
+        # Teardown
+        os.listdir = o_os_listdir
+
+    def test_2_no_integrated_iface(self):
+
+        # Setup
+        Tx.serial_usb_adapter = False
+
+        o_os_listdir = os.listdir
+        os.listdir = lambda x: []
+
+        # Test
+        with self.assertRaises(SystemExit):
+            search_serial_interfaces()
+
+        # Teardown
+        os.listdir = o_os_listdir
+
+    def test_3_integrated_RPI_iface(self):
+
+        # Setup
+        o_os_listdir = os.listdir
+        os.listdir = lambda x: ["serial0"]
+        Tx.rpi_os = True
+
+        o_subprocess_check_output = subprocess.check_output
+        subprocess.check_output = lambda x: "Raspbian GNU/Linux"
+
+        Tx.serial_usb_adapter = False
+
+        # Test
+        self.assertEqual(search_serial_interfaces(), "/dev/serial0")
+
+        # Teardown
+        Tx.rpi_os = False
+        subprocess.check_output = o_subprocess_check_output
+        os.listdir = o_os_listdir
+
+    def test_4_integrated_RPI_iface(self):
+
+        # Setup
+        o_os_listdir = os.listdir
+        os.listdir = lambda x: ["ttyS0"]
+
+        Tx.serial_usb_adapter = False
+
+        # Test
+        self.assertEqual(search_serial_interfaces(), "/dev/ttyS0")
+
+        # Teardown
+        os.listdir = o_os_listdir
+
+
+class TestEstablishSerial(ExtendedTestCase):
+    """
+    This function doesn't have any tests yet.
+    """
+
+
+class TestTabComplete(ExtendedTestCase):
+    """
+    This function doesn't have any tests yet.
+    """
+
+
+class TestGetTabCompleteList(ExtendedTestCase):
+
+    def test_1_get_defaults(self):
+
+        # Test
+        tab_complete_list = get_tab_complete_list()
+        tc_list = ["about", "add ", "all", "clear", "cmd", "create ", "exit",
+                   "export", "file", "group ", "help", "history", "localkey",
+                   "logging ", "msg ", "names", "nick ", "paste", "psk",
+                   "pubkeys", "reset", "rm ", "store ", "unread", "winpriv"]
+        self.assertTrue(set(tc_list).issubset(tab_complete_list))
+
+        # Teardown
+        ut_cleanup()
+
+    def test_2_get_defaults_and_accounts(self):
+
+        # Setup
+        create_contact(["alice", "bob"])
+
+        # Test
+        tab_complete_list = get_tab_complete_list()
+        tc_list = ["about", "add ", "all", "clear", "cmd", "create ", "exit",
+                   "export", "file", "group ", "help", "history", "localkey",
+                   "logging ", "msg ", "names", "nick ", "paste", "psk",
+                   "pubkeys", "reset", "rm ", "store ", "unread", "winpriv",
+                   "alice@jabber.org ", "bob@jabber.org "]
+
+        self.assertTrue(set(tc_list).issubset(tab_complete_list))
+
+        # Teardown
+        ut_cleanup()
+
+    def test_3_get_defaults_accounts_and_groups(self):
+
+        # Setup
+        create_group([("testgroup", ["alice", "bob"])])
+        create_contact(["alice", "bob"])
+
+        # Test
+        tab_complete_list = set(get_tab_complete_list())
+        tc_list = ["about", "add ", "all", "clear", "cmd", "create ", "exit",
+                   "export", "file", "group ", "help", "history", "localkey",
+                   "logging ", "msg ", "names", "nick ", "paste", "psk",
+                   "pubkeys", "reset", "rm ", "store ", "unread", "winpriv",
+                   "alice@jabber.org ", "bob@jabber.org ", "testgroup "]
+        self.assertTrue(set(tc_list).issubset(tab_complete_list))
+
+        # Teardown
+        ut_cleanup()
+
+    def test_4_get_defaults_accounts_and_groups_and_nicks(self):
+
+        # Setup
+        create_group([("testgroup", ["alice", "bob"])])
+        create_contact(["alice", "bob"])
+
+        # Test
+        tab_complete_list = set(get_tab_complete_list())
+        tc_list = ["about", "add ", "all", "clear", "cmd", "create ", "exit",
+                   "export", "file", "group ", "help", "history", "localkey",
+                   "logging ", "msg ", "names", "nick ", "paste", "psk",
+                   "pubkeys", "reset", "rm ", "store ", "unread", "winpriv",
+                   "alice@jabber.org ", "bob@jabber.org ", "testgroup ",
+                   "alice ", "bob "]
+        self.assertTrue(set(tc_list).issubset(tab_complete_list))
+
+        # Teardown
+        ut_cleanup()
+
+
+###############################################################################
+#                               FILE SELECTION                                #
+###############################################################################
+
+class TestAskPathGUI(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_bool:
+                with self.assertRaises(SystemExit):
+                    ask_path_gui(a, b)
+
+    def test_2_guidir(self):
+
+        if not rpi_os:
+            # Setup
+            Tx.disable_gui_dialog = False
+
+            o_tkfilefialog_askdirectory = tkFileDialog.askdirectory
+            tkFileDialog.askdirectory = lambda title: "/home/"
+
+            # Test
+            t_dir = ask_path_gui("test")
+            self.assertEqual(t_dir, "/home/")
+
+            # Teardown
+            tkFileDialog.askdirectory = o_tkfilefialog_askdirectory
+
+    def test_3_guifile(self):
+
+        if not rpi_os:
+            # Setup
+            Tx.disable_gui_dialog = False
+
+            o_tkfilefialog_askopenfilename = tkFileDialog.askopenfilename
+            tkFileDialog.askopenfilename = lambda title: "testfile"
+
+            # Test
+            t_dir = ask_path_gui("test", get_file=True)
+            self.assertEqual(t_dir, "testfile")
+
+            # Teardown
+            tkFileDialog.askopenfilename = o_tkfilefialog_askopenfilename
+
+
+class TestAskPathCLI(ExtendedTestCase):
+
+    def test_1_input_parameters(self):
+        for a in not_str:
+            for b in not_bool:
+                with self.assertRaises(SystemExit):
+                    ask_path_cli(a, b)
+
+    def test_2_guidir(self):
+
+        # Setup
+        o_raw_input = __builtins__.raw_input
+        __builtins__.raw_input = lambda x: "/home"
+        import readline
+        Tx.default_delims = readline.get_completer_delims()
+
+        # Test
+        t_dir = ask_path_cli("test")
+        self.assertEqual(t_dir, "/home/")
+
+        # Teardown
+        __builtins__.raw_input = o_raw_input
+
+    def test_3_guifile(self):
+
+        # Setup
+        o_raw_input = __builtins__.raw_input
+        __builtins__.raw_input = lambda x: "tfc_unittest_doc.txt"
+        import readline
+        Tx.default_delims = readline.get_completer_delims()
+
+        open("tfc_unittest_doc.txt", "w+").write("test")
+
+        # Test
+        t_dir = ask_path_cli("test", get_f=True)
+        self.assertEqual(t_dir, "tfc_unittest_doc.txt")
+
+        # Teardown
+        ut_cleanup()
+        __builtins__.raw_input = o_raw_input
+
+
+###############################################################################
+#                               TRICKLE CONNECTION                            #
+###############################################################################
+
+class TestConstantTime(ExtendedTestCase):
+    """
+    This function doesn't have any tests yet.
+    """
+
+
+class TestSenderProcess(ExtendedTestCase):
+    """
+    This function doesn't have any tests yet.
+    """
+
+
+class TestNoiseProcess(ExtendedTestCase):
+    """
+    This function doesn't have any tests yet.
+    """
+
+
+class TestInputProcess(ExtendedTestCase):
     """
     This function doesn't have any tests yet.
     """
@@ -3039,13 +4401,27 @@ class TestInputProcess(unittest.TestCase):
 #                             STANDARD CONNECTION                             #
 ###############################################################################
 
-class TestGetNormalInput(unittest.TestCase):
-    """
-    This function doesn't have any tests yet.
-    """
+class TestGetNormalInput(ExtendedTestCase):
+
+    def test_1_function(self):
+
+        # Setup
+        Tx.active_c['g'] = ''
+        Tx.active_c['a'] = "alice@jabber.org"
+        Tx.active_c['n'] = "Alice"
+        Tx.paste = False
+
+        o_raw_input = __builtins__.raw_input
+        __builtins__.raw_input = lambda x: "testinput"
+
+        # Test
+        self.assertEqual(get_normal_input(), "testinput")
+
+        # Teardown
+        __builtins__.raw_input = o_raw_input
 
 
-class TestMainLoop(unittest.TestCase):
+class TestMainLoop(ExtendedTestCase):
     """
     This function doesn't have any tests yet.
     """
@@ -3056,17 +4432,32 @@ class TestMainLoop(unittest.TestCase):
 
 if __name__ == "__main__":
 
+    Tx.unit_test = True
     os.chdir(sys.path[0])
 
     try:
-        shutil.rmtree("keys")
-        shutil.rmtree("groups")
-        shutil.rmtree("logs")
-        shutil.rmtree("files")
-        os.remove(".tx_contacts")
-        os.remove(".rx_contacts")
-        os.remove("unitt_txm_out")
+        print('')
+        if not yes("Running this unittest overwrites all "
+                   "existing TFC user data. Proceed?", 1):
+            print("\nExiting.\n")
+            exit()
+
+    except KeyboardInterrupt:
+        print("\n\nExiting.\n")
+        exit()
+
+    pname = subprocess.check_output(["grep", "PRETTY_NAME", "/etc/os-release"])
+    rpi_os = "Raspbian GNU/Linux" in pname
+
+    try:
+        os.remove("Tx.pyc")
     except OSError:
         pass
 
+    ut_cleanup()
     unittest.main(exit=False)
+
+    try:
+        os.remove("Tx.pyc")
+    except OSError:
+        pass
