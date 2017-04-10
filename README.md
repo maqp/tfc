@@ -2,6 +2,8 @@
 
 ### Tinfoil Chat
 
+[![Build Status](https://travis-ci.org/maqp/tfc.svg?branch=master)](https://travis-ci.org/maqp/tfc) [![Coverage Status](https://coveralls.io/repos/github/maqp/tfc/badge.svg?branch=master)](https://coveralls.io/github/maqp/tfc?branch=master)
+
 Tinfoil Chat (TFC) is a high assurance encrypted messaging system that
 operates on top of existing IM clients. The 
 [free and open source software](https://en.wikipedia.org/wiki/Free_and_open-source_software) 
