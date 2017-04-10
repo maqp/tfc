@@ -1,10 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.6
 # -*- coding: utf-8 -*-
 
-# TFC 0.16.10 || dd.py
-
 """
-Copyright (C) 2013-2016  Markus Ottela
+Copyright (C) 2013-2017  Markus Ottela
 
 This file is part of TFC.
 
@@ -12,265 +10,214 @@ TFC is free software: you can redistribute it and/or modify it under the terms
 of the GNU General Public License as published by the Free Software Foundation,
 either version 3 of the License, or (at your option) any later version.
 
-TFC is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License for more details.
+TFC is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along with
-TFC. If not, see <http://www.gnu.org/licenses/>.
+You should have received a copy of the GNU General Public License
+along with TFC. If not, see <http://www.gnu.org/licenses/>.
 """
 
 import multiprocessing.connection
 import multiprocessing
-import os
+import socket
 import sys
 import time
 
+from multiprocessing import Queue, Process
+
 
 ###############################################################################
-#                              DATA DIODE FRAMES                              #
+#                         DATA DIODE ANIMATION FRAMES                         #
 ###############################################################################
 
-def lr_upper():
+def lr_upper() -> None:
     """Print high signal frame (left to right)."""
-
     print("""
-      Data flow
-          →
- Tx───┬─╮   ╭──────╮
-      │ S > R      █±6V
-GND━━━┿━┥   ├──Rx  ├──GND
-      │ S   R      █±6V
-      ╰─╯   ╰──────╯""")
+       Data flow
+           →
+    ─────╮   ╭─────
+      Tx │ > │ Rx
+    ─────╯   ╰─────
+    """)
 
 
-def lr_lower():
+def lr_lower() -> None:
     """Print low signal frame (left to right)."""
-
     print("""
-      Data flow
-          →
- Tx───┬─╮   ╭──────╮
-      │ S   R      █±6V
-GND━━━┿━┥   ├──Rx  ├──GND
-      │ S > R      █±6V
-      ╰─╯   ╰──────╯""")
+       Data flow
+           →
+    ─────╮   ╭─────
+      Tx │   │ Rx
+    ─────╯   ╰─────
+    """)
 
 
-def lr_idle():
+def lr_idle() -> None:
     """Print no signal frame (left to right)."""
-
     print("""
-      Data flow
-          →
- Tx───┬─╮   ╭──────╮
-      │ S   R      █±6V
-GND━━━┿━┥   ├──Rx  ├──GND
-      │ S   R      █±6V
-      ╰─╯   ╰──────╯""")
+          Idle
+    
+    ─────╮   ╭─────
+      Tx │   │ Rx
+    ─────╯   ╰─────
+    """)
 
 
-def rl_upper():
+def rl_upper() -> None:
     """Print high signal frame (right to left)."""
-
     print("""
-          Data flow
-              ←
-     ╭──────╮   ╭─┬───Tx
-  ±6V█      R < S │
-GND──┤  Rx──┤   ┝━┿━━━GND
-  ±6V█      R   S │
-     ╰──────╯   ╰─╯""")
+       Data flow
+           ←
+    ─────╮   ╭─────
+      Rx │ < │ Tx
+    ─────╯   ╰─────
+    """)
 
 
-def rl_lower():
+def rl_lower() -> None:
     """Print low signal frame (right to left)."""
-
     print("""
-          Data flow
-              ←
-     ╭──────╮   ╭─┬───Tx
-  ±6V█      R   S │
-GND──┤  Rx──┤   ┝━┿━━━GND
-  ±6V█      R < S │
-     ╰──────╯   ╰─╯""")
+       Data flow
+           ←
+    ─────╮   ╭─────
+      Rx │   │ Tx
+    ─────╯   ╰─────
+    """)
 
 
-def rl_idle():
+def rl_idle() -> None:
     """Print no signal frame (right to left)."""
-
     print("""
-          Data flow
-              ←
-     ╭──────╮   ╭─┬───Tx
-  ±6V█      R   S │
-GND──┤  Rx──┤   ┝━┿━━━GND
-  ±6V█      R   S │
-     ╰──────╯   ╰─╯""")
+          Idle
+
+    ─────╮   ╭─────
+      Rx │   │ Tx
+    ─────╯   ╰─────
+    """)
 
 
 ###############################################################################
 #                             DATA DIODE ANIMATORS                            #
 ###############################################################################
 
-def lr():
-    """Draw animation (left to right)."""
+def clear_screen() -> None:
+    """Clear terminal window."""
+    sys.stdout.write('\x1b[2J\x1b[H')
+    sys.stdout.flush()
 
-    for _ in range(10):
-        os.system("clear")
+
+def lr_animate() -> None:
+    """Draw animation (left to right)."""
+    for _ in range(8):
+        clear_screen()
         lr_lower()
         time.sleep(0.04)
-        os.system("clear")
+        clear_screen()
         lr_upper()
         time.sleep(0.04)
-    os.system("clear")
+    clear_screen()
 
 
-def rl():
+def rl_animate() -> None:
     """Draw animation (right to left)."""
-
-    for _ in range(10):
-        os.system("clear")
+    for _ in range(8):
+        clear_screen()
         rl_lower()
         time.sleep(0.04)
-        os.system("clear")
+        clear_screen()
         rl_upper()
         time.sleep(0.04)
-    os.system("clear")
+    clear_screen()
 
 
 ###############################################################################
 #                             DATA DIODE PROCESSES                            #
 ###############################################################################
 
-def tx_process():
-    """Process that reads from sending computer."""
-
-    if tx_nh_lr or nh_rx_rl:
+def tx_process(io_queue:      'Queue',
+               output_socket: int,
+               argv:          str) -> None:
+    """Process that sends to receiving computer."""
+    if argv in ['txnhlr', 'nhrxrl']:
         lr_idle()
-
-    if tx_nh_rl or nh_rx_lr:
+    if argv in ['txnhrl', 'nhrxlr']:
         rl_idle()
 
     while True:
-        if io_queue.empty():
-            time.sleep(0.001)
-            continue
+        try:
+            interface = multiprocessing.connection.Client(('localhost', output_socket))
+            break
+        except socket.error:
+            time.sleep(0.01)
 
-        msg = io_queue.get()
+    while True:
+        try:
+            while io_queue.empty():
+                time.sleep(0.01)
 
-        if tx_nh_lr or nh_rx_rl:
-            lr()
-            lr_idle()
+            msg = io_queue.get()
 
-        if tx_nh_rl or nh_rx_lr:
-            rl()
-            rl_idle()
+            if argv in ['txnhlr', 'nhrxrl']:
+                lr_animate()
+                lr_idle()
 
-        ipx_send.send(msg)
+            if argv in ['txnhrl', 'nhrxlr']:
+                rl_animate()
+                rl_idle()
 
+            interface.send(msg)
 
-def rx_process():
-    """Process that sends to receiving computer."""
-
-    def ipc_to_queue(conn):
-        """
-        Load packet from IPC.
-
-        :param conn: Listener object
-        :return:     [no return value]
-        """
-
-        while True:
-            time.sleep(0.001)
-            pkg = conn.recv()
-            io_queue.put(pkg)
-    try:
-        l = multiprocessing.connection.Listener(("localhost", input_socket))
-        while True:
-            ipc_to_queue(l.accept())
-    except EOFError:
-        exit_queue.put("exit")
+        except(EOFError, KeyboardInterrupt):
+            pass
 
 
-if __name__ == "__main__":
+def rx_process(io_queue: 'Queue', input_socket: int) -> None:
+    """Process that reads from sending computer."""
+    listener  = multiprocessing.connection.Listener(('localhost', input_socket))
+    interface = listener.accept()
 
-    tx_nh_lr = False
-    nh_rx_lr = False
-    tx_nh_rl = False
-    nh_rx_rl = False
+    while True:
+        time.sleep(0.01)
+        try:
+            io_queue.put(interface.recv())
+        except (EOFError, KeyboardInterrupt):
+            pass
 
-    input_socket = 0
+
+def main() -> None:
+    """Run data diode simulator."""
     output_socket = 0
-
-    # Resize terminal
-    # sys.stdout.write("\x1b[8;{rows};{cols}t".format(rows=25, cols=12))
+    input_socket  = 0
+    argv          = ''
 
     try:
-        # Simulates data diode between Tx.py on left, NH.py on right.
-        if str(sys.argv[1]) == "txnhlr":
-            tx_nh_lr = True
-            input_socket = 5000
-            output_socket = 5001
-
-        # Simulates data diode between Tx.py on right, NH.py on left.
-        elif str(sys.argv[1]) == "txnhrl":
-            tx_nh_rl = True
-            input_socket = 5000
-            output_socket = 5001
-
-        # Simulates data diode between Rx.py on left, NH.py on right.
-        elif str(sys.argv[1]) == "nhrxlr":
-            nh_rx_lr = True
-            input_socket = 5002
-            output_socket = 5003
-
-        # Simulates data diode between Rx.py on right, NH.py on left.
-        elif str(sys.argv[1]) == "nhrxrl":
-            nh_rx_rl = True
-            input_socket = 5002
-            output_socket = 5003
-
-        else:
-            os.system("clear")
-            print("\nUsage: python dd.py {txnh{lr,rl}, nhrx{lr,rl}\n")
-            exit()
-
-    except IndexError:
-        os.system("clear")
+        argv          = str(sys.argv[1])
+        input_socket  = dict(txnhlr=5000, txnhrl=5000, nhrxlr=5002, nhrxrl=5002)[argv]
+        output_socket = dict(txnhlr=5001, txnhrl=5001, nhrxlr=5003, nhrxrl=5003)[argv]
+    except (IndexError, KeyError):
+        clear_screen()
         print("\nUsage: python dd.py {txnh{lr,rl}, nhrx{lr,rl}}\n")
         exit()
 
-    try:
-        print("Waiting for socket")
-        ipx_send = multiprocessing.connection.Client(("localhost",
-                                                      output_socket))
-        print("Connection established.")
-        time.sleep(0.3)
-        os.system("clear")
-    except KeyboardInterrupt:
-        exit()
+    io_queue     = Queue()
+    tx           = Process(target=tx_process, args=(io_queue, output_socket, argv))
+    rx           = Process(target=rx_process, args=(io_queue, input_socket))
+    process_list = [tx, rx]
 
-    exit_queue = multiprocessing.Queue()
-    io_queue = multiprocessing.Queue()
+    for p in process_list:
+        p.start()
 
-    txp = multiprocessing.Process(target=tx_process)
-    rxp = multiprocessing.Process(target=rx_process)
+    while True:
+        try:
+            time.sleep(0.1)
+            if not all([p.is_alive() for p in process_list]):
+                for p in process_list:
+                    p.terminate()
+                exit()
+        except (EOFError, KeyboardInterrupt):
+            pass
 
-    txp.start()
-    rxp.start()
 
-    try:
-        while True:
-            if not exit_queue.empty():
-                command = exit_queue.get()
-                if command == "exit":
-                    txp.terminate()
-                    rxp.terminate()
-                    exit()
-            time.sleep(0.01)
-
-    except KeyboardInterrupt:
-        txp.terminate()
-        rxp.terminate()
-        exit()
+if __name__ == '__main__':
+    main()

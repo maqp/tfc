@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=TFC-TxM
+Exec=gnome-terminal --maximize -x bash -c "cd $HOME/tfc; source venv_tfc/bin/activate; python3.6 'tfc.py'; deactivate"
+Icon=tfc.png
+Terminal=true
+Type=Application
+Categories=Network;Messaging;Security;

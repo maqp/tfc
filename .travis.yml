@@ -1,0 +1,14 @@
+language: python
+
+python:
+  - "3.6"
+
+install:
+  - pip install pytest pytest-cov pyyaml coveralls
+  - pip install -r requirements.txt
+
+script:
+  - py.test --cov=src tests/
+
+after_success:
+  - coveralls

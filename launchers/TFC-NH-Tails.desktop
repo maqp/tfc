@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=TFC-NH
+Exec=gnome-terminal -x bash -c "cd $HOME/tfc; python3.5 'nh.py'"
+Icon=tfc.png
+Terminal=true
+Type=Application
+Categories=Network;Messaging;Security;
