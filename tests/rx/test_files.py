@@ -19,6 +19,7 @@ along with TFC. If not, see <http://www.gnu.org/licenses/>.
 """
 
 import base64
+import binascii
 import builtins
 import datetime
 import os
@@ -29,200 +30,165 @@ import zlib
 from src.common.crypto   import encrypt_and_sign
 from src.common.encoding import b58encode, str_to_bytes
 from src.common.statics  import *
-from src.rx.files        import store_unique, process_imported_file, process_received_file
-from tests.mock_classes  import WindowList
-from tests.utils         import TFCTestCase
+
+from src.rx.files import process_imported_file, process_received_file, store_unique
+
+from tests.mock_classes import Settings, WindowList
+from tests.utils        import ignored, TFCTestCase
 
 
 class TestStoreUnique(unittest.TestCase):
 
-    def test_function(self):
-        # Setup
-        f_data = os.urandom(100)
-        f_dir  = 'test_dir'
-        f_name = 'test_file'
+    def setUp(self):
+        self.f_data = os.urandom(100)
+        self.f_dir  = 'test_dir/'
+        self.f_name = 'test_file'
 
-        # Test
-        self.assertEqual(store_unique(f_data, f_dir, f_name), 'test_file')
-        self.assertEqual(store_unique(f_data, f_dir, f_name), 'test_file.1')
-        self.assertEqual(store_unique(f_data, f_dir, f_name), 'test_file.2')
+    def tearDown(self):
+        with ignored(FileNotFoundError):
+            shutil.rmtree('test_dir/')
 
-        # Teardown
-        shutil.rmtree('test_dir/')
-
-
-class TestProcessImportedFile(TFCTestCase):
-
-    def test_invalid_compression_raises_fr(self):
-        # Setup
-        data        = os.urandom(1000)
-        compressed  = zlib.compress(data, level=9)
-        compressed  = compressed[:-2] + b'aa'
-        key         = os.urandom(32)
-        key_b58     = b58encode(key)
-        packet      = IMPORTED_FILE_CT_HEADER + encrypt_and_sign(compressed, key)
-        ts          = datetime.datetime.now()
-        window_list = WindowList()
-
-        o_input     = builtins.input
-        input_list  = ['bad', key_b58]
-        gen         = iter(input_list)
-
-        def mock_input(_):
-            return str(next(gen))
-
-        builtins.input = mock_input
-
-        # Test
-        self.assertFR("Decompression of file data failed.", process_imported_file, ts, packet, window_list)
-
-        # Teardown
-        builtins.input = o_input
-
-
-    def test_invalid_name_raises_fr(self):
-        # Setup
-        file_name   = str_to_bytes('\x01testfile.txt')
-        data        = file_name + os.urandom(1000)
-        compressed  = zlib.compress(data, level=9)
-        key         = os.urandom(32)
-        key_b58     = b58encode(key)
-        packet      = IMPORTED_FILE_CT_HEADER + encrypt_and_sign(compressed, key)
-        ts          = datetime.datetime.now()
-        window_list = WindowList(nicks=['local'])
-        o_input     = builtins.input
-        input_list  = ['2QJL5gVSPEjMTaxWPfYkzG9UJxzZDNSx6PPeVWdzS5CFN7knZy', key_b58]
-        gen         = iter(input_list)
-
-        def mock_input(_):
-            return str(next(gen))
-
-        builtins.input = mock_input
-
-        # Test
-        self.assertFR("Received file had an invalid name.", process_imported_file, ts, packet, window_list)
-
-        # Teardown
-        builtins.input = o_input
-
-    def test_valid_import(self):
-        file_name   = str_to_bytes('testfile.txt')
-        data        = file_name + os.urandom(1000)
-        compressed  = zlib.compress(data, level=9)
-        key         = os.urandom(32)
-        key_b58     = b58encode(key)
-        packet      = IMPORTED_FILE_CT_HEADER + encrypt_and_sign(compressed, key)
-        ts          = datetime.datetime.now()
-        window_list = WindowList(nicks=['local'])
-        o_input     = builtins.input
-        input_list  = ['2QJL5gVSPEjMTaxWPfYkzG9UJxzZDNSx6PPeVWdzS5CFN7knZy', key_b58]
-        gen         = iter(input_list)
-
-        def mock_input(_):
-            return str(next(gen))
-
-        builtins.input = mock_input
-
-        # Setup
-        self.assertIsNone(process_imported_file(ts, packet, window_list))
-        self.assertTrue(os.path.isfile(f"{DIR_IMPORTED}/testfile.txt"))
-
-        # Teardown
-        builtins.input = o_input
-        shutil.rmtree(f'{DIR_IMPORTED}/')
+    def test_each_file_is_store_with_unique_name(self):
+        self.assertEqual(store_unique(self.f_data, self.f_dir, self.f_name), 'test_file')
+        self.assertEqual(store_unique(self.f_data, self.f_dir, self.f_name), 'test_file.1')
+        self.assertEqual(store_unique(self.f_data, self.f_dir, self.f_name), 'test_file.2')
 
 
 class TestProcessReceivedFile(TFCTestCase):
 
+    def setUp(self):
+        self.nick = 'Alice'
+        self.key  = os.urandom(KEY_LENGTH)
+
+    def tearDown(self):
+        with ignored(FileNotFoundError):
+            shutil.rmtree(DIR_RX_FILES)
+
     def test_invalid_structure_raises_fr(self):
-        # Setup
-        payload = US_BYTE.join([b'filename', b'unused', b'next is missing'])
-        nick    = 'Alice'
-
-        # Test
-        self.assertFR("Received file had invalid structure.", process_received_file, payload, nick)
-
-    def test_invalid_name_raises_fr(self):
-        # Setup
-        payload = US_BYTE.join([b'\x01filename', b'unused', b'unused', b'filedata'])
-        nick    = 'Alice'
-
-        # Test
-        self.assertFR("Received file had an invalid name.", process_received_file, payload, nick)
+        self.assertFR("Error: Received file had invalid structure.", process_received_file, b'testfile.txt', self.nick)
 
     def test_invalid_encoding_raises_fr(self):
         # Setup
-        f_data  = b'\x01filedata'
-        payload = US_BYTE.join([b'filename', b'unused', b'unused', f_data])
-        nick    = 'Alice'
+        payload = binascii.unhexlify('3f264d4189d7a091') + US_BYTE + base64.b85encode(b'filedata')
 
         # Test
-        self.assertFR("Received file had invalid encoding.", process_received_file, payload, nick)
+        self.assertFR("Error: Received file name had invalid encoding.", process_received_file, payload, self.nick)
+
+    def test_invalid_name_raises_fr(self):
+        # Setup
+        payload = b'\x01filename' + US_BYTE + base64.b85encode(b'filedata')
+
+        # Test
+        self.assertFR("Error: Received file had an invalid name.", process_received_file, payload, self.nick)
+
+    def test_invalid_data_raises_fr(self):
+        # Setup
+        payload = b'testfile.txt' + US_BYTE + base64.b85encode(b'filedata') + b'\x01'
+
+        # Test
+        self.assertFR("Error: Received file had invalid encoding.", process_received_file, payload, self.nick)
 
     def test_invalid_key_raises_fr(self):
         # Setup
-        f_data  = base64.b85encode(b'filedata')
-        payload = US_BYTE.join([b'filename', b'unused', b'unused', f_data])
-        nick    = 'Alice'
+        payload = b'testfile.txt' + US_BYTE + base64.b85encode(b'filedata')
 
         # Test
-        self.assertFR("Received file had an invalid key.", process_received_file, payload, nick)
+        self.assertFR("Error: Received file had an invalid key.", process_received_file, payload, self.nick)
 
     def test_decryption_fail_raises_fr(self):
         # Setup
-        key     = os.urandom(32)
-        f_data  = encrypt_and_sign(b'filedata', key)
-        f_data  += key[1:] + b''
-        f_data  = base64.b85encode(f_data)
-        payload = US_BYTE.join([b'filename', b'unused', b'unused', f_data])
-        nick    = 'Alice'
+        f_data  = encrypt_and_sign(b'filedata', self.key)[::-1]
+        payload = b'testfile.txt' + US_BYTE + base64.b85encode(f_data)
 
         # Test
-        self.assertFR("Decryption of file data failed.", process_received_file, payload, nick)
+        self.assertFR("Error: Decryption of file data failed.", process_received_file, payload, self.nick)
 
     def test_invalid_compression_raises_fr(self):
         # Setup
-        key        = os.urandom(32)
-        compressed = zlib.compress(b'filedata', level=9)
-        compressed = compressed[:-1] + b'a'
-        f_data     = encrypt_and_sign(compressed, key)
-        f_data    += key
-        f_data     = base64.b85encode(f_data)
-        payload    = US_BYTE.join([b'filename', b'unused', b'unused', f_data])
-        nick       = 'Alice'
+        compressed = zlib.compress(b'filedata', level=COMPRESSION_LEVEL)[::-1]
+        f_data     = encrypt_and_sign(compressed, self.key) + self.key
+        payload    = b'testfile.txt' + US_BYTE + base64.b85encode(f_data)
 
         # Test
-        self.assertFR("Decompression of file data failed.", process_received_file, payload, nick)
-
-    def test_missing_file_data_raises_fr(self):
-        # Setup
-        key        = os.urandom(32)
-        compressed = zlib.compress(b'', level=9)
-        f_data     = encrypt_and_sign(compressed, key)
-        f_data    += key
-        f_data     = base64.b85encode(f_data)
-        payload    = US_BYTE.join([b'filename', b'unused', b'unused', f_data])
-        nick       = 'Alice'
-
-        # Test
-        self.assertFR("Received file did not contain data.", process_received_file, payload, nick)
+        self.assertFR("Error: Decompression of file data failed.", process_received_file, payload, self.nick)
 
     def test_successful_reception(self):
         # Setup
-        key        = os.urandom(32)
-        compressed = zlib.compress(b'filedata', level=9)
-        f_data     = encrypt_and_sign(compressed, key)
-        f_data    += key
-        f_data     = base64.b85encode(f_data)
-        payload    = US_BYTE.join([b'filename', b'unused', b'unused', f_data])
-        nick       = 'Alice'
+        compressed = zlib.compress(b'filedata', level=COMPRESSION_LEVEL)
+        f_data     = encrypt_and_sign(compressed, self.key) + self.key
+        payload    = b'testfile.txt' + US_BYTE + base64.b85encode(f_data)
 
         # Test
-        self.assertIsNone(process_received_file(payload, nick))
-        self.assertTrue(os.path.isfile(f'{DIR_RX_FILES}/Alice/filename'))
+        self.assertIsNone(process_received_file(payload, self.nick))
+        self.assertTrue(os.path.isfile(f'{DIR_RX_FILES}Alice/testfile.txt'))
 
-        # Teardown
-        shutil.rmtree(f'{DIR_RX_FILES}/')
+
+class TestProcessImportedFile(TFCTestCase):
+
+    def setUp(self):
+        self.o_input     = builtins.input
+        self.settings    = Settings()
+        self.ts          = datetime.datetime.now()
+        self.window_list = WindowList(nicks=[LOCAL_ID])
+        self.key         = os.urandom(KEY_LENGTH)
+        self.key_b58     = b58encode(self.key, file_key=True)
+
+        input_list     = ['91avARGdfge8E4tZfYLoxeJ5sGBdNJQH4kvjJoQFacbgwi1C2GD', self.key_b58]
+        gen            = iter(input_list)
+        builtins.input = lambda _: str(next(gen))
+
+    def tearDown(self):
+        builtins.input = self.o_input
+
+        with ignored(FileNotFoundError):
+            shutil.rmtree(DIR_IMPORTED)
+
+    def test_invalid_compression_raises_fr(self):
+        # Setup
+        data           = os.urandom(1000)
+        compressed     = zlib.compress(data, level=COMPRESSION_LEVEL)
+        compressed     = compressed[:-2] + b'aa'
+        packet         = IMPORTED_FILE_HEADER + encrypt_and_sign(compressed, self.key)
+        input_list     = ['bad', self.key_b58]
+        gen            = iter(input_list)
+        builtins.input = lambda _: str(next(gen))
+
+        # Test
+        self.assertFR("Error: Decompression of file data failed.",
+                      process_imported_file, self.ts, packet, self.window_list, self.settings)
+
+    def test_invalid_name_encoding_raises_fr(self):
+        # Setup
+        file_name  = binascii.unhexlify('8095b2f59d650ab7')
+        data       = file_name + os.urandom(1000)
+        compressed = zlib.compress(data, level=COMPRESSION_LEVEL)
+        packet     = IMPORTED_FILE_HEADER + encrypt_and_sign(compressed, self.key)
+
+        # Test
+        self.assertFR("Error: Received file name had invalid encoding.",
+                      process_imported_file, self.ts, packet, self.window_list, self.settings)
+
+    def test_invalid_name_raises_fr(self):
+        # Setup
+        file_name  = str_to_bytes('\x01testfile.txt')
+        data       = file_name + os.urandom(1000)
+        compressed = zlib.compress(data, level=COMPRESSION_LEVEL)
+        packet     = IMPORTED_FILE_HEADER + encrypt_and_sign(compressed, self.key)
+
+        # Test
+        self.assertFR("Error: Received file had an invalid name.",
+                      process_imported_file, self.ts, packet, self.window_list, self.settings)
+
+    def test_valid_import(self):
+        # Setup
+        file_name  = str_to_bytes('testfile.txt')
+        data       = file_name + os.urandom(1000)
+        compressed = zlib.compress(data, level=COMPRESSION_LEVEL)
+        packet     = IMPORTED_FILE_HEADER + encrypt_and_sign(compressed, self.key)
+
+        # Test
+        self.assertIsNone(process_imported_file(self.ts, packet, self.window_list, self.settings))
+        self.assertTrue(os.path.isfile(f"{DIR_IMPORTED}testfile.txt"))
 
 
 if __name__ == '__main__':

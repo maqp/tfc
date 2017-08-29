@@ -26,119 +26,125 @@ import zlib
 
 import nacl.exceptions
 
-from src.common.crypto   import auth_and_decrypt
-from src.common.encoding import bytes_to_str
-from src.common.errors   import FunctionReturn
-from src.common.input    import get_b58_key
-from src.common.misc     import ensure_dir
-from src.common.output   import box_print, c_print, phase, print_on_previous_line
-from src.common.statics  import *
+from src.common.crypto     import auth_and_decrypt
+from src.common.encoding   import bytes_to_str
+from src.common.exceptions import FunctionReturn
+from src.common.input      import get_b58_key
+from src.common.misc       import ensure_dir
+from src.common.output     import box_print, c_print, phase, print_on_previous_line
+from src.common.statics    import *
 
 if typing.TYPE_CHECKING:
-    from datetime       import datetime
-    from src.rx.windows import WindowList
+    from datetime               import datetime
+    from src.common.db_settings import Settings
+    from src.rx.windows         import WindowList
 
 
-def store_unique(file_data: bytes, f_dir: str, f_name: str) -> str:
+def store_unique(f_data: bytes, f_dir: str, f_name: str) -> str:
     """Store file under unique filename.
 
     Add trailing counter .# to duplicate files.
     """
-    ensure_dir(f'{f_dir}/')
+    ensure_dir(f_dir)
 
-    if os.path.isfile(f'{f_dir}/{f_name}'):
-        f_name += '.1'
-    while os.path.isfile(f'{f_dir}/{f_name}'):
-        *name_parts, ctr = f_name.split('.')
-        f_name  = '.'.join(name_parts)
-        f_name += ('.' + str(int(ctr) + 1))
+    if os.path.isfile(f_dir + f_name):
+        ctr = 1
+        while os.path.isfile(f_dir + f_name + f'.{ctr}'):
+            ctr += 1
+        f_name += f'.{ctr}'
 
-    with open('{}/{}'.format(f_dir, f_name), 'wb+') as f:
-        f.write(file_data)
+    with open(f_dir + f_name, 'wb+') as f:
+        f.write(f_data)
+
     return f_name
+
+
+def process_received_file(payload: bytes, nick: str) -> None:
+    """Process received file assembly packets."""
+    try:
+        f_name_b, f_data = payload.split(US_BYTE)
+    except ValueError:
+        raise FunctionReturn("Error: Received file had invalid structure.")
+
+    try:
+        f_name = f_name_b.decode()
+    except UnicodeError:
+        raise FunctionReturn("Error: Received file name had invalid encoding.")
+
+    if not f_name.isprintable() or not f_name:
+        raise FunctionReturn("Error: Received file had an invalid name.")
+
+    try:
+        f_data = base64.b85decode(f_data)
+    except (binascii.Error, ValueError):
+        raise FunctionReturn("Error: Received file had invalid encoding.")
+
+    file_ct  = f_data[:-KEY_LENGTH]
+    file_key = f_data[-KEY_LENGTH:]
+    if len(file_key) != KEY_LENGTH:
+        raise FunctionReturn("Error: Received file had an invalid key.")
+
+    try:
+        file_pt = auth_and_decrypt(file_ct, file_key, soft_e=True)
+    except nacl.exceptions.CryptoError:
+        raise FunctionReturn("Error: Decryption of file data failed.")
+
+    try:
+        file_dc = zlib.decompress(file_pt)
+    except zlib.error:
+        raise FunctionReturn("Error: Decompression of file data failed.")
+
+    file_dir   = f'{DIR_RX_FILES}{nick}/'
+    final_name = store_unique(file_dc, file_dir, f_name)
+    box_print(f"Stored file from {nick} as '{final_name}'")
 
 
 def process_imported_file(ts:          'datetime',
                           packet:      bytes,
-                          window_list: 'WindowList'):
+                          window_list: 'WindowList',
+                          settings:    'Settings'):
     """Decrypt and store imported file."""
     while True:
         try:
             print('')
-            key = get_b58_key('imported_file')
+            key = get_b58_key(B58_FILE_KEY, settings)
+        except KeyboardInterrupt:
+            raise FunctionReturn("File import aborted.", head=2)
+
+        try:
             phase("Decrypting file", head=1)
             file_pt = auth_and_decrypt(packet[1:], key, soft_e=True)
-            phase("Done")
+            phase(DONE)
             break
-        except nacl.exceptions.CryptoError:
-            c_print("Invalid decryption key. Try again.", head=2)
-            print_on_previous_line(reps=6, delay=1.5)
+        except (nacl.exceptions.CryptoError, nacl.exceptions.ValueError):
+            phase('ERROR', done=True)
+            c_print("Invalid decryption key. Try again.")
+            print_on_previous_line(reps=7, delay=1.5)
         except KeyboardInterrupt:
+            phase('ABORT', done=True)
             raise FunctionReturn("File import aborted.")
 
     try:
         phase("Decompressing file")
         file_dc = zlib.decompress(file_pt)
-        phase("Done")
+        phase(DONE)
     except zlib.error:
-        raise FunctionReturn("Decompression of file data failed.")
+        phase('ERROR', done=True)
+        raise FunctionReturn("Error: Decompression of file data failed.")
 
     try:
-        f_name  = bytes_to_str(file_dc[:1024])
+        f_name = bytes_to_str(file_dc[:PADDED_UTF32_STR_LEN])
     except UnicodeError:
-        raise FunctionReturn("Received file had an invalid name.")
+        raise FunctionReturn("Error: Received file name had invalid encoding.")
 
-    if not f_name.isprintable():
-        raise FunctionReturn("Received file had an invalid name.")
+    if not f_name.isprintable() or not f_name:
+        raise FunctionReturn("Error: Received file had an invalid name.")
 
-    f_data     = file_dc[1024:]
+    f_data     = file_dc[PADDED_UTF32_STR_LEN:]
     final_name = store_unique(f_data, DIR_IMPORTED, f_name)
 
-    message = "Stored imported file to {}/{}".format(DIR_IMPORTED, final_name)
+    message = f"Stored imported file as '{final_name}'"
     box_print(message, head=1)
 
     local_win = window_list.get_local_window()
-    local_win.print_new(ts, message, print_=False)
-
-
-def process_received_file(payload: bytes, nick: str) -> None:
-    """Process received file assembly packets"""
-    try:
-        f_name, _, _, f_data = payload.split(US_BYTE)
-    except ValueError:
-        raise FunctionReturn("Received file had invalid structure.")
-
-    try:
-        f_name_d = f_name.decode()
-    except UnicodeError:
-        raise FunctionReturn("Received file had an invalid name.")
-
-    if not f_name_d.isprintable():
-        raise FunctionReturn("Received file had an invalid name.")
-
-    try:
-        f_data = base64.b85decode(f_data)
-    except (binascii.Error, ValueError):
-        raise FunctionReturn("Received file had invalid encoding.")
-
-    file_ct  = f_data[:-32]
-    file_key = f_data[-32:]
-    if len(file_key) != 32:
-        raise FunctionReturn("Received file had an invalid key.")
-
-    try:
-        file_pt = auth_and_decrypt(file_ct, file_key, soft_e=True)
-    except nacl.exceptions.CryptoError:
-        raise FunctionReturn("Decryption of file data failed.")
-
-    try:
-        file_dc = zlib.decompress(file_pt)
-    except zlib.error:
-        raise FunctionReturn("Decompression of file data failed.")
-
-    if len(file_dc) == 0:
-        raise FunctionReturn("Received file did not contain data.")
-
-    f_dir      = f'{DIR_RX_FILES}/{nick}'
-    final_name = store_unique(file_dc, f_dir, f_name_d)
-    box_print(["Stored file from {} as {}.".format(nick, final_name)])
+    local_win.add_new(ts, message)

@@ -18,12 +18,13 @@ You should have received a copy of the GNU General Public License
 along with TFC. If not, see <http://www.gnu.org/licenses/>.
 """
 
-import datetime
 import time
 import typing
 
-from typing import Dict
+from datetime import datetime
+from typing   import Dict
 
+from src.common.misc         import ignored
 from src.common.output       import box_print
 from src.common.reed_solomon import ReedSolomonError, RSCodec
 from src.common.statics      import *
@@ -33,30 +34,35 @@ if typing.TYPE_CHECKING:
     from src.common.db_settings import Settings
 
 
-def receiver_loop(settings: 'Settings', queues: Dict[bytes, 'Queue']) -> None:
-    """Decode and queue received packets."""
-    rs       = RSCodec(2 * settings.session_ec_ratio)
+def receiver_loop(queues:   Dict[bytes, 'Queue'],
+                  settings: 'Settings',
+                  unittest: bool = False) -> None:
+    """Decode received packets and forward them to packet queues.
+
+    This function also determines the timestamp for received message.
+    """
+    rs       = RSCodec(2 * settings.session_serial_error_correction)
     gw_queue = queues[GATEWAY_QUEUE]
 
     while True:
-        try:
-            if gw_queue.empty():
-                time.sleep(0.001)
+        with ignored(EOFError, KeyboardInterrupt):
+            if gw_queue.qsize() == 0:
+                time.sleep(0.01)
 
-            packet = gw_queue.get()
-            ts     = datetime.datetime.now()
+            packet    = gw_queue.get()
+            timestamp = datetime.now()
 
             try:
-                packet = bytes(rs.decode(bytearray(packet)))
+                packet = bytes(rs.decode(packet))
             except ReedSolomonError:
-                box_print(["Warning! Failed to correct errors in received packet."], head=1, tail=1)
+                box_print("Error: Failed to correct errors in received packet.", head=1, tail=1)
                 continue
 
             p_header = packet[:1]
             if p_header in [PUBLIC_KEY_PACKET_HEADER, MESSAGE_PACKET_HEADER,
-                             LOCAL_KEY_PACKET_HEADER, COMMAND_PACKET_HEADER,
-                             IMPORTED_FILE_CT_HEADER]:
-                queues[p_header].put((ts, packet))
+                            LOCAL_KEY_PACKET_HEADER, COMMAND_PACKET_HEADER,
+                            IMPORTED_FILE_HEADER]:
+                queues[p_header].put((timestamp, packet))
 
-        except (KeyboardInterrupt, EOFError):
-            pass
+            if unittest:
+                break

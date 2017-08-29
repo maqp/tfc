@@ -21,19 +21,24 @@ along with TFC. If not, see <http://www.gnu.org/licenses/>.
 import os
 import readline
 import time
+import _tkinter
 import typing
 
-from src.common.errors import FunctionReturn
-from src.common.output import c_print, print_on_previous_line
+from tkinter import filedialog, Tk
+from typing  import Union
+
+from src.common.exceptions import FunctionReturn
+from src.common.output     import c_print, print_on_previous_line
 
 if typing.TYPE_CHECKING:
     from src.common.db_settings import Settings
+    from src.nh.settings        import Settings as nhSettings
 
 
 def ask_path_gui(prompt_msg: str,
-                 settings:   'Settings',
+                 settings:   Union['Settings', 'nhSettings'],
                  get_file:   bool = False) -> str:
-    """Prompt PSK path with Tkinter dialog. Fallback to CLI if not available.
+    """Prompt (file) path with Tkinter / CLI prompt.
 
     :param prompt_msg: Directory selection prompt
     :param settings:   Settings object
@@ -41,98 +46,92 @@ def ask_path_gui(prompt_msg: str,
     :return:           Selected directory / file
     """
     try:
-        import _tkinter
-        from tkinter import filedialog, Tk
+        if settings.disable_gui_dialog:
+            raise _tkinter.TclError
 
-        try:
-            if settings.disable_gui_dialog:
-                raise _tkinter.TclError
+        root = Tk()
+        root.withdraw()
 
-            root = Tk()
-            root.withdraw()
+        if get_file:
+            file_path = filedialog.askopenfilename(title=prompt_msg)
+        else:
+            file_path = filedialog.askdirectory(title=prompt_msg)
 
-            if get_file:
-                f_path = filedialog.askopenfilename(title=prompt_msg)
-            else:
-                f_path = filedialog.askdirectory(title=prompt_msg)
+        root.destroy()
 
-            root.destroy()
+        if not file_path:
+            raise FunctionReturn(("File" if get_file else "Path") + " selection aborted.")
 
-            if not f_path:
-                t = "File" if get_file else "Path"
-                raise FunctionReturn(t + " selection aborted.")
+        return file_path
 
-            return f_path
-
-        except _tkinter.TclError:
-            return ask_path_cli(prompt_msg, get_file)
-
-    # Fallback to CLI if Tkinter is not installed
-    except ImportError:
-        if 0:  # Remove warnings
-            _tkinter, filedialog, Tk = None, None, None
-            _, _, _ = _tkinter, filedialog, Tk
+    except _tkinter.TclError:
         return ask_path_cli(prompt_msg, get_file)
 
 
-def ask_path_cli(prompt_msg: str, get_file: bool = False) -> str:
-    """Prompt file location / store dir for PSK with tab-complete supported CLI.
+class Completer(object):
+    """readline tab-completer for paths and files."""
 
-    :param prompt_msg: File/PSK selection prompt
+    def __init__(self, get_file):
+        """Create new completer object."""
+        self.get_file = get_file
+
+    def listdir(self, root):
+        """List directory 'root' appending the path separator to subdirs."""
+        res = []
+        for name in os.listdir(root):
+            path = os.path.join(root, name)
+            if os.path.isdir(path):
+                name += os.sep
+                res.append(name)
+            elif self.get_file:
+                # Also append file names
+                res.append(name)
+        return res
+
+    def complete_path(self, path=None):
+        """Perform completion of filesystem path."""
+        if not path:
+            return self.listdir('.')
+
+        dirname, rest = os.path.split(path)
+        tmp           = dirname if dirname else '.'
+        res           = [os.path.join(dirname, p) for p in self.listdir(tmp) if p.startswith(rest)]
+
+        # More than one match, or single match which does not exist (typo)
+        if len(res) > 1 or not os.path.exists(path):
+            return res
+
+        # Resolved to a single directory: return list of files below it
+        if os.path.isdir(path):
+            return [os.path.join(path, p) for p in self.listdir(path)]
+
+        # Exact file match terminates this completion
+        return [path + ' ']
+
+    def path_complete(self, args=None):
+        """Return list of directories from current directory."""
+        if not args:
+            return self.complete_path('.')
+
+        # Treat the last arg as a path and complete it
+        return self.complete_path(args[-1])
+
+    def complete(self, _, state):
+        """Generic readline completion entry point."""
+        line = readline.get_line_buffer().split()
+        return self.path_complete(line)[state]
+
+
+def ask_path_cli(prompt_msg: str, get_file: bool = False) -> str:
+    """\
+    Prompt file location / store dir for
+    file with tab-complete supported CLI.
+
+    :param prompt_msg: File selection prompt
     :param get_file:   When True, prompts for file instead of directory
     :return:           Selected directory
     """
-    class Completer(object):
-        """readline tab-completer for paths and files."""
-
-        @staticmethod
-        def listdir(root):
-            """Return list of subdirectories (and files)."""
-            res = []
-            for name in os.listdir(root):
-                path = os.path.join(root, name)
-                if os.path.isdir(path):
-                    name += os.sep
-                    res.append(name)
-                elif get_file:
-                    res.append(name)
-            return res
-
-        def complete_path(self, path=None):
-            """Return list of directories."""
-            # Return subdirectories
-            if not path:
-                return self.listdir('.')
-
-            dirname, rest = os.path.split(path)
-            tmp           = dirname if dirname else '.'
-            res           = [os.path.join(dirname, p) for p in self.listdir(tmp) if p.startswith(rest)]
-
-            # Multiple directories, return list of dirs
-            if len(res) > 1 or not os.path.exists(path):
-                return res
-
-            # Single directory, return list of files
-            if os.path.isdir(path):
-                return [os.path.join(path, p) for p in self.listdir(path)]
-
-            # Exact file match terminates this completion
-            return [path + ' ']
-
-        def path_complete(self, args):
-            """Return list of directories from current directory."""
-            if not args:
-                return self.complete_path('.')
-
-            # Treat the last arg as a path and complete it
-            return self.complete_path(args[-1])
-
-        def complete(self, _, state):
-            """Return complete options."""
-            line = readline.get_line_buffer().split()
-            return (self.path_complete(line) + [None])[state]
-
-    comp = Completer()
+    comp = Completer(get_file)
     readline.set_completer_delims(' \t\n;')
     readline.parse_and_bind('tab: complete')
     readline.set_completer(comp.complete)
@@ -155,7 +154,7 @@ def ask_path_cli(prompt_msg: str, get_file: bool = False) -> str:
 
                 c_print("File selection error.", head=1, tail=1)
                 time.sleep(1.5)
-                print_on_previous_line(4)
+                print_on_previous_line(reps=4)
 
             except KeyboardInterrupt:
                 print_on_previous_line()

@@ -20,20 +20,20 @@ along with TFC. If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import serial
-import struct
 import textwrap
 import typing
 
 from typing import Union
 
-from src.common.crypto   import auth_and_decrypt, encrypt_and_sign
-from src.common.encoding import bool_to_bytes, double_to_bytes, int_to_bytes, str_to_bytes
-from src.common.encoding import bytes_to_bool, bytes_to_double, bytes_to_int, bytes_to_str
-from src.common.errors   import CriticalError, FunctionReturn
-from src.common.misc     import clear_screen, ensure_dir, get_tty_w, round_up
-from src.common.input    import yes
-from src.common.output   import c_print
-from src.common.statics  import *
+from src.common.crypto     import auth_and_decrypt, encrypt_and_sign
+from src.common.encoding   import bool_to_bytes, double_to_bytes, int_to_bytes
+from src.common.encoding   import bytes_to_bool, bytes_to_double, bytes_to_int
+from src.common.exceptions import CriticalError, FunctionReturn
+from src.common.misc       import calculate_race_condition_delay, calculate_serial_delays
+from src.common.misc       import ensure_dir, get_terminal_width, round_up
+from src.common.input      import yes
+from src.common.output     import c_print, clear_screen
+from src.common.statics    import *
 
 if typing.TYPE_CHECKING:
     from src.common.db_contacts  import ContactList
@@ -42,281 +42,300 @@ if typing.TYPE_CHECKING:
 
 
 class Settings(object):
-    """Settings object stores all user adjustable settings under an encrypted database."""
+    """\
+    Settings object stores all user adjustable
+    settings under an encrypted database.
+    """
 
     def __init__(self,
                  master_key: 'MasterKey',
                  operation:  str,
                  local_test: bool,
                  dd_sockets: bool) -> None:
-        """Create a new settings object.
+        """Create a new Settings object.
 
         The settings below are altered from within the program itself.
-        Changes made to settings are stored inside an encrypted database.
+        Changes made to the default settings are stored in encrypted
+        settings database.
 
-        :param master_key: Settings database encryption key
+        :param master_key: MasterKey object
         :param operation:  Operation mode of the program (tx or rx)
-        :param local_test: Setting value passed from command line argument
-        :param dd_sockets: Setting value passed from command line argument
+        :param local_test: Setting value passed from command-line argument
+        :param dd_sockets: Setting value passed from command-line argument
         """
-        #           WARNING
-        # THESE ARE DEFAULT VALUES FOR
-        # SETTINGS. DO NOT EDIT THEM.
-        # USE THE '/set' COMMAND INSTEAD.
-
         # Common settings
-        self.format_of_logfiles = '%Y-%m-%d %H:%M:%S'  # Timestamp format of logged messages
-        self.disable_gui_dialog = False                # True replaces Tkinter dialogs with CLI prompts
-        self.m_members_in_group = 20                   # Max members in group (Rx.py must have same value)
-        self.m_number_of_groups = 20                   # Max number of groups (Rx.py must have same value)
-        self.m_number_of_accnts = 20                   # Max number of accounts (Rx.py must have same val)
-        self.serial_iface_speed = 19200                # The speed of serial interface in bauds per sec
-        self.e_correction_ratio = 5                    # N/o byte errors serial datagrams can recover from
-        self.log_msg_by_default = False                # Default logging setting for new contacts
-        self.store_file_default = False                # True accepts files from new contacts by default
-        self.n_m_notify_privacy = False                # Default privacy notification setting for new contacts
-        self.log_dummy_file_a_p = True                 # False disables storage of placeholder data for files
+        self.disable_gui_dialog            = False
+        self.max_number_of_group_members   = 20
+        self.max_number_of_groups          = 20
+        self.max_number_of_contacts        = 20
+        self.serial_baudrate               = 19200
+        self.serial_error_correction       = 5
+        self.log_messages_by_default       = False
+        self.accept_files_by_default       = False
+        self.show_notifications_by_default = True
+        self.logfile_masking               = False
 
         # Transmitter settings
-        self.txm_serial_adapter = True                 # False searches for integrated serial interface
-        self.nh_bypass_messages = True                 # False removes interrupting NH bypass messages
-        self.confirm_sent_files = True                 # False sends files without asking for confirmation
-        self.double_space_exits = False                # True exits with doubles space, False clears screen
-        self.trickle_connection = False                # True enables trickle connection to hide metadata
-        self.trickle_stat_delay = 2.0                  # Static delay between trickle packets
-        self.trickle_rand_delay = 2.0                  # Max random delay for timing obfuscation
-        self.long_packet_rand_d = False                # True adds spam guard evading delay
-        self.max_val_for_rand_d = 10.0                 # Spam guard evasion max delay
+        self.txm_usb_serial_adapter        = True
+        self.nh_bypass_messages            = True
+        self.confirm_sent_files            = True
+        self.double_space_exits            = False
+        self.traffic_masking               = False
+        self.traffic_masking_static_delay  = 2.0
+        self.traffic_masking_random_delay  = 2.0
+        self.multi_packet_random_delay     = False
+        self.max_duration_of_random_delay  = 10.0
 
         # Receiver settings
-        self.rxm_serial_adapter = True                 # False searches for integrated serial interface
-        self.new_msg_notify_dur = 1.0                  # Number of seconds new msg notification appears
+        self.rxm_usb_serial_adapter        = True
+        self.new_message_notify_preview    = False
+        self.new_message_notify_duration   = 1.0
 
         self.master_key         = master_key
         self.software_operation = operation
         self.local_testing_mode = local_test
         self.data_diode_sockets = dd_sockets
 
-        self.file_name          = f'{DIR_USER_DATA}/{operation}_settings'
-        index_of_last_attr      = list(self.__dict__.keys()).index('new_msg_notify_dur') + 1  # Include last index in slice
-        self.key_list           = list(self.__dict__.keys())[0:index_of_last_attr]
-        self.defaults           = {k: self.__dict__[k] for k in list(self.__dict__.keys())[:index_of_last_attr]}
+        self.file_name = f'{DIR_USER_DATA}{operation}_settings'
 
+        self.key_list = list(vars(self).keys())
+        self.key_list = self.key_list[:self.key_list.index('master_key')]
+        self.defaults = {k: self.__dict__[k] for k in self.key_list}
+
+        ensure_dir(DIR_USER_DATA)
         if os.path.isfile(self.file_name):
             self.load_settings()
-            # TxM is unable to send serial interface type changing command
-            # if RxM looks for the type of adapter user doesn't have available.
-            if operation == 'rx':
+            if operation == RX:
+                # TxM is unable to send serial interface type changing command if
+                # RxM looks for the type of adapter user doesn't have available.
+                # Therefore setup() is run every time the Receiver program starts.
                 self.setup()
-                self.store_settings()
         else:
             self.setup()
-            self.store_settings()
+        self.store_settings()
 
-        # Following settings change only when program is restarted on TxM/RxM/NH
-        self.session_ec_ratio  = self.e_correction_ratio
-        self.session_if_speed  = self.serial_iface_speed
-        self.session_trickle   = self.trickle_connection
-        self.session_usb_iface = self.rxm_serial_adapter if operation == 'rx' else self.txm_serial_adapter
+        # Following settings change only when program is restarted
+        self.session_serial_error_correction = self.serial_error_correction
+        self.session_serial_baudrate         = self.serial_baudrate
+        self.session_traffic_masking         = self.traffic_masking
+        self.session_usb_serial_adapter      = self.rxm_usb_serial_adapter if operation == RX else self.txm_usb_serial_adapter
+        self.race_condition_delay            = calculate_race_condition_delay(self, txm=True)
+
+        self.rxm_receive_timeout, self.txm_inter_packet_delay = calculate_serial_delays(self.session_serial_baudrate)
+
+    def store_settings(self) -> None:
+        """Store settings to encrypted database."""
+        attribute_list = [self.__getattribute__(k) for k in self.key_list]
+
+        pt_bytes = b''
+        for a in attribute_list:
+            if isinstance(a, bool):
+                pt_bytes += bool_to_bytes(a)
+            elif isinstance(a, int):
+                pt_bytes += int_to_bytes(a)
+            elif isinstance(a, float):
+                pt_bytes += double_to_bytes(a)
+            else:
+                raise CriticalError("Invalid attribute type in settings.")
+
+        ct_bytes = encrypt_and_sign(pt_bytes, self.master_key.master_key)
+
+        ensure_dir(DIR_USER_DATA)
+        with open(self.file_name, 'wb+') as f:
+            f.write(ct_bytes)
 
     def load_settings(self) -> None:
         """Load settings from encrypted database."""
-        ensure_dir(f'{DIR_USER_DATA}/')
         with open(self.file_name, 'rb') as f:
             ct_bytes = f.read()
 
         pt_bytes = auth_and_decrypt(ct_bytes, self.master_key.master_key)
 
         # Update settings based on plaintext byte string content
-        for i, key in enumerate(self.key_list):
+        for key in self.key_list:
 
             attribute = self.__getattribute__(key)
 
             if isinstance(attribute, bool):
-                value    = bytes_to_bool(pt_bytes[0])  # type: Union[bool, int, float, str]
-                pt_bytes = pt_bytes[1:]
+                value    = bytes_to_bool(pt_bytes[0])  # type: Union[bool, int, float]
+                pt_bytes = pt_bytes[BOOLEAN_SETTING_LEN:]
 
             elif isinstance(attribute, int):
-                value    = bytes_to_int(pt_bytes[:8])
-                pt_bytes = pt_bytes[8:]
+                value    = bytes_to_int(pt_bytes[:INTEGER_SETTING_LEN])
+                pt_bytes = pt_bytes[INTEGER_SETTING_LEN:]
 
             elif isinstance(attribute, float):
-                value    = bytes_to_double(pt_bytes[:8])
-                pt_bytes = pt_bytes[8:]
-
-            elif isinstance(attribute, str):
-                value    = bytes_to_str(pt_bytes[:1024])
-                pt_bytes = pt_bytes[1024:]  # 255 * 4 = 1020. The four additional bytes is the UTF-32 BOM.
+                value    = bytes_to_double(pt_bytes[:FLOAT_SETTING_LEN])
+                pt_bytes = pt_bytes[FLOAT_SETTING_LEN:]
 
             else:
                 raise CriticalError("Invalid data type in settings default values.")
 
             setattr(self, key, value)
 
-    def store_settings(self) -> None:
-        """Store settings to encrypted database."""
-        attribute_list = [self.__getattribute__(k) for k in self.key_list]
-
-        # Convert attributes into constant length byte string
-        pt_bytes = b''
-        for a in attribute_list:
-            if   isinstance(a, bool):  pt_bytes += bool_to_bytes(a)
-            elif isinstance(a, int):   pt_bytes += int_to_bytes(a)
-            elif isinstance(a, float): pt_bytes += double_to_bytes(a)
-            elif isinstance(a, str):   pt_bytes += str_to_bytes(a)
-            else:                      raise CriticalError("Invalid attribute type in settings.")
-
-        ct_bytes = encrypt_and_sign(pt_bytes, self.master_key.master_key)
-
-        ensure_dir(f'{DIR_USER_DATA}/')
-        with open(self.file_name, 'wb+') as f:
-            f.write(ct_bytes)
-
     def change_setting(self,
                        key:          str,
-                       value:        str,
+                       value_str:    str,
                        contact_list: 'ContactList',
                        group_list:   'GroupList') -> None:
         """Parse, update and store new setting value."""
         attribute = self.__getattribute__(key)
 
-        if isinstance(attribute, bool):
-            value_ = value
-            value  = value.lower().capitalize()
-            if value not in ['True', 'False']:
-                raise FunctionReturn(f"Invalid value {value_}.")
+        try:
+            if isinstance(attribute, bool):
+                value_ = value_str.lower()
+                if value_ not in ['true', 'false']:
+                    raise ValueError
+                value = (value_ == 'true')  # type: Union[bool, int, float]
 
-        elif isinstance(attribute, int):
-            if not value.isdigit() or eval(value) < 0 or eval(value) > 7378697629483820640:
-                raise FunctionReturn(f"Invalid value {value}.")
+            elif isinstance(attribute, int):
+                value = int(value_str)
+                if value < 0 or value > 2**64-1:
+                    raise ValueError
 
-        elif isinstance(attribute, float):
-            if not isinstance(eval(value), float) or eval(value) < 0.0:
-                raise FunctionReturn(f"Invalid value {value}.")
-            try:
-                double_to_bytes(eval(value))
-            except struct.error:
-                raise FunctionReturn(f"Invalid value {value}.")
+            elif isinstance(attribute, float):
+                value = float(value_str)
+                if value < 0.0:
+                    raise ValueError
+            else:
+                raise CriticalError("Invalid attribute type in settings.")
 
-        elif isinstance(attribute, str):
-            if len(value) > 255:
-                raise FunctionReturn(f"Setting must be shorter than 256 chars.")
-
-        else:
-            raise CriticalError("Invalid attribute type in settings.")
+        except ValueError:
+            raise FunctionReturn(f"Error: Invalid value '{value_str}'")
 
         self.validate_key_value_pair(key, value, contact_list, group_list)
 
-        value = value if isinstance(attribute, str) else eval(value)
         setattr(self, key, value)
         self.store_settings()
 
     @staticmethod
     def validate_key_value_pair(key:          str,
-                                value:        str,
+                                value:        Union[int, float, bool],
                                 contact_list: 'ContactList',
                                 group_list:   'GroupList') -> None:
-        """Check values of some settings in closer detail."""
-        if key in ['m_members_in_group', 'm_number_of_groups', 'm_number_of_accnts']:
-            if eval(value) % 10 != 0:
-                raise FunctionReturn("Database padding settings must be divisible by 10.")
+        """\
+        Perform further evaluation on settings
+        the values of which have restrictions.
+        """
+        if key in ['max_number_of_group_members', 'max_number_of_groups', 'max_number_of_contacts']:
+            if value % 10 != 0 or value == 0:
+                raise FunctionReturn("Error: Database padding settings must be divisible by 10.")
 
-        if key == 'm_members_in_group':
+        if key == 'max_number_of_group_members':
             min_size = round_up(group_list.largest_group())
-            if eval(value) < min_size:
-                raise FunctionReturn(f"Can't set max number of members lower than {min_size}.")
+            if value < min_size:
+                raise FunctionReturn(f"Error: Can't set max number of members lower than {min_size}.")
 
-        if key == 'm_number_of_groups':
+        if key == 'max_number_of_groups':
             min_size = round_up(len(group_list))
-            if eval(value) < min_size:
-                raise FunctionReturn(f"Can't set max number of groups lower than {min_size}.")
+            if value < min_size:
+                raise FunctionReturn(f"Error: Can't set max number of groups lower than {min_size}.")
 
-        if key == 'm_number_of_accnts':
+        if key == 'max_number_of_contacts':
             min_size = round_up(len(contact_list))
-            if eval(value) < min_size:
-                raise FunctionReturn(f"Can't set max number of contacts lower than {min_size}.")
+            if value < min_size:
+                raise FunctionReturn(f"Error: Can't set max number of contacts lower than {min_size}.")
 
-        if key == 'serial_iface_speed':
-            if eval(value) not in serial.Serial().BAUDRATES:
-                raise FunctionReturn("Specified baud rate is not supported.")
+        if key == 'serial_baudrate':
+            if value not in serial.Serial().BAUDRATES:
+                raise FunctionReturn("Error: Specified baud rate is not supported.")
             c_print("Baud rate will change on restart.", head=1, tail=1)
 
-        if key == 'e_correction_ratio':
-            if not value.isdigit() or eval(value) < 1:
-                raise FunctionReturn("Invalid value for error correction ratio.")
+        if key == 'serial_error_correction':
+            if value < 1:
+                raise FunctionReturn("Error: Invalid value for error correction ratio.")
             c_print("Error correction ratio will change on restart.", head=1, tail=1)
 
-        if key in ['rxm_serial_adapter', 'txm_serial_adapter']:
+        if key == 'new_message_notify_duration' and value < 0.05:
+            raise FunctionReturn("Error: Too small value for message notify duration.")
+
+        if key in ['rxm_usb_serial_adapter', 'txm_usb_serial_adapter']:
             c_print("Interface will change on restart.", head=1, tail=1)
 
-        if key in ['trickle_connection', 'trickle_stat_delay', 'trickle_rand_delay']:
-            c_print("Trickle setting will change on restart.", head=1, tail=1)
+        if key in ['traffic_masking', 'traffic_masking_static_delay', 'traffic_masking_random_delay']:
+            c_print("Traffic masking setting will change on restart.", head=1, tail=1)
 
     def setup(self) -> None:
         """Prompt user to enter initial settings."""
         clear_screen()
         if not self.local_testing_mode:
-            if self.software_operation == 'tx':
-                self.txm_serial_adapter = yes("Does TxM use USB-to-serial/TTL adapter?", head=1, tail=1)
+            if self.software_operation == TX:
+                self.txm_usb_serial_adapter = yes("Does TxM use USB-to-serial/TTL adapter?", head=1, tail=1)
             else:
-                self.rxm_serial_adapter = yes("Does RxM use USB-to-serial/TTL adapter?", head=1, tail=1)
+                self.rxm_usb_serial_adapter = yes("Does RxM use USB-to-serial/TTL adapter?", head=1, tail=1)
 
     def print_settings(self) -> None:
-        """Print list of settings, their current and default values and setting descriptions."""
-
-        # Common
+        """\
+        Print list of settings, their current and
+        default values, and setting descriptions.
+        """
         desc_d = {
-         "format_of_logfiles": "Timestamp format of logged messages",
-         "disable_gui_dialog": "True replaces Tkinter dialogs with CLI prompts",
+            # Common settings
+            "disable_gui_dialog":            "True replaces Tkinter dialogs with CLI prompts",
+            "max_number_of_group_members":   "Max members in group (TxM/RxM must have the same value)",
+            "max_number_of_groups":          "Max number of groups (TxM/RxM must have the same value)",
+            "max_number_of_contacts":        "Max number of contacts (TxM/RxM must have the same value)",
+            "serial_baudrate":               "The speed of serial interface in bauds per second",
+            "serial_error_correction":       "Number of byte errors serial datagrams can recover from",
+            "log_messages_by_default":       "Default logging setting for new contacts/groups",
+            "accept_files_by_default":       "Default file reception setting for new contacts",
+            "show_notifications_by_default": "Default message notification setting for new contacts/groups",
+            "logfile_masking":               "True hides real size of logfile during traffic masking",
 
-         "m_members_in_group": "Max members in group (Must be same on TxM/RxM)",
-         "m_number_of_groups": "Max number of groups (Must be same on TxM/RxM)",
-         "m_number_of_accnts": "Max number of accounts (Must be same on TxM/RxM)",
+            # Transmitter settings
+            "txm_usb_serial_adapter":        "False uses system's integrated serial interface",
+            "nh_bypass_messages":            "False removes NH bypass interrupt messages",
+            "confirm_sent_files":            "False sends files without asking for confirmation",
+            "double_space_exits":            "True exits, False clears screen with double space command",
+            "traffic_masking":               "True enables traffic masking to hide metadata",
+            "traffic_masking_static_delay":  "Static delay between traffic masking packets",
+            "traffic_masking_random_delay":  "Max random delay for traffic masking timing obfuscation",
+            "multi_packet_random_delay":     "True adds IM server spam guard evading delay",
+            "max_duration_of_random_delay":  "Maximum time for random spam guard evasion delay",
 
-         "serial_iface_speed": "The speed of serial interface in bauds per sec",
-         "e_correction_ratio": "N/o byte errors serial datagrams can recover from",
+            # Receiver settings
+            "rxm_usb_serial_adapter":        "False uses system's integrated serial interface",
+            "new_message_notify_preview":    "When True, shows preview of received message",
+            "new_message_notify_duration":   "Number of seconds new message notification appears"}
 
-         "log_msg_by_default": "Default logging setting for new contacts",
-         "store_file_default": "True accepts files from new contacts by default",
-         "n_m_notify_privacy": "Default message notification setting for new contacts",
-         "log_dummy_file_a_p": "False disables storage of placeholder data for files",
+        # Columns
+        c1 = ['Setting name']
+        c2 = ['Current value']
+        c3 = ['Default value']
+        c4 = ['Description']
 
-         # TxM
-         "txm_serial_adapter": "False uses system's integrated serial interface",
-         "nh_bypass_messages": "False removes NH bypass interrupt messages",
-         "confirm_sent_files": "False sends files without asking for confirmation",
-         "double_space_exits": "True exits with doubles space, else clears screen",
+        terminal_width   = get_terminal_width()
+        desc_line_indent = 64
 
-         "trickle_connection": "True enables trickle connection to hide metadata",
-         "trickle_stat_delay": "Static delay between trickle packets",
-         "trickle_rand_delay": "Max random delay for timing obfuscation",
-
-         "long_packet_rand_d": "True adds spam guard evading delay",
-         "max_val_for_rand_d": "Maximum time for random spam guard evasion delay",
-
-         # RxM
-         "rxm_serial_adapter": "False uses system's integrated serial interface",
-         "new_msg_notify_dur": "Number of seconds new msg notification appears"}
-
-        clear_screen()
-        tty_w = get_tty_w()
-
-        print("Setting name        Current value      Default value      Description")
-        print(tty_w * '-')
+        if terminal_width < desc_line_indent + 1:
+            raise FunctionReturn("Error: Screen width is too small.")
 
         for key in self.defaults:
-            def_value     = str(self.defaults[key]).ljust(len('%Y-%m-%d %H:%M:%S'))
-            description   = desc_d[key]
-            wrapper       = textwrap.TextWrapper(width=max(1, (tty_w - 59)))
-            desc_lines    = wrapper.fill(description).split('\n')
-            current_value = str(self.__getattribute__(key)).ljust(17)
+            c1.append(key)
+            c2.append(str(self.__getattribute__(key)))
+            c3.append(str(self.defaults[key]))
 
-            print(f"{key}  {current_value}  {def_value}  {desc_lines[0]}")
+            description = desc_d[key]
+            wrapper     = textwrap.TextWrapper(width=max(1, (terminal_width - desc_line_indent)))
+            desc_lines  = wrapper.fill(description).split('\n')
+            desc_string = desc_lines[0]
 
-            # Print wrapped description lines with indent
+            for l in desc_lines[1:]:
+                desc_string += '\n' + desc_line_indent * ' ' + l
+
             if len(desc_lines) > 1:
-                for line in desc_lines[1:]:
-                    print(58 * ' ' + line)
-                print('')
+                desc_string += '\n'
 
-        print('\n')
+            c4.append(desc_string)
+
+        lst = []
+        for name, current, default, description in zip(c1, c2, c3, c4):
+            lst.append('{0:{1}} {2:{3}} {4:{5}} {6}'.format(
+                name,    max(len(v) for v in c1) + SETTINGS_INDENT,
+                current, max(len(v) for v in c2) + SETTINGS_INDENT,
+                default, max(len(v) for v in c3) + SETTINGS_INDENT,
+                description))
+
+        lst.insert(1, get_terminal_width() * '─')
+        clear_screen()
+        print('\n' + '\n'.join(lst) + '\n')

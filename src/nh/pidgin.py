@@ -19,18 +19,19 @@ along with TFC. If not, see <http://www.gnu.org/licenses/>.
 """
 
 import base64
-import datetime
 import dbus
 import dbus.exceptions
 import time
 import typing
 
-from typing import Any
+from datetime import datetime
+from typing   import Any, Dict, Tuple
 
 from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository      import GObject
 
-from src.nh.misc        import box_print, c_print, clear_screen, phase
+from src.common.misc    import ignored
+from src.common.output  import box_print, c_print, clear_screen, phase
 from src.common.statics import *
 
 if typing.TYPE_CHECKING:
@@ -39,7 +40,10 @@ if typing.TYPE_CHECKING:
 
 
 def ensure_im_connection() -> None:
-    """Check that NH.py has connection to Pidgin before launching other processes."""
+    """\
+    Check that nh.py has connection to Pidgin
+    before launching other processes.
+    """
     phase("Waiting for enabled account in Pidgin", offset=1)
 
     while True:
@@ -49,8 +53,7 @@ def ensure_im_connection() -> None:
             purple = dbus.Interface(obj, "im.pidgin.purple.PurpleInterface")
 
             while not purple.PurpleAccountsGetAllActive():
-                time.sleep(0.001)
-                continue
+                time.sleep(0.01)
             phase('OK', done=True)
 
             accounts = []
@@ -69,40 +72,36 @@ def ensure_im_connection() -> None:
             exit()
 
 
-def im_command(q_im_cmd: 'Queue') -> None:
-    """Run IM client command."""
+def im_command(queues: Dict[bytes, 'Queue']) -> None:
+    """Loop that executes commands on IM client."""
     bus     = dbus.SessionBus(private=True)
     obj     = bus.get_object("im.pidgin.purple.PurpleService", "/im/pidgin/purple/PurpleObject")
     purple  = dbus.Interface(obj, "im.pidgin.purple.PurpleInterface")
     account = purple.PurpleAccountsGetAllActive()[0]
+    queue   = queues[NH_TO_IM_QUEUE]
 
     while True:
-        try:
-            if q_im_cmd.empty():
-                time.sleep(0.001)
-                continue
-            command = q_im_cmd.get()
+        with ignored(dbus.exceptions.DBusException, EOFError, KeyboardInterrupt):
+            while queue.qsize() == 0:
+                time.sleep(0.01)
+
+            command = queue.get()
 
             if command[:2] in [UNENCRYPTED_SCREEN_CLEAR, UNENCRYPTED_SCREEN_RESET]:
                 contact  = command[2:]
                 new_conv = purple.PurpleConversationNew(1, account, contact)
                 purple.PurpleConversationClearMessageHistory(new_conv)
 
-        except (EOFError, KeyboardInterrupt):
-            pass
-        except dbus.exceptions.DBusException:
-            continue
 
-
-def im_incoming(settings: 'Settings', q_to_rxm: 'Queue') -> None:
-    """Start signal receiver for packets from Pidgin."""
+def im_incoming(queues: Dict[bytes, 'Queue']) -> None:
+    """Loop that maintains signal receiver process."""
 
     def pidgin_to_rxm(account: str, sender: str, message: str, *_: Any) -> None:
-        """Process received packet from Pidgin."""
+        """Signal receiver process that receives packets from Pidgin."""
         sender = sender.split('/')[0]
-        ts     = datetime.datetime.now().strftime(settings.t_fmt)
-        s_bus  = dbus.SessionBus(private=True)
-        obj    = s_bus.get_object("im.pidgin.purple.PurpleService", "/im/pidgin/purple/PurpleObject")
+        ts     = datetime.now().strftime("%m-%d / %H:%M:%S")
+        d_bus  = dbus.SessionBus(private=True)
+        obj    = d_bus.get_object("im.pidgin.purple.PurpleService", "/im/pidgin/purple/PurpleObject")
         purple = dbus.Interface(obj, "im.pidgin.purple.PurpleInterface")
 
         user = ''
@@ -110,11 +109,11 @@ def im_incoming(settings: 'Settings', q_to_rxm: 'Queue') -> None:
             if a == account:
                 user = purple.PurpleAccountGetUsername(a)[:-1]
 
-        if not message.startswith('TFC'):
+        if not message.startswith(TFC):
             return None
 
         try:
-            __, header, payload = message.split('|')
+            __, header, payload = message.split('|')  # type: Tuple[str, str, str]
         except ValueError:
             return None
 
@@ -130,33 +129,34 @@ def im_incoming(settings: 'Settings', q_to_rxm: 'Queue') -> None:
 
         decoded = base64.b64decode(payload)
         packet  = header.encode() + decoded + ORIGIN_CONTACT_HEADER + sender.encode()
-        q_to_rxm.put(packet)
+        queues[RXM_OUTGOING_QUEUE].put(packet)
 
     while True:
-        try:
+        with ignored(dbus.exceptions.DBusException, EOFError, KeyboardInterrupt):
             bus = dbus.SessionBus(private=True, mainloop=DBusGMainLoop())
             bus.add_signal_receiver(pidgin_to_rxm, dbus_interface="im.pidgin.purple.PurpleInterface", signal_name="ReceivedImMsg")
             GObject.MainLoop().run()
-        except (dbus.exceptions.DBusException, EOFError, KeyboardInterrupt):
-            continue
 
 
-def im_outgoing(settings: 'Settings', q_to_pidgin: 'Queue') -> None:
-    """Send message from queue to Pidgin."""
+def im_outgoing(queues: Dict[bytes, 'Queue'], settings: 'Settings') -> None:
+    """\
+    Loop that outputs messages and public keys from
+    queue and sends them to contacts over Pidgin.
+    """
     bus    = dbus.SessionBus(private=True)
     obj    = bus.get_object("im.pidgin.purple.PurpleService", "/im/pidgin/purple/PurpleObject")
     purple = dbus.Interface(obj, "im.pidgin.purple.PurpleInterface")
+    queue  = queues[TXM_TO_IM_QUEUE]
 
     while True:
-        try:
-            if q_to_pidgin.empty():
-                time.sleep(0.001)
-                continue
+        with ignored(dbus.exceptions.DBusException, EOFError, KeyboardInterrupt):
+            while queue.qsize() == 0:
+                time.sleep(0.01)
 
-            header, payload, user, contact = q_to_pidgin.get()
+            header, payload, user, contact = queue.get()
 
             b64_str = base64.b64encode(payload).decode()
-            payload = '|'.join(['TFC', header.decode(), b64_str])
+            payload = '|'.join([TFC, header.decode(), b64_str])
             user    = user.decode()
             contact = contact.decode()
 
@@ -172,9 +172,3 @@ def im_outgoing(settings: 'Settings', q_to_pidgin: 'Queue') -> None:
 
             if not user_found:
                 c_print("Error: No user {} found.".format(user), head=1, tail=1)
-                continue
-
-        except (EOFError, KeyboardInterrupt):
-            pass
-        except dbus.exceptions.DBusException:
-            continue

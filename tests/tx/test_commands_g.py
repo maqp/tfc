@@ -19,105 +19,124 @@ along with TFC. If not, see <http://www.gnu.org/licenses/>.
 """
 
 import builtins
-import unittest
 import time
+import unittest
 
 from multiprocessing import Queue
 
 from src.common.statics import *
-from src.tx.commands_g  import process_group_command, group_create, group_add_member, group_rm_member
 
-from tests.mock_classes import Contact, ContactList, GroupList, Settings, UserInput
+from src.tx.commands_g import group_add_member, group_create, group_rm_group, group_rm_member, process_group_command, validate_group_name
+
+from tests.mock_classes import Contact, ContactList, GroupList, MasterKey, Settings, UserInput
 from tests.utils        import TFCTestCase
 
 
 class TestProcessGroupCommand(TFCTestCase):
 
-    def test_during_trickle_raises_fr(self):
-        # Setup
-        settings = Settings(session_trickle=True)
+    def setUp(self):
+        self.o_input   = builtins.input
+        builtins.input = lambda _: 'Yes'
 
-        # Test
-        self.assertFR('Command disabled during trickle connection.', process_group_command, None, None, None, settings, None)
+        self.user_input   = UserInput()
+        self.contact_list = ContactList(nicks=['Alice'])
+        self.group_list   = GroupList()
+        self.settings     = Settings()
+        self.queues       = {COMMAND_PACKET_QUEUE: Queue(),
+                             MESSAGE_PACKET_QUEUE: Queue()}
+        self.master_key   = MasterKey()
+
+    def tearDown(self):
+        builtins.input = self.o_input
+
+        for key in self.queues:
+            while not self.queues[key].empty():
+                self.queues[key].get()
+            time.sleep(0.1)
+            self.queues[key].close()
+
+    def test_raises_fr_when_traffic_masking_is_enabled(self):
+        self.assertFR("Error: Command is disabled during traffic masking.",
+                      process_group_command, self.user_input, self.contact_list,
+                      self.group_list, Settings(session_traffic_masking=True), self.queues, self.master_key)
 
     def test_invalid_command_raises_fr(self):
-        # Setup
-        user_input = UserInput('group ')
-        settings   = Settings()
-
-        # Test
-        self.assertFR('Invalid group command.', process_group_command, user_input, None, None, settings, None)
+        self.assertFR("Error: Invalid group command.",
+                      process_group_command, UserInput('group '), self.contact_list,
+                      self.group_list, self.settings, self.queues, self.master_key)
 
     def test_invalid_command_parameters_raises_fr(self):
-        # Setup
-        user_input = UserInput('group bad')
-        settings   = Settings()
-
-        # Test
-        self.assertFR('Invalid group command.', process_group_command, user_input, None, None, settings, None)
+        self.assertFR("Error: Invalid group command.",
+                      process_group_command, UserInput('group bad'), self.contact_list,
+                      self.group_list, self.settings, self.queues, self.master_key)
 
     def test_missing_name_raises_fr(self):
-        # Setup
-        user_input = UserInput('group create ')
-        settings   = Settings()
-
-        # Test
-        self.assertFR('No group name specified.', process_group_command, user_input, None, None, settings, None)
+        self.assertFR("Error: No group name specified.",
+                      process_group_command, UserInput('group create '), self.contact_list,
+                      self.group_list, self.settings, self.queues, self.master_key)
 
     def test_successful_command(self):
-        # Setup
-        user_input     = UserInput('group create team Alice')
-        contact_list   = ContactList(nicks=['Alice'])
-        group_list     = GroupList()
-        settings       = Settings()
-        queues         = {COMMAND_PACKET_QUEUE: Queue(),
-                          MESSAGE_PACKET_QUEUE: Queue()}
-        o_input        = builtins.input
-        builtins.input = lambda x: 'Yes'
+        self.assertIsNone(process_group_command(UserInput('group create team Alice'), self.contact_list,
+                                                self.group_list, self.settings, self.queues, self.master_key))
 
-        # Test
-        self.assertIsNone(process_group_command(user_input, contact_list, group_list, settings, queues))
 
-        # Teardown
-        builtins.input = o_input
-        while not queues[COMMAND_PACKET_QUEUE].empty():
-            queues[COMMAND_PACKET_QUEUE].get()
-        time.sleep(0.2)
+class TestValidateGroupName(TFCTestCase):
+
+    def setUp(self):
+        self.contact_list = ContactList(nicks=['Alice'])
+        self.group_list   = GroupList(groups=['testgroup'])
+        builtins.input    = lambda _: 'No'
+
+    def test_non_printable_group_name_raises_fr(self):
+        self.assertFR("Error: Group name must be printable.",
+                      validate_group_name, 'testgroup\x1f', self.contact_list, self.group_list)
+
+    def test_too_long_group_name_raises_fr(self):
+        self.assertFR("Error: Group name must be less than 255 chars long.",
+                      validate_group_name, PADDING_LEN * 'a', self.contact_list, self.group_list)
+
+    def test_use_of_dummy_group_name_raises_fr(self):
+        self.assertFR("Error: Group name can't use name reserved for database padding.",
+                      validate_group_name, DUMMY_GROUP, self.contact_list, self.group_list)
+
+    def test_group_name_with_account_format_raises_fr(self):
+        self.assertFR("Error: Group name can't have format of an account.",
+                      validate_group_name, 'alice@jabber.org', self.contact_list, self.group_list)
+
+    def test_use_of_contact_nick_raises_fr(self):
+        self.assertFR("Error: Group name can't be nick of contact.",
+                      validate_group_name, 'Alice', self.contact_list, self.group_list)
+
+    def test_user_abort_on_existing_group_raises_fr(self):
+        self.assertFR("Group creation aborted.",
+                      validate_group_name, 'testgroup', self.contact_list, self.group_list)
+
+    def test_valid_group_name(self):
+        self.assertIsNone(validate_group_name('testgroup2', self.contact_list, self.group_list))
 
 
 class TestGroupCreate(TFCTestCase):
 
-    def test_non_printable_g_name_raises_fr(self):
-        self.assertFR('Group name must be printable.', group_create, 'testgroup\x1f', None, None, None, None, None)
+    def setUp(self):
+        self.o_input   = builtins.input
+        builtins.input = lambda _: 'Yes'
 
-    def test_oversize_group_name_raises_fr(self):
-        self.assertFR('Group name must be less than 255 chars long.', group_create, 255*'a', None, None, None, None, None)
+        self.user_input   = UserInput()
+        self.contact_list = ContactList(nicks=['Alice', 'Bob'])
+        self.group_list   = GroupList()
+        self.settings     = Settings()
+        self.queues       = {COMMAND_PACKET_QUEUE: Queue(),
+                             MESSAGE_PACKET_QUEUE: Queue()}
+        self.master_key   = MasterKey()
 
-    def test_use_of_padding_g_name_raises_fr(self):
-        self.assertFR("Group name can't use name reserved for database padding.", group_create, 'dummy_group', None, None, None, None, None)
+    def tearDown(self):
+        builtins.input = self.o_input
 
-    def test_using_account_format_raises_fr(self):
-        self.assertFR("Group name can't have format of an account.", group_create, 'alice@jabber.org', None, None, None, None, None)
-
-    def test_use_of_contacts_nick_raises_fr(self):
-        # Setup
-        contact_list = ContactList(nicks=['Alice'])
-
-        # Test
-        self.assertFR("Group name can't be nick of contact.", group_create, 'Alice', None, None, contact_list, None, None)
-
-    def test_user_abort_on_existing_group_raises_fr(self):
-        # Setup
-        group_list     = GroupList(groups=['testgroup'])
-        contact_list   = ContactList(nicks=['Alice'])
-        o_input        = builtins.input
-        builtins.input = lambda x: 'No'
-
-        # Test
-        self.assertFR("Group creation aborted.", group_create, 'testgroup', None, group_list, contact_list, None, None)
-
-        # Teardown
-        builtins.input = o_input
+        for key in self.queues:
+            while not self.queues[key].empty():
+                self.queues[key].get()
+            time.sleep(0.1)
+            self.queues[key].close()
 
     def test_too_many_purp_accounts_raises_fr(self):
         # Setup
@@ -125,109 +144,76 @@ class TestGroupCreate(TFCTestCase):
         contact_list  = ContactList(nicks=["contact_{}".format(n) for n in range(21)])
         group         = group_list.get_group('testgroup')
         group.members = contact_list.contacts
-        settings      = Settings()
-        queues        = {COMMAND_PACKET_QUEUE: Queue()}
 
         # Test
         cl_str = ["contact_{}@jabber.org".format(n) for n in range(21)]
-        self.assertFR("Error: TFC settings only allow 20 members per group.", group_create, 'testgroup_21', cl_str, group_list, contact_list, settings, queues)
+        self.assertFR("Error: TFC settings only allow 20 members per group.",
+                      group_create, 'testgroup_21', cl_str, group_list, contact_list, self.settings, self.queues, self.master_key)
 
     def test_full_group_list_raises_fr(self):
         # Setup
         group_list   = GroupList(groups=["testgroup_{}".format(n) for n in range(20)])
         contact_list = ContactList(nicks=['Alice'])
-        settings     = Settings()
 
         # Test
-        self.assertFR("Error: TFC settings only allow 20 groups.", group_create, 'testgroup_20', ['alice@jabber.org'], group_list, contact_list, settings, None)
+        self.assertFR("Error: TFC settings only allow 20 groups.",
+                      group_create, 'testgroup_20', ['alice@jabber.org'], group_list, contact_list, self.settings, self.queues, self.master_key)
 
     def test_successful_group_creation(self):
         # Setup
-        group_list     = GroupList(groups=['testgroup'])
-        contact_list   = ContactList(nicks=['Alice', 'Bob'])
-        settings       = Settings()
-        queues         = {COMMAND_PACKET_QUEUE: Queue(),
-                          MESSAGE_PACKET_QUEUE: Queue()}
-        o_input        = builtins.input
-        builtins.input = lambda x: 'Yes'
+        group_list = GroupList(groups=['testgroup'])
 
         # Test
-        self.assertIsNone(group_create('testgroup_2', ['alice@jabber.org'], group_list, contact_list, settings, queues))
-        self.assertEqual(queues[COMMAND_PACKET_QUEUE].qsize(), 1)
-        self.assertEqual(queues[MESSAGE_PACKET_QUEUE].qsize(), 1)
-
-        # Teardown
-        builtins.input = o_input
-        while not queues[COMMAND_PACKET_QUEUE].empty():
-            queues[COMMAND_PACKET_QUEUE].get()
-        while not queues[COMMAND_PACKET_QUEUE].empty():
-            queues[MESSAGE_PACKET_QUEUE].get()
-        time.sleep(0.2)
+        self.assertIsNone(group_create('testgroup_2', ['alice@jabber.org'], group_list, self.contact_list, self.settings, self.queues, self.master_key))
+        time.sleep(0.1)
+        self.assertEqual(self.queues[COMMAND_PACKET_QUEUE].qsize(), 1)
+        self.assertEqual(self.queues[MESSAGE_PACKET_QUEUE].qsize(), 1)
 
     def test_successful_empty_group_creation(self):
-        # Setup
-        group_list     = GroupList()
-        contact_list   = ContactList(nicks=['Alice', 'Bob'])
-        settings       = Settings()
-        queues         = {COMMAND_PACKET_QUEUE: Queue(),
-                          MESSAGE_PACKET_QUEUE: Queue()}
-        o_input        = builtins.input
-        builtins.input = lambda x: 'Yes'
-
-        # Test
-        self.assertIsNone(group_create('testgroup_2', [], group_list, contact_list, settings, queues))
-        self.assertEqual(queues[COMMAND_PACKET_QUEUE].qsize(), 1)
-        self.assertEqual(queues[MESSAGE_PACKET_QUEUE].qsize(), 0)
-
-        # Teardown
-        builtins.input = o_input
-        while not queues[COMMAND_PACKET_QUEUE].empty():
-            queues[COMMAND_PACKET_QUEUE].get()
-        while not queues[COMMAND_PACKET_QUEUE].empty():
-            queues[MESSAGE_PACKET_QUEUE].get()
-        time.sleep(0.2)
+        self.assertIsNone(group_create('testgroup_2', [], self.group_list, self.contact_list, self.settings, self.queues, self.master_key))
+        time.sleep(0.1)
+        self.assertEqual(self.queues[COMMAND_PACKET_QUEUE].qsize(), 1)
+        self.assertEqual(self.queues[MESSAGE_PACKET_QUEUE].qsize(), 0)
 
 
 class TestGroupAddMember(TFCTestCase):
 
+    def setUp(self):
+        self.o_input   = builtins.input
+        builtins.input = lambda _: 'Yes'
+
+        self.user_input   = UserInput()
+        self.contact_list = ContactList(nicks=['Alice', 'Bob'])
+        self.group_list   = GroupList()
+        self.settings     = Settings()
+        self.queues       = {COMMAND_PACKET_QUEUE: Queue(),
+                             MESSAGE_PACKET_QUEUE: Queue()}
+        self.master_key   = MasterKey()
+
+    def tearDown(self):
+        builtins.input = self.o_input
+
+        for key in self.queues:
+            while not self.queues[key].empty():
+                self.queues[key].get()
+            time.sleep(0.1)
+            self.queues[key].close()
+
     def test_new_group_is_created_if_specified_group_does_not_exist_and_user_chooses_yes(self):
-        # Setup
-        group_list     = GroupList()
-        contact_list   = ContactList(nicks=['Alice', 'Bob'])
-        settings       = Settings()
-        queues         = {COMMAND_PACKET_QUEUE: Queue(),
-                          MESSAGE_PACKET_QUEUE: Queue()}
-        o_input        = builtins.input
-        builtins.input = lambda x: 'Yes'
-
-        # Test
-        self.assertIsNone(group_add_member('test_group', [], group_list, contact_list, settings, queues))
-        self.assertEqual(queues[COMMAND_PACKET_QUEUE].qsize(), 1)
-        self.assertEqual(queues[MESSAGE_PACKET_QUEUE].qsize(), 0)
-
-        # Teardown
-        builtins.input = o_input
-        while not queues[COMMAND_PACKET_QUEUE].empty():
-            queues[COMMAND_PACKET_QUEUE].get()
-        while not queues[COMMAND_PACKET_QUEUE].empty():
-            queues[MESSAGE_PACKET_QUEUE].get()
-        time.sleep(0.2)
+        self.assertIsNone(group_add_member('test_group', [], self.group_list, self.contact_list,
+                                           self.settings, self.queues, self.master_key))
+        time.sleep(0.1)
+        self.assertEqual(self.queues[COMMAND_PACKET_QUEUE].qsize(), 1)
+        self.assertEqual(self.queues[MESSAGE_PACKET_QUEUE].qsize(), 0)
 
     def test_raises_fr_if_specified_group_does_not_exist_and_user_chooses_no(self):
         # Setup
-        group_list     = GroupList()
-        contact_list   = ContactList(nicks=['Alice', 'Bob'])
-        settings       = Settings()
-        queues         = {COMMAND_PACKET_QUEUE: Queue(),
-                          MESSAGE_PACKET_QUEUE: Queue()}
-        o_input        = builtins.input
-        builtins.input = lambda x: 'No'
+        builtins.input = lambda _: 'No'
 
         # Test
-        self.assertFR("Group creation aborted.", group_add_member, 'test_group', [], group_list, contact_list, settings, queues)
-
-        # Teardown
-        builtins.input = o_input
+        self.assertFR("Group creation aborted.",
+                      group_add_member, 'test_group', [], self.group_list, self.contact_list,
+                      self.settings, self.queues, self.master_key)
 
     def test_too_large_final_member_list_raises_fr(self):
         # Setup
@@ -235,28 +221,23 @@ class TestGroupAddMember(TFCTestCase):
         contact_list  = ContactList(nicks=["contact_{}".format(n) for n in range(21)])
         group         = group_list.get_group('testgroup')
         group.members = contact_list.contacts[:19]
-        settings      = Settings()
-        queues        = {COMMAND_PACKET_QUEUE: Queue()}
 
         # Test
         m_to_add = ["contact_19@jabber.org", "contact_20@jabber.org"]
-        self.assertFR("Error: TFC settings only allow 20 members per group.", group_add_member, 'testgroup', m_to_add, group_list, contact_list, settings, queues)
+        self.assertFR("Error: TFC settings only allow 20 members per group.",
+                      group_add_member, 'testgroup', m_to_add, group_list, contact_list, self.settings, self.queues, self.master_key)
 
     def test_successful_group_add(self):
         # Setup
-        group_list     = GroupList(groups=['testgroup'])
-        contact_list   = ContactList(nicks=["contact_{}".format(n) for n in range(21)])
-        group          = group_list.get_group('testgroup')
-        group.members  = contact_list.contacts[:19]
-        settings       = Settings()
-        queues         = {COMMAND_PACKET_QUEUE: Queue(),
-                          MESSAGE_PACKET_QUEUE: Queue()}
-        o_input        = builtins.input
-        builtins.input = lambda x: 'Yes'
+        group_list    = GroupList(groups=['testgroup'])
+        contact_list  = ContactList(nicks=["contact_{}".format(n) for n in range(21)])
+        group         = group_list.get_group('testgroup')
+        group.members = contact_list.contacts[:19]
 
         # Test
         m_to_add = ["contact_19@jabber.org"]
-        self.assertIsNone(group_add_member('testgroup', m_to_add, group_list, contact_list, settings, queues))
+        self.assertIsNone(group_add_member('testgroup', m_to_add, group_list, contact_list, self.settings, self.queues, self.master_key))
+        time.sleep(0.1)
 
         group2 = group_list.get_group('testgroup')
         self.assertEqual(len(group2), 20)
@@ -264,96 +245,110 @@ class TestGroupAddMember(TFCTestCase):
         for c in group2:
             self.assertIsInstance(c, Contact)
 
-        self.assertEqual(queues[COMMAND_PACKET_QUEUE].qsize(), 1)
-        self.assertEqual(queues[MESSAGE_PACKET_QUEUE].qsize(), 20)
-
-        # Teardown
-        builtins.input = o_input
-        while not queues[COMMAND_PACKET_QUEUE].empty():
-            queues[COMMAND_PACKET_QUEUE].get()
-        while not queues[COMMAND_PACKET_QUEUE].empty():
-            queues[MESSAGE_PACKET_QUEUE].get()
-        time.sleep(0.2)
+        self.assertEqual(self.queues[COMMAND_PACKET_QUEUE].qsize(), 1)
+        self.assertEqual(self.queues[MESSAGE_PACKET_QUEUE].qsize(), 20)
 
 
 class TestGroupRmMember(TFCTestCase):
 
-    def test_cancel_of_remove_raises_fr(self):
+    def setUp(self):
+        self.o_input   = builtins.input
+        builtins.input = lambda _: 'Yes'
+
+        self.user_input   = UserInput()
+        self.contact_list = ContactList(nicks=['Alice', 'Bob'])
+        self.group_list   = GroupList()
+        self.settings     = Settings()
+        self.queues       = {COMMAND_PACKET_QUEUE: Queue(),
+                             MESSAGE_PACKET_QUEUE: Queue()}
+        self.master_key   = MasterKey()
+
+    def tearDown(self):
+        builtins.input = self.o_input
+
+        for key in self.queues:
+            while not self.queues[key].empty():
+                self.queues[key].get()
+            time.sleep(0.1)
+            self.queues[key].close()
+
+    def test_no_accounts_removes_group(self):
         # Setup
-        o_input        = builtins.input
-        builtins.input = lambda x: 'No'
+        group_list = GroupList(groups=['testgroup'])
 
         # Test
-        self.assertFR("Group removal aborted.", group_rm_member, 'testgroup', [], None, None, None, None)
-
-        # Teardown
-        builtins.input = o_input
-
-    def test_remove_group_not_on_txm(self):
-        # Setup
-        o_input        = builtins.input
-        builtins.input = lambda x: 'Yes'
-        queues         = {COMMAND_PACKET_QUEUE: Queue()}
-        settings       = Settings()
-        group_list     = GroupList()
-
-        # Test
-        self.assertFR("TxM has no group testgroup to remove.", group_rm_member, 'testgroup', [], group_list, None, settings, queues)
-        self.assertEqual(queues[COMMAND_PACKET_QUEUE].qsize(), 1)
-
-        # Teardown
-        builtins.input = o_input
-        while not queues[COMMAND_PACKET_QUEUE].empty():
-            queues[COMMAND_PACKET_QUEUE].get()
-        time.sleep(0.2)
-
-    def test_remove_group_and_notify(self):
-        # Setup
-        o_input        = builtins.input
-        builtins.input = lambda x: 'Yes'
-        queues         = {COMMAND_PACKET_QUEUE: Queue(),
-                          MESSAGE_PACKET_QUEUE: Queue()}
-        settings       = Settings()
-        group_list     = GroupList(groups=['testgroup'])
-
-        # Test
-        self.assertFR("Removed group testgroup.", group_rm_member, 'testgroup', [], group_list, None, settings, queues)
-        self.assertEqual(queues[COMMAND_PACKET_QUEUE].qsize(), 1)
-        self.assertEqual(queues[MESSAGE_PACKET_QUEUE].qsize(), 2)
-
-        # Teardown
-        builtins.input = o_input
-        while not queues[COMMAND_PACKET_QUEUE].empty():
-            queues[COMMAND_PACKET_QUEUE].get()
-        time.sleep(0.2)
+        self.assertFR("Removed group 'testgroup'",
+                      group_rm_member, 'testgroup', [], group_list, self.contact_list,
+                      self.settings, self.queues, self.master_key)
 
     def test_remove_members_from_unknown_group(self):
         # Setup
         group_list = GroupList(groups=['testgroup2'])
 
         # Test
-        self.assertFR("Group 'testgroup' does not exist.", group_rm_member, 'testgroup', ['alice@jabber.org'], group_list, None, None, None)
+        self.assertFR("Group 'testgroup' does not exist.",
+                      group_rm_member, 'testgroup', ['alice@jabber.org'], group_list,
+                      self.contact_list, self.settings, self.queues, self.master_key)
 
-    def test_succesful_group_remove(self):
+    def test_successful_group_remove(self):
         # Setup
-        o_input        = builtins.input
-        builtins.input = lambda x: 'Yes'
-        queues         = {COMMAND_PACKET_QUEUE: Queue(),
-                          MESSAGE_PACKET_QUEUE: Queue()}
-        settings       = Settings()
-        group_list     = GroupList(groups=['testgroup'])
-        contact_list   = ContactList(nicks=['Alice', 'Bob'])
+        group_list = GroupList(groups=['testgroup'])
 
         # Test
-        self.assertIsNone(group_rm_member('testgroup', ['alice@jabber.org'], group_list, contact_list, settings, queues))
-        self.assertEqual(queues[COMMAND_PACKET_QUEUE].qsize(), 1)
-        self.assertEqual(queues[MESSAGE_PACKET_QUEUE].qsize(), 1)
+        self.assertIsNone(group_rm_member('testgroup', ['alice@jabber.org'], group_list,
+                                          self.contact_list, self.settings, self.queues, self.master_key))
+        time.sleep(0.1)
+        self.assertEqual(self.queues[COMMAND_PACKET_QUEUE].qsize(), 1)
+        self.assertEqual(self.queues[MESSAGE_PACKET_QUEUE].qsize(), 1)
 
-        # Teardown
-        builtins.input = o_input
-        while not queues[COMMAND_PACKET_QUEUE].empty():
-            queues[COMMAND_PACKET_QUEUE].get()
-        time.sleep(0.2)
+
+class TestGroupRemoveGroup(TFCTestCase):
+
+    def setUp(self):
+        self.o_input   = builtins.input
+        builtins.input = lambda _: 'Yes'
+
+        self.user_input   = UserInput()
+        self.contact_list = ContactList(nicks=['Alice', 'Bob'])
+        self.group_list   = GroupList()
+        self.settings     = Settings()
+        self.queues       = {COMMAND_PACKET_QUEUE: Queue(),
+                             MESSAGE_PACKET_QUEUE: Queue()}
+        self.master_key   = MasterKey()
+
+    def tearDown(self):
+        builtins.input = self.o_input
+
+        for key in self.queues:
+            while not self.queues[key].empty():
+                self.queues[key].get()
+            time.sleep(0.1)
+            self.queues[key].close()
+
+    def test_cancel_of_remove_raises_fr(self):
+        # Setup
+        builtins.input = lambda _: 'No'
+
+        # Test
+        self.assertFR("Group removal aborted.",
+                      group_rm_group, 'testgroup', self.group_list, self.settings, self.queues, self.master_key)
+
+    def test_remove_group_not_on_txm(self):
+        self.assertFR("TxM has no group 'testgroup' to remove.",
+                      group_rm_group, 'testgroup', self.group_list, self.settings, self.queues, self.master_key)
+        time.sleep(0.1)
+        self.assertEqual(self.queues[COMMAND_PACKET_QUEUE].qsize(), 2)
+
+    def test_remove_group_and_notify(self):
+        # Setup
+        group_list = GroupList(groups=['testgroup'])
+
+        # Test
+        self.assertFR("Removed group 'testgroup'",
+                      group_rm_group, 'testgroup', group_list, self.settings, self.queues, self.master_key)
+        time.sleep(0.1)
+        self.assertEqual(self.queues[COMMAND_PACKET_QUEUE].qsize(), 2)
+        self.assertEqual(self.queues[MESSAGE_PACKET_QUEUE].qsize(), 2)
 
 
 if __name__ == '__main__':

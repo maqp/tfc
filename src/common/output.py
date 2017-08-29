@@ -26,11 +26,13 @@ import sys
 
 from typing import List, Union
 
-from src.common.misc    import get_tty_w, split_string
-from src.common.statics import *
+from src.common.encoding import b58encode
+from src.common.misc     import get_terminal_width, split_string
+from src.common.statics  import *
 
 if typing.TYPE_CHECKING:
     from src.common.db_contacts import ContactList
+    from src.common.db_settings import Settings
 
 
 def box_print(msg_list:       Union[str, list],
@@ -51,18 +53,17 @@ def box_print(msg_list:       Union[str, list],
     if isinstance(msg_list, str):
         msg_list = [msg_list]
 
-    tty_w  = get_tty_w()
-    widest = max(msg_list, key=len)
-
-    msg_list = ['{:^{}}'.format(m, len(widest)) for m in msg_list]
+    len_widest = max(len(m) for m in msg_list)
+    msg_list   = ['{:^{}}'.format(m, len_widest) for m in msg_list]
 
     top_line = '┌' + (len(msg_list[0]) + 2) * '─' + '┐'
     bot_line = '└' + (len(msg_list[0]) + 2) * '─' + '┘'
     msg_list = ['│ {} │'.format(m) for m in msg_list]
 
-    top_line = top_line.center(tty_w)
-    msg_list = [m.center(tty_w) for m in msg_list]
-    bot_line = bot_line.center(tty_w)
+    terminal_w = get_terminal_width()
+    top_line   = top_line.center(terminal_w)
+    msg_list   = [m.center(terminal_w) for m in msg_list]
+    bot_line   = bot_line.center(terminal_w)
 
     print(top_line)
     for m in msg_list:
@@ -88,10 +89,38 @@ def c_print(string: str, head: int = 0, tail: int = 0) -> None:
     for _ in range(head):
         print('')
 
-    print(string.center(get_tty_w()))
+    print(string.center(get_terminal_width()))
 
     for _ in range(tail):
         print('')
+
+
+def clear_screen(delay: float = 0.0) -> None:
+    """Clear terminal window."""
+    time.sleep(delay)
+    sys.stdout.write(CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER)
+    sys.stdout.flush()
+
+
+def group_management_print(key:          str,
+                           members:      List[str],
+                           contact_list: 'ContactList',
+                           group_name:   str = '') -> None:
+    """List purported member status during group management."""
+    m = {NEW_GROUP:        "Created new group '{}' with following members:".format(group_name),
+         ADDED_MEMBERS:    "Added following accounts to group '{}':"       .format(group_name),
+         ALREADY_MEMBER:   "Following accounts were already in group '{}':".format(group_name),
+         REMOVED_MEMBERS:  "Removed following members from group '{}':"    .format(group_name),
+         NOT_IN_GROUP:     "Following accounts were not in group '{}':"    .format(group_name),
+         UNKNOWN_ACCOUNTS: "Following unknown accounts were ignored:"}[key]
+
+    if members:
+        m_list = ([contact_list.get_contact(m).nick for m in members if contact_list.has_contact(m)]
+                  + [m for m in members if not contact_list.has_contact(m)])
+
+        just_len  = max(len(m) for m in m_list)
+        justified = [m] + ["  * {}".format(m.ljust(just_len)) for m in m_list]
+        box_print(justified, head=1, tail=1)
 
 
 def message_printer(message: str, head: int = 0, tail: int = 0) -> None:
@@ -105,7 +134,7 @@ def message_printer(message: str, head: int = 0, tail: int = 0) -> None:
     for _ in range(head):
         print('')
 
-    line_list = (textwrap.fill(message, min(49, (get_tty_w() - 6))).split('\n'))
+    line_list = (textwrap.fill(message, min(49, (get_terminal_width() - 6))).split('\n'))
     for l in line_list:
         c_print(l)
 
@@ -115,33 +144,33 @@ def message_printer(message: str, head: int = 0, tail: int = 0) -> None:
 
 def phase(string: str,
           done:   bool = False,
-          head:   int = 0,
-          offset: int = 2) -> None:
+          head:   int  = 0,
+          offset: int  = 2) -> None:
     """Print name of next phase.
 
     Message about completion will be printed on same line.
 
     :param string: String to be printed
-    :param done:   Notify with custom message
-    :param head:   N.o. inserted new lines before print
+    :param done:   When True, allows custom string to notify completion
+    :param head:   Number of inserted new lines before print
     :param offset: Offset of message from center to left
     :return:       None
     """
     for _ in range(head):
         print('')
 
-    if string == 'Done' or done:
+    if string == DONE or done:
         print(string)
         time.sleep(0.5)
     else:
         string = '{}... '.format(string)
-        indent = ((get_tty_w() - (len(string) + offset)) // 2) * ' '
+        indent = ((get_terminal_width() - (len(string) + offset)) // 2) * ' '
 
         print(indent + string, end='', flush=True)
 
 
-def print_fingerprints(fp: bytes, msg: str = '') -> None:
-    """Print fingerprints of contact and user.
+def print_fingerprint(fp: bytes, msg: str = '') -> None:
+    """Print formatted message and fingerprint inside box.
 
     :param fp:  Contact's fingerprint
     :param msg: Title message
@@ -185,12 +214,49 @@ def print_fingerprints(fp: bytes, msg: str = '') -> None:
     box_print(p_lst)
 
 
-def print_on_previous_line(reps:  int = 1,
+def print_key(message:   str,
+              key_bytes: bytes,
+              settings:  'Settings',
+              no_split:  bool = False,
+              file_key:  bool = False) -> None:
+    """Print symmetric key.
+
+    If local testing is not enabled, this function will add spacing in the
+    middle of the key to help user keep track of typing progress. The ideal
+    substring length in Cowan's `focus of attention` is four digits:
+
+        https://en.wikipedia.org/wiki/Working_memory#Working_memory_as_part_of_long-term_memory
+
+    The 51 char KDK is however not divisible by 4, and remembering which
+    symbols are letters and if they are capitalized is harder than remembering
+    just digits. 51 is divisible by 3. The 17 segments are displayed with guide
+    letter A..Q to help keep track when typing:
+
+         A   B   C   D   E   F   G   H   I   J   K   L   M   N   O   P   Q
+        5Ka 52G yNz vjF nM4 2jw Duu rWo 7di zgi Y8g iiy yGd 78L cCx mwQ mWV
+
+    :param message:   Message to print
+    :param key_bytes: Decryption key
+    :param settings:  Settings object
+    :param no_split:  When True, does not split decryption key to chunks
+    :param file_key   When True, uses testnet address format
+    :return:          None
+    """
+    b58key = b58encode(key_bytes, file_key)
+    if settings.local_testing_mode or no_split:
+        box_print([message, b58key])
+    else:
+        box_print([message,
+                   '   '.join('ABCDEFGHIJKLMNOPQ'),
+                   ' '.join(split_string(b58key, item_len=3))])
+
+
+def print_on_previous_line(reps:  int   = 1,
                            delay: float = 0.0,
-                           flush: bool = False) -> None:
+                           flush: bool  = False) -> None:
     """Next message will be printed on upper line.
 
-    :param reps:  Number of times to repeat function
+    :param reps:  Number of times to repeat action
     :param delay: Time to sleep before clearing lines above
     :param flush: Flush stdout when true
     :return:      None
@@ -201,25 +267,3 @@ def print_on_previous_line(reps:  int = 1,
         sys.stdout.write(CURSOR_UP_ONE_LINE + CLEAR_ENTIRE_LINE)
     if flush:
         sys.stdout.flush()
-
-
-def g_mgmt_print(key:          str,
-                 members:      List[str],
-                 contact_list: 'ContactList',
-                 g_name:       str = '') -> None:
-    """Lists members at different parts of group management."""
-    m = dict(new_g="Created new group '{}' with following members:".format(g_name),
-             add_m="Added following accounts to group '{}':".format(g_name),
-             add_a="Following accounts were already in group '{}':".format(g_name),
-             rem_m="Removed following members from group '{}':".format(g_name),
-             rem_n="Following accounts were not in group '{}':".format(g_name),
-             unkwn="Following unknown accounts were ignored:")[key]
-
-    if members:
-        m_list  = []  # type: List[str]
-        m_list += [contact_list.get_contact(m).nick for m in members if contact_list.has_contact(m)]
-        m_list += [m for m in members if not contact_list.has_contact(m)]
-
-        just_len  = len(max(m_list, key=len))
-        justified = [m] + ["  * {}".format(m.ljust(just_len)) for m in m_list]
-        box_print(justified, head=1, tail=1)

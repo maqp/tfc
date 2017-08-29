@@ -1,0 +1,27 @@
+# .coveragerc to control coverage.py
+[report]
+
+# Regexes for lines to exclude from consideration
+exclude_lines =
+
+    # TYPE_CHECKING is True only during type checking
+    if typing.TYPE_CHECKING:
+
+    # Ignore catchers for KeyboardInterrupt (^C) and EOF (^D) signals from user:
+    except EOFError
+    except KeyboardInterrupt:
+    except \(EOFError, KeyboardInterrupt\):
+    except \(FunctionReturn, KeyboardInterrupt\):
+
+    # Ignore errors specific to gateway libraries
+    except SerialException:
+    except socket.error
+    except ConnectionRefusedError:
+
+    # Ignore lines for Settings database testing that
+    # can not be mocked without overwriting user data
+    if operation == RX:
+
+omit =
+    # Since dbus is not available for python3.6, it is currently not possible to test nh/pidgin.py
+    src/nh/pidgin.py

@@ -25,16 +25,16 @@ import typing
 
 from typing import Dict
 
-from src.common.errors    import FunctionReturn
-from src.common.misc      import get_tab_completer
-from src.common.statics   import *
+from src.common.exceptions import FunctionReturn
+from src.common.misc       import get_tab_completer, ignored
+from src.common.statics    import *
+
 from src.tx.commands      import process_command
 from src.tx.contact       import add_new_contact
-from src.tx.files         import queue_file
 from src.tx.key_exchanges import new_local_key
-from src.tx.messages      import queue_message
-from src.tx.user_input    import UserInput
-from src.tx.windows       import Window
+from src.tx.packet        import queue_file, queue_message
+from src.tx.user_input    import get_input
+from src.tx.windows       import TxWindow
 
 if typing.TYPE_CHECKING:
     from multiprocessing         import Queue
@@ -45,51 +45,47 @@ if typing.TYPE_CHECKING:
     from src.common.gateway      import Gateway
 
 
-def tx_loop(settings:     'Settings',
-            queues:       Dict[bytes, 'Queue'],
-            gateway:      'Gateway',
-            contact_list: 'ContactList',
-            group_list:   'GroupList',
-            master_key:   'MasterKey',
-            file_no:      int  # stdin input file descriptor
-            ) -> None:
+def input_loop(queues:       Dict[bytes, 'Queue'],
+               settings:     'Settings',
+               gateway:      'Gateway',
+               contact_list: 'ContactList',
+               group_list:   'GroupList',
+               master_key:   'MasterKey',
+               stdin_fd:     int) -> None:
     """Get input from user and process it accordingly.
 
-    Tx side of TFC runs two processes -- input and output loop -- separate from
-    one another. This approach allows queueing assembly packets and their output
-    based on priority of different packets. tx_loop handles TxM-side functions
-    excluding message encryption, output and hash ratchet key/counter updates in
-    key_list database and log file writes.
+    Tx side of TFC runs two processes -- input and sender loop -- separate
+    from one another. This allows prioritized output of queued assembly
+    packets. input_loop handles Tx-side functions excluding assembly packet
+    encryption, output and logging, and hash ratchet key/counter updates in
+    key_list database.
     """
-    sys.stdin = os.fdopen(file_no)
-    window    = Window(contact_list, group_list)
+    sys.stdin = os.fdopen(stdin_fd)
+    window    = TxWindow(contact_list, group_list)
 
     while True:
-        try:
+        with ignored(EOFError, FunctionReturn, KeyboardInterrupt):
             readline.set_completer(get_tab_completer(contact_list, group_list, settings))
             readline.parse_and_bind('tab: complete')
 
             window.update_group_win_members(group_list)
 
             while not contact_list.has_local_contact():
-                new_local_key(contact_list, settings, queues, gateway)
+                new_local_key(contact_list, settings, queues)
 
             while not contact_list.has_contacts():
-                add_new_contact(contact_list, group_list, settings, queues, gateway)
+                add_new_contact(contact_list, group_list, settings, queues)
 
             while not window.is_selected():
                 window.select_tx_window(settings, queues)
 
-            user_input = UserInput(window, settings)
+            user_input = get_input(window, settings)
 
-            if user_input.type == 'message':
+            if user_input.type == MESSAGE:
                 queue_message(user_input, window, settings, queues[MESSAGE_PACKET_QUEUE])
 
-            elif user_input.type == 'file':
+            elif user_input.type == FILE:
                 queue_file(window, settings, queues[FILE_PACKET_QUEUE], gateway)
 
-            elif user_input.type == 'command':
-                process_command(user_input, window, settings, queues, contact_list, group_list, gateway, master_key)
-
-        except (EOFError, FunctionReturn, KeyboardInterrupt):
-            pass
+            elif user_input.type == COMMAND:
+                process_command(user_input, window, settings, queues, contact_list, group_list, master_key)

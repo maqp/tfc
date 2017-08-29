@@ -22,65 +22,68 @@ import typing
 
 from typing import Dict
 
-from src.common.errors    import FunctionReturn
-from src.common.input     import box_input, yes
-from src.common.misc      import clear_screen, validate_account, validate_key_exchange, validate_nick
-from src.common.output    import box_print, c_print, print_fingerprints
-from src.common.statics   import *
-from src.tx.key_exchanges import new_psk, start_key_exchange
+from src.common.db_logs    import remove_logs
+from src.common.exceptions import FunctionReturn
+from src.common.input      import box_input, yes
+from src.common.misc       import ignored, validate_account, validate_key_exchange, validate_nick
+from src.common.output     import box_print, c_print, clear_screen, print_fingerprint
+from src.common.statics    import *
+
+from src.tx.key_exchanges import create_pre_shared_key, start_key_exchange
 from src.tx.packet        import queue_command
 
 if typing.TYPE_CHECKING:
-    from multiprocessing        import Queue
-    from src.common.db_contacts import ContactList
-    from src.common.db_groups   import GroupList
-    from src.common.db_settings import Settings
-    from src.common.gateway     import Gateway
-    from src.tx.user_input      import UserInput
-    from src.tx.windows         import Window
+    from multiprocessing         import Queue
+    from src.common.db_contacts  import ContactList
+    from src.common.db_groups    import GroupList
+    from src.common.db_masterkey import MasterKey
+    from src.common.db_settings  import Settings
+    from src.tx.user_input       import UserInput
+    from src.tx.windows          import TxWindow
 
 
 def add_new_contact(contact_list: 'ContactList',
                     group_list:   'GroupList',
                     settings:     'Settings',
-                    queues:       Dict[bytes, 'Queue'],
-                    gateway:      'Gateway') -> None:
-    """Prompt for contact account details and initialize desired key exchange method."""
+                    queues:       Dict[bytes, 'Queue']) -> None:
+    """Prompt for contact account details and initialize desired key exchange."""
     try:
-        if settings.session_trickle:
-            raise FunctionReturn("Command disabled during trickle connection.")
+        if settings.session_traffic_masking:
+            raise FunctionReturn("Error: Command is disabled during traffic masking.")
 
-        if len(contact_list) >= settings.m_number_of_accnts:
-            raise FunctionReturn(f"Error: TFC settings only allow {settings.m_number_of_accnts} accounts.")
+        if len(contact_list) >= settings.max_number_of_contacts:
+            raise FunctionReturn(f"Error: TFC settings only allow {settings.max_number_of_contacts} accounts.")
 
         clear_screen()
         c_print("Add new contact", head=1)
 
-        acco = box_input("Contact account",                              tail=1, validator=validate_account).strip()
-        user = box_input("Your account",                                 tail=1, validator=validate_account).strip()
-        defn = acco.split('@')[0].capitalize()
-        nick = box_input(f"Contact nick [{defn}]",      default=defn,    tail=1, validator=validate_nick, validator_args=(contact_list, group_list, acco)).strip()
-        keyx = box_input("Key exchange ([ECDHE],PSK) ", default='ECDHE', tail=1, validator=validate_key_exchange).strip()
+        contact_account = box_input("Contact account", validator=validate_account).strip()
+        user_account    = box_input("Your account",    validator=validate_account).strip()
+        default_nick    = contact_account.split('@')[0].capitalize()
+        contact_nick    = box_input(f"Contact nick [{default_nick}]", default=default_nick, validator=validate_nick,
+                                    validator_args=(contact_list, group_list, contact_account)).strip()
+        key_exchange    = box_input("Key exchange ([X25519],PSK) ", default=X25519, validator=validate_key_exchange).strip()
 
-        if keyx.lower() in 'ecdhe':
-            start_key_exchange(acco, user, nick, contact_list, settings, queues, gateway)
+        if key_exchange.lower() in X25519:
+            start_key_exchange(contact_account, user_account, contact_nick, contact_list, settings, queues)
 
-        elif keyx.lower() in 'psk':
-            new_psk(           acco, user, nick, contact_list, settings, queues)
+        elif key_exchange.lower() in PSK:
+            create_pre_shared_key(contact_account, user_account, contact_nick, contact_list, settings, queues)
 
     except KeyboardInterrupt:
-        raise FunctionReturn("Contact creation aborted.")
+        raise FunctionReturn("Contact creation aborted.", head_clear=True)
 
 
 def remove_contact(user_input:   'UserInput',
-                   window:       'Window',
+                   window:       'TxWindow',
                    contact_list: 'ContactList',
                    group_list:   'GroupList',
                    settings:     'Settings',
-                   queues:       Dict[bytes, 'Queue']) -> None:
+                   queues:       Dict[bytes, 'Queue'],
+                   master_key:   'MasterKey') -> None:
     """Remove contact on TxM/RxM."""
-    if settings.session_trickle:
-        raise FunctionReturn("Command disabled during trickle connection.")
+    if settings.session_traffic_masking:
+        raise FunctionReturn("Error: Command is disabled during traffic masking.")
 
     try:
         selection = user_input.plaintext.split()[1]
@@ -90,15 +93,24 @@ def remove_contact(user_input:   'UserInput',
     if not yes(f"Remove {selection} completely?", head=1):
         raise FunctionReturn("Removal of contact aborted.")
 
-    # Load account if user enters nick
+    rm_logs = yes(f"Also remove logs for {selection}?", head=1)
+
+    # Load account if selector was nick
     if selection in contact_list.get_list_of_nicks():
         selection = contact_list.get_contact(selection).rx_account
 
     packet = CONTACT_REMOVE_HEADER + selection.encode()
     queue_command(packet, settings, queues[COMMAND_PACKET_QUEUE])
 
+    if rm_logs:
+        packet = LOG_REMOVE_HEADER + selection.encode()
+        queue_command(packet, settings, queues[COMMAND_PACKET_QUEUE])
+        with ignored(FunctionReturn):
+            remove_logs(selection, settings, master_key)
+
+    queues[KEY_MANAGEMENT_QUEUE].put((KDB_REMOVE_ENTRY_HEADER, selection))
+
     if selection in contact_list.get_list_of_accounts():
-        queues[KEY_MANAGEMENT_QUEUE].put(('REM', selection))
         contact_list.remove_contact(selection)
         box_print(f"Removed {selection} from contacts.", head=1, tail=1)
     else:
@@ -107,29 +119,31 @@ def remove_contact(user_input:   'UserInput',
     if any([g.remove_members([selection]) for g in group_list]):
         box_print(f"Removed {selection} from group(s).", tail=1)
 
-    for c in window:
-        if selection == c.rx_account:
-            if window.type == 'contact':
-                window.deselect()
-            elif window.type == 'group':
+    if window.type == WIN_TYPE_CONTACT:
+        if selection == window.uid:
+            window.deselect_window()
+
+    if window.type == WIN_TYPE_GROUP:
+        for c in window:
+            if selection == c.rx_account:
                 window.update_group_win_members(group_list)
 
                 # If last member from group is removed, deselect group.
-                # This is not done in update_group_win_members because
-                # It would prevent selecting the empty group for group
-                # related commands such as notifications.
+                # Deselection is not done in update_group_win_members
+                # because it would prevent selecting the empty group
+                # for group related commands such as notifications.
                 if not window.window_contacts:
-                    window.deselect()
+                    window.deselect_window()
 
 
 def change_nick(user_input:   'UserInput',
-                window:       'Window',
+                window:       'TxWindow',
                 contact_list: 'ContactList',
                 group_list:   'GroupList',
                 settings:     'Settings',
                 c_queue:      'Queue') -> None:
     """Change nick of contact."""
-    if window.type == 'group':
+    if window.type == WIN_TYPE_GROUP:
         raise FunctionReturn("Error: Group is selected.")
 
     try:
@@ -137,36 +151,38 @@ def change_nick(user_input:   'UserInput',
     except IndexError:
         raise FunctionReturn("Error: No nick specified.")
 
-    rx_acco            = window.contact.rx_account
-    success, error_msg = validate_nick(nick, (contact_list, group_list, rx_acco))
-    if not success:
+    rx_account = window.contact.rx_account
+    error_msg  = validate_nick(nick, (contact_list, group_list, rx_account))
+    if error_msg:
         raise FunctionReturn(error_msg)
+
     window.contact.nick = nick
     window.name         = nick
     contact_list.store_contacts()
 
-    packet = CHANGE_NICK_HEADER + rx_acco.encode() + US_BYTE + nick.encode()
+    packet = CHANGE_NICK_HEADER + rx_account.encode() + US_BYTE + nick.encode()
     queue_command(packet, settings, c_queue)
-
-    box_print(f"Changed {rx_acco} nick to {nick}.")
 
 
 def contact_setting(user_input:   'UserInput',
-                    window:       'Window',
+                    window:       'TxWindow',
                     contact_list: 'ContactList',
                     group_list:   'GroupList',
                     settings:     'Settings',
                     c_queue:      'Queue') -> None:
-    """Change logging, file reception, or message notification setting of (all) contact(s)."""
+    """\
+    Change logging, file reception, or received message
+    notification setting of group or (all) contact(s).
+    """
     try:
         parameters = user_input.plaintext.split()
         cmd_key    = parameters[0]
-        cmd_header = dict(logging=CHANGE_LOGGING_HEADER,
-                          store  =CHANGE_FILE_R_HEADER,
-                          notify =CHANGE_NOTIFY_HEADER)[cmd_key]
+        cmd_header = {LOGGING: CHANGE_LOGGING_HEADER,
+                      STORE:   CHANGE_FILE_R_HEADER,
+                      NOTIFY:  CHANGE_NOTIFY_HEADER}[cmd_key]
 
-        s_value = dict(on=b'e', off=b'd' )[parameters[1]]
-        b_value = dict(on=True, off=False)[parameters[1]]
+        s_value, b_value = dict(on =(ENABLE,  True),
+                                off=(DISABLE, False))[parameters[1]]
 
     except (IndexError, KeyError):
         raise FunctionReturn("Error: Invalid command.")
@@ -174,8 +190,8 @@ def contact_setting(user_input:   'UserInput',
     # If second parameter 'all' is included, apply setting for all contacts and groups
     try:
         target = b''
-        if parameters[2] == 'all':
-            cmd_value = s_value.upper()
+        if parameters[2] == ALL:
+            cmd_value = s_value.upper() + US_BYTE
         else:
             raise FunctionReturn("Error: Invalid command.")
     except IndexError:
@@ -183,45 +199,55 @@ def contact_setting(user_input:   'UserInput',
         cmd_value = s_value + US_BYTE + target
 
     if target:
-        if window.type == 'contact':
-            if cmd_key == 'logging': window.contact.log_messages   = b_value
-            if cmd_key == 'store':   window.contact.file_reception = b_value
-            if cmd_key == 'notify':  window.contact.notifications  = b_value
+        if window.type == WIN_TYPE_CONTACT:
+            if cmd_key == LOGGING: window.contact.log_messages   = b_value
+            if cmd_key == STORE:   window.contact.file_reception = b_value
+            if cmd_key == NOTIFY:  window.contact.notifications  = b_value
             contact_list.store_contacts()
 
-        if window.type == 'group':
-            if cmd_key == 'logging': window.group.log_messages  = b_value
-            if cmd_key == 'store':
+        if window.type == WIN_TYPE_GROUP:
+            if cmd_key == LOGGING: window.group.log_messages = b_value
+            if cmd_key == STORE:
                 for c in window:
                     c.file_reception = b_value
-            if cmd_key == 'notify':  window.group.notifications = b_value
+            if cmd_key == NOTIFY: window.group.notifications = b_value
             group_list.store_groups()
 
     else:
         for contact in contact_list:
-            if cmd_key == 'logging': contact.log_messages   = b_value
-            if cmd_key == 'store':   contact.file_reception = b_value
-            if cmd_key == 'notify':  contact.notifications  = b_value
+            if cmd_key == LOGGING: contact.log_messages   = b_value
+            if cmd_key == STORE:   contact.file_reception = b_value
+            if cmd_key == NOTIFY:  contact.notifications  = b_value
         contact_list.store_contacts()
 
         for group in group_list:
-            if cmd_key == 'logging': group.log_messages  = b_value
-            if cmd_key == 'notify':  group.notifications = b_value
+            if cmd_key == LOGGING: group.log_messages  = b_value
+            if cmd_key == NOTIFY:  group.notifications = b_value
         group_list.store_groups()
 
     packet = cmd_header + cmd_value
-    queue_command(packet, settings, c_queue)
+
+    if settings.session_traffic_masking and cmd_key == LOGGING:
+        window.update_log_messages()
+        queue_command(packet, settings, c_queue, window)
+    else:
+        window.update_log_messages()
+        queue_command(packet, settings, c_queue)
 
 
-def fingerprints(window: 'Window') -> None:
-    """Print domain separated fingerprints of shared secret on TxM."""
-    if window.type == 'group':
+def show_fingerprints(window: 'TxWindow') -> None:
+    """Print domain separated fingerprints of public keys on TxM.
+
+    Comparison of fingerprints over authenticated channel can be
+    used to verify users are not under man-in-the-middle attack.
+    """
+    if window.type == WIN_TYPE_GROUP:
         raise FunctionReturn('Group is selected.')
 
-    if window.contact.tx_fingerprint == bytes(32):
-        raise FunctionReturn(f"Key have been pre-shared with {window.name} and thus have no fingerprints.")
+    if window.contact.tx_fingerprint == bytes(FINGERPRINT_LEN):
+        raise FunctionReturn(f"Pre-shared keys have no fingerprints.")
 
     clear_screen()
-    print_fingerprints(window.contact.tx_fingerprint, "   Your fingerprint (you read)   ")
-    print_fingerprints(window.contact.rx_fingerprint, "Contact's fingerprint (they read)")
+    print_fingerprint(window.contact.tx_fingerprint, "   Your fingerprint (you read)   ")
+    print_fingerprint(window.contact.rx_fingerprint, "Contact's fingerprint (they read)")
     print('')

@@ -18,17 +18,16 @@ You should have received a copy of the GNU General Public License
 along with TFC. If not, see <http://www.gnu.org/licenses/>.
 """
 
-import struct
 import typing
 
-from src.common.db_logs  import write_log_entry
-from src.common.encoding import bytes_to_double
-from src.common.errors   import FunctionReturn
-from src.common.output   import box_print
-from src.common.statics  import *
-from src.rx.packet       import decrypt_assembly_packet
+from typing import Any, List, Tuple
 
-from typing import List
+from src.common.db_logs    import write_log_entry
+from src.common.exceptions import FunctionReturn
+from src.common.output     import box_print
+from src.common.statics    import *
+
+from src.rx.packet import decrypt_assembly_packet
 
 if typing.TYPE_CHECKING:
     from datetime                import datetime
@@ -57,131 +56,170 @@ def process_message(ts:                 'datetime',
     """
     assembly_packet, account, origin = decrypt_assembly_packet(assembly_packet_ct, window_list, contact_list, key_list)
 
-    p_type = 'file' if assembly_packet[:1].isupper() else 'message'
-    packet = packet_list.get_packet(account, origin, p_type)
-    packet.add_packet(assembly_packet)
+    p_type  = FILE if assembly_packet[:1].isupper() else MESSAGE
+    packet  = packet_list.get_packet(account, origin, p_type)
+    logging = contact_list.get_contact(account).log_messages
+
+    def log_masking_packets(completed: bool = False) -> None:
+        """Add masking packets to log file.
+
+        If logging and logfile masking are enabled this function will
+        in case of erroneous transmissions, store the correct number
+        of placeholder data packets to log file to hide quantity of
+        communication that log file observation would reveal.
+        """
+        if logging and settings.logfile_masking and (packet.log_masking_ctr or completed):
+            iterator = packet.assembly_pt_list if completed else range(packet.log_masking_ctr)  # type: Any
+            for _ in iterator:
+                write_log_entry(PLACEHOLDER_DATA, account, settings, master_key, origin)
+        packet.log_masking_ctr = 0
+
+    try:
+        packet.add_packet(assembly_packet)
+    except FunctionReturn:
+        log_masking_packets()
+        raise
+    log_masking_packets()
 
     if not packet.is_complete:
         return None
 
-    if p_type == 'file':
-        packet.assemble_and_store_file()
+    try:
+        if p_type == FILE:
+            packet.assemble_and_store_file()
+            # Raise FunctionReturn for packets stored as placeholder data.
+            raise FunctionReturn("File storage complete.", output=False)
 
-        if contact_list.get_contact(account).log_messages and settings.log_dummy_file_a_p:
-            # Store placeholder data.
-            for _ in packet.assembly_pt_list:
-                place_holder = F_S_HEADER + bytes(255)
-                write_log_entry(place_holder, account, settings, master_key, origin)
+        elif p_type == MESSAGE:
+            assembled = packet.assemble_message_packet()
+            header    = assembled[:1]
+            assembled = assembled[1:]
 
-    if p_type == 'message':
-        assembled = packet.assemble_message_packet()
-        header    = assembled[:1]
-        assembled = assembled[1:]
+            if header == GROUP_MESSAGE_HEADER:
+                logging = process_group_message(assembled, ts, account, origin, group_list, window_list)
 
-        # Messages to group
-
-        if header == GROUP_MESSAGE_HEADER:
-
-            try:
-                timestamp = bytes_to_double(assembled[:8])
-            except struct.error:
-                raise FunctionReturn("Received an invalid group timestamp.")
-
-            try:
-                group_name = assembled[8:].split(US_BYTE)[0].decode()
-            except (UnicodeError, IndexError):
-                raise FunctionReturn("Group name had invalid encoding.")
-
-            try:
-                group_message = assembled[8:].split(US_BYTE)[1]
-            except (ValueError, IndexError):
-                raise FunctionReturn("Received an invalid group message.")
-
-            if not group_list.has_group(group_name):
-                raise FunctionReturn("Received message to unknown group.", output=False)
-
-            window = window_list.get_window(group_name)
-            group  = group_list.get_group(group_name)
-
-            if not group.has_member(account):
-                raise FunctionReturn("Group message to group contact is not member of.", output=False)
-
-            if window.has_contact(account):
-                # All copies of group messages user sends to members contain same timestamp header.
-                # This allows RxM to ignore copies of messages sent by the user.
-                if origin == ORIGIN_USER_HEADER:
-                    if window.group_timestamp == timestamp:
-                        return None
-                    window.group_timestamp = timestamp
-                window.print_new(ts, group_message.decode(), account, origin)
-
-                if group_list.get_group(group_name).log_messages:
-                    for p in packet.assembly_pt_list:
-                        write_log_entry(p, account, settings, master_key, origin)
-            return None
-
-        # Messages to contact
-
-        else:
-            if header == PRIVATE_MESSAGE_HEADER:
+            elif header == PRIVATE_MESSAGE_HEADER:
                 window = window_list.get_window(account)
-                window.print_new(ts, assembled.decode(), account, origin)
+                window.add_new(ts, assembled.decode(), account, origin, output=True)
 
-            # Group management messages
+            elif header == WHISPER_MESSAGE_HEADER:
+                window = window_list.get_window(account)
+                window.add_new(ts, assembled.decode(), account, origin, output=True, whisper=True)
+                raise FunctionReturn("Key message message complete.", output=False)
+
             else:
-                local_win = window_list.get_local_window()
-                nick      = contact_list.get_contact(account).nick
+                process_group_management_message(header, assembled, ts, account, origin, contact_list, group_list, window_list)
+                raise FunctionReturn("Group management message complete.", output=False)
 
-                group_name, *members = [f.decode() for f in assembled.split(US_BYTE)]
-
-                # Ignore group management messages from user
-                if origin == ORIGIN_USER_HEADER:
-                    return None
-
-                if header == GROUP_MSG_INVITATION_HEADER:
-                    action = 'invited you to'
-                    if group_list.has_group(group_name) and group_list.get_group(group_name).has_member(account):
-                        action  = 'joined'
-                    message = ["{} has {} group '{}'".format(nick, action, group_name)]  # type: List[str]
-                    lw_msg  =  "{} has {} group '{}'".format(nick, action, group_name)   # type: str
-
-                    # Print group management message
-                    if members:
-                        message[0] += " with following members:"
-                        known       = [contact_list.get_contact(m).nick for m in members if contact_list.has_contact(m)]
-                        unknown     = [m for m in members if not contact_list.has_contact(m)]
-                        just_len    = len(max(known + unknown, key=len))
-                        message    += ["  * {}".format(m.ljust(just_len)) for m in (known + unknown)]
-                        lw_msg     += " with members " + ", ".join(known + unknown)
-
-                    box_print(message, head=1, tail=1)
-
-                    # Persistent message in cmd window
-                    local_win.print_new(ts, lw_msg, print_=False)
-
-                elif header in [GROUP_MSG_ADD_NOTIFY_HEADER, GROUP_MSG_MEMBER_RM_HEADER]:
-                    action   = "added following member(s) to" if header == GROUP_MSG_ADD_NOTIFY_HEADER else "removed following member(s) from"
-                    message_ = ["{} has {} group {}: ".format(nick, action, group_name)]  # type: List[str]
-                    lw_msg_  =  "{} has {} group {}: ".format(nick, action, group_name)   # type: str
-
-                    if members:
-                        known     = [contact_list.get_contact(m).nick for m in members if contact_list.has_contact(m)]
-                        unknown   = [m for m in members if not contact_list.has_contact(m)]
-                        just_len  = len(max(known + unknown, key=len))
-                        lw_msg_  += ", ".join(known + unknown)
-                        message_ += ["  * {}".format(m.ljust(just_len)) for m in (known + unknown)]
-
-                        box_print(message_, head=1, tail=1)
-                        local_win.print_new(ts, lw_msg_, print_=False)
-
-                elif header == GROUP_MSG_EXIT_GROUP_HEADER:
-                    box_print(["{} has left group {}.".format(nick, group_name), '', 'Warning',
-                               "Unless you remove the contact from the group, they",
-                               "can still decrypt messages you send to the group."],
-                              head=1, tail=1)
-                else:
-                    raise FunctionReturn(f"Message from had invalid header.")
-
-            if contact_list.get_contact(account).log_messages:
+            if logging:
                 for p in packet.assembly_pt_list:
                     write_log_entry(p, account, settings, master_key, origin)
+
+    except (FunctionReturn, UnicodeError):
+        log_masking_packets(completed=True)
+        raise
+    finally:
+        packet.clear_assembly_packets()
+
+
+def process_group_message(assembled:   bytes,
+                          ts:          'datetime',
+                          account:     str,
+                          origin:      bytes,
+                          group_list:  'GroupList',
+                          window_list: 'WindowList') -> bool:
+    """Process a group message."""
+    group_msg_id = assembled[:GROUP_MSG_ID_LEN]
+    group_packet = assembled[GROUP_MSG_ID_LEN:]
+
+    try:
+        group_name, group_message = [f.decode() for f in group_packet.split(US_BYTE)]
+    except (IndexError, UnicodeError):
+        raise FunctionReturn("Error: Received an invalid group message.")
+
+    if not group_list.has_group(group_name):
+        raise FunctionReturn("Error: Received message to unknown group.", output=False)
+
+    group  = group_list.get_group(group_name)
+    window = window_list.get_window(group_name)
+
+    if not group.has_member(account):
+        raise FunctionReturn("Error: Account is not member of group.", output=False)
+
+    # All copies of group messages user sends to members contain same UNIX timestamp.
+    # This allows RxM to ignore copies of outgoing messages sent by the user.
+    if origin == ORIGIN_USER_HEADER:
+        if window.group_msg_id != group_msg_id:
+            window.group_msg_id = group_msg_id
+            window.add_new(ts, group_message, account, origin, output=True)
+
+    elif origin == ORIGIN_CONTACT_HEADER:
+        window.add_new(ts, group_message, account, origin, output=True)
+
+    return group_list.get_group(group_name).log_messages
+
+
+def process_group_management_message(header:       bytes,
+                                     assembled:    bytes,
+                                     ts:           'datetime',
+                                     account:      str,
+                                     origin:       bytes,
+                                     contact_list: 'ContactList',
+                                     group_list:   'GroupList',
+                                     window_list:  'WindowList') -> None:
+    """Process group management message."""
+    local_win = window_list.get_local_window()
+    nick      = contact_list.get_contact(account).nick
+
+    try:
+        group_name, *members = [f.decode() for f in assembled.split(US_BYTE)]
+    except UnicodeError:
+        raise FunctionReturn("Error: Received group management message had invalid encoding.")
+
+    if origin == ORIGIN_USER_HEADER:
+        raise FunctionReturn("Ignored group management message from user.", output=False)
+
+    account_in_group = group_list.has_group(group_name) and group_list.get_group(group_name).has_member(account)
+
+    def get_members() -> Tuple[List[str], str]:
+        known     = [contact_list.get_contact(m).nick for m in members if     contact_list.has_contact(m)]
+        unknown   = [                               m for m in members if not contact_list.has_contact(m)]
+        just_len  = len(max(known + unknown, key=len))
+        listed_m_ = [f"  * {m.ljust(just_len)}" for m in (known + unknown)]
+        joined_m_ = ", ".join(known + unknown)
+        return listed_m_, joined_m_
+
+    if header == GROUP_MSG_INVITEJOIN_HEADER:
+        lw_msg  = f"{nick} has {'joined' if account_in_group else 'invited you to'} group '{group_name}'"
+        message = [lw_msg]
+        if members:
+            listed_m, joined_m = get_members()
+            message[0]        += " with following members:"
+            message           += listed_m
+            lw_msg            += " with members " + joined_m
+
+        box_print(message, head=1, tail=1)
+        local_win.add_new(ts, lw_msg)
+
+    elif header in [GROUP_MSG_MEMBER_ADD_HEADER, GROUP_MSG_MEMBER_REM_HEADER]:
+        if account_in_group:
+            action  = {GROUP_MSG_MEMBER_ADD_HEADER: "added following member(s) to",
+                       GROUP_MSG_MEMBER_REM_HEADER: "removed following member(s) from"}[header]
+            lw_msg  = f"{nick} has {action} group {group_name}: "
+            message = [lw_msg]
+            if members:
+                listed_m, joined_m = get_members()
+                message           += listed_m
+                lw_msg            += joined_m
+
+                box_print(message, head=1, tail=1)
+                local_win.add_new(ts, lw_msg)
+
+    elif header == GROUP_MSG_EXIT_GROUP_HEADER:
+        if account_in_group:
+            box_print([f"{nick} has left group {group_name}.", '', "Warning",
+                       "Unless you remove the contact from the group, they",
+                       "can still read messages you send to the group."],
+                      head=1, tail=1)
+    else:
+        raise FunctionReturn("Error: Message from contact had an invalid header.")

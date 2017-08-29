@@ -18,427 +18,312 @@ You should have received a copy of the GNU General Public License
 along with TFC. If not, see <http://www.gnu.org/licenses/>.
 """
 
-import base64
-import datetime
+import binascii
 import os
 import shutil
-import time
 import unittest
-import zlib
 
-from src.common.crypto   import encrypt_and_sign, byte_padding, hash_chain
-from src.common.encoding import int_to_bytes, double_to_bytes
-from src.common.misc     import split_byte_string
+from datetime import datetime
+
+from src.common.encoding import int_to_bytes
 from src.common.statics  import *
-from src.rx.messages     import process_message
-from src.rx.windows      import WindowList
-from src.rx.packet       import PacketList
 
-from tests.mock_classes  import ContactList, KeyList, GroupList, Settings, MasterKey
-from tests.utils         import cleanup, TFCTestCase
+from src.rx.messages import process_message
+from src.rx.windows  import WindowList
+from src.rx.packet   import PacketList
+
+from tests.mock_classes import ContactList, KeyList, GroupList, Settings, MasterKey
+from tests.utils        import assembly_packet_creator, cleanup, ignored, TFCTestCase
 
 
 class TestProcessMessage(TFCTestCase):
 
-    @staticmethod
-    def create_message_apct(origin, message, header=None, group_name=None):
-        if not header:
-            if group_name is not None:
-                timestamp = double_to_bytes(time.time() * 1000)
-                header    = GROUP_MESSAGE_HEADER + timestamp + group_name + US_BYTE
-            else:
-                header = PRIVATE_MESSAGE_HEADER
+    def setUp(self):
+        self.msg = ("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean condimentum consectetur purus quis"
+                    " dapibus. Fusce venenatis lacus ut rhoncus faucibus. Cras sollicitudin commodo sapien, sed bibendu"
+                    "m velit maximus in. Aliquam ac metus risus. Sed cursus ornare luctus. Integer aliquet lectus id ma"
+                    "ssa blandit imperdiet. Ut sed massa eget quam facilisis rutrum. Mauris eget luctus nisl. Sed ut el"
+                    "it iaculis, faucibus lacus eget, sodales magna. Nunc sed commodo arcu. In hac habitasse platea dic"
+                    "tumst. Integer luctus aliquam justo, at vestibulum dolor iaculis ac. Etiam laoreet est eget odio r"
+                    "utrum, vel malesuada lorem rhoncus. Cras finibus in neque eu euismod. Nulla facilisi. Nunc nec ali"
+                    "quam quam, quis ullamcorper leo. Nunc egestas lectus eget est porttitor, in iaculis felis sceleris"
+                    "que. In sem elit, fringilla id viverra commodo, sagittis varius purus. Pellentesque rutrum loborti"
+                    "s neque a facilisis. Mauris id tortor placerat, aliquam dolor ac, venenatis arcu.").encode()
 
-        plaintext = header + message
-        payload   = zlib.compress(plaintext, level=9)
-        if len(payload) < 255:
-            padded      = byte_padding(payload)
-            packet_list = [M_S_HEADER + padded]
-        else:
-            msg_key  = os.urandom(32)
-            payload  = encrypt_and_sign(payload, msg_key)
-            payload += msg_key
-            padded   = byte_padding(payload)
-            p_list   = split_byte_string(padded, item_len=255)
+        self.ts              = datetime.now()
+        self.master_key      = MasterKey()
+        self.settings        = Settings(logfile_masking=True)
 
-            packet_list = ([M_L_HEADER + p_list[0]] +
-                           [M_A_HEADER + p for p in p_list[1:-1]] +
-                           [M_E_HEADER + p_list[-1]])
+        self.contact_list    = ContactList(nicks=['Alice', 'Bob', 'Charlie', LOCAL_ID])
+        self.key_list        = KeyList(    nicks=['Alice', 'Bob', 'Charlie', LOCAL_ID])
+        self.group_list      = GroupList( groups=['testgroup'])
+        self.packet_list     = PacketList(contact_list=self.contact_list, settings=self.settings)
+        self.window_list     = WindowList(contact_list=self.contact_list, settings=self.settings, group_list=self.group_list, packet_list=self.packet_list)
+        self.group_list.get_group('testgroup').log_messages = True
+        for account in self.contact_list.get_list_of_accounts():
+            keyset          = self.key_list.get_keyset(account)
+            keyset.tx_harac = 1
+            keyset.rx_harac = 1
+            keyset.tx_hek   = KEY_LENGTH * b'\x01'
+            keyset.rx_hek   = KEY_LENGTH * b'\x01'
+            keyset.tx_key   = KEY_LENGTH * b'\x01'
+            keyset.rx_key   = KEY_LENGTH * b'\x01'
 
-        harac = 1
-        m_key = 32 * b'\x01'
-        apctl = []
-        for p in packet_list:
-            harac_in_bytes    = int_to_bytes(harac)
-            encrypted_harac   = encrypt_and_sign(harac_in_bytes, 32 * b'\x01')
-            encrypted_message = encrypt_and_sign(p, m_key)
-            encrypted_packet  = MESSAGE_PACKET_HEADER + encrypted_harac + encrypted_message + origin + b'alice@jabber.org'
-            apctl.append(encrypted_packet)
-            harac += 1
-            m_key  = hash_chain(m_key)
-        return apctl
+        self.message = b'testgroup' + US_BYTE + b'bob@jabber.org' + US_BYTE + b'charlie@jabber.org'
 
-    @staticmethod
-    def create_file_apct():
-
-        def mock_file_preprocessor(payload):
-            payload = bytes(8) + payload
-            padded  = byte_padding(payload)
-            p_list  = split_byte_string(padded, item_len=255)
-
-            packet_list = ([F_L_HEADER + int_to_bytes(len(p_list)) + p_list[0][8:]] +
-                           [F_A_HEADER + p for p in p_list[1:-1]] +
-                           [F_E_HEADER + p_list[-1]])
-            return packet_list
-
-        file_data  = os.urandom(10000)
-        compressed = zlib.compress(file_data, level=9)
-        file_key   = os.urandom(32)
-        encrypted  = encrypt_and_sign(compressed, key=file_key)
-        encrypted += file_key
-        encoded    = base64.b85encode(encrypted)
-
-        file_data = US_BYTE.join([b'testfile.txt', b'11.0B', b'00d 00h 00m 00s', encoded])
-        packets   = mock_file_preprocessor(file_data)
-
-        harac = 1
-        m_key = 32 * b'\x01'
-        apctl = []
-
-        for p in packets:
-            harac_in_bytes    = int_to_bytes(harac)
-            encrypted_harac   = encrypt_and_sign(harac_in_bytes, 32 * b'\x01')
-            encrypted_message = encrypt_and_sign(p, m_key)
-            encrypted_packet  = MESSAGE_PACKET_HEADER + encrypted_harac + encrypted_message + ORIGIN_CONTACT_HEADER + b'alice@jabber.org'
-            apctl.append(encrypted_packet)
-            harac += 1
-            m_key  = hash_chain(m_key)
-
-        return apctl
-
-    def test_normal_msg(self):
-        # Setup
-        message = ("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean condimentum consectetur purus quis"
-                   " dapibus. Fusce venenatis lacus ut rhoncus faucibus. Cras sollicitudin commodo sapien, sed bibendu"
-                   "m velit maximus in. Aliquam ac metus risus. Sed cursus ornare luctus. Integer aliquet lectus id ma"
-                   "ssa blandit imperdiet. Ut sed massa eget quam facilisis rutrum. Mauris eget luctus nisl. Sed ut el"
-                   "it iaculis, faucibus lacus eget, sodales magna. Nunc sed commodo arcu. In hac habitasse platea dic"
-                   "tumst. Integer luctus aliquam justo, at vestibulum dolor iaculis ac. Etiam laoreet est eget odio r"
-                   "utrum, vel malesuada lorem rhoncus. Cras finibus in neque eu euismod. Nulla facilisi. Nunc nec ali"
-                   "quam quam, quis ullamcorper leo. Nunc egestas lectus eget est porttitor, in iaculis felis sceleris"
-                   "que. In sem elit, fringilla id viverra commodo, sagittis varius purus. Pellentesque rutrum loborti"
-                   "s neque a facilisis. Mauris id tortor placerat, aliquam dolor ac, venenatis arcu.".encode())
-        ts              = datetime.datetime.now()
-        apct_list       = self.create_message_apct(ORIGIN_CONTACT_HEADER, message)
-        contact_list    = ContactList(nicks=['Alice', 'Bob', 'local'])
-        key_list        = KeyList(nicks=['Alice', 'Bob', 'local'])
-        keyset          = key_list.get_keyset('alice@jabber.org')
-        keyset.rx_harac = 1
-        keyset.rx_key   = 32 * b'\x01'
-        keyset.rx_hek   = 32 * b'\x01'
-        group_list      = GroupList(groups=['testgroup'])
-        settings        = Settings()
-        packet_list     = PacketList(contact_list=contact_list, settings=settings)
-        window_list     = WindowList(contact_list=contact_list, group_list=group_list, packet_list=packet_list, settings=settings)
-        master_key      = MasterKey()
-
-        # Test
-        for p in apct_list:
-            self.assertIsNone(process_message(ts, p, window_list, packet_list, contact_list, key_list, group_list, settings, master_key))
-
-        # Teardown
+    def tearDown(self):
         cleanup()
+        with ignored(FileNotFoundError):
+            shutil.rmtree(DIR_RX_FILES)
 
-
-    def test_group_invitation_msg(self):
+    # Private messages
+    def test_private_msg_from_contact(self):
         # Setup
-        message         = b'testgroup' + US_BYTE + b'bob@jabber.org' + US_BYTE + b'charlie@jabber.org'
-        ts              = datetime.datetime.now()
-        apct_list       = self.create_message_apct(ORIGIN_CONTACT_HEADER, message, header=GROUP_MSG_INVITATION_HEADER)
-        contact_list    = ContactList(nicks=['Alice', 'Bob', 'local'])
-        key_list        = KeyList(nicks=['Alice', 'Bob', 'local'])
-        keyset          = key_list.get_keyset('alice@jabber.org')
-        keyset.rx_harac = 1
-        keyset.rx_key   = 32 * b'\x01'
-        keyset.rx_hek   = 32 * b'\x01'
-        group_list      = GroupList(groups=['testgroup'])
-        settings        = Settings()
-        packet_list     = PacketList(contact_list=contact_list, settings=settings)
-        window_list     = WindowList(contact_list=contact_list, group_list=group_list, packet_list=packet_list, settings=settings)
-        master_key      = MasterKey()
+        assembly_ct_list = assembly_packet_creator(MESSAGE, self.msg, ORIGIN_CONTACT_HEADER, encrypt=True)
 
         # Test
-        for p in apct_list:
-            self.assertIsNone(process_message(ts, p, window_list, packet_list, contact_list, key_list, group_list, settings, master_key))
+        for p in assembly_ct_list:
+            self.assertIsNone(process_message(self.ts, p, self.window_list, self.packet_list, self.contact_list,
+                                              self.key_list, self.group_list, self.settings, self.master_key))
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
 
-        # Teardown
-        cleanup()
-
-    def test_group_invitation_msg_from_user(self):
+    def test_private_msg_from_user(self):
         # Setup
-        message         = b'testgroup' + US_BYTE + b'bob@jabber.org' + US_BYTE + b'charlie@jabber.org'
-        ts              = datetime.datetime.now()
-        apct_list       = self.create_message_apct(ORIGIN_USER_HEADER, message, header=GROUP_MSG_INVITATION_HEADER)
-        contact_list    = ContactList(nicks=['Alice', 'Bob', 'local'])
-        key_list        = KeyList(nicks=['Alice', 'Bob', 'local'])
-        keyset          = key_list.get_keyset('alice@jabber.org')
-        keyset.tx_harac = 1
-        keyset.tx_key   = 32 * b'\x01'
-        keyset.tx_hek   = 32 * b'\x01'
-        group_list      = GroupList(groups=['testgroup'])
-        settings        = Settings()
-        packet_list     = PacketList(contact_list=contact_list, settings=settings)
-        window_list     = WindowList(contact_list=contact_list, group_list=group_list, packet_list=packet_list, settings=settings)
-        master_key      = MasterKey()
+        assembly_ct_list = assembly_packet_creator(MESSAGE, self.msg, ORIGIN_USER_HEADER, encrypt=True)
 
         # Test
-        for p in apct_list:
-            self.assertIsNone(process_message(ts, p, window_list, packet_list, contact_list, key_list, group_list, settings, master_key))
+        for p in assembly_ct_list:
+            self.assertIsNone(process_message(self.ts, p, self.window_list, self.packet_list, self.contact_list,
+                                              self.key_list, self.group_list, self.settings, self.master_key))
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), len(assembly_ct_list) * LOG_ENTRY_LENGTH)
 
-        # Teardown
-        cleanup()
-
-    def test_group_add_member_msg(self):
+    # Whispered messages
+    def test_whisper_msg_from_contact(self):
         # Setup
-        message         = b'testgroup' + US_BYTE + b'bob@jabber.org' + US_BYTE + b'charlie@jabber.org'
-        ts              = datetime.datetime.now()
-        apct_list       = self.create_message_apct(ORIGIN_CONTACT_HEADER, message, header=GROUP_MSG_ADD_NOTIFY_HEADER)
-        contact_list    = ContactList(nicks=['Alice', 'Bob', 'local'])
-        key_list        = KeyList(nicks=['Alice', 'Bob', 'local'])
-        keyset          = key_list.get_keyset('alice@jabber.org')
-        keyset.rx_harac = 1
-        keyset.rx_key   = 32 * b'\x01'
-        keyset.rx_hek   = 32 * b'\x01'
-        group_list      = GroupList(groups=['testgroup'])
-        settings        = Settings()
-        packet_list     = PacketList(contact_list=contact_list, settings=settings)
-        window_list     = WindowList(contact_list=contact_list, group_list=group_list, packet_list=packet_list, settings=settings)
-        master_key      = MasterKey()
+        assembly_ct_list = assembly_packet_creator(MESSAGE, self.msg, ORIGIN_CONTACT_HEADER, encrypt=True, header=WHISPER_MESSAGE_HEADER)
 
         # Test
-        for p in apct_list:
-            self.assertIsNone(process_message(ts, p, window_list, packet_list, contact_list, key_list, group_list, settings, master_key))
+        for p in assembly_ct_list[:-1]:
+            self.assertIsNone(process_message(self.ts, p, self.window_list, self.packet_list, self.contact_list,
+                                              self.key_list, self.group_list, self.settings, self.master_key))
 
-        # Teardown
-        cleanup()
+        for p in assembly_ct_list[-1:]:
+            self.assertFR("Key message message complete.",
+                          process_message, self.ts, p, self.window_list, self.packet_list,
+                          self.contact_list, self.key_list, self.group_list, self.settings, self.master_key)
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
 
-    def test_group_remove_member_msg(self):
+    def test_whisper_msg_from_user(self):
         # Setup
-        message         = b'testgroup' + US_BYTE + b'bob@jabber.org' + US_BYTE + b'charlie@jabber.org'
-        ts              = datetime.datetime.now()
-        apct_list       = self.create_message_apct(ORIGIN_CONTACT_HEADER, message, header=GROUP_MSG_MEMBER_RM_HEADER)
-        contact_list    = ContactList(nicks=['Alice', 'Bob', 'local'])
-        key_list        = KeyList(nicks=['Alice', 'Bob', 'local'])
-        keyset          = key_list.get_keyset('alice@jabber.org')
-        keyset.rx_harac = 1
-        keyset.rx_key   = 32 * b'\x01'
-        keyset.rx_hek   = 32 * b'\x01'
-        group_list      = GroupList(groups=['testgroup'])
-        settings        = Settings()
-        packet_list     = PacketList(contact_list=contact_list, settings=settings)
-        window_list     = WindowList(contact_list=contact_list, group_list=group_list, packet_list=packet_list, settings=settings)
-        master_key      = MasterKey()
+        assembly_ct_list = assembly_packet_creator(MESSAGE, self.msg, ORIGIN_USER_HEADER, encrypt=True, header=WHISPER_MESSAGE_HEADER)
 
         # Test
-        for p in apct_list:
-            self.assertIsNone(process_message(ts, p, window_list, packet_list, contact_list, key_list, group_list, settings, master_key))
+        for p in assembly_ct_list[:-1]:
+            self.assertIsNone(process_message(self.ts, p, self.window_list, self.packet_list, self.contact_list,
+                                              self.key_list, self.group_list, self.settings, self.master_key))
 
-        # Teardown
-        cleanup()
+        for p in assembly_ct_list[-1:]:
+            self.assertFR("Key message message complete.",
+                          process_message, self.ts, p, self.window_list, self.packet_list,
+                          self.contact_list, self.key_list, self.group_list, self.settings, self.master_key)
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
 
-    def test_group_exit_msg(self):
+    def test_empty_whisper_msg_from_user(self):
         # Setup
-        message         = b'testgroup'
-        ts              = datetime.datetime.now()
-        apct_list       = self.create_message_apct(ORIGIN_CONTACT_HEADER, message, header=GROUP_MSG_EXIT_GROUP_HEADER)
-        contact_list    = ContactList(nicks=['Alice', 'Bob', 'local'])
-        key_list        = KeyList(nicks=['Alice', 'Bob', 'local'])
-        keyset          = key_list.get_keyset('alice@jabber.org')
-        keyset.rx_harac = 1
-        keyset.rx_key   = 32 * b'\x01'
-        keyset.rx_hek   = 32 * b'\x01'
-        group_list      = GroupList(groups=['testgroup'])
-        settings        = Settings()
-        packet_list     = PacketList(contact_list=contact_list, settings=settings)
-        window_list     = WindowList(contact_list=contact_list, group_list=group_list, packet_list=packet_list, settings=settings)
-        master_key      = MasterKey()
+        assembly_ct_list = assembly_packet_creator(MESSAGE, b' ', ORIGIN_USER_HEADER, encrypt=True, header=WHISPER_MESSAGE_HEADER)
 
         # Test
-        for p in apct_list:
-            self.assertIsNone(process_message(ts, p, window_list, packet_list, contact_list, key_list, group_list, settings, master_key))
+        for p in assembly_ct_list[:-1]:
+            self.assertIsNone(process_message(self.ts, p, self.window_list, self.packet_list, self.contact_list,
+                                              self.key_list, self.group_list, self.settings, self.master_key))
 
-        # Teardown
-        cleanup()
+        for p in assembly_ct_list[-1:]:
+            self.assertFR("Key message message complete.",
+                          process_message, self.ts, p, self.window_list, self.packet_list,
+                          self.contact_list, self.key_list, self.group_list, self.settings, self.master_key)
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
 
-    def test_invalid_header(self):
-        # Setup
-        message         = b'testgroup'
-        ts              = datetime.datetime.now()
-        apct_list       = self.create_message_apct(ORIGIN_CONTACT_HEADER, message, header=b'1')
-        contact_list    = ContactList(nicks=['Alice', 'Bob', 'local'])
-        key_list        = KeyList(nicks=['Alice', 'Bob', 'local'])
-        keyset          = key_list.get_keyset('alice@jabber.org')
-        keyset.rx_harac = 1
-        keyset.rx_key   = 32 * b'\x01'
-        keyset.rx_hek   = 32 * b'\x01'
-        group_list      = GroupList(groups=['testgroup'])
-        settings        = Settings()
-        packet_list     = PacketList(contact_list=contact_list, settings=settings)
-        window_list     = WindowList(contact_list=contact_list, group_list=group_list, packet_list=packet_list, settings=settings)
-        master_key      = MasterKey()
+    # Group messages
+    def test_invalid_encoding_raises_fr(self):
+        encrypted_packet = assembly_packet_creator(MESSAGE, b'test', ORIGIN_CONTACT_HEADER, group_name='testgroup', encrypt=True, break_g_name=True)[0]
 
         # Test
-        for p in apct_list:
-            self.assertFR("Message from had invalid header.", process_message, ts, p, window_list, packet_list, contact_list, key_list, group_list, settings, master_key)
+        self.assertFR("Error: Received an invalid group message.",
+                      process_message, self.ts, encrypted_packet, self.window_list, self.packet_list,
+                      self.contact_list, self.key_list, self.group_list, self.settings, self.master_key)
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), LOG_ENTRY_LENGTH)
 
-        # Teardown
-        cleanup()
-
-    def test_invalid_group_message_header(self):
+    def test_invalid_message_header_raises_fr(self):
         # Setup
-        message         = b'testgroup'
-        ts              = datetime.datetime.now()
-        apct_list       = self.create_message_apct(ORIGIN_CONTACT_HEADER, message, header=GROUP_MESSAGE_HEADER)
-        contact_list    = ContactList(nicks=['Alice', 'Bob', 'local'])
-        key_list        = KeyList(nicks=['Alice', 'Bob', 'local'])
-        keyset          = key_list.get_keyset('alice@jabber.org')
-        keyset.rx_harac = 1
-        keyset.rx_key   = 32 * b'\x01'
-        keyset.rx_hek   = 32 * b'\x01'
-        group_list      = GroupList(groups=['testgroup'])
-        settings        = Settings()
-        packet_list     = PacketList(contact_list=contact_list, settings=settings)
-        window_list     = WindowList(contact_list=contact_list, group_list=group_list, packet_list=packet_list, settings=settings)
-        master_key      = MasterKey()
+        encrypted_packet = assembly_packet_creator(MESSAGE, b'testgroup', ORIGIN_CONTACT_HEADER, header=b'Z', encrypt=True)[0]
 
         # Test
-        for p in apct_list:
-            self.assertFR("Received an invalid group message.", process_message,
-                          ts, p, window_list, packet_list, contact_list, key_list, group_list, settings, master_key)
-
-    def test_invalid_group_timestamp_header_raises_fr(self):
-        # Setup
-        message         = b'testgroup'
-        ts              = datetime.datetime.now()
-        header          = GROUP_MESSAGE_HEADER + US_BYTE
-        apct_list       = self.create_message_apct(ORIGIN_CONTACT_HEADER, message, header=header)
-        contact_list    = ContactList(nicks=['Alice', 'Bob', 'local'])
-        key_list        = KeyList(nicks=['Alice', 'Bob', 'local'])
-        keyset          = key_list.get_keyset('alice@jabber.org')
-        keyset.rx_harac = 1
-        keyset.rx_key   = 32 * b'\x01'
-        keyset.rx_hek   = 32 * b'\x01'
-        group_list      = GroupList(groups=['testgroup'])
-        settings        = Settings()
-        packet_list     = PacketList(contact_list=contact_list, settings=settings)
-        window_list     = WindowList(contact_list=contact_list, group_list=group_list, packet_list=packet_list, settings=settings)
-        master_key      = MasterKey()
-
-        # Test
-        for p in apct_list:
-            self.assertFR("Received an invalid group message.", process_message,
-                          ts, p, window_list, packet_list, contact_list, key_list, group_list, settings, master_key)
-
-        # Teardown
-        cleanup()
+        self.assertFR("Error: Message from contact had an invalid header.",
+                          process_message, self.ts, encrypted_packet, self.window_list, self.packet_list,
+                          self.contact_list, self.key_list, self.group_list, self.settings, self.master_key)
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), LOG_ENTRY_LENGTH)
 
     def test_invalid_window_raises_fr(self):
         # Setup
-        message         = b'testgroup'
-        ts              = datetime.datetime.now()
-        timestamp       = double_to_bytes(time.time() * 1000)
-        header          = GROUP_MESSAGE_HEADER + timestamp + b'test_group' + US_BYTE
-        apct_list       = self.create_message_apct(ORIGIN_CONTACT_HEADER, message, header=header)
-        contact_list    = ContactList(nicks=['Alice', 'Bob', 'local'])
-        key_list        = KeyList(nicks=['Alice', 'Bob', 'local'])
-        keyset          = key_list.get_keyset('alice@jabber.org')
-        keyset.rx_harac = 1
-        keyset.rx_key   = 32 * b'\x01'
-        keyset.rx_hek   = 32 * b'\x01'
-        group_list      = GroupList(groups=['testgroup'])
-        settings        = Settings()
-        packet_list     = PacketList(contact_list=contact_list, settings=settings)
-        window_list     = WindowList(contact_list=contact_list, group_list=group_list, packet_list=packet_list, settings=settings)
-        master_key      = MasterKey()
+        encrypted_packet = assembly_packet_creator(MESSAGE, b'test', ORIGIN_CONTACT_HEADER, group_name='test_group', encrypt=True)[0]
 
         # Test
-        for p in apct_list:
-            self.assertFR("Received message to unknown group.", process_message,
-                          ts, p, window_list, packet_list, contact_list, key_list, group_list, settings, master_key)
+        self.assertFR("Error: Received message to unknown group.",
+                      process_message, self.ts, encrypted_packet, self.window_list, self.packet_list,
+                      self.contact_list, self.key_list, self.group_list, self.settings, self.master_key)
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), LOG_ENTRY_LENGTH)
 
-        # Teardown
-        cleanup()
-
-    def test_normal_msg_from_user(self):
+    def test_contact_not_in_group_raises_fr(self):
         # Setup
-        ts              = datetime.datetime.now()
-        apct_list       = self.create_message_apct(ORIGIN_USER_HEADER, b'testmessage')
-        contact_list    = ContactList(nicks=['Alice', 'Bob', 'local'])
-        key_list        = KeyList(nicks=['Alice', 'Bob', 'local'])
-        keyset          = key_list.get_keyset('alice@jabber.org')
-        keyset.tx_harac = 1
-        keyset.tx_key   = 32 * b'\x01'
-        keyset.tx_hek   = 32 * b'\x01'
-        group_list      = GroupList(groups=['testgroup'])
-        settings        = Settings()
-        packet_list     = PacketList(contact_list=contact_list, settings=settings)
-        window_list     = WindowList(contact_list=contact_list, group_list=group_list, packet_list=packet_list, settings=settings)
-        master_key      = MasterKey()
+        encrypted_packet = assembly_packet_creator(MESSAGE, b'test', ORIGIN_CONTACT_HEADER, group_name='testgroup', encrypt=True, origin_acco=b'charlie@jabber.org')[0]
 
         # Test
-        for p in apct_list:
-            self.assertIsNone(process_message(ts, p, window_list, packet_list, contact_list, key_list, group_list, settings, master_key))
+        self.assertFR("Error: Account is not member of group.",
+                      process_message, self.ts, encrypted_packet, self.window_list, self.packet_list,
+                      self.contact_list, self.key_list, self.group_list, self.settings, self.master_key)
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), LOG_ENTRY_LENGTH)
 
-        # Teardown
-        cleanup()
-
-    def test_group_msg(self):
+    def test_normal_group_msg_from_contact(self):
         # Setup
-        ts                 = datetime.datetime.now()
-        apct_list          = self.create_message_apct(ORIGIN_CONTACT_HEADER, b'testmessage', group_name=b'testgroup')
-        contact_list       = ContactList(nicks=['Alice', 'Bob', 'local'])
-        key_list           = KeyList(nicks=['Alice', 'Bob', 'local'])
-        keyset             = key_list.get_keyset('alice@jabber.org')
-        keyset.rx_harac    = 1
-        keyset.rx_key      = 32 * b'\x01'
-        keyset.rx_hek      = 32 * b'\x01'
-        group_list         = GroupList(groups=['testgroup'])
-        group              = group_list.get_group('testgroup')
-        group.log_messages = True
-        settings           = Settings()
-        packet_list        = PacketList(contact_list=contact_list, settings=settings)
-        window_list        = WindowList(contact_list=contact_list, group_list=group_list, packet_list=packet_list, settings=settings)
-        master_key         = MasterKey()
+        assembly_ct_list = assembly_packet_creator(MESSAGE, self.msg, ORIGIN_CONTACT_HEADER, group_name='testgroup', encrypt=True)
+
+        for p in assembly_ct_list:
+            self.assertIsNone(process_message(self.ts, p, self.window_list, self.packet_list, self.contact_list,
+                                              self.key_list, self.group_list, self.settings, self.master_key))
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
+
+    def test_normal_group_msg_from_user(self):
+        # Setup
+        assembly_ct_list = assembly_packet_creator(MESSAGE, self.msg, ORIGIN_USER_HEADER, group_name='testgroup', encrypt=True)
+
+        for p in assembly_ct_list:
+            self.assertIsNone(process_message(self.ts, p, self.window_list, self.packet_list, self.contact_list,
+                                              self.key_list, self.group_list, self.settings, self.master_key))
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
+
+    # Group management messages
+    def test_group_invitation_msg_from_contact(self):
+        # Setup
+        assembly_ct_list = assembly_packet_creator(MESSAGE, self.message, ORIGIN_CONTACT_HEADER,
+                                                   header=GROUP_MSG_INVITEJOIN_HEADER, encrypt=True)
 
         # Test
-        for p in apct_list:
-            self.assertIsNone(process_message(ts, p, window_list, packet_list, contact_list, key_list, group_list, settings, master_key))
+        for p in assembly_ct_list[:-1]:
+            self.assertIsNone(process_message(self.ts, p, self.window_list, self.packet_list, self.contact_list,
+                                              self.key_list, self.group_list, self.settings, self.master_key))
 
-        # Teardown
-        cleanup()
+        for p in assembly_ct_list[-1:]:
+            self.assertFR("Group management message complete.",
+                          process_message, self.ts, p, self.window_list, self.packet_list,
+                          self.contact_list, self.key_list, self.group_list, self.settings, self.master_key)
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
 
+    def test_group_invitation_msg_from_user(self):
+        # Setup
+        assembly_ct_list = assembly_packet_creator(MESSAGE, self.message, ORIGIN_USER_HEADER,
+                                                   header=GROUP_MSG_INVITEJOIN_HEADER, encrypt=True)
+
+        # Test
+        for p in assembly_ct_list[:-1]:
+            self.assertIsNone(process_message(self.ts, p, self.window_list, self.packet_list, self.contact_list,
+                                              self.key_list, self.group_list, self.settings, self.master_key))
+
+        for p in assembly_ct_list[-1:]:
+            self.assertFR("Ignored group management message from user.",
+                          process_message, self.ts, p, self.window_list, self.packet_list,
+                          self.contact_list, self.key_list, self.group_list, self.settings, self.master_key)
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
+
+    def test_group_add_member_msg_from_contact(self):
+        # Setup
+        assembly_ct_list = assembly_packet_creator(MESSAGE, self.message, ORIGIN_CONTACT_HEADER,
+                                                   header=GROUP_MSG_MEMBER_ADD_HEADER, encrypt=True)
+
+        # Test
+        for p in assembly_ct_list[:-1]:
+            self.assertIsNone(process_message(self.ts, p, self.window_list, self.packet_list, self.contact_list,
+                                              self.key_list, self.group_list, self.settings, self.master_key))
+
+        for p in assembly_ct_list[-1:]:
+            self.assertFR("Group management message complete.",
+                          process_message, self.ts, p, self.window_list, self.packet_list,
+                          self.contact_list, self.key_list, self.group_list, self.settings, self.master_key)
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
+
+    def test_group_remove_member_msg_from_contact(self):
+        # Setup
+        assembly_ct_list = assembly_packet_creator(MESSAGE, self.message, ORIGIN_CONTACT_HEADER,
+                                                   header=GROUP_MSG_MEMBER_REM_HEADER, encrypt=True)
+
+        # Test
+        for p in assembly_ct_list[:-1]:
+            self.assertIsNone(process_message(self.ts, p, self.window_list, self.packet_list, self.contact_list,
+                                              self.key_list, self.group_list, self.settings, self.master_key))
+
+        for p in assembly_ct_list[-1:]:
+            self.assertFR("Group management message complete.",
+                          process_message, self.ts, p, self.window_list, self.packet_list,
+                          self.contact_list, self.key_list, self.group_list, self.settings, self.master_key)
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
+
+    def test_group_exit_msg_from_contact(self):
+        # Setup
+        assembly_ct_list = assembly_packet_creator(MESSAGE, b'testgroup', ORIGIN_CONTACT_HEADER,
+                                                   header=GROUP_MSG_EXIT_GROUP_HEADER, encrypt=True)
+
+        # Test
+        for p in assembly_ct_list[:-1]:
+            self.assertIsNone(process_message(self.ts, p, self.window_list, self.packet_list, self.contact_list,
+                                              self.key_list, self.group_list, self.settings, self.master_key))
+
+        for p in assembly_ct_list[-1:]:
+            self.assertFR("Group management message complete.",
+                          process_message, self.ts, p, self.window_list, self.packet_list,
+                          self.contact_list, self.key_list, self.group_list, self.settings, self.master_key)
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
+
+    def test_invalid_encoding_in_group_management_message_raises_fr_but_is_logged(self):
+        # Setup
+        message          = b'testgroup' + US_BYTE + b'bob@jabber.org' + US_BYTE + binascii.unhexlify('a466c02c221cb135')
+        encrypted_packet = assembly_packet_creator(MESSAGE, message, ORIGIN_CONTACT_HEADER, header=GROUP_MSG_INVITEJOIN_HEADER, encrypt=True)[0]
+
+        self.settings.logfile_masking = True
+        self.contact_list.get_contact('bob@jabber.org').log_messages = True
+
+        # Test
+        self.assertFR("Error: Received group management message had invalid encoding.",
+                      process_message, self.ts, encrypted_packet, self.window_list, self.packet_list,
+                      self.contact_list, self.key_list, self.group_list, self.settings, self.master_key)
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), LOG_ENTRY_LENGTH)
+
+    # Files
     def test_file(self):
         # Setup
-        ts              = datetime.datetime.now()
-        apct_list       = self.create_file_apct()
-        contact_list    = ContactList(nicks=['Alice', 'Bob', 'local'])
-        key_list        = KeyList(nicks=['Alice', 'Bob', 'local'])
-        keyset          = key_list.get_keyset('alice@jabber.org')
-        keyset.rx_harac = 1
-        keyset.rx_key   = 32 * b'\x01'
-        keyset.rx_hek   = 32 * b'\x01'
-        group_list      = GroupList(groups=['testgroup'])
-        settings        = Settings()
-        packet_list     = PacketList(contact_list=contact_list, settings=settings)
-        window_list     = WindowList(contact_list=contact_list, group_list=group_list, packet_list=packet_list, settings=settings)
-        master_key      = MasterKey()
+        assembly_ct_list = assembly_packet_creator(FILE, origin=ORIGIN_CONTACT_HEADER, encrypt=True)
 
         # Test
-        for p in apct_list:
-            self.assertIsNone(process_message(ts, p, window_list, packet_list, contact_list, key_list, group_list, settings, master_key))
+        for p in assembly_ct_list[:-1]:
+            self.assertIsNone(process_message(self.ts, p, self.window_list, self.packet_list, self.contact_list,
+                                              self.key_list, self.group_list, self.settings, self.master_key))
 
-        # Teardown
-        shutil.rmtree('received_files/')
+        for p in assembly_ct_list[-1:]:
+            self.assertFR("File storage complete.",
+                          process_message, self.ts, p, self.window_list, self.packet_list,
+                          self.contact_list, self.key_list, self.group_list, self.settings, self.master_key)
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
+
+    def test_file_file_reception_is_disabled(self):
+        # Setup
+        payload          = int_to_bytes(1) + int_to_bytes(2) + b'testfile.txt' + US_BYTE + os.urandom(50)
+        encrypted_packet = assembly_packet_creator(FILE, payload=payload, origin=ORIGIN_CONTACT_HEADER, encrypt=True)[0]
+
+        self.contact_list.get_contact('alice@jabber.org').file_reception = False
+
+        # Test
+        self.assertFR("Alert! File transmission from Alice but reception is disabled.",
+                      process_message, self.ts, encrypted_packet, self.window_list, self.packet_list,
+                      self.contact_list, self.key_list, self.group_list, self.settings, self.master_key)
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_logs'), LOG_ENTRY_LENGTH)
 
 
 if __name__ == '__main__':

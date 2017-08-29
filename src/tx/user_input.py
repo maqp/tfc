@@ -20,77 +20,73 @@ along with TFC. If not, see <http://www.gnu.org/licenses/>.
 
 import typing
 
-from src.common.output import print_on_previous_line
+from src.common.output  import print_on_previous_line
+from src.common.statics import *
 
 if typing.TYPE_CHECKING:
     from src.common.db_settings import Settings
-    from src.tx.windows         import Window
+    from src.tx.windows         import TxWindow
+
+
+def process_aliases(plaintext: str, settings: 'Settings', window: 'TxWindow') -> str:
+    """Check if plaintext is an alias for another command."""
+    aliases = [(' ',  '/unread'                                           ),
+               ('  ', '/exit' if settings.double_space_exits else '/clear'),
+               ('//', '/cmd'                                              )]
+
+    for a in aliases:
+        if plaintext == a[0]:
+            plaintext = a[1]
+            print_on_previous_line()
+            print(f"Msg to {window.type_print} {window.name}: {plaintext}")
+            break
+
+    return plaintext
+
+
+def get_input(window: 'TxWindow', settings: 'Settings') -> 'UserInput':
+    """Read and process input from user."""
+    while True:
+        try:
+            plaintext = input(f"Msg to {window.type_print} {window.name}: ")
+            if plaintext in ['', '/']:
+                raise EOFError
+        except (EOFError, KeyboardInterrupt):
+            print('')
+            print_on_previous_line()
+            continue
+
+        plaintext = process_aliases(plaintext, settings, window)
+
+        # Determine plaintext type
+        pt_type = MESSAGE
+        if plaintext == '/file':
+            pt_type = FILE
+        elif plaintext.startswith('/'):
+            plaintext = plaintext[1:]
+            pt_type   = COMMAND
+
+        # Check if group was empty
+        if pt_type in [MESSAGE, FILE] and window.type == WIN_TYPE_GROUP and not window.group.has_members():
+            print_on_previous_line()
+            print(f"Msg to {window.type_print} {window.name}: Error: Group is empty.")
+            print_on_previous_line(delay=0.5)
+            continue
+
+        return UserInput(plaintext, pt_type)
 
 
 class UserInput(object):
     """UserInput objects are messages, files or commands.
 
-    The type of created object is determined based on input by user. Commands
-    start with slash, but as files are a special case of command, commands
-    starting with /file are interpreted as file type. The type allows tx_loop
-    to determine what function should process the user input.
+    The type of created UserInput object is determined based on input
+    by user. Commands start with slash, but as files are a special case
+    of command, /file commands are interpreted as file type. The 'type'
+    attribute allows tx_loop to determine what function should process
+    the user input.
     """
 
-    def __init__(self,
-                 window:   'Window',
-                 settings: 'Settings') -> None:
+    def __init__(self, plaintext: str, type_: str) -> None:
         """Create a new UserInput object."""
-        self.window    = window
-        self.settings  = settings
-        self.w_type    = 'group ' if window.type == 'group' else ''
-        self.plaintext = self.get_input()
-        self.process_aliases()
-        self.type      = self.detect_input_type()
-        self.check_empty_group()
-
-    def get_input(self) -> str:
-        """Get message/command from user."""
-        try:
-            plaintext = input(f"Msg to {self.w_type}{self.window.name}: ")
-
-            # Ignore empty inputs
-            if plaintext in ['', '/']:
-                print_on_previous_line()
-                return self.get_input()
-
-            return plaintext
-
-        except (KeyboardInterrupt, EOFError):
-            print('')
-            print_on_previous_line()
-            return self.get_input()
-
-    def process_aliases(self) -> None:
-        """Check if input was an alias for existing command."""
-        aliases = [(' ',  '/unread'),
-                   ('  ', '/exit' if self.settings.double_space_exits else '/clear'),
-                   ('//', '/cmd')]
-
-        for a in aliases:
-            if self.plaintext == a[0]:
-                self.plaintext = a[1]
-                print_on_previous_line()
-                print(f"Msg to {self.w_type}{self.window.name}: {self.plaintext}")
-
-    def detect_input_type(self) -> str:
-        """Detect type of input to process."""
-        if self.plaintext == '/file':
-            return 'file'
-        elif self.plaintext.startswith('/'):
-            self.plaintext = self.plaintext[1:]
-            return 'command'
-        else:
-            return 'message'
-
-    def check_empty_group(self) -> None:
-        """Notify the user if group was empty."""
-        if self.type == 'message' and self.window.type == 'group' and len(self.window.window_contacts) == 0:
-            print_on_previous_line()
-            print(f"Msg to {self.w_type}{self.window.name}: Error: Group is empty.")
-            print_on_previous_line(delay=0.5)
-            self.__init__(self.window, self.settings)
+        self.plaintext = plaintext
+        self.type      = type_

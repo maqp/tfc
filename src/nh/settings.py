@@ -19,39 +19,16 @@ along with TFC. If not, see <http://www.gnu.org/licenses/>.
 """
 
 import os.path
-import struct
 
-from typing import Union
-
-from src.common.misc    import ensure_dir
-from src.common.statics import *
-from src.nh.misc        import yes
-
-
-def bool_to_bytes(boolean: bool) -> bytes:
-    """Convert boolean value to 1-byte byte string."""
-    return bytes([boolean])
-
-
-def int_to_bytes(integer: int) -> bytes:
-    """Convert integer to 8-byte byte string."""
-    return struct.pack('!Q', integer)
-
-
-def bytes_to_bool(byte_string: Union[bytes, int]) -> bool:
-    """Convert 1-byte byte string to boolean value."""
-    if isinstance(byte_string, bytes):
-        byte_string = byte_string[0]
-    return bool(byte_string)
-
-
-def bytes_to_int(byte_string: bytes) -> int:
-    """Convert 8-byte byte string to integer."""
-    return struct.unpack('!Q', byte_string)[0]
+from src.common.encoding import bool_to_bytes, int_to_bytes
+from src.common.encoding import bytes_to_bool, bytes_to_int
+from src.common.input    import yes
+from src.common.misc     import calculate_race_condition_delay, calculate_serial_delays, ensure_dir
+from src.common.statics  import *
 
 
 class Settings(object):
-    """Settings object stores NH side persistent settings
+    """Settings object stores NH side persistent settings.
 
     NH-side settings are not encrypted because NH is assumed to be in
     control of the adversary. Encryption would require password and
@@ -60,47 +37,57 @@ class Settings(object):
     physically compromise the endpoint.
     """
 
-    def __init__(self, local_testing: bool, dd_sockets: bool, operation='nh') -> None:
+    def __init__(self, local_testing: bool, dd_sockets: bool, operation=NH) -> None:
+        # Fixed settings
+        self.relay_to_im_client      = True   # False stops forwarding messages to IM client
+
+        # Controllable settings
+        self.serial_usb_adapter      = True   # False uses system's integrated serial interface
+        self.disable_gui_dialog      = False  # True replaces Tkinter dialogs with CLI prompts
+        self.serial_baudrate         = 19200  # The speed of serial interface in bauds per second
+        self.serial_error_correction = 5      # Number of byte errors serial datagrams can recover from
+
+        self.software_operation = operation
+        self.file_name          = '{}{}_settings'.format(DIR_USER_DATA, operation)
 
         # Settings from launcher / CLI arguments
         self.local_testing_mode = local_testing
         self.data_diode_sockets = dd_sockets
 
-        self.t_fmt = "%m-%d / %H:%M:%S"  # Timestamp format of displayed messages
-        self.disable_gui_dialog = False  # When True, only uses CLI prompts for RxM file imports
-        self.relay_to_im_client = True   # False stops sending messages to IM client
-        self.serial_usb_adapter = True   # Number of USB-to-serial adapters used (0, 1 or 2)
-        self.serial_iface_speed = 19200  # The speed of serial interface in bauds per sec
-        self.e_correction_ratio = 5      # N/o byte errors serial datagrams can recover from
-
-        self.software_operation = operation
-        self.file_name          = '{}/{}_settings'.format(DIR_USER_DATA, operation)
-
+        ensure_dir(DIR_USER_DATA)
         if os.path.isfile(self.file_name):
             self.load_settings()
         else:
             self.setup()
             self.store_settings()
-        self.session_ec_ratio = self.e_correction_ratio
-        self.session_if_speed = self.serial_iface_speed
 
-    def load_settings(self) -> None:
-        """Load persistent settings from file."""
-        ensure_dir('{}/'.format(DIR_USER_DATA))
-        settings = open(self.file_name, 'rb').read()
-        self.serial_iface_speed = bytes_to_int(settings[0:8])
-        self.e_correction_ratio = bytes_to_int(settings[8:16])
-        self.serial_usb_adapter = bytes_to_bool(settings[16:17])
-        self.disable_gui_dialog = bytes_to_bool(settings[17:18])
+        # Following settings change only when program is restarted
+        self.session_serial_error_correction = self.serial_error_correction
+        self.session_serial_baudrate         = self.serial_baudrate
+        self.race_condition_delay            = calculate_race_condition_delay(self)
+
+        self.receive_timeout, self.transmit_delay = calculate_serial_delays(self.session_serial_baudrate)
 
     def store_settings(self) -> None:
         """Store persistent settings to file."""
-        setting_data  = int_to_bytes(self.serial_iface_speed)
-        setting_data += int_to_bytes(self.e_correction_ratio)
+        setting_data  = int_to_bytes(self.serial_baudrate)
+        setting_data += int_to_bytes(self.serial_error_correction)
         setting_data += bool_to_bytes(self.serial_usb_adapter)
         setting_data += bool_to_bytes(self.disable_gui_dialog)
-        ensure_dir('{}/'.format(DIR_USER_DATA))
-        open(self.file_name, 'wb+').write(setting_data)
+
+        ensure_dir(DIR_USER_DATA)
+        with open(self.file_name, 'wb+') as f:
+            f.write(setting_data)
+
+    def load_settings(self) -> None:
+        """Load persistent settings from file."""
+        with open(self.file_name, 'rb') as f:
+            settings = f.read()
+
+        self.serial_baudrate         = bytes_to_int(settings[0:8])
+        self.serial_error_correction = bytes_to_int(settings[8:16])
+        self.serial_usb_adapter      = bytes_to_bool(settings[16:17])
+        self.disable_gui_dialog      = bytes_to_bool(settings[17:18])
 
     def setup(self) -> None:
         """Prompt user to enter initial settings."""

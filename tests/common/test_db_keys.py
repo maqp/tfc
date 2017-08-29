@@ -18,10 +18,10 @@ You should have received a copy of the GNU General Public License
 along with TFC. If not, see <http://www.gnu.org/licenses/>.
 """
 
-import binascii
 import os.path
 import unittest
 
+from src.common.crypto  import hash_chain
 from src.common.db_keys import KeyList, KeySet
 from src.common.statics import *
 
@@ -31,93 +31,120 @@ from tests.utils        import cleanup
 
 class TestKeySet(unittest.TestCase):
 
-    def test_class(self):
-        # Setup
-        m_sk   = lambda: None
-        keyset = KeySet('alice@jabber.org',
-                        32 * b'\x00',
-                        32 * b'\x00',
-                        32 * b'\x00',
-                        32 * b'\x00',
-                        0, 0, m_sk)
+    def setUp(self):
+        self.keyset = KeySet('alice@jabber.org',
+                             KEY_LENGTH * b'\x00',
+                             KEY_LENGTH * b'\x00',
+                             KEY_LENGTH * b'\x00',
+                             KEY_LENGTH * b'\x00',
+                             0, 0, lambda: None)
 
-        # Test
-        bytestring = keyset.dump_k()
-        self.assertEqual(len(bytestring), 1024 + 4 * 32 + 8 + 8)
-        self.assertIsInstance(bytestring, bytes)
-        self.assertIsNone(keyset.rotate_tx_key())
-        self.assertEqual(keyset.tx_key, binascii.unhexlify("8d8c36497eb93a6355112e253f705a32"
-                                                           "85f3e2d82b9ac29461cd8d4f764e5d41"))
-        self.assertEqual(keyset.tx_harac, 1)
+    def test_keyset_serialization_length_and_type(self):
+        serialized = self.keyset.serialize_k()
+        self.assertEqual(len(serialized), KEYSET_LENGTH)
+        self.assertIsInstance(serialized, bytes)
 
-        keyset.tx_key = 32 * b'\x00'
+    def test_rotate_tx_key(self):
+        self.assertIsNone(self.keyset.rotate_tx_key())
+        self.assertEqual(self.keyset.tx_key, hash_chain(KEY_LENGTH * b'\x00'))
+        self.assertEqual(self.keyset.tx_harac, 1)
 
-        keyset.update_key('tx', 32 * b'\x01', 2)
-        self.assertEqual(keyset.tx_key, 32 * b'\x01')
-        self.assertEqual(keyset.rx_key, 32 * b'\x00')
-        self.assertEqual(keyset.tx_hek, 32 * b'\x00')
-        self.assertEqual(keyset.rx_hek, 32 * b'\x00')
-        self.assertEqual(keyset.tx_harac, 3)
+    def test_update_tx_key(self):
+        self.keyset.update_key(TX,           KEY_LENGTH * b'\x01', 2)
+        self.assertEqual(self.keyset.tx_key, KEY_LENGTH * b'\x01')
+        self.assertEqual(self.keyset.rx_key, KEY_LENGTH * b'\x00')
+        self.assertEqual(self.keyset.tx_hek, KEY_LENGTH * b'\x00')
+        self.assertEqual(self.keyset.rx_hek, KEY_LENGTH * b'\x00')
+        self.assertEqual(self.keyset.tx_harac, 2)
 
-        keyset.update_key('rx', 32 * b'\x01', 2)
-        self.assertEqual(keyset.tx_key, 32 * b'\x01')
-        self.assertEqual(keyset.rx_key, 32 * b'\x01')
-        self.assertEqual(keyset.tx_hek, 32 * b'\x00')
-        self.assertEqual(keyset.rx_hek, 32 * b'\x00')
-        self.assertEqual(keyset.rx_harac, 2)
+    def test_update_rx_key(self):
+        self.keyset.update_key(RX,           KEY_LENGTH * b'\x01', 2)
+        self.assertEqual(self.keyset.tx_key, KEY_LENGTH * b'\x00')
+        self.assertEqual(self.keyset.rx_key, KEY_LENGTH * b'\x01')
+        self.assertEqual(self.keyset.tx_hek, KEY_LENGTH * b'\x00')
+        self.assertEqual(self.keyset.rx_hek, KEY_LENGTH * b'\x00')
+        self.assertEqual(self.keyset.rx_harac, 2)
+
+    def test_invalid_direction_raises_critical_error(self):
+        with self.assertRaises(SystemExit):
+            self.keyset.update_key('sx', KEY_LENGTH * b'\x01', 2)
 
 
 class TestKeyList(unittest.TestCase):
 
-    def test_class(self):
-        # Setup
-        masterkey       = MasterKey()
-        settings        = Settings()
-        keylist         = KeyList(masterkey, settings)
-        keylist.keysets = [create_keyset(n, store_f=keylist.store_keys) for n in ['Alice', 'Bob', 'Charlie']]
+    def setUp(self):
+        self.master_key      = MasterKey()
+        self.settings        = Settings()
+        self.keylist         = KeyList(MasterKey(), Settings())
+        self.keylist.keysets = [create_keyset(n, store_f=self.keylist.store_keys) for n in ['Alice', 'Bob', 'Charlie']]
+        self.keylist.store_keys()
 
-        keylist.store_keys()
+    def tearDown(self):
+        cleanup()
 
-        # Test
-        self.assertTrue(os.path.isfile(f'{DIR_USER_DATA}/ut_keys'))
-        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}/ut_keys'), 24 + 20 * (1024 + 4*32 + 2*8) + 16)
+    def test_storing_and_loading_of_keysets(self):
+        # Test Store
+        self.assertTrue(os.path.isfile(f'{DIR_USER_DATA}ut_keys'))
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_keys'),
+                         XSALSA20_NONCE_LEN
+                         + self.settings.max_number_of_contacts * KEYSET_LENGTH
+                         + POLY1305_TAG_LEN)
 
-        keylist2 = KeyList(masterkey, settings)
-
-        for k in keylist2.keysets:
-            self.assertIsInstance(k, KeySet)
-
+        # Test load
+        keylist2 = KeyList(MasterKey(), Settings())
         self.assertEqual(len(keylist2.keysets), 3)
 
-        bytestring = keylist2.generate_dummy_keyset()
-        self.assertEqual(len(bytestring), 1024 + 4 * 32 + 8 + 8)
-        self.assertIsInstance(bytestring, bytes)
+    def test_change_master_key(self):
+        key        = KEY_LENGTH * b'\x01'
+        masterkey2 = MasterKey(master_key=key)
+        self.keylist.change_master_key(masterkey2)
+        self.assertEqual(self.keylist.master_key.master_key, key)
 
-        keyset = keylist2.get_keyset('alice@jabber.org')
+    def test_generate_dummy_keyset(self):
+        dummy_keyset = self.keylist.generate_dummy_keyset()
+        self.assertEqual(len(dummy_keyset.serialize_k()), KEYSET_LENGTH)
+        self.assertIsInstance(dummy_keyset, KeySet)
+
+    def test_get_keyset(self):
+        keyset = self.keylist.get_keyset('alice@jabber.org')
         self.assertIsInstance(keyset, KeySet)
 
-        self.assertFalse(keylist2.has_local_key())
-        self.assertIsNone(keylist2.manage('ADD', 'local', bytes(32), bytes(32), bytes(32), bytes(32)))
-        self.assertTrue(keylist2.has_local_key())
+    def test_has_local_key_and_add_keyset(self):
+        self.assertFalse(self.keylist.has_local_key())
+        self.assertIsNone(self.keylist.add_keyset(LOCAL_ID,
+                                                  bytes(KEY_LENGTH), bytes(KEY_LENGTH),
+                                                  bytes(KEY_LENGTH), bytes(KEY_LENGTH)))
+        self.assertIsNone(self.keylist.add_keyset(LOCAL_ID,
+                                                  bytes(KEY_LENGTH), bytes(KEY_LENGTH),
+                                                  bytes(KEY_LENGTH), bytes(KEY_LENGTH)))
+        self.assertTrue(self.keylist.has_local_key())
 
-        self.assertTrue(keylist2.has_keyset('bob@jabber.org'))
-        self.assertIsNone(keylist2.manage('REM', 'bob@jabber.org'))
-        self.assertFalse(keylist2.has_keyset('bob@jabber.org'))
+    def test_has_keyset_and_remove_keyset(self):
+        self.assertTrue(self.keylist.has_keyset('bob@jabber.org'))
+        self.assertIsNone(self.keylist.remove_keyset('bob@jabber.org'))
+        self.assertFalse(self.keylist.has_keyset('bob@jabber.org'))
 
-        keylist2.get_keyset('charlie@jabber.org').tx_harac = 1
-        self.assertIsNone(keylist2.manage('ADD', 'charlie@jabber.org', bytes(32), bytes(32), bytes(32), bytes(32)))
-        self.assertEqual(keylist2.get_keyset('charlie@jabber.org').tx_harac, 0)
+    def test_has_rx_key(self):
+        self.assertTrue(self.keylist.has_rx_key('bob@jabber.org'))
+        self.keylist.get_keyset('bob@jabber.org').rx_key = bytes(KEY_LENGTH)
+        self.keylist.get_keyset('bob@jabber.org').rx_hek = bytes(KEY_LENGTH)
+        self.assertFalse(self.keylist.has_rx_key('bob@jabber.org'))
 
-        masterkey2            = MasterKey()
-        masterkey2.master_key = 32 * b'\x01'
-        keylist2.manage('KEY', masterkey2)
-        self.assertEqual(keylist2.master_key.master_key, 32 * b'\x01')
+    def test_manage_keylist(self):
+        self.assertFalse(self.keylist.has_keyset('david@jabber.org'))
+        self.assertIsNone(self.keylist.manage(KDB_ADD_ENTRY_HEADER, 'david@jabber.org',
+                                              bytes(KEY_LENGTH), bytes(KEY_LENGTH),
+                                              bytes(KEY_LENGTH), bytes(KEY_LENGTH)))
+        self.assertTrue(self.keylist.has_keyset('david@jabber.org'))
+
+        self.assertIsNone(self.keylist.manage(KDB_REMOVE_ENTRY_HEADER, 'david@jabber.org'))
+        self.assertFalse(self.keylist.has_keyset('david@jabber.org'))
+
+        self.assertIsNone(self.keylist.manage(KDB_CHANGE_MASTER_KEY_HEADER, MasterKey(master_key=KEY_LENGTH * b'\x01')))
+        self.assertEqual(self.keylist.master_key.master_key, KEY_LENGTH * b'\x01')
 
         with self.assertRaises(SystemExit):
-            keylist2.manage('invalid_key', masterkey2)
-
-        # Teardown
-        cleanup()
+            self.keylist.manage('invalid_key', None)
 
 
 if __name__ == '__main__':

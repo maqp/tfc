@@ -21,22 +21,24 @@ along with TFC. If not, see <http://www.gnu.org/licenses/>.
 import os
 import typing
 
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
-from src.common.db_logs   import access_history, re_encrypt
-from src.common.encoding  import bytes_to_int
-from src.common.errors    import FunctionReturn, graceful_exit
-from src.common.misc      import clear_screen, ensure_dir, validate_nick
-from src.common.output    import box_print, phase, print_on_previous_line
-from src.common.statics   import *
+from src.common.db_logs    import access_logs, re_encrypt, remove_logs
+from src.common.encoding   import bytes_to_int
+from src.common.exceptions import FunctionReturn
+from src.common.misc       import ensure_dir
+from src.common.output     import box_print, clear_screen, phase, print_on_previous_line
+from src.common.statics    import *
+
 from src.rx.commands_g    import group_add_member, group_create, group_rm_member, remove_group
-from src.rx.key_exchanges import ecdhe_command, local_key_installed, psk_command, psk_import
+from src.rx.key_exchanges import add_psk_tx_keys, add_x25519_keys, import_psk_rx_keys, local_key_installed
 from src.rx.packet        import decrypt_assembly_packet
 
 if typing.TYPE_CHECKING:
     from datetime                import datetime
-    from src.common.db_contacts  import ContactList
-    from src.common.db_groups    import GroupList
+    from multiprocessing         import Queue
+    from src.common.db_contacts  import Contact, ContactList
+    from src.common.db_groups    import Group, GroupList
     from src.common.db_keys      import KeyList
     from src.common.db_masterkey import MasterKey
     from src.common.db_settings  import Settings
@@ -44,62 +46,62 @@ if typing.TYPE_CHECKING:
     from src.rx.windows          import WindowList
 
 
-def process_command(ts:                 'datetime',
-                    assembly_packet_ct: bytes,
-                    window_list:        'WindowList',
-                    packet_list:        'PacketList',
-                    contact_list:       'ContactList',
-                    key_list:           'KeyList',
-                    group_list:         'GroupList',
-                    settings:           'Settings',
-                    master_key:         'MasterKey',
-                    pubkey_buf:         Dict[str, str]) -> None:
+def process_command(ts:           'datetime',
+                    assembly_ct:  bytes,
+                    window_list:  'WindowList',
+                    packet_list:  'PacketList',
+                    contact_list: 'ContactList',
+                    key_list:     'KeyList',
+                    group_list:   'GroupList',
+                    settings:     'Settings',
+                    master_key:   'MasterKey',
+                    pubkey_buf:   Dict[str, bytes],
+                    exit_queue:   'Queue') -> None:
     """Decrypt command assembly packet and process command."""
+    assembly_packet, account, origin = decrypt_assembly_packet(assembly_ct, window_list, contact_list, key_list)
 
-    assembly_packet, account, origin = decrypt_assembly_packet(assembly_packet_ct,
-                                                               window_list,
-                                                               contact_list,
-                                                               key_list)
-
-    cmd_packet = packet_list.get_packet(account, origin, 'command')
+    cmd_packet = packet_list.get_packet(account, origin, COMMAND)
     cmd_packet.add_packet(assembly_packet)
 
     if not cmd_packet.is_complete:
-        return None
+        raise FunctionReturn("Incomplete command.", output=False)
 
     command  = cmd_packet.assemble_command_packet()
     header   = command[:2]
     cmd_data = command[2:]
 
-    #             Keyword                       Function to run     (                                     Parameters                                    )
-    #             ---------------------------------------------------------------------------------------------------------------------------------------
-    function_d = {LOCAL_KEY_INSTALLED_HEADER:  (local_key_installed,           ts, window_list, contact_list                                            ),
-                  SHOW_WINDOW_ACTIVITY_HEADER: (show_win_activity,                 window_list                                                          ),
-                  WINDOW_CHANGE_HEADER:        (select_win_cmd,      cmd_data,     window_list                                                          ),
-                  CLEAR_SCREEN_HEADER:         (clear_active_window,                                                                                    ),
-                  RESET_SCREEN_HEADER:         (reset_active_window, cmd_data,     window_list                                                          ),
-                  EXIT_PROGRAM_HEADER:         (graceful_exit,                                                                                          ),
-                  LOG_DISPLAY_HEADER:          (display_logs,        cmd_data,     window_list, contact_list,                       settings, master_key),
-                  LOG_EXPORT_HEADER:           (export_logs,         cmd_data, ts, window_list, contact_list,                       settings, master_key),
-                  CHANGE_MASTER_K_HEADER:      (change_master_key,             ts, window_list, contact_list, group_list, key_list, settings, master_key),
-                  CHANGE_NICK_HEADER:          (change_nick,         cmd_data, ts, window_list, contact_list, group_list                                ),
-                  CHANGE_SETTING_HEADER:       (change_setting,      cmd_data, ts, window_list, contact_list, group_list,           settings,           ),
-                  CHANGE_LOGGING_HEADER:       (contact_setting,     cmd_data, ts, window_list, contact_list, group_list,                     'L'       ),
-                  CHANGE_FILE_R_HEADER:        (contact_setting,     cmd_data, ts, window_list, contact_list, group_list,                     'F'       ),
-                  CHANGE_NOTIFY_HEADER:        (contact_setting,     cmd_data, ts, window_list, contact_list, group_list,                     'N'       ),
-                  GROUP_CREATE_HEADER:         (group_create,        cmd_data, ts, window_list, contact_list, group_list,           settings            ),
-                  GROUP_ADD_HEADER:            (group_add_member,    cmd_data, ts, window_list, contact_list, group_list,           settings            ),
-                  GROUP_REMOVE_M_HEADER:       (group_rm_member,     cmd_data, ts, window_list, contact_list, group_list,                               ),
-                  GROUP_DELETE_HEADER:         (remove_group,        cmd_data, ts, window_list,               group_list,                               ),
-                  KEY_EX_ECDHE_HEADER:         (ecdhe_command,       cmd_data, ts, window_list, contact_list,             key_list, settings, pubkey_buf),
-                  KEY_EX_PSK_TX_HEADER:        (psk_command,         cmd_data, ts, window_list, contact_list,             key_list, settings, pubkey_buf),
-                  KEY_EX_PSK_RX_HEADER:        (psk_import,          cmd_data, ts, window_list, contact_list,             key_list, settings            ),
-                  CONTACT_REMOVE_HEADER:       (remove_contact,      cmd_data, ts, window_list, contact_list, group_list, key_list,                     )}  # type: Dict[bytes, Any]
+    #    Keyword                       Function to run     (                                      Parameters                                     )
+    #    -----------------------------------------------------------------------------------------------------------------------------------------
+    d = {LOCAL_KEY_INSTALLED_HEADER:  (local_key_installed,             ts, window_list, contact_list                                            ),
+         SHOW_WINDOW_ACTIVITY_HEADER: (show_win_activity,                   window_list                                                          ),
+         WINDOW_SELECT_HEADER:        (select_win_cmd,      cmd_data,       window_list                                                          ),
+         CLEAR_SCREEN_HEADER:         (clear_active_window,                                                                                      ),
+         RESET_SCREEN_HEADER:         (reset_active_window, cmd_data,       window_list                                                          ),
+         EXIT_PROGRAM_HEADER:         (exit_tfc,                                                                                       exit_queue),
+         LOG_DISPLAY_HEADER:          (log_command,         cmd_data, None, window_list, contact_list, group_list,           settings, master_key),
+         LOG_EXPORT_HEADER:           (log_command,         cmd_data, ts,   window_list, contact_list, group_list,           settings, master_key),
+         LOG_REMOVE_HEADER:           (remove_log,          cmd_data,                                                        settings, master_key),
+         CHANGE_MASTER_K_HEADER:      (change_master_key,             ts,   window_list, contact_list, group_list, key_list, settings, master_key),
+         CHANGE_NICK_HEADER:          (change_nick,         cmd_data, ts,   window_list, contact_list,                                           ),
+         CHANGE_SETTING_HEADER:       (change_setting,      cmd_data, ts,   window_list, contact_list, group_list,           settings,           ),
+         CHANGE_LOGGING_HEADER:       (contact_setting,     cmd_data, ts,   window_list, contact_list, group_list,                     header    ),
+         CHANGE_FILE_R_HEADER:        (contact_setting,     cmd_data, ts,   window_list, contact_list, group_list,                     header    ),
+         CHANGE_NOTIFY_HEADER:        (contact_setting,     cmd_data, ts,   window_list, contact_list, group_list,                     header    ),
+         GROUP_CREATE_HEADER:         (group_create,        cmd_data, ts,   window_list, contact_list, group_list,           settings            ),
+         GROUP_ADD_HEADER:            (group_add_member,    cmd_data, ts,   window_list, contact_list, group_list,           settings            ),
+         GROUP_REMOVE_M_HEADER:       (group_rm_member,     cmd_data, ts,   window_list, contact_list, group_list,                               ),
+         GROUP_DELETE_HEADER:         (remove_group,        cmd_data, ts,   window_list,               group_list,                               ),
+         KEY_EX_X25519_HEADER:        (add_x25519_keys,     cmd_data, ts,   window_list, contact_list,             key_list, settings, pubkey_buf),
+         KEY_EX_PSK_TX_HEADER:        (add_psk_tx_keys,     cmd_data, ts,   window_list, contact_list,             key_list, settings, pubkey_buf),
+         KEY_EX_PSK_RX_HEADER:        (import_psk_rx_keys,  cmd_data, ts,   window_list, contact_list,             key_list, settings            ),
+         CONTACT_REMOVE_HEADER:       (remove_contact,      cmd_data, ts,   window_list, contact_list, group_list, key_list,                     ),
+         WIPE_USER_DATA_HEADER:       (wipe,                                                                                           exit_queue)}  # type: Dict[bytes, Any]
 
-    if header not in function_d:
-        raise FunctionReturn("Received packet had an invalid command header.")
+    try:
+        from_dict = d[header]
+    except KeyError:
+        raise FunctionReturn("Error: Received an invalid command.")
 
-    from_dict  = function_d[header]
     func       = from_dict[0]
     parameters = from_dict[1:]
     func(*parameters)
@@ -107,10 +109,10 @@ def process_command(ts:                 'datetime',
 
 def show_win_activity(window_list: 'WindowList') -> None:
     """Show number of unread messages in each window."""
-    unread_wins = [w for w in window_list if (w.uid != 'local' and w.unread_messages > 0)]
+    unread_wins = [w for w in window_list if (w.uid != LOCAL_ID and w.unread_messages > 0)]
     print_list  = ["Window activity"] if unread_wins else ["No window activity"]
-    for w in unread_wins:
-        print_list.append(f"{w.name}: {w.unread_messages}")
+    print_list += [f"{w.name}: {w.unread_messages}" for w in unread_wins]
+
     box_print(print_list)
     print_on_previous_line(reps=(len(print_list) + 2), delay=1.5)
 
@@ -118,7 +120,7 @@ def show_win_activity(window_list: 'WindowList') -> None:
 def select_win_cmd(cmd_data: bytes, window_list: 'WindowList') -> None:
     """Select window specified by TxM."""
     window_uid = cmd_data.decode()
-    if cmd_data == FILE_R_WIN_ID_BYTES:
+    if window_uid == WIN_TYPE_FILE:
         clear_screen()
     window_list.select_rx_window(window_uid)
 
@@ -133,34 +135,39 @@ def reset_active_window(cmd_data: bytes, window_list: 'WindowList') -> None:
     uid    = cmd_data.decode()
     window = window_list.get_window(uid)
     window.reset_window()
+    os.system('reset')
 
 
-def display_logs(cmd_data: bytes,
-                 window_list:  'WindowList',
-                 contact_list: 'ContactList',
-                 settings:     'Settings',
-                 master_key:   'MasterKey') -> None:
-    """Display log file for active window."""
-    win_uid, no_msg_bytes = cmd_data.split(US_BYTE)
-    no_messages           = bytes_to_int(no_msg_bytes)
-    window                = window_list.get_window(win_uid.decode())
-    access_history(window, contact_list, settings, master_key, msg_to_load=no_messages)
+def exit_tfc(exit_queue: 'Queue') -> None:
+    """Exit TFC."""
+    exit_queue.put(EXIT)
 
 
-def export_logs(cmd_data:     bytes,
+def log_command(cmd_data:     bytes,
                 ts:           'datetime',
                 window_list:  'WindowList',
                 contact_list: 'ContactList',
+                group_list:   'GroupList',
                 settings:     'Settings',
                 master_key:   'MasterKey') -> None:
-    """Export log file for active window."""
+    """Display or export logfile for active window."""
+    export                = ts is not None
     win_uid, no_msg_bytes = cmd_data.split(US_BYTE)
     no_messages           = bytes_to_int(no_msg_bytes)
     window                = window_list.get_window(win_uid.decode())
-    access_history(window, contact_list, settings, master_key, msg_to_load=no_messages, export=True)
+    access_logs(window, contact_list, group_list, settings, master_key, msg_to_load=no_messages, export=export)
 
-    local_win = window_list.get_window('local')
-    local_win.print_new(ts, f"Exported logfile of {window.type} {window.name}.")
+    if export:
+        local_win = window_list.get_window(LOCAL_ID)
+        local_win.add_new(ts, f"Exported logfile of {window.type_print} {window.name}.", output=True)
+
+
+def remove_log(cmd_data:   bytes,
+               settings:   'Settings',
+               master_key: 'MasterKey') -> None:
+    """Remove log entries for contact."""
+    window_name = cmd_data.decode()
+    remove_logs(window_name, settings, master_key)
 
 
 def change_master_key(ts:           'datetime',
@@ -170,49 +177,52 @@ def change_master_key(ts:           'datetime',
                       key_list:     'KeyList',
                       settings:     'Settings',
                       master_key:   'MasterKey') -> None:
-    """Derive new master key based on master password delivered by TxM."""
-    old_master_key = master_key.master_key[:]
-    master_key.new_master_key()
-    new_master_key = master_key.master_key
+    """Prompt user for new master password and derive new master key from that."""
+    try:
+        old_master_key = master_key.master_key[:]
+        master_key.new_master_key()
 
-    ensure_dir(f'{DIR_USER_DATA}/')
-    file_name = f'{DIR_USER_DATA}/{settings.software_operation}_logs'
-    if os.path.isfile(file_name):
-        phase("Re-encrypting log-file")
-        re_encrypt(old_master_key, new_master_key, settings)
-        phase('Done')
+        phase("Re-encrypting databases")
 
-    key_list.store_keys()
-    settings.store_settings()
-    contact_list.store_contacts()
-    group_list.store_groups()
+        ensure_dir(DIR_USER_DATA)
+        file_name = f'{DIR_USER_DATA}{settings.software_operation}_logs'
+        if os.path.isfile(file_name):
+            re_encrypt(old_master_key, master_key.master_key, settings)
 
-    box_print("Master key successfully changed.", head=1)
-    clear_screen(delay=1.5)
+        key_list.store_keys()
+        settings.store_settings()
+        contact_list.store_contacts()
+        group_list.store_groups()
 
-    local_win = window_list.get_window('local')
-    local_win.print_new(ts, "Changed RxM master key.", print_=False)
+        phase(DONE)
+        box_print("Master key successfully changed.", head=1)
+        clear_screen(delay=1.5)
+
+        local_win = window_list.get_window(LOCAL_ID)
+        local_win.add_new(ts, "Changed RxM master key.")
+
+    except KeyboardInterrupt:
+        raise FunctionReturn("Password change aborted.", delay=1, head=3, tail_clear=True)
 
 
 def change_nick(cmd_data:     bytes,
                 ts:           'datetime',
                 window_list:  'WindowList',
-                contact_list: 'ContactList',
-                group_list:   'GroupList') -> None:
+                contact_list: 'ContactList') -> None:
     """Change contact nick."""
-    account, nick      = [f.decode() for f in cmd_data.split(US_BYTE)]
-    success, error_msg = validate_nick(nick, (contact_list, group_list, account))
-    if not success:
-        raise FunctionReturn(error_msg)
+    account, nick = [f.decode() for f in cmd_data.split(US_BYTE)]
 
-    c_window      = window_list.get_window(account)
-    c_window.name = nick
-    contact       = contact_list.get_contact(account)
-    contact.nick  = nick
+    window      = window_list.get_window(account)
+    window.name = nick
+
+    window.handle_dict[account] = (contact_list.get_contact(account).nick
+                                   if contact_list.has_contact(account) else account)
+
+    contact_list.get_contact(account).nick = nick
     contact_list.store_contacts()
 
     cmd_win = window_list.get_local_window()
-    cmd_win.print_new(ts, f"Changed {account} nick to {nick}.")
+    cmd_win.add_new(ts, f"Changed {account} nick to '{nick}'", output=True)
 
 
 def change_setting(cmd_data:     bytes,
@@ -222,14 +232,15 @@ def change_setting(cmd_data:     bytes,
                    group_list:   'GroupList',
                    settings:     'Settings') -> None:
     """Change TFC setting."""
-    key, value = [f.decode() for f in cmd_data.split(US_BYTE)]
+    setting, value = [f.decode() for f in cmd_data.split(US_BYTE)]
 
-    if key not in settings.key_list:
-        raise FunctionReturn(f"Invalid setting {key}.")
+    if setting not in settings.key_list:
+        raise FunctionReturn(f"Error: Invalid setting '{setting}'")
 
-    settings.change_setting(key, value, contact_list, group_list)
+    settings.change_setting(setting, value, contact_list, group_list)
+
     local_win = window_list.get_local_window()
-    local_win.print_new(ts, f"Changed setting {key} to {value}.")
+    local_win.add_new(ts, f"Changed setting {setting} to '{value}'", output=True)
 
 
 def contact_setting(cmd_data:     bytes,
@@ -237,62 +248,73 @@ def contact_setting(cmd_data:     bytes,
                     window_list:  'WindowList',
                     contact_list: 'ContactList',
                     group_list:   'GroupList',
-                    setting_type: str) -> None:
+                    header:       bytes) -> None:
     """Change contact/group related setting."""
-    attr = dict(L='log_messages',
-                F='file_reception',
-                N='notifications')[setting_type]
+    setting, win_uid = [f.decode() for f in cmd_data.split(US_BYTE)]
 
-    desc = dict(L='logging of messages',
-                F='reception of files',
-                N='message notifications')[setting_type]
+    attr, desc, file_cmd = {CHANGE_LOGGING_HEADER: ('log_messages',   'Logging of messages',   False),
+                            CHANGE_FILE_R_HEADER:  ('file_reception', 'Reception of files',    True ),
+                            CHANGE_NOTIFY_HEADER:  ('notifications',  'Message notifications', False)}[header]
 
-    if cmd_data[:1].islower():
+    action, b_value = {ENABLE:  ('enable',  True),
+                       DISABLE: ('disable', False)}[setting.lower().encode()]
 
-        setting, win_uid, = [f.decode() for f in cmd_data.split(US_BYTE)]
+    if setting.isupper():
+        # Change settings for all contacts (and groups)
+        enabled  = [getattr(c, attr) for c in contact_list.get_list_of_contacts()]
+        enabled += [getattr(g, attr) for g in group_list] if not file_cmd else []
+        status   = "was already" if ((    all(enabled) and     b_value)
+                                  or (not any(enabled) and not b_value)) else 'has been'
+        specifier = 'every '
+        w_type    = 'contact'
+        w_name    = '.' if file_cmd else ' and group.'
 
-        if not window_list.has_window(win_uid):
-            raise FunctionReturn(f"Error: Found no window for {win_uid}.")
-
-        b_value, header = dict(e=(True, "Enabled"), d=(False, "Disabled"))[setting]
-        window          = window_list.get_window(win_uid)
-        trailer         = f"for {window.type} {window.name}"
-
-        if window.type == 'group' and setting_type == 'F':
-            trailer = f"for members in group {window.name}"
-
-        if window.type == 'group':
-            group = group_list.get_group(win_uid)
-            if setting_type == 'F':
-                for c in contact_list:
-                    c.file_reception = b_value
-                contact_list.store_contacts()
-            else:
-                setattr(group, attr, b_value)
-                group_list.store_groups()
-
-        elif window.type == 'contact':
-            contact = contact_list.get_contact(win_uid)
-            setattr(contact, attr, b_value)
-            contact_list.store_contacts()
-
-    # For all
-    else:
-        setting         = cmd_data[:1].decode()
-        b_value, header = dict(E=(True, "Enabled"), D=(False, "Disabled"))[setting]
-        trailer         = "for all contacts" + (' and groups' if setting_type != 'F' else '')
-
-        for c in contact_list:
+        # Set values
+        for c in contact_list.get_list_of_contacts():
             setattr(c, attr, b_value)
         contact_list.store_contacts()
 
-        if setting_type != 'F':
+        if not file_cmd:
             for g in group_list:
                 setattr(g, attr, b_value)
             group_list.store_groups()
 
-    local_win = window_list.get_window('local')
-    local_win.print_new(ts, f"{header} {desc} {trailer}.")
+    else:
+        # Change setting for contacts in specified window
+        if not window_list.has_window(win_uid):
+            raise FunctionReturn(f"Error: Found no window for '{win_uid}'")
+        window         = window_list.get_window(win_uid)
+        group_window   = window.type == WIN_TYPE_GROUP
+        contact_window = window.type == WIN_TYPE_CONTACT
+
+        if contact_window:
+            target = contact_list.get_contact(win_uid)  # type: Union[Contact, Group]
+        else:
+            target = group_list.get_group(win_uid)
+
+        if file_cmd:
+            enabled = [getattr(m, attr) for m in window.window_contacts]
+            changed = not all(enabled) if b_value else any(enabled)
+        else:
+            changed = getattr(target, attr) != b_value
+        status    = "has been"    if changed                     else "was already"
+        specifier = 'members in ' if (file_cmd and group_window) else ''
+        w_type    = window.type_print
+        w_name    = f" {window.name}."
+
+        # Set values
+        if contact_window or (group_window and file_cmd):
+            for c in window.window_contacts:
+                setattr(c, attr, b_value)
+            contact_list.store_contacts()
+
+        elif window.type == WIN_TYPE_GROUP:
+            setattr(group_list.get_group(win_uid), attr, b_value)
+            group_list.store_groups()
+
+    message   = f"{desc} {status} {action}d for {specifier}{w_type}{w_name}"
+    local_win = window_list.get_window(LOCAL_ID)
+    local_win.add_new(ts, message, output=True)
 
 
 def remove_contact(cmd_data:     bytes,
@@ -305,17 +327,31 @@ def remove_contact(cmd_data:     bytes,
     rx_account = cmd_data.decode()
 
     key_list.remove_keyset(rx_account)
+    window_list.remove_window(rx_account)
 
-    if rx_account in contact_list.get_list_of_accounts():
-        nick = contact_list.get_contact(rx_account).nick
-        contact_list.remove_contact(rx_account)
-        box_print(f"Removed {nick} from contacts.", head=1, tail=1)
+    if not contact_list.has_contact(rx_account):
+        raise FunctionReturn(f"RxM has no account '{rx_account}' to remove.")
 
-        local_win = window_list.get_local_window()
-        local_win.print_new(ts, f"Removed {nick} from RxM.", print_=False)
+    nick = contact_list.get_contact(rx_account).nick
+    contact_list.remove_contact(rx_account)
 
-    else:
-        box_print(f"RxM has no account {rx_account} to remove.",  head=1, tail=1)
+    message = f"Removed {nick} from contacts."
+    box_print(message, head=1, tail=1)
+
+    local_win = window_list.get_local_window()
+    local_win.add_new(ts, message)
 
     if any([g.remove_members([rx_account]) for g in group_list]):
         box_print(f"Removed {rx_account} from group(s).", tail=1)
+
+
+def wipe(exit_queue: 'Queue') -> None:
+    """Reset terminals, wipe all user data on RxM and power off system.
+
+    No effective RAM overwriting tool currently exists, so as long as TxM/RxM
+    use FDE and DDR3 memory, recovery of user data becomes impossible very fast:
+
+        https://www1.cs.fau.de/filepool/projects/coldboot/fares_coldboot.pdf
+    """
+    os.system('reset')
+    exit_queue.put(WIPE)

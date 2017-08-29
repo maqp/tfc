@@ -1,8 +1,0 @@
-[Desktop Entry]
-Name=TFC-DD-LR
-Comment=Local testing
-Exec=terminator -m -p tfc -l tfc-dd-lr
-Icon=tfc.png
-Terminal=false
-Type=Application
-Categories=Network;Messaging;Security;

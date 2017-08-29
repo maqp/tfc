@@ -20,12 +20,13 @@ along with TFC. If not, see <http://www.gnu.org/licenses/>.
 
 import typing
 
-from typing import Dict, List
+from typing import Dict, Generator, Iterable, List, Sized
 
-from src.common.errors  import FunctionReturn
-from src.common.misc    import clear_screen
-from src.common.statics import *
-from src.tx.packet      import queue_command
+from src.common.exceptions import FunctionReturn
+from src.common.output     import clear_screen
+from src.common.statics    import *
+
+from src.tx.packet import queue_command
 
 if typing.TYPE_CHECKING:
     from multiprocessing        import Queue
@@ -35,16 +36,33 @@ if typing.TYPE_CHECKING:
     from src.tx.user_input      import UserInput
 
 
-class Window(object):
+class MockWindow(Iterable):
+    """Mock window simplifies queueing of message assembly packets."""
+
+    def __init__(self, uid: str, contacts: List['Contact']) -> None:
+        """Create new mock window."""
+        self.uid             = uid
+        self.window_contacts = contacts
+        self.log_messages    = self.window_contacts[0].log_messages
+        self.type            = WIN_TYPE_CONTACT
+        self.group           = None  # type: Group
+        self.name            = None  # type: str
+
+    def __iter__(self) -> Generator:
+        """Iterate over contact objects in window."""
+        yield from self.window_contacts
+
+
+class TxWindow(Iterable, Sized):
     """
-    Window objects manages ephemeral communications
+    TxWindow objects manages ephemeral communications
     data associated with selected contact or group.
     """
 
     def __init__(self,
                  contact_list: 'ContactList',
                  group_list:   'GroupList') -> None:
-        """Create a new window object."""
+        """Create a new TxWindow object."""
         self.contact_list    = contact_list
         self.group_list      = group_list
         self.window_contacts = []    # type: List[Contact]
@@ -52,42 +70,18 @@ class Window(object):
         self.contact         = None  # type: Contact
         self.name            = None  # type: str
         self.type            = None  # type: str
+        self.type_print      = None  # type: str
         self.uid             = None  # type: str
         self.imc_name        = None  # type: str
+        self.log_messages    = None  # type: bool
 
-    def __iter__(self) -> 'Contact':
-        """Iterate over contact objects in window."""
-        for c in self.window_contacts:
-            yield c
+    def __iter__(self) -> Generator:
+        """Iterate over Contact objects in window."""
+        yield from self.window_contacts
 
     def __len__(self) -> int:
-        """Return the number of contacts in current window."""
+        """Return the number of contacts in window."""
         return len(self.window_contacts)
-
-    def is_selected(self) -> bool:
-        """Return True if a window is selected, else False."""
-        return self.name is not None
-
-    def deselect(self) -> None:
-        """Deselect active window."""
-        self.window_contacts = []
-        self.group           = None  # type: Group
-        self.contact         = None  # type: Contact
-        self.name            = None  # type: str
-        self.type            = None  # type: str
-        self.uid             = None  # type: str
-        self.imc_name        = None  # type: str
-
-    def update_group_win_members(self, group_list: 'GroupList') -> None:
-        """Update window's group members list."""
-        if self.type == 'group':
-            if group_list.has_group(self.name):
-                self.group = group_list.get_group(self.name)
-                self.window_contacts = self.group.members
-                if self.window_contacts:
-                    self.imc_name = self.window_contacts[0].rx_account
-            else:
-                self.deselect()
 
     def select_tx_window(self,
                          settings:  'Settings',
@@ -101,52 +95,87 @@ class Window(object):
             selection = input("Select recipient: ").strip()
 
         if selection in self.group_list.get_list_of_group_names():
-            if cmd and settings.session_trickle and selection != self.uid:
-                raise FunctionReturn("Can't change window during trickle connection.")
+            if cmd and settings.session_traffic_masking and selection != self.uid:
+                raise FunctionReturn("Error: Can't change window during traffic masking.")
 
             self.group           = self.group_list.get_group(selection)
             self.window_contacts = self.group.members
             self.name            = self.group.name
             self.uid             = self.name
-            self.type            = 'group'
+            self.log_messages    = self.group.log_messages
+            self.type            = WIN_TYPE_GROUP
+            self.type_print      = 'group'
 
             if self.window_contacts:
                 self.imc_name = self.window_contacts[0].rx_account
 
         elif selection in self.contact_list.contact_selectors():
-
-            if cmd and settings.session_trickle:
+            if cmd and settings.session_traffic_masking:
                 contact = self.contact_list.get_contact(selection)
-                if self.uid != contact.rx_account:
-                    raise FunctionReturn("Can't change window during trickle connection.")
+                if contact.rx_account != self.uid:
+                    raise FunctionReturn("Error: Can't change window during traffic masking.")
 
             self.contact         = self.contact_list.get_contact(selection)
             self.window_contacts = [self.contact]
             self.name            = self.contact.nick
             self.uid             = self.contact.rx_account
             self.imc_name        = self.contact.rx_account
-            self.type            = 'contact'
+            self.log_messages    = self.contact.log_messages
+            self.type            = WIN_TYPE_CONTACT
+            self.type_print      = 'contact'
 
         else:
             raise FunctionReturn("Error: No contact/group was found.")
 
-        if settings.session_trickle and not cmd:
-            queues[WINDOW_SELECT_QUEUE].put(self.window_contacts)
+        if settings.session_traffic_masking and not cmd:
+            queues[WINDOW_SELECT_QUEUE].put((self.window_contacts, self.log_messages))
 
-        packet = WINDOW_CHANGE_HEADER + self.uid.encode()
+        packet = WINDOW_SELECT_HEADER + self.uid.encode()
         queue_command(packet, settings, queues[COMMAND_PACKET_QUEUE])
 
         clear_screen()
 
+    def deselect_window(self) -> None:
+        """Deselect active window."""
+        self.window_contacts = []
+        self.group           = None  # type: Group
+        self.contact         = None  # type: Contact
+        self.name            = None  # type: str
+        self.type            = None  # type: str
+        self.uid             = None  # type: str
+        self.imc_name        = None  # type: str
+
+    def is_selected(self) -> bool:
+        """Return True if window is selected, else False."""
+        return self.name is not None
+
+    def update_log_messages(self) -> None:
+        """Update window's logging setting."""
+        if self.type == WIN_TYPE_CONTACT:
+            self.log_messages = self.contact.log_messages
+        if self.type == WIN_TYPE_GROUP:
+            self.log_messages = self.group.log_messages
+
+    def update_group_win_members(self, group_list: 'GroupList') -> None:
+        """Update window's group members list."""
+        if self.type == WIN_TYPE_GROUP:
+            if group_list.has_group(self.name):
+                self.group           = group_list.get_group(self.name)
+                self.window_contacts = self.group.members
+                if self.window_contacts:
+                    self.imc_name = self.window_contacts[0].rx_account
+            else:
+                self.deselect_window()
+
 
 def select_window(user_input: 'UserInput',
-                  window:     'Window',
+                  window:     'TxWindow',
                   settings:   'Settings',
                   queues:     Dict[bytes, 'Queue']) -> None:
-    """Select new window for messages."""
+    """Select new window to send messages/files to."""
     try:
         selection = user_input.plaintext.split()[1]
     except (IndexError, TypeError):
-        raise FunctionReturn("Invalid recipient.")
+        raise FunctionReturn("Error: Invalid recipient.")
 
     window.select_tx_window(settings, queues, selection, cmd=True)

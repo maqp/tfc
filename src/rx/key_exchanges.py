@@ -21,20 +21,19 @@ along with TFC. If not, see <http://www.gnu.org/licenses/>.
 import os.path
 import pipes
 import subprocess
-import time
 import typing
 
 from typing import Dict
 
 import nacl.exceptions
 
-from src.common.crypto       import argon2_kdf, auth_and_decrypt
+from src.common.crypto       import argon2_kdf, auth_and_decrypt, csprng
 from src.common.db_masterkey import MasterKey
 from src.common.encoding     import b58encode
-from src.common.errors       import FunctionReturn
+from src.common.exceptions   import FunctionReturn
 from src.common.input        import get_b58_key
-from src.common.misc         import clear_screen, split_string
-from src.common.output       import box_print, c_print, phase, print_on_previous_line
+from src.common.misc         import split_string
+from src.common.output       import box_print, c_print, clear_screen, phase, print_key, print_on_previous_line
 from src.common.path         import ask_path_gui
 from src.common.statics      import *
 
@@ -46,186 +45,212 @@ if typing.TYPE_CHECKING:
     from src.rx.windows         import WindowList
 
 
-###############################################################################
-#                                  LOCAL KEY                                  #
-###############################################################################
+# Local key
 
-def process_local_key(packet:       bytes,
+def process_local_key(ts:           'datetime',
+                      packet:       bytes,
+                      window_list:  'WindowList',
                       contact_list: 'ContactList',
-                      key_list:     'KeyList') -> None:
-    """Decrypt local key packet, add local contact/keyset."""
+                      key_list:     'KeyList',
+                      settings:     'Settings') -> None:
+    """Decrypt local key packet and add local contact/keyset."""
+    bootstrap = not key_list.has_local_key()
+
     try:
-        clear_screen()
-        box_print(["Received encrypted local key"], tail=1)
+        while True:
+            clear_screen()
+            box_print("Received encrypted local key", tail=1)
+            kdk = get_b58_key(B58_LOCAL_KEY, settings)
 
-        kdk = get_b58_key('localkey')
-
-        try:
-            pt = auth_and_decrypt(packet[1:], key=kdk, soft_e=True)
-        except nacl.exceptions.CryptoError:
-            raise FunctionReturn("Invalid key decryption key.", delay=1.5)
+            try:
+                pt = auth_and_decrypt(packet[1:], key=kdk, soft_e=True)
+                break
+            except nacl.exceptions.CryptoError:
+                if bootstrap:
+                    raise FunctionReturn("Error: Incorrect key decryption key.", delay=1.5)
+                c_print("Incorrect key decryption key.", head=1)
+                clear_screen(delay=1.5)
 
         key       = pt[0:32]
         hek       = pt[32:64]
         conf_code = pt[64:65]
 
         # Add local contact to contact list database
-        contact_list.add_contact('local', 'local', 'local',
-                                 bytes(32), bytes(32),
+        contact_list.add_contact(LOCAL_ID, LOCAL_ID, LOCAL_ID,
+                                 bytes(FINGERPRINT_LEN), bytes(FINGERPRINT_LEN),
                                  False, False, True)
 
-        # Add local contact to keyset database
-        key_list.add_keyset('local', key, bytes(32), hek, bytes(32))
-        box_print([f"Confirmation code for TxM: {conf_code.hex()}"], head=1)
+        # Add local keyset to keyset database
+        key_list.add_keyset(rx_account=LOCAL_ID,
+                            tx_key=key,
+                            rx_key=csprng(),
+                            tx_hek=hek,
+                            rx_hek=csprng())
+
+        box_print(f"Confirmation code for TxM: {conf_code.hex()}", head=1)
+
+        local_win = window_list.get_local_window()
+        local_win.add_new(ts, "Added new local key.")
+
+        if bootstrap:
+            window_list.active_win = local_win
 
     except KeyboardInterrupt:
-        raise FunctionReturn("Local key setup aborted.", delay=1)
+        raise FunctionReturn("Local key setup aborted.", delay=1, head=3, tail_clear=True)
 
 
 def local_key_installed(ts:           'datetime',
                         window_list:  'WindowList',
                         contact_list: 'ContactList') -> None:
     """Clear local key bootstrap process from screen."""
-    local_win = window_list.get_window('local')
-    local_win.print_new(ts, "Created a new local key.", print_=False)
+    message   = "Successfully completed local key exchange."
+    local_win = window_list.get_window(LOCAL_ID)
+    local_win.add_new(ts, message)
 
-    box_print(["Successfully added a new local key."])
+    box_print(message)
     clear_screen(delay=1)
 
     if not contact_list.has_contacts():
-        clear_screen()
         c_print("Waiting for new contacts", head=1, tail=1)
 
 
-###############################################################################
-#                                    X25519                                   #
-###############################################################################
+# X25519
 
 def process_public_key(ts:          'datetime',
                        packet:      bytes,
                        window_list: 'WindowList',
                        settings:    'Settings',
-                       pubkey_buf:  Dict[str, str]) -> None:
-    """Display public from contact."""
+                       pubkey_buf:  Dict[str, bytes]) -> None:
+    """Display contact's public key and add it to buffer."""
     pub_key = packet[1:33]
     origin  = packet[33:34]
-    account = packet[34:].decode()
+
+    try:
+        account = packet[34:].decode()
+    except UnicodeError:
+        raise FunctionReturn("Error! Account for received public key had invalid encoding.")
+
+    if origin not in [ORIGIN_CONTACT_HEADER, ORIGIN_USER_HEADER]:
+        raise FunctionReturn("Error! Received public key had an invalid origin header.")
 
     if origin == ORIGIN_CONTACT_HEADER:
-        pub_key_enc = b58encode(pub_key)
-        ssl         = {48: 8, 49: 7, 50: 5}.get(len(pub_key_enc), 5)
-        pub_key_enc = pub_key_enc if settings.local_testing_mode else ' '.join(split_string(pub_key_enc, item_len=ssl))
+        pubkey_buf[account] = pub_key
+        print_key(f"Received public key from {account}:", pub_key, settings)
 
-        pubkey_buf[account] = pub_key_enc
+        local_win   = window_list.get_local_window()
+        pub_key_b58 = ' '.join(split_string(b58encode(pub_key), item_len=(51 if settings.local_testing_mode else 3)))
+        local_win.add_new(ts, f"Received public key from {account}: {pub_key_b58}")
 
-        box_print([f"Received public key from {account}", '', pubkey_buf[account]], head=1, tail=1)
-
-        local_win = window_list.get_local_window()
-        local_win.print_new(ts, f"Received public key from {account}: {pub_key_enc}", print_=False)
-
-    if origin == ORIGIN_USER_HEADER and account in pubkey_buf:
+    elif origin == ORIGIN_USER_HEADER and account in pubkey_buf:
         clear_screen()
-        box_print([f"Public key for {account}", '', pubkey_buf[account]], head=1, tail=1)
+        print_key(f"Public key for {account}:", pubkey_buf[account], settings)
 
 
-def ecdhe_command(cmd_data:     bytes,
-                  ts:           'datetime',
-                  window_list:  'WindowList',
-                  contact_list: 'ContactList',
-                  key_list:     'KeyList',
-                  settings:     'Settings',
-                  pubkey_buf:   Dict[str, str]) -> None:
-    """Add contact and it's X25519 keys."""
-    tx_key = cmd_data[0:32]
-    tx_hek = cmd_data[32:64]
-    rx_key = cmd_data[64:96]
-    rx_hek = cmd_data[96:128]
+def add_x25519_keys(packet:       bytes,
+                    ts:           'datetime',
+                    window_list:  'WindowList',
+                    contact_list: 'ContactList',
+                    key_list:     'KeyList',
+                    settings:     'Settings',
+                    pubkey_buf:   Dict[str, bytes]) -> None:
+    """Add contact and their X25519 keys."""
+    tx_key = packet[0:32]
+    tx_hek = packet[32:64]
+    rx_key = packet[64:96]
+    rx_hek = packet[96:128]
 
-    account, nick = [f.decode() for f in cmd_data[128:].split(US_BYTE)]
+    account, nick = [f.decode() for f in packet[128:].split(US_BYTE)]
 
-    contact_list.add_contact(account, 'user_placeholder', nick,
-                             bytes(32), bytes(32),
-                             settings.log_msg_by_default,
-                             settings.store_file_default,
-                             settings.n_m_notify_privacy)
+    contact_list.add_contact(account, DUMMY_USER, nick,
+                             bytes(FINGERPRINT_LEN),
+                             bytes(FINGERPRINT_LEN),
+                             settings.log_messages_by_default,
+                             settings.accept_files_by_default,
+                             settings.show_notifications_by_default)
 
     key_list.add_keyset(account, tx_key, rx_key, tx_hek, rx_hek)
 
     pubkey_buf.pop(account, None)
 
-    local_win = window_list.get_window('local')
-    local_win.print_new(ts, f"Added X25519 keys for {nick} ({account}).", print_=False)
+    message   = f"Added X25519 keys for {nick} ({account})."
+    local_win = window_list.get_window(LOCAL_ID)
+    local_win.add_new(ts, message)
 
-    box_print([f"Successfully added {nick}."])
+    box_print(message)
     clear_screen(delay=1)
 
 
-###############################################################################
-#                                     PSK                                     #
-###############################################################################
+# PSK
 
-def psk_command(cmd_data:     bytes,
-                ts:           'datetime',
-                window_list:  'WindowList',
-                contact_list: 'ContactList',
-                key_list:     'KeyList',
-                settings:     'Settings',
-                pubkey_buf:   Dict[str, str]) -> None:
-    """Add contact and tx-PSKs."""
+def add_psk_tx_keys(cmd_data:     bytes,
+                    ts:           'datetime',
+                    window_list:  'WindowList',
+                    contact_list: 'ContactList',
+                    key_list:     'KeyList',
+                    settings:     'Settings',
+                    pubkey_buf:   Dict[str, bytes]) -> None:
+    """Add contact and Tx-PSKs."""
     tx_key = cmd_data[0:32]
     tx_hek = cmd_data[32:64]
 
     account, nick = [f.decode() for f in cmd_data[64:].split(US_BYTE)]
 
-    contact_list.add_contact(account, 'user_placeholder', nick,
-                             bytes(32), bytes(32),
-                             settings.log_msg_by_default,
-                             settings.store_file_default,
-                             settings.n_m_notify_privacy)
+    contact_list.add_contact(account, DUMMY_USER, nick,
+                             bytes(FINGERPRINT_LEN), bytes(FINGERPRINT_LEN),
+                             settings.log_messages_by_default,
+                             settings.accept_files_by_default,
+                             settings.show_notifications_by_default)
 
-    # The Rx-side keys are set as null-byte strings to indicate they have not been added yet.
-    key_list.add_keyset(account, tx_key, bytes(32), tx_hek, bytes(32))
+    # The Rx-side keys are set as null-byte strings to indicate they have not
+    # been added yet. This does not allow existential forgeries as
+    # decrypt_assembly_packet does not allow use of zero-keys for decryption.
+    key_list.add_keyset(account,
+                        tx_key=tx_key,
+                        rx_key=bytes(KEY_LENGTH),
+                        tx_hek=tx_hek,
+                        rx_hek=bytes(KEY_LENGTH))
 
     pubkey_buf.pop(account, None)
 
-    local_win = window_list.get_window('local')
-    local_win.print_new(ts, f"Added Tx-PSK for {nick} ({account}).", print_=False)
+    message   = f"Added Tx-PSK for {nick} ({account})."
+    local_win = window_list.get_window(LOCAL_ID)
+    local_win.add_new(ts, message)
 
-    box_print([f"Successfully added {nick}."])
+    box_print(message)
     clear_screen(delay=1)
 
 
-def psk_import(cmd_data:     bytes,
-               ts:           'datetime',
-               window_list:  'WindowList',
-               contact_list: 'ContactList',
-               key_list:     'KeyList',
-               settings:     'Settings') -> None:
-    """Import rx-PSK of contact."""
+def import_psk_rx_keys(cmd_data:     bytes,
+                       ts:           'datetime',
+                       window_list:  'WindowList',
+                       contact_list: 'ContactList',
+                       key_list:     'KeyList',
+                       settings:     'Settings') -> None:
+    """Import Rx-PSK of contact."""
     account = cmd_data.decode()
 
     if not contact_list.has_contact(account):
-        raise FunctionReturn(f"Unknown account {account}.")
+        raise FunctionReturn(f"Error: Unknown account '{account}'")
 
     contact  = contact_list.get_contact(account)
-    pskf     = ask_path_gui(f"Select PSK for {contact.nick}", settings, get_file=True)
+    psk_file = ask_path_gui(f"Select PSK for {contact.nick}", settings, get_file=True)
 
-    with open(pskf, 'rb') as f:
+    with open(psk_file, 'rb') as f:
         psk_data = f.read()
 
-    if len(psk_data) != 136:  # Nonce (24) + Salt (32) + rx-key (32) + rx-hek (32) + tag (16)
-        raise FunctionReturn("Invalid PSK data in file.")
+    if len(psk_data) != PSK_FILE_SIZE:
+        raise FunctionReturn("Error: Invalid PSK data in file.")
 
-    salt   = psk_data[:32]
-    ct_tag = psk_data[32:]
+    salt   = psk_data[:ARGON2_SALT_LEN]
+    ct_tag = psk_data[ARGON2_SALT_LEN:]
 
     while True:
         try:
             password = MasterKey.get_password("PSK password")
             phase("Deriving key decryption key", head=2)
-            kdk, _ = argon2_kdf(password, salt, rounds=16, memory=128000, parallelism=1)
-            psk_pt = auth_and_decrypt(ct_tag, key=kdk, soft_e=True)
-            phase("Done")
+            kdk, _  = argon2_kdf(password, salt, parallelism=1)
+            psk_pt  = auth_and_decrypt(ct_tag, key=kdk, soft_e=True)
+            phase(DONE)
             break
 
         except nacl.exceptions.CryptoError:
@@ -233,29 +258,29 @@ def psk_import(cmd_data:     bytes,
             c_print("Invalid password. Try again.", head=1)
             print_on_previous_line(reps=5, delay=1.5)
         except KeyboardInterrupt:
-            raise FunctionReturn("PSK import aborted.")
+            raise FunctionReturn("PSK import aborted.", head=2)
 
     rx_key = psk_pt[0:32]
     rx_hek = psk_pt[32:64]
 
-    if rx_key == bytes(32) or rx_hek == bytes(32):
-        raise FunctionReturn("Keys from contact are not valid.")
+    if any(k == bytes(KEY_LENGTH) for k in [rx_key, rx_hek]):
+        raise FunctionReturn("Error: Received invalid keys from contact.")
 
     keyset        = key_list.get_keyset(account)
     keyset.rx_key = rx_key
     keyset.rx_hek = rx_hek
     key_list.store_keys()
 
-    # Pipes protects against shell injection. Source of command
-    # is trusted (user's own TxM) but it's still good practice.
-    subprocess.Popen("shred -n 3 -z -u {}".format(pipes.quote(pskf)), shell=True).wait()
-    if os.path.isfile(pskf):
-        box_print(f"Warning! Overwriting of PSK ({pskf}) failed.")
-        time.sleep(3)
+    # Pipes protects against shell injection. Source of command's parameter
+    # is user's own RxM and therefore trusted, but it's still good practice.
+    subprocess.Popen(f"shred -n 3 -z -u {pipes.quote(psk_file)}", shell=True).wait()
+    if os.path.isfile(psk_file):
+        box_print(f"Warning! Overwriting of PSK ({psk_file}) failed. Press <Enter> to continue.", manual_proceed=True)
 
     local_win = window_list.get_local_window()
-    local_win.print_new(ts, f"Added Rx-PSK for {contact.nick} ({account})", print_=False)
+    message   = f"Added Rx-PSK for {contact.nick} ({account})."
+    local_win.add_new(ts, message)
 
-    box_print([f"Added Rx-PSK for {contact.nick}.", '', "Warning!",
+    box_print([message, '', "Warning!",
                "Physically destroy the keyfile transmission ",
                "media to ensure that no data escapes RxM!"], head=1, tail=1)

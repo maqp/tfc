@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.5
 # -*- coding: utf-8 -*-
 
 """
@@ -23,49 +23,32 @@ import os
 import unittest
 
 from src.common.statics import *
-from src.nh.settings    import bool_to_bytes, int_to_bytes, bytes_to_bool, bytes_to_int, Settings
+
+from src.nh.settings import Settings
 
 from tests.utils import cleanup
-
-class TestConversions(unittest.TestCase):
-
-    def test_bool_to_bytes(self):
-        self.assertEqual(bool_to_bytes(False), b'\x00')
-        self.assertEqual(bool_to_bytes(True),  b'\x01')
-
-    def int_to_bytes(self):
-        self.assertEqual(int_to_bytes(1), b'\x00\x00\x00\x00\x00\x00\x00\x01')
-
-    def test_bytes_to_bool(self):
-        self.assertEqual(bytes_to_bool(b'\x00'), False)
-        self.assertEqual(bytes_to_bool(b'\x01'), True)
-
-    def test_bytes_to_int(self):
-        self.assertEqual(bytes_to_int(b'\x00\x00\x00\x00\x00\x00\x00\x01'), 1)
 
 
 class TestSettings(unittest.TestCase):
 
-    def test_class(self):
-        # Setup
-        o_input        = builtins.input
-        builtins.input = lambda x: 'yes'
-        settings       = Settings(False, False, 'ut')
-
-        # Test store/load
-        settings.disable_gui_dialog = True
-        settings.store_settings()
-
-        self.assertTrue(os.path.isfile(f"{DIR_USER_DATA}/ut_settings"))
-        self.assertEqual(os.path.getsize(f"{DIR_USER_DATA}/ut_settings"), 8 + 8 + 1 + 1)
-
-        settings2 = Settings(False, False, 'ut')
-        self.assertTrue(settings2.disable_gui_dialog)
-
-        builtins.input = o_input
+    def setUp(self):
+        self.o_input   = builtins.input
+        builtins.input = lambda _: 'yes'
 
     def tearDown(self):
         cleanup()
+        builtins.input = self.o_input
+
+    def test_store_and_load_settings(self):
+        # Test store
+        settings = Settings(False, False, 'ut')
+        settings.disable_gui_dialog = True
+        settings.store_settings()
+        self.assertEqual(os.path.getsize(f"{DIR_USER_DATA}ut_settings"), 2*INTEGER_SETTING_LEN + 2*BOOLEAN_SETTING_LEN)
+
+        # Test load
+        settings2 = Settings(False, False, 'ut')
+        self.assertTrue(settings2.disable_gui_dialog)
 
 
 if __name__ == '__main__':

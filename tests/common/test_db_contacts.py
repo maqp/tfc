@@ -21,192 +21,166 @@ along with TFC. If not, see <http://www.gnu.org/licenses/>.
 import os
 import unittest
 
-import src.common.misc
-
 from src.common.db_contacts import Contact, ContactList
 from src.common.statics     import *
 
-from tests.mock_classes     import create_contact, MasterKey, Settings
-from tests.utils            import cleanup
+from tests.mock_classes import create_contact, MasterKey, Settings
+from tests.utils        import cleanup, TFCTestCase
 
 
 class TestContact(unittest.TestCase):
 
-    def test_dump_c(self):
-        # Setup
-        contact    = Contact('alice@jabber.org', 'bob@jabber.org', 'Alice',
-                             32 * b'\x01', 32 * b'\x02', True, True, True)
-        bytestring = contact.dump_c()
-
-        # Test
-        self.assertEqual(len(bytestring), (3 * 1024 + 32 + 32 + 1 + 1 + 1))
-        self.assertIsInstance(bytestring, bytes)
+    def test_contact_serialization_length_and_type(self):
+        serialized = create_contact().serialize_c()
+        self.assertEqual(len(serialized), CONTACT_LENGTH)
+        self.assertIsInstance(serialized, bytes)
 
 
-class TestContactList(unittest.TestCase):
+class TestContactList(TFCTestCase):
+
+    def setUp(self):
+        self.master_key            = MasterKey()
+        self.settings              = Settings()
+        self.contact_list          = ContactList(self.master_key, self.settings)
+        self.contact_list.contacts = list(map(create_contact, ['Alice', 'Benny', 'Charlie', 'David', 'Eric']))
 
     def tearDown(self):
         cleanup()
 
-    def test_iterate_over_contacts(self):
-        # Setup
-        contact            = Contact('alice@jabber.org', 'bob@jabber.org', 'Alice',
-                                     32 * b'\x01', 32 * b'\x02', True, True, True)
-        contact_l          = ContactList(MasterKey(), Settings())
-        contact_l.contacts = 5 * [contact]
-
-        # Test
-        for c in contact_l:
+    def test_contact_list_iterates_over_contact_objects(self):
+        for c in self.contact_list:
             self.assertIsInstance(c, Contact)
 
     def test_len_returns_number_of_contacts(self):
-        # Setup
-        contact            = Contact('alice@jabber.org', 'bob@jabber.org', 'Alice',
-                                     32 * b'\x01', 32 * b'\x02', True, True, True)
-        contact_l          = ContactList(MasterKey(), Settings())
-        contact_l.contacts = 5 * [contact]
+        self.assertEqual(len(self.contact_list), 5)
 
-        # Test
-        self.assertEqual(len(contact_l), 5)
+    def test_storing_and_loading_of_contacts(self):
+        # Test store
+        self.contact_list.store_contacts()
+        self.assertTrue(os.path.isfile(f'{DIR_USER_DATA}ut_contacts'))
+        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_contacts'),
+                         XSALSA20_NONCE_LEN
+                         + self.settings.max_number_of_contacts * CONTACT_LENGTH
+                         + POLY1305_TAG_LEN)
 
-    def test_store_and_load_contacts(self):
-        # Setup
-        contact            = Contact('alice@jabber.org', 'bob@jabber.org', 'Alice',
-                                     32 * b'\x01', 32 * b'\x02', True, True, True)
-        settings           = Settings()
-        master_k           = MasterKey()
-        contact_l          = ContactList(master_k, settings)
-        contact_l.contacts = 5 * [contact]
-        contact_l.store_contacts()
-
-        # Test
-        contact_l2 = ContactList(master_k, settings)
-        self.assertEqual(len(contact_l2), 5)
-        for c in contact_l2:
+        # Test load
+        contact_list2 = ContactList(self.master_key, self.settings)
+        self.assertEqual(len(contact_list2), 5)
+        for c in contact_list2:
             self.assertIsInstance(c, Contact)
 
-        self.assertTrue(os.path.isfile(f'{DIR_USER_DATA}/ut_contacts'))
-        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}/ut_contacts'), 24 + 20 * (1024 + 1024 + 1024 + 32 + 32 + 1 + 1 + 1) + 16)
-        os.remove(f'{DIR_USER_DATA}/ut_contacts')
-
     def test_generate_dummy_contact(self):
-        dummy_data = ContactList.generate_dummy_contact()
-        self.assertEqual(len(dummy_data), (1024 + 1024 + 1024 + 32 + 32 + 1 + 1 + 1))
-        self.assertIsInstance(dummy_data, bytes)
-
-    def test_get_contact(self):
-        # Setup
-        contact1           = Contact('alice@jabber.org', 'bob@jabber.org', 'Alice',
-                                     32 * b'\x01', 32 * b'\x02', True, True, True)
-        contact2           = Contact('charlie@jabber.org', 'bob@jabber.org', 'Charlie',
-                                     32 * b'\x01', 32 * b'\x02', True, True, True)
-        settings           = Settings()
-        master_k           = MasterKey()
-        contact_l          = ContactList(master_k, settings)
-        contact_l.contacts = [contact1, contact2]
-
-        # Test
-        co1 = contact_l.get_contact('alice@jabber.org')
-        self.assertIsInstance(co1, Contact)
-        self.assertEqual(co1.rx_account, 'alice@jabber.org')
-
-        co2 = contact_l.get_contact('Alice')
-        self.assertIsInstance(co2, Contact)
-        self.assertEqual(co2.rx_account, 'alice@jabber.org')
-
-    def test_getters(self):
-        # Setup
-        contact1           = Contact('alice@jabber.org', 'bob@jabber.org', 'Alice',
-                                     32 * b'\x01', 32 * b'\x02', True, True, True)
-        contact2           = Contact('charlie@jabber.org', 'bob@jabber.org', 'Charlie',
-                                     32 * b'\x01', 32 * b'\x02', True, True, True)
-        settings           = Settings()
-        master_k           = MasterKey()
-        contact_l          = ContactList(master_k, settings)
-        contact_l.contacts = [contact1, contact2]
-
-        # Test
-        self.assertEqual(contact_l.contact_selectors(),          ['alice@jabber.org', 'charlie@jabber.org', 'Alice', 'Charlie'])
-        self.assertEqual(contact_l.get_list_of_accounts(),       ['alice@jabber.org', 'charlie@jabber.org'])
-        self.assertEqual(contact_l.get_list_of_nicks(),          ['Alice', 'Charlie'])
-        self.assertEqual(contact_l.get_list_of_users_accounts(), ['bob@jabber.org'])
-
-    def test_remove_contact(self):
-        # Setup
-        contact1           = Contact('alice@jabber.org', 'bob@jabber.org', 'Alice',
-                                     32 * b'\x01', 32 * b'\x02', True, True, True)
-        contact2           = Contact('charlie@jabber.org', 'bob@jabber.org', 'Charlie',
-                                     32 * b'\x01', 32 * b'\x02', True, True, True)
-        contact_l          = ContactList(MasterKey(), Settings())
-        contact_l.contacts = [contact1, contact2]
-
-        # Test
-        self.assertTrue(contact_l.has_contacts())
-        self.assertTrue(contact_l.has_contact('Alice'))
-        self.assertTrue(contact_l.has_contact('alice@jabber.org'))
-
-        contact_l.remove_contact('alice@jabber.org')
-        self.assertFalse(contact_l.has_contact('Alice'))
-        self.assertFalse(contact_l.has_contact('alice@jabber.org'))
-
-        contact_l.remove_contact('Charlie')
-        self.assertEqual(len(contact_l.contacts), 0)
-        self.assertFalse(contact_l.has_contacts())
+        dummy_contact = ContactList.generate_dummy_contact()
+        self.assertIsInstance(dummy_contact, Contact)
+        self.assertEqual(len(dummy_contact.serialize_c()), CONTACT_LENGTH)
 
     def test_add_contact(self):
-        # Setup
-        contact1           = Contact('alice@jabber.org', 'bob@jabber.org', 'Alice',
-                                     32 * b'\x01', 32 * b'\x02', True, True, True)
-        contact2           = Contact('charlie@jabber.org', 'bob@jabber.org', 'Charlie',
-                                     32 * b'\x01', 32 * b'\x02', True, True, True)
-        settings           = Settings(software_operation='ut', m_number_of_accnts=20)
-        master_k           = MasterKey()
-        contact_l          = ContactList(master_k, settings)
-        contact_l.contacts = [contact1, contact2]
+        self.assertIsNone(self.contact_list.add_contact(f'faye@jabber.org', 'bob@jabber.org', f'Faye',
+                                                        FINGERPRINT_LEN * b'\x03',
+                                                        FINGERPRINT_LEN * b'\x04',
+                                                        True, True, True))
 
-        contact_l.add_contact('alice@jabber.org', 'bob@jabber.org', 'Alice',
-                              32 * b'\x03', 32 * b'\x04', True, True, True)
-        contact_l.add_contact('david@jabber.org', 'bob@jabber.org', 'David',
-                              32 * b'\x03', 32 * b'\x04', True, True, True)
+        contact_list2 = ContactList(MasterKey(), Settings())
+        c_alice       = contact_list2.get_contact('Alice')
+        c_faye        = contact_list2.get_contact('Faye')
 
-        contact_l2 = ContactList(master_k, settings)
-        c_alice    = contact_l2.get_contact('Alice')
-        c_david    = contact_l2.get_contact('David')
-
-        # Test
+        self.assertEqual(len(self.contact_list), 6)
         self.assertIsInstance(c_alice, Contact)
-        self.assertIsInstance(c_david, Contact)
-        self.assertEqual(c_alice.tx_fingerprint, 32 * b'\x03')
-        self.assertEqual(c_david.tx_fingerprint, 32 * b'\x03')
+        self.assertEqual(c_alice.tx_fingerprint, FINGERPRINT_LEN * b'\x01')
+        self.assertEqual(c_faye.tx_fingerprint,  FINGERPRINT_LEN * b'\x03')
 
-    def test_local_contact(self):
-        # Setup
-        contact1                  = Contact('alice@jabber.org', 'bob@jabber.org', 'Alice',
-                                            32 * b'\x01', 32 * b'\x02', True, True, True)
-        contact_l                 = ContactList(MasterKey(), Settings())
-        contact_l.contacts        = [contact1]
-        o_get_tty_w               = src.common.misc.get_tty_w
-        src.common.misc.get_tty_w = lambda x: 1
+    def test_replace_existing_contact(self):
+        c_alice = self.contact_list.get_contact('Alice')
+        self.assertEqual(c_alice.tx_fingerprint, FINGERPRINT_LEN * b'\x01')
 
-        # Test
-        self.assertFalse(contact_l.has_local_contact())
+        self.assertIsNone(self.contact_list.add_contact(f'alice@jabber.org', 'bob@jabber.org', f'Alice',
+                                                        FINGERPRINT_LEN * b'\x03',
+                                                        FINGERPRINT_LEN * b'\x04',
+                                                        True, True, True))
 
-        contact_l.add_contact('local', 'local', 'local',
-                              32 * b'\x03', 32 * b'\x04', True, True, True)
+        contact_list2 = ContactList(MasterKey(), Settings())
+        c_alice       = contact_list2.get_contact('Alice')
 
-        self.assertTrue(contact_l.has_local_contact())
-        self.assertIsNone(contact_l.print_contacts())
-        self.assertIsNone(contact_l.print_contacts(spacing=True))
+        self.assertEqual(len(self.contact_list), 5)
+        self.assertIsInstance(c_alice, Contact)
+        self.assertEqual(c_alice.tx_fingerprint, FINGERPRINT_LEN * b'\x03')
 
-        # Teardown
-        src.common.misc.get_tty_w = o_get_tty_w
+    def test_remove_contact(self):
+        self.assertTrue(self.contact_list.has_contact('Benny'))
+        self.assertTrue(self.contact_list.has_contact('Charlie'))
+
+        self.contact_list.remove_contact('benny@jabber.org')
+        self.assertFalse(self.contact_list.has_contact('Benny'))
+
+        self.contact_list.remove_contact('Charlie')
+        self.assertFalse(self.contact_list.has_contact('Charlie'))
+
+    def test_get_contact(self):
+        for selector in ['benny@jabber.org', 'Benny']:
+            contact = self.contact_list.get_contact(selector)
+            self.assertIsInstance(contact, Contact)
+            self.assertEqual(contact.rx_account, 'benny@jabber.org')
+
+    def test_get_list_of_contacts(self):
+        for c in self.contact_list.get_list_of_contacts():
+            self.assertIsInstance(c, Contact)
+
+    def test_get_list_of_accounts(self):
+        self.assertEqual(self.contact_list.get_list_of_accounts(),
+                         ['alice@jabber.org',   'benny@jabber.org',
+                          'charlie@jabber.org', 'david@jabber.org',
+                          'eric@jabber.org'])
+
+    def test_get_list_of_nicks(self):
+        self.assertEqual(self.contact_list.get_list_of_nicks(),
+                         ['Alice', 'Benny', 'Charlie', 'David', 'Eric'])
+
+    def test_get_list_of_users_accounts(self):
+        self.assertEqual(self.contact_list.get_list_of_users_accounts(), ['user@jabber.org'])
+
+    def test_contact_selectors(self):
+        self.assertEqual(self.contact_list.contact_selectors(),
+                         ['alice@jabber.org', 'benny@jabber.org', 'charlie@jabber.org',
+                          'david@jabber.org', 'eric@jabber.org',
+                          'Alice', 'Benny', 'Charlie', 'David', 'Eric'])
+
+    def test_has_contacts(self):
+        self.assertTrue(self.contact_list.has_contacts())
+        self.contact_list.contacts = []
+        self.assertFalse(self.contact_list.has_contacts())
+
+    def test_has_contact(self):
+        self.contact_list.contacts = []
+        self.assertFalse(self.contact_list.has_contact('Benny'))
+        self.assertFalse(self.contact_list.has_contact('bob@jabber.org'))
+
+        self.contact_list.contacts = list(map(create_contact, ['Bob', 'Charlie']))
+        self.assertTrue(self.contact_list.has_contact('Bob'))
+        self.assertTrue(self.contact_list.has_contact('charlie@jabber.org'))
+
+    def test_has_local_contact(self):
+        self.assertFalse(self.contact_list.has_local_contact())
+        self.contact_list.contacts.append(create_contact(LOCAL_ID))
+        self.assertTrue(self.contact_list.has_local_contact())
 
     def test_contact_printing(self):
-        # Setup
-        contact_list          = ContactList(MasterKey(), Settings())
-        contact_list.contacts = [create_contact(n) for n in ['Alice', 'Bob', 'Charlie', 'David']]
-        # Teardown
-        self.assertIsNone(contact_list.print_contacts())
+        self.contact_list.contacts.append(create_contact(LOCAL_ID))
+        self.contact_list.get_contact('Alice').log_messages     = False
+        self.contact_list.get_contact('Benny').notifications    = False
+        self.contact_list.get_contact('Charlie').file_reception = False
+        self.contact_list.get_contact('David').tx_fingerprint   = bytes(FINGERPRINT_LEN)
+        self.assertPrints(CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER + """\
+
+Contact     Logging     Notify     Files      Key Ex     Account
+────────────────────────────────────────────────────────────────────────────────
+Alice       No          Yes        Accept     X25519     alice@jabber.org
+Benny       Yes         No         Accept     X25519     benny@jabber.org
+Charlie     Yes         Yes        Reject     X25519     charlie@jabber.org
+David       Yes         Yes        Accept     PSK        david@jabber.org
+Eric        Yes         Yes        Accept     X25519     eric@jabber.org
+
+
+""", self.contact_list.print_contacts)
 
 
 if __name__ == '__main__':

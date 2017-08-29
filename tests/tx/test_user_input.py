@@ -21,53 +21,103 @@ along with TFC. If not, see <http://www.gnu.org/licenses/>.
 import builtins
 import unittest
 
-from src.tx.user_input  import UserInput
+from src.common.statics import *
 
-from tests.mock_classes import create_contact, Settings, Window
+from src.tx.user_input import get_input, process_aliases, UserInput
+
+from tests.mock_classes import create_contact, create_group, Settings, TxWindow
+
+
+class TestProcessAliases(unittest.TestCase):
+
+    def setUp(self):
+        self.settings = Settings()
+        self.window   = TxWindow(name='Alice',
+                                 type=WIN_TYPE_CONTACT,
+                                 type_print='contact',
+                                 window_contacts=[create_contact()])
+
+    def test_unread_shortcut(self):
+        self.assertEqual(process_aliases(' ', self.settings, self.window), '/unread')
+
+    def test_clear_shortcut(self):
+        self.assertEqual(process_aliases('  ', self.settings, self.window), '/clear')
+
+    def test_exit_shortcut(self):
+        # Setup
+        self.settings.double_space_exits = True
+
+        # Test
+        self.assertEqual(process_aliases('  ', self.settings, self.window), '/exit')
+
+    def test_cmd_shortcut(self):
+        self.assertEqual(process_aliases('//', self.settings, self.window), '/cmd')
+
+
+class TestGetInput(unittest.TestCase):
+
+    def setUp(self):
+        self.settings = Settings()
+        self.window   = TxWindow(name='Alice',
+                                 type=WIN_TYPE_CONTACT,
+                                 type_print='contact',
+                                 window_contacts=[create_contact()])
+        self.window.group = create_group('test_group')
+
+    def test_message(self):
+        # Setup
+        input_list     = ['/', '', 'testmessage']
+        gen            = iter(input_list)
+        builtins.input = lambda _: str(next(gen))
+
+        # Test
+        user_input = get_input(self.window, self.settings)
+        self.assertEqual(user_input.plaintext, 'testmessage')
+        self.assertEqual(user_input.type, MESSAGE)
+
+    def test_message_and_command_to_empty_group(self):
+        # Setup
+        input_list     = ['/', '', 'testmessage', '/clear']
+        gen            = iter(input_list)
+        builtins.input = lambda _: str(next(gen))
+
+        self.window.type            = WIN_TYPE_GROUP
+        self.window.window_contacts = []
+        self.window.group.members   = []
+
+        # Test
+        user_input = get_input(self.window, self.settings)
+        self.assertEqual(user_input.plaintext, 'clear')
+        self.assertEqual(user_input.type, COMMAND)
+
+    def test_file(self):
+        # Setup
+        builtins.input = lambda _: '/file'
+
+        # Test
+        user_input = get_input(self.window, self.settings)
+        self.assertEqual(user_input.plaintext, '/file')
+        self.assertEqual(user_input.type, FILE)
+
+    def test_command(self):
+        # Setup
+        builtins.input = lambda _: '/clear'
+
+        # Test
+        user_input = get_input(self.window, self.settings)
+        self.assertEqual(user_input.plaintext, 'clear')
+        self.assertEqual(user_input.type, COMMAND)
 
 
 class TestUserInput(unittest.TestCase):
 
-    def test_class(self):
+    def test_user_input(self):
         # Setup
-        o_input    = builtins.input
-        input_list = ['/', '', 'testmessage', '/file', '/nick Alice', 'testmessage', '/nick Alice', '  ']
-        gen        = iter(input_list)
-        def mock_input(_):
-            return str(next(gen))
-        builtins.input = mock_input
-
-        window   = Window(name='Alice', type='contact', window_contacts=[create_contact('Alice')])
-        settings = Settings()
+        user_input = UserInput('test_plaintext', FILE)
 
         # Test
-        user_input = UserInput(window, settings)
-        self.assertEqual(user_input.plaintext, 'testmessage')
-        self.assertEqual(user_input.type,      'message')
-
-        user_input = UserInput(window, settings)
-        self.assertEqual(user_input.plaintext, '/file')
-        self.assertEqual(user_input.type,      'file')
-
-        user_input = UserInput(window, settings)
-        self.assertEqual(user_input.plaintext, 'nick Alice')
-        self.assertEqual(user_input.type,      'command')
-
-        window = Window(name='Testgroup',
-                        type='group',
-                        window_contacts=[])
-
-        user_input = UserInput(window, settings)
-        self.assertEqual(user_input.plaintext, 'nick Alice')
-        self.assertEqual(user_input.type,      'command')
-
-
-        user_input = UserInput(window, settings)
-        self.assertEqual(user_input.plaintext, 'clear')
-        self.assertEqual(user_input.type,      'command')
-
-        # Teardown
-        builtins.input = o_input
+        self.assertEqual(user_input.plaintext, 'test_plaintext')
+        self.assertEqual(user_input.type, FILE)
 
 
 if __name__ == '__main__':

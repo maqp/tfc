@@ -20,48 +20,51 @@ along with TFC. If not, see <http://www.gnu.org/licenses/>.
 
 import multiprocessing.connection
 import os.path
-import platform
 import serial
 import socket
 import time
 import typing
 
 from serial.serialutil import SerialException
-from typing            import Any, Union
+from typing            import Any, Dict, Union
 
-from src.common.errors import CriticalError, graceful_exit
-from src.common.output import phase, print_on_previous_line
+from src.common.exceptions import CriticalError, graceful_exit
+from src.common.misc       import ignored
+from src.common.output     import phase, print_on_previous_line
+from src.common.statics    import *
 
 if typing.TYPE_CHECKING:
     from multiprocessing        import Queue
     from src.common.db_settings import Settings
 
 
-def gw_incoming(gateway: 'Gateway', q_to_tip: 'Queue'):
-    """Process that loads data from TxM side gateway."""
+def gateway_loop(queues:   Dict[bytes, 'Queue'],
+                 gateway:  'Gateway',
+                 unittest: bool = False) -> None:
+    """Loop that loads data from NH side gateway to RxM."""
+    queue = queues[GATEWAY_QUEUE]
+
     while True:
-        q_to_tip.put(gateway.read())
+        with ignored(EOFError, KeyboardInterrupt):
+            queue.put(gateway.read())
+            if unittest:
+                break
 
 
 class Gateway(object):
-    """Gateway object is a wrapper that provides interconnection between NH and TxM/RxM."""
+    """Gateway object is a wrapper for interfaces that connect TxM/RxM with NH."""
 
     def __init__(self, settings: 'Settings') -> None:
-        """Create a new gateway object."""
+        """Create a new Gateway object."""
         self.settings  = settings
         self.interface = None  # type: Union[Any]
 
         # Set True when serial adapter is initially found so that further
         # serial interface searches know to announce disconnection.
         self.init_found = False
-        bauds_per_byte  = 10
-        bytes_per_s     = self.settings.serial_iface_speed / bauds_per_byte
-        byte_travel_t   = 1 / bytes_per_s
-        self.timeout    = max(2 * byte_travel_t, 0.01)
-        self.delay      = 2 * self.timeout
 
         if self.settings.local_testing_mode:
-            if self.settings.software_operation == 'tx':
+            if self.settings.software_operation == TX:
                 self.client_establish_socket()
             else:
                 self.server_establish_socket()
@@ -76,7 +79,7 @@ class Gateway(object):
             try:
                 self.interface.write(packet)
                 self.interface.flush()
-                time.sleep(self.delay)
+                time.sleep(self.settings.txm_inter_packet_delay)
             except SerialException:
                 self.establish_serial()
                 self.write(packet)
@@ -90,7 +93,7 @@ class Gateway(object):
                 except KeyboardInterrupt:
                     pass
                 except EOFError:
-                    graceful_exit("IPC client disconnected.")
+                    raise CriticalError("IPC client disconnected.")
         else:
             while True:
                 try:
@@ -104,7 +107,7 @@ class Gateway(object):
                         else:
                             if read_buffer:
                                 delta = time.monotonic() - start_time
-                                if delta > self.timeout:
+                                if delta > self.settings.rxm_receive_timeout:
                                     return bytes(read_buffer)
                             else:
                                 time.sleep(0.001)
@@ -117,7 +120,7 @@ class Gateway(object):
 
     def server_establish_socket(self) -> None:
         """Establish IPC server."""
-        listener       = multiprocessing.connection.Listener(('localhost', 5003))
+        listener       = multiprocessing.connection.Listener(('localhost', RXM_LISTEN_SOCKET))
         self.interface = listener.accept()
 
     def client_establish_socket(self) -> None:
@@ -126,7 +129,7 @@ class Gateway(object):
             phase("Waiting for connection to NH", offset=11)
             while True:
                 try:
-                    socket_number  = 5000 if self.settings.data_diode_sockets else 5001
+                    socket_number  = TXM_DD_LISTEN_SOCKET if self.settings.data_diode_sockets else NH_LISTEN_SOCKET
                     self.interface = multiprocessing.connection.Client(('localhost', socket_number))
                     phase("Established", done=True)
                     break
@@ -136,17 +139,17 @@ class Gateway(object):
         except KeyboardInterrupt:
             graceful_exit()
 
-    def establish_serial(self):
-        """Create new serial interface object."""
+    def establish_serial(self) -> None:
+        """Create a new Serial object."""
         try:
             serial_nh      = self.search_serial_interface()
-            self.interface = serial.Serial(serial_nh, self.settings.session_if_speed, timeout=0)
+            self.interface = serial.Serial(serial_nh, self.settings.session_serial_baudrate, timeout=0)
         except SerialException:
-            graceful_exit("SerialException. Ensure $USER is in dialout group.")
+            raise CriticalError("SerialException. Ensure $USER is in the dialout group.")
 
     def search_serial_interface(self) -> str:
         """Search for serial interface."""
-        if self.settings.session_usb_iface:
+        if self.settings.session_usb_serial_adapter:
             search_announced = False
 
             if not self.init_found:
@@ -163,7 +166,7 @@ class Gateway(object):
                         if self.init_found:
                             print_on_previous_line(reps=2)
                         self.init_found = True
-                        return '/dev/{}'.format(f)
+                        return f'/dev/{f}'
                 else:
                     if not search_announced:
                         if self.init_found:
@@ -171,8 +174,7 @@ class Gateway(object):
                         search_announced = True
 
         else:
-            f = 'serial0' if 'Raspbian' in platform.platform() else 'ttyS0'
+            f = 'ttyS0'
             if f in sorted(os.listdir('/dev/')):
-                return '/dev/{}'.format(f)
-            else:
-                raise CriticalError("Error: /dev/{} was not found.".format(f))
+                return f'/dev/{f}'
+            raise CriticalError(f"Error: /dev/{f} was not found.")

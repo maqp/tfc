@@ -24,86 +24,150 @@ import sys
 import time
 import typing
 
-from src.common.errors  import FunctionReturn
-from src.common.path    import ask_path_gui
-from src.common.statics import *
-from src.nh.misc        import c_print, clear_screen
+from typing import Any, Dict
+
+from src.common.exceptions import FunctionReturn
+from src.common.misc       import ignored
+from src.common.output     import c_print, clear_screen
+from src.common.path       import ask_path_gui
+from src.common.statics    import *
 
 if typing.TYPE_CHECKING:
     from multiprocessing import Queue
     from src.nh.settings import Settings
 
 
-def nh_command(settings: 'Settings',
-               q_to_nh:  'Queue',
-               q_to_rxm: 'Queue',
-               q_im_cmd: 'Queue',
-               file_no:  int  # stdin input file descriptor
-               ) -> None:
-    """Process NH side commands."""
-
-    sys.stdin = os.fdopen(file_no)
+def nh_command(queues:   Dict[bytes, 'Queue'],
+               settings: 'Settings',
+               stdin_fd: int,
+               unittest: bool = False) -> None:
+    """Loop that processes NH side commands."""
+    sys.stdin      = os.fdopen(stdin_fd)
+    queue_from_txm = queues[TXM_TO_NH_QUEUE]
 
     while True:
-        try:
-            if q_to_nh.empty():
-                time.sleep(0.001)
-                continue
-            command = q_to_nh.get()
-            header  = command[:2]
+        with ignored(EOFError, FunctionReturn, KeyboardInterrupt):
+            while queue_from_txm.qsize() == 0:
+                time.sleep(0.01)
 
-            if header in [UNENCRYPTED_SCREEN_CLEAR, UNENCRYPTED_SCREEN_RESET]:
-                # Handle race condition with RxM command notification
-                time.sleep(0.1)
-                if settings.local_testing_mode and settings.data_diode_sockets:
-                    time.sleep(0.7)
+            command = queue_from_txm.get()
+            process_command(settings, command, queues)
 
-            if header == UNENCRYPTED_SCREEN_CLEAR:
-                q_im_cmd.put(command)
-                clear_screen()
+            if unittest:
+                break
 
-            if header == UNENCRYPTED_SCREEN_RESET:
-                q_im_cmd.put(command)
-                os.system('reset')
 
-            if header == UNENCRYPTED_EXIT_COMMAND:
-                exit()
+def process_command(settings: 'Settings', command: bytes, queues: Dict[bytes, 'Queue']) -> None:
+    """Process received command."""
+    #             Keyword                      Function to run   (                  Parameters                  )
+    #             -----------------------------------------------------------------------------------------------
+    function_d = {UNENCRYPTED_SCREEN_CLEAR:   (clear_windows,     settings, command, queues[NH_TO_IM_QUEUE]     ),
+                  UNENCRYPTED_SCREEN_RESET:   (reset_windows,     settings, command, queues[NH_TO_IM_QUEUE]     ),
+                  UNENCRYPTED_EXIT_COMMAND:   (exit_tfc,          settings,          queues[EXIT_QUEUE]         ),
+                  UNENCRYPTED_WIPE_COMMAND:   (wipe, settings,                       queues[EXIT_QUEUE]         ),
+                  UNENCRYPTED_IMPORT_COMMAND: (rxm_import,        settings,          queues[RXM_OUTGOING_QUEUE] ),
+                  UNENCRYPTED_EC_RATIO:       (change_ec_ratio,   settings, command                             ),
+                  UNENCRYPTED_BAUDRATE:       (change_baudrate,   settings, command                             ),
+                  UNENCRYPTED_GUI_DIALOG:     (change_gui_dialog, settings, command                             )}  # type: Dict[bytes, Any]
 
-            if header == UNENCRYPTED_EC_RATIO:
-                value = eval(command[2:])
+    header = command[:2]
 
-                if not isinstance(value, int) or value < 1:
-                    c_print("Error: Received Invalid EC ratio value from TxM.")
-                    continue
+    if header not in function_d:
+        raise FunctionReturn("Error: Received an invalid command.")
 
-                settings.e_correction_ratio = value
-                settings.store_settings()
-                c_print("Error correction ratio will change on restart.", head=1, tail=1)
+    from_dict  = function_d[header]
+    func       = from_dict[0]
+    parameters = from_dict[1:]
+    func(*parameters)
 
-            if header == UNENCRYPTED_BAUDRATE:
-                value = eval(command[2:])
 
-                if not isinstance(value, int) or value not in serial.Serial.BAUDRATES:
-                    c_print("Error: Received invalid baud rate value from TxM.")
-                    continue
+def race_condition_delay(settings: 'Settings') -> None:
+    """Handle race condition with RxM command notification."""
+    if settings.local_testing_mode:
+        time.sleep(0.1)
+        if settings.data_diode_sockets:
+            time.sleep(1)
 
-                settings.serial_iface_speed = value
-                settings.store_settings()
-                c_print("Baud rate will change on restart.", head=1, tail=1)
+def clear_windows(settings: 'Settings', command: bytes, queue_to_im: 'Queue') -> None:
+    """Clear NH screen and IM client window."""
+    race_condition_delay(settings)
+    queue_to_im.put(command)
+    clear_screen()
 
-            if header == UNENCRYPTED_IMPORT_COMMAND:
-                f_path = ask_path_gui("Select file to import...", settings, get_file=True)
-                with open(f_path, 'rb') as f:
-                    f_data = f.read()
-                q_to_rxm.put(IMPORTED_FILE_CT_HEADER + f_data)
 
-            if header == UNENCRYPTED_GUI_DIALOG:
-                value = eval(command[2:])
+def reset_windows(settings: 'Settings', command: bytes, queue_to_im: 'Queue') -> None:
+    """Reset NH screen and clear IM client window."""
+    race_condition_delay(settings)
+    queue_to_im.put(command)
+    os.system('reset')
 
-                settings.disable_gui_dialog = value
-                settings.store_settings()
 
-                c_print("Changed setting disable_gui_dialog to {}.".format(value), head=1, tail=1)
+def exit_tfc(settings: 'Settings', queue_exit: 'Queue') -> None:
+    """Exit TFC."""
+    race_condition_delay(settings)
+    queue_exit.put(EXIT)
 
-        except (KeyboardInterrupt, EOFError, FunctionReturn):
-            pass
+
+def rxm_import(settings: 'Settings', queue_to_rxm: 'Queue') -> None:
+    """Import encrypted file to RxM."""
+    f_path = ask_path_gui("Select file to import...", settings, get_file=True)
+    with open(f_path, 'rb') as f:
+        f_data = f.read()
+    queue_to_rxm.put(IMPORTED_FILE_HEADER + f_data)
+
+
+def change_ec_ratio(settings: 'Settings', command: bytes) -> None:
+    """Change Reed-Solomon erasure code correction ratio setting on NH."""
+    try:
+        value = int(command[2:])
+        if value < 1 or value > 2 ** 64 - 1:
+            raise ValueError
+    except ValueError:
+        raise FunctionReturn("Error: Received invalid EC ratio value from TxM.")
+
+    settings.serial_error_correction = value
+    settings.store_settings()
+    c_print("Error correction ratio will change on restart.", head=1, tail=1)
+
+
+def change_baudrate(settings: 'Settings', command: bytes) -> None:
+    """Change serial interface baud rate setting on NH."""
+    try:
+        value = int(command[2:])
+        if value not in serial.Serial.BAUDRATES:
+            raise ValueError
+    except ValueError:
+        raise FunctionReturn("Error: Received invalid baud rate value from TxM.")
+
+    settings.serial_baudrate = value
+    settings.store_settings()
+    c_print("Baud rate will change on restart.", head=1, tail=1)
+
+
+def change_gui_dialog(settings: 'Settings', command: bytes) -> None:
+    """Change file selection (GUI/CLI prompt) setting on NH."""
+    try:
+        value_bytes = command[2:].lower()
+        if value_bytes not in [b'true', b'false']:
+            raise ValueError
+        value = (value_bytes == b'true')
+    except ValueError:
+        raise FunctionReturn("Error: Received invalid GUI dialog setting value from TxM.")
+
+    settings.disable_gui_dialog = value
+    settings.store_settings()
+
+    c_print("Changed setting disable_gui_dialog to {}.".format(value), head=1, tail=1)
+
+
+def wipe(settings: 'Settings', queue_exit: 'Queue') -> None:
+    """Reset terminal, wipe all user data from NH and power off system.
+
+    No effective RAM overwriting tool currently exists, so as long as TxM/RxM
+    use FDE and DDR3 memory, recovery of user data becomes impossible very fast:
+
+        https://www1.cs.fau.de/filepool/projects/coldboot/fares_coldboot.pdf
+    """
+    os.system('reset')
+    race_condition_delay(settings)
+    queue_exit.put(WIPE)

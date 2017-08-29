@@ -20,9 +20,9 @@ along with TFC. If not, see <http://www.gnu.org/licenses/>.
 
 import typing
 
-from src.common.errors  import FunctionReturn
-from src.common.output  import box_print, g_mgmt_print
-from src.common.statics import *
+from src.common.exceptions import FunctionReturn
+from src.common.output     import box_print, group_management_print
+from src.common.statics    import *
 
 if typing.TYPE_CHECKING:
     from datetime               import datetime
@@ -42,35 +42,34 @@ def group_create(cmd_data:     bytes,
     fields     = [f.decode() for f in cmd_data.split(US_BYTE)]
     group_name = fields[0]
 
-    purpaccs = set(fields[1:])
-    accounts = set(contact_list.get_list_of_accounts())
+    purp_accounts = set(fields[1:])
+    accounts      = set(contact_list.get_list_of_accounts())
+    accepted      = list(accounts      & purp_accounts)
+    rejected      = list(purp_accounts - accounts)
 
-    accepted = list(accounts & purpaccs)
-    rejected = list(purpaccs - accounts)
+    if len(accepted) > settings.max_number_of_group_members:
+        raise FunctionReturn(f"Error: TFC settings only allow {settings.max_number_of_group_members} members per group.")
 
-    if len(accepted) > settings.m_members_in_group:
-        raise FunctionReturn("Error: TFC settings only allow {} members per group.".format(settings.m_members_in_group))
+    if len(group_list) == settings.max_number_of_groups:
+        raise FunctionReturn(f"Error: TFC settings only allow {settings.max_number_of_groups} groups.")
 
-    if len(group_list) == settings.m_number_of_groups:
-        raise FunctionReturn("Error: TFC settings only allow {} groups.".format(settings.m_number_of_groups))
-
-    a_contacts = [contact_list.get_contact(c) for c in accepted]
+    accepted_contacts = [contact_list.get_contact(c) for c in accepted]
     group_list.add_group(group_name,
-                         settings.log_msg_by_default,
-                         settings.n_m_notify_privacy,
-                         a_contacts)
+                         settings.log_messages_by_default,
+                         settings.show_notifications_by_default,
+                         accepted_contacts)
 
-    g_mgmt_print('new_g', accepted, contact_list, group_name)
-    g_mgmt_print('unkwn', rejected, contact_list, group_name)
-
-    # Reset members in window.
     window                 = window_list.get_window(group_name)
-    window.window_contacts = a_contacts
+    window.window_contacts = accepted_contacts
     window.message_log     = []
     window.unread_messages = 0
+    window.create_handle_dict()
 
-    local_win = window_list.get_window('local')
-    local_win.print_new(ts, f"Created new group {group_name}.", print_=False)
+    group_management_print(NEW_GROUP,        accepted, contact_list, group_name)
+    group_management_print(UNKNOWN_ACCOUNTS, rejected, contact_list, group_name)
+
+    local_win = window_list.get_window(LOCAL_ID)
+    local_win.add_new(ts, f"Created new group {group_name}.")
 
 
 def group_add_member(cmd_data:     bytes,
@@ -83,32 +82,33 @@ def group_add_member(cmd_data:     bytes,
     fields     = [f.decode() for f in cmd_data.split(US_BYTE)]
     group_name = fields[0]
 
-    purpaccs = set(fields[1:])
-    accounts = set(contact_list.get_list_of_accounts())
-    before_a = set(group_list.get_group(group_name).get_list_of_member_accounts())
-    ok_accos = set(accounts & purpaccs)
-    new_in_g = set(ok_accos - before_a)
+    purp_accounts    = set(fields[1:])
+    accounts         = set(contact_list.get_list_of_accounts())
+    before_adding    = set(group_list.get_group(group_name).get_list_of_member_accounts())
+    ok_accounts      = set(accounts    & purp_accounts)
+    new_in_group_set = set(ok_accounts - before_adding)
 
-    e_asmbly = list(before_a | new_in_g)
-    rejected = list(purpaccs - accounts)
-    in_alrdy = list(before_a & purpaccs)
-    n_in_g_l = list(new_in_g)
+    end_assembly = list(before_adding | new_in_group_set)
+    rejected     = list(purp_accounts - accounts)
+    already_in_g = list(before_adding & purp_accounts)
+    new_in_group = list(new_in_group_set)
 
-    if len(e_asmbly) > settings.m_members_in_group:
-        raise FunctionReturn("Error: TFC settings only allow {} members per group.".format(settings.m_members_in_group))
+    if len(end_assembly) > settings.max_number_of_group_members:
+        raise FunctionReturn(f"Error: TFC settings only allow {settings.max_number_of_group_members} members per group.")
 
     group = group_list.get_group(group_name)
-    group.add_members([contact_list.get_contact(a) for a in new_in_g])
-
-    g_mgmt_print('add_m', n_in_g_l, contact_list, group_name)
-    g_mgmt_print('add_a', in_alrdy, contact_list, group_name)
-    g_mgmt_print('unkwn', rejected, contact_list, group_name)
+    group.add_members([contact_list.get_contact(a) for a in new_in_group])
 
     window = window_list.get_window(group_name)
-    window.add_contacts(n_in_g_l)
+    window.add_contacts(new_in_group)
+    window.create_handle_dict()
 
-    local_win = window_list.get_window('local')
-    local_win.print_new(ts, f"Added members to group {group_name}.", print_=False)
+    group_management_print(ADDED_MEMBERS,    new_in_group, contact_list, group_name)
+    group_management_print(ALREADY_MEMBER,   already_in_g, contact_list, group_name)
+    group_management_print(UNKNOWN_ACCOUNTS, rejected,     contact_list, group_name)
+
+    local_win = window_list.get_window(LOCAL_ID)
+    local_win.add_new(ts, f"Added members to group {group_name}.")
 
 
 def group_rm_member(cmd_data:     bytes,
@@ -120,28 +120,28 @@ def group_rm_member(cmd_data:     bytes,
     fields     = [f.decode() for f in cmd_data.split(US_BYTE)]
     group_name = fields[0]
 
-    purpaccs = set(fields[1:])
-    accounts = set(contact_list.get_list_of_accounts())
-    before_r = set(group_list.get_group(group_name).get_list_of_member_accounts())
-    ok_accos = set(purpaccs & accounts)
-    remove_s = set(before_r & ok_accos)
+    purp_accounts   = set(fields[1:])
+    accounts        = set(contact_list.get_list_of_accounts())
+    before_removal  = set(group_list.get_group(group_name).get_list_of_member_accounts())
+    ok_accounts_set = set(purp_accounts  & accounts)
+    removable_set   = set(before_removal & ok_accounts_set)
 
-    not_in_g = list(ok_accos - before_r)
-    rejected = list(purpaccs - accounts)
-    remove_l = list(remove_s)
+    not_in_group    = list(ok_accounts_set - before_removal)
+    rejected        = list(purp_accounts   - accounts)
+    removable       = list(removable_set)
 
     group = group_list.get_group(group_name)
-    group.remove_members(remove_l)
-
-    g_mgmt_print('rem_m', remove_l, contact_list, group_name)
-    g_mgmt_print('rem_n', not_in_g, contact_list, group_name)
-    g_mgmt_print('unkwn', rejected, contact_list, group_name)
+    group.remove_members(removable)
 
     window = window_list.get_window(group_name)
-    window.remove_contacts(remove_l)
+    window.remove_contacts(removable)
 
-    local_win = window_list.get_window('local')
-    local_win.print_new(ts, f"Removed members from group {group_name}.", print_=False)
+    group_management_print(REMOVED_MEMBERS,  removable,    contact_list, group_name)
+    group_management_print(NOT_IN_GROUP,     not_in_group, contact_list, group_name)
+    group_management_print(UNKNOWN_ACCOUNTS, rejected,     contact_list, group_name)
+
+    local_win = window_list.get_window(LOCAL_ID)
+    local_win.add_new(ts, f"Removed members from group {group_name}.")
 
 
 def remove_group(cmd_data:    bytes,
@@ -151,11 +151,15 @@ def remove_group(cmd_data:    bytes,
     """Remove group."""
     group_name = cmd_data.decode()
 
+    window_list.remove_window(group_name)
+
     if group_name not in group_list.get_list_of_group_names():
-        raise FunctionReturn(f"RxM has no group {group_name} to remove.")
+        raise FunctionReturn(f"RxM has no group '{group_name}' to remove.")
 
     group_list.remove_group(group_name)
 
-    box_print(f"Removed group {group_name}", head=1, tail=1)
-    local_win = window_list.get_window('local')
-    local_win.print_new(ts, f"Removed group {group_name}.", print_=False )
+    message = f"Removed group {group_name}."
+    box_print(message, head=1, tail=1)
+
+    local_win = window_list.get_window(LOCAL_ID)
+    local_win.add_new(ts, message)

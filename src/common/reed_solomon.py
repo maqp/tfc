@@ -9,11 +9,12 @@
 The code below is edited and used under public domain license:
 https://github.com/tomerfiliba/reedsolomon/blob/master/LICENSE
 
-The comments/unused code have been intentionally removed. Original code's at
+The comments/unused code have been intentionally removed. Original code is at
 https://github.com/tomerfiliba/reedsolomon/blob/master/reedsolo.py
 """
 
 import itertools
+import shutil
 
 
 class ReedSolomonError(Exception):
@@ -25,8 +26,38 @@ gf_log       = bytearray(256)
 field_charac = int(2 ** 8 - 1)
 
 
-def init_tables(prim=0x11d, generator=2, c_exp=8):
+def find_prime_polys(generator=2, c_exp=8):
+    """\
+    Compute the list of prime polynomials for the given
+    generator and galois field characteristic exponent.
     """
+    root_charac       = 2
+    field_charac_     = int(root_charac ** c_exp - 1)
+    field_charac_next = int(root_charac ** (c_exp + 1) - 1)
+
+    prim_candidates = range(field_charac_ + 2, field_charac_next, root_charac)
+
+    correct_primes = []
+    for prim in prim_candidates:
+        seen     = bytearray(field_charac_ + 1)
+        conflict = False
+        x        = 1
+        for i in range(field_charac_):
+            x = gf_mult_nolut(x, generator, prim, field_charac_ + 1)
+            if x > field_charac_ or seen[x] == 1:
+                conflict = True
+                break
+            else:
+                seen[x] = 1
+
+        if not conflict:
+            correct_primes.append(prim)
+
+    return correct_primes
+
+
+def init_tables(prim=0x11d, generator=2, c_exp=8):
+    """\
     Precompute the logarithm and anti-log tables for faster computation
     later, using the provided primitive polynomial. These tables are
     used for multiplication/division since addition/substraction are
@@ -36,10 +67,12 @@ def init_tables(prim=0x11d, generator=2, c_exp=8):
     any number b to precompute logarithm and anti-log (exponentiation)
     tables to use for multiplying two numbers x and y.
 
-    That's why when we use a different base/generator number, the log and
-    anti-log tables are drastically different, but the resulting
-    computations are the same given any such tables. For more information, see
-    https://en.wikipedia.org/wiki/Finite_field_arithmetic#Implementation_tricks
+    That's why when we use a different base/generator number, the log
+    and anti-log tables are drastically different, but the resulting
+    computations are the same given any such tables.
+
+    For more information, see
+        https://en.wikipedia.org/wiki/Finite_field_arithmetic#Implementation_tricks
     """
     global gf_exp, gf_log, field_charac
 
@@ -74,7 +107,7 @@ def gf_mul(x, y):
 
 def gf_div(x, y):
     if y == 0:
-        raise ZeroDivisionError()
+        raise ReedSolomonError("Divider was zero.")
     if x == 0:
         return 0
     return gf_exp[(gf_log[x] + field_charac - gf_log[y]) % field_charac]
@@ -84,8 +117,59 @@ def gf_pow(x, power):
     return gf_exp[(gf_log[x] * power) % field_charac]
 
 
-def fg_mult_nolut(x, y, prim=0, field_charac_full=256, carryless=True):
+def gf_mult_nolut_slow(x, y, prim=0):
+    """\
+    Multiplication in Galois Fields without using a precomputed look-up
+    table (and thus it's slower) by using the standard carry-less
+    multiplication + modular reduction using an irreducible prime
+    polynomial.
     """
+
+    def cl_mult(x_, y_):
+        """Bitwise carry-less multiplication on integers"""
+        z = 0
+        i = 0
+        while (y_ >> i) > 0:
+            if y_ & (1 << i):
+                z ^= x_ << i
+            i += 1
+        return z
+
+    def bit_length(n):
+        """\
+        Compute the position of the most significant bit
+        (1) of an integer. Equivalent to int.bit_length()
+        """
+        bits = 0
+        while n >> bits: bits += 1
+        return bits
+
+    def cl_div(dividend, divisor=None):
+        """\
+        Bitwise carry-less long division on
+        integers and returns the remainder.
+        """
+
+        dl1 = bit_length(dividend)
+        dl2 = bit_length(divisor)
+
+        if dl1 < dl2:
+            return dividend
+
+        for i in range(dl1 - dl2, -1, -1):
+            if dividend & (1 << i + dl2 - 1):
+                dividend ^= divisor << i
+        return dividend
+
+    result = cl_mult(x, y)
+    if prim > 0:
+        result = cl_div(result, prim)
+
+    return result
+
+
+def fg_mult_nolut(x, y, prim=0, field_charac_full=256, carryless=True):
+    """\
     Galois Field integer multiplication using Russian Peasant Multiplication
     algorithm (faster than the standard multiplication + modular reduction).
     If prim is 0 and carryless=False, then the function produces the result
@@ -103,6 +187,25 @@ def fg_mult_nolut(x, y, prim=0, field_charac_full=256, carryless=True):
     return r
 
 
+def gf_mult_nolut(x, y, prim=0, field_charac_full=256, carryless=True):
+    """\
+    Galois Field integer multiplication using Russian Peasant
+    Multiplication algorithm (faster than the standard
+    multiplication + modular reduction).
+
+    If prim is 0 and carryless=False, then the function produces the
+    result for a standard integers multiplication (no carry-less
+    arithmetics nor modular reduction)."""
+
+    r = 0
+    while y:
+        if y & 1: r = r ^ x if carryless else r + x
+        y >>= 1
+        x <<= 1
+        if prim > 0 and x & field_charac_full: x ^= prim
+    return r
+
+
 def gf_poly_scale(p, x):
     return bytearray([gf_mul(p[i], x) for i in range(len(p))])
 
@@ -116,7 +219,7 @@ def gf_poly_add(p, q):
 
 
 def gf_poly_mul(p, q):
-    """
+    """\
     Multiply two polynomials, inside Galois Field (but the procedure
     is generic). Optimized function by precomputation of log.
     """
@@ -133,10 +236,10 @@ def gf_poly_mul(p, q):
 
 
 def gf_poly_div(dividend, divisor):
-    """
-    Fast polynomial division by using Extended Synthetic Division and optimized
-    for GF(2^p) computations (doesn't work with standard polynomials outside of
-    this galois field).
+    """\
+    Fast polynomial division by using Extended Synthetic Division and
+    optimized for GF(2^p) computations (doesn't work with standard
+    polynomials outside of this galois field).
     """
     msg_out = bytearray(dividend)
     for i in range(len(dividend) - (len(divisor) - 1)):
@@ -151,7 +254,7 @@ def gf_poly_div(dividend, divisor):
 
 
 def gf_poly_eval(poly, x):
-    """
+    """\
     Evaluates a polynomial in GF(2^p) given the value for x.
     This is based on Horner's scheme for maximum efficiency.
     """
@@ -162,7 +265,7 @@ def gf_poly_eval(poly, x):
 
 
 def rs_generator_poly(nsym, fcr=0, generator=2):
-    """
+    """\
     Generate an irreducible generator polynomial
     (necessary to encode a message into Reed-Solomon)
     """
@@ -172,21 +275,36 @@ def rs_generator_poly(nsym, fcr=0, generator=2):
     return g
 
 
-def rs_encode_msg(msg_in, nsym, fcr=0, generator=2, gen=None):
+def rs_generator_poly_all(max_nsym, fcr=0, generator=2):
+    """\
+    Generate all irreducible generator polynomials up to max_nsym
+    (usually you can use n, the length of the message+ecc). Very
+    useful to reduce processing time if you want to encode using
+    variable schemes and nsym rates.
     """
-    Reed-Solomon main encoding function, using polynomial division (Extended
-    Synthetic Division, the fastest algorithm available to my knowledge),
-    better explained at http://research.swtch.com/field
+    g_all    = dict()
+    g_all[0] = g_all[1] = [1]
+    for nsym in range(max_nsym):
+        g_all[nsym] = rs_generator_poly(nsym, fcr, generator)
+    return g_all
+
+
+def rs_encode_msg(msg_in, nsym, fcr=0, generator=2, gen=None):
+    """\
+    Reed-Solomon main encoding function, using polynomial division
+    (Extended Synthetic Division, the fastest algorithm available to my
+    knowledge), better explained at http://research.swtch.com/field
     """
     global field_charac
     if (len(msg_in) + nsym) > field_charac:
-        raise ValueError("Message is too long ({} when max is {})".format(len(msg_in) + nsym, field_charac))
+        raise ValueError("Message is too long ({} when max is {})"
+                         .format(len(msg_in) + nsym, field_charac))
 
     if gen is None:
         gen = rs_generator_poly(nsym, fcr, generator)
 
     msg_in  = bytearray(msg_in)
-    msg_out = bytearray(msg_in) + bytearray(len(gen) - 1)
+    msg_out = bytearray(msg_in) + bytes(bytearray(len(gen) - 1))
     lgen    = bytearray([gf_log[gen[j]] for j in range(len(gen))])
 
     for i in range(len(msg_in)):
@@ -202,18 +320,20 @@ def rs_encode_msg(msg_in, nsym, fcr=0, generator=2, gen=None):
 
 
 def rs_calc_syndromes(msg, nsym, fcr=0, generator=2):
-    """
-    Given the received codeword msg and the number of error correcting symbols
-    (nsym), computes the syndromes polynomial. Mathematically, it's essentially
-    equivalent to a Fourier Transform (Chien search being the inverse).
+    """\
+    Given the received codeword msg and the number of error correcting
+    symbols (nsym), computes the syndromes polynomial. Mathematically,
+    it's essentially equivalent to a Fourier Transform (Chien search
+    being the inverse).
     """
     return [0] + [gf_poly_eval(msg, gf_pow(generator, i + fcr))
                   for i in range(nsym)]
 
 
 def rs_correct_errata(msg_in, synd, err_pos, fcr=0, generator=2):
-    """
-    Forney algorithm, computes the values (error magnitude) to correct in_msg.
+    """\
+    Forney algorithm, computes the values
+    (error magnitude) to correct in_msg.
     """
     global field_charac
     msg      = bytearray(msg_in)
@@ -249,9 +369,9 @@ def rs_correct_errata(msg_in, synd, err_pos, fcr=0, generator=2):
 
 
 def rs_find_error_locator(synd, nsym, erase_loc=None, erase_count=0):
-    """
+    """\
     Find error/errata locator and evaluator
-    polynomials with Berlekamp-Massey algorithm
+    polynomials with Berlekamp-Massey algorithm.
     """
     if erase_loc:
         err_loc = bytearray(erase_loc)
@@ -291,25 +411,34 @@ def rs_find_error_locator(synd, nsym, erase_loc=None, erase_count=0):
 
 
 def rs_find_errata_locator(e_pos, generator=2):
-    """
+    """\
     Compute the erasures/errors/errata locator polynomial from the
-    erasures/errors/errata positions (the positions must be relative to the x
-    coefficient, eg: "hello worldxxxxxxxxx" is tampered to
-    "h_ll_ worldxxxxxxxxx" with xxxxxxxxx being the ecc of length n-k=9, here
-    the string positions are [1, 4], but the coefficients are reversed since
-    the ecc characters are placed as the first coefficients of the polynomial,
-    thus the coefficients of the erased characters are n-1 - [1, 4] = [18, 15]
-    = erasures_loc to be specified as an argument.
+    erasures/errors/errata positions (the positions must be relative to
+    the x coefficient, eg: "hello worldxxxxxxxxx" is tampered to
+    "h_ll_ worldxxxxxxxxx" with xxxxxxxxx being the ecc of length n-k=9,
+    here the string positions are [1, 4], but the coefficients are
+    reversed since the ecc characters are placed as the first
+    coefficients of the polynomial, thus the coefficients of the erased
+    characters are n-1 - [1, 4] = [18, 15] = erasures_loc to be specified
+    as an argument.
     """
     e_loc = [1]
 
+    terminal_width = shutil.get_terminal_size()[0]
+
+    def c_print(string: str) -> None:
+        print(string.center(terminal_width))
+
     if len(e_pos) > 0:
-        print("\nWarning! Reed-Solomon erasure code\n"
-              "detected and corrected {} errors in\n"
-              "received packet. This might indicate\n"
-              "eminent serial adapter or data diode\n"
-              "HW failure, or that serial interface\n"
-              "speed is set too high.\n".format(len(e_pos)))
+        print('')
+        for s in ["Warning! Reed-Solomon erasure code",
+                  "detected and corrected {} errors in ".format(len(e_pos)),
+                  "received packet. This might indicate",
+                  "bad connection, an eminent adapter or",
+                  "data diode HW failure or that serial",
+                  "interface's baudrate is set too high."]:
+            c_print(s)
+        print('')
 
     for i in e_pos:
         e_loc = gf_poly_mul(e_loc, gf_poly_add([1], [gf_pow(generator, i), 0]))
@@ -317,24 +446,25 @@ def rs_find_errata_locator(e_pos, generator=2):
 
 
 def rs_find_error_evaluator(synd, err_loc, nsym):
-    """
+    """\
     Compute the error (or erasures if you supply sigma=erasures locator
-    polynomial, or errata) evaluator polynomial Omega from the syndrome and the
-    error/erasures/errata locator Sigma. Omega is already computed at the same
-    time as Sigma inside the Berlekamp-Massey implemented above, but in case
-    you modify Sigma, you can recompute Omega afterwards using this method, or
-    just ensure that Omega computed by BM is correct given Sigma.
+    polynomial, or errata) evaluator polynomial Omega from the syndrome
+    and the error/erasures/errata locator Sigma. Omega is already
+    computed at the same time as Sigma inside the Berlekamp-Massey
+    implemented above, but in case you modify Sigma, you can recompute
+    Omega afterwards using this method, or just ensure that Omega
+    computed by BM is correct given Sigma.
     """
     _, remainder = gf_poly_div(gf_poly_mul(synd, err_loc), ([1] + [0] * (nsym + 1)))
     return remainder
 
 
 def rs_find_errors(err_loc, nmess, generator=2):
-    """
+    """\
     Find the roots (ie, where evaluation = zero) of error polynomial by
-    bruteforce trial, this is a sort of Chien's search (but less efficient,
-    Chien's search is a way to evaluate the polynomial such that each
-    evaluation only takes constant time).
+    bruteforce trial, this is a sort of Chien's search (but less
+    efficient, Chien's search is a way to evaluate the polynomial such
+    that each evaluation only takes constant time).
     """
     errs    = len(err_loc) - 1
     err_pos = []
@@ -362,7 +492,8 @@ def rs_correct_msg(msg_in, nsym, fcr=0, generator=2, erase_pos=None, only_erasur
     """Reed-Solomon main decoding function."""
     global field_charac
     if len(msg_in) > field_charac:
-        raise ValueError("Message is too long ({} when max is {})".format(len(msg_in), field_charac))
+        raise ValueError("Message is too long ({} when max is {})"
+                         .format(len(msg_in), field_charac))
 
     msg_out = bytearray(msg_in)
     if erase_pos is None:
@@ -395,31 +526,40 @@ def rs_correct_msg(msg_in, nsym, fcr=0, generator=2, erase_pos=None, only_erasur
     return msg_out[:-nsym], msg_out[-nsym:]
 
 
-class RSCodec(object):
+def rs_check(msg, nsym, fcr=0, generator=2):
+    """\
+    Returns true if the message + ecc has no error of false otherwise
+    (may not always catch a wrong decoding or a wrong message,
+    particularly if there are too many errors -- above the Singleton
+    bound --, but it usually does).
     """
+    return max(rs_calc_syndromes(msg, nsym, fcr, generator)) == 0
+
+
+class RSCodec(object):
+    """\
     A Reed Solomon encoder/decoder. After initializing the object, use
-    ``encode`` to encode a (byte)string to include the RS correction code, and
-    pass such an encoded (byte)string to ``decode`` to extract the original
-    message (if the number of errors allows for correct decoding). The ``nsym``
-    argument is the length of the correction code, and it determines the number
-    of error bytes (if I understand this correctly, half of ``nsym`` is
-    correctable).
+    ``encode`` to encode a (byte)string to include the RS correction
+    code, and pass such an encoded (byte)string to ``decode`` to extract
+    the original message (if the number of errors allows for correct
+    decoding). The ``nsym`` argument is the length of the correction
+    code, and it determines the number of error bytes (if I understand
+    this correctly, half of ``nsym`` is correctable).
 
     Modifications by rotorgit 2/3/2015:
-    Added support for US FAA ADSB UAT RS FEC, by allowing user to specify
-    different primitive polynomial and non-zero first consecutive root (fcr).
-    For UAT/ADSB use, set fcr=120 and prim=0x187 when instantiating
-    the class; leaving them out will default for previous values (0 and
-    0x11d)
+    Added support for US FAA ADSB UAT RS FEC, by allowing user to
+    specify different primitive polynomial and non-zero first
+    consecutive root (fcr). For UAT/ADSB use, set fcr=120 and prim=0x187
+    when instantiating the class; leaving them out will default for
+    previous values (0 and 0x11d)
     """
 
-    def __init__(self, nsym=10, nsize=255, fcr=0, prim=0x11d, generator=2,
-                 c_exp=8):
-        """
+    def __init__(self, nsym=10, nsize=255, fcr=0, prim=0x11d, generator=2, c_exp=8):
+        """\
         Initialize the Reed-Solomon codec. Note that different parameters
-        change the internal values (the ecc symbols, look-up table values, etc)
-        but not the output result (whether your message can be repaired or not,
-        there is no influence of the parameters).
+        change the internal values (the ecc symbols, look-up table values,
+        etc) but not the output result (whether your message can be
+        repaired or not, there is no influence of the parameters).
         """
         self.nsym      = nsym
         self.nsize     = nsize
@@ -430,12 +570,10 @@ class RSCodec(object):
         init_tables(prim, generator, c_exp)
 
     def encode(self, data):
-        """
+        """\
         Encode a message (ie, add the ecc symbols) using Reed-Solomon,
         whatever the length of the message because we use chunking.
         """
-        if isinstance(data, str):
-            data = bytearray(data, "latin-1")
         chunk_size = self.nsize - self.nsym
         enc        = bytearray()
 
@@ -444,21 +582,10 @@ class RSCodec(object):
             enc.extend(rs_encode_msg(chunk, self.nsym, fcr=self.fcr, generator=self.generator))
         return enc
 
-    def decode(self, data, erase_pos=None, only_erasures=False):
+    def decode(self, data):
         """Repair a message, whatever its size is, by using chunking."""
-        if isinstance(data, str):
-            data = bytearray(data, "latin-1")
         dec = bytearray()
         for i in range(0, len(data), self.nsize):
             chunk = data[i:i + self.nsize]
-            e_pos = []
-            if erase_pos:
-                e_pos     = [x for x in erase_pos if x <= self.nsize]
-                erase_pos = [x - (self.nsize + 1)
-                             for x in erase_pos if x > self.nsize]
-
-            dec.extend(rs_correct_msg(chunk, self.nsym, fcr=self.fcr,
-                                      generator=self.generator,
-                                      erase_pos=e_pos,
-                                      only_erasures=only_erasures)[0])
+            dec.extend(rs_correct_msg(chunk, self.nsym, fcr=self.fcr, generator=self.generator, only_erasures=False)[0])
         return dec
