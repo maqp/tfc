@@ -223,7 +223,12 @@ def csprng() -> bytes:
 
     :return: Cryptographically secure 256-bit random key
     """
-    entropy = os.getrandom(KEY_LENGTH, flags=0)
+    # As Travis CI lacks GETRANDOM syscall, fallback to urandom.
+    if 'TRAVIS' in os.environ and os.environ['TRAVIS'] == 'true':
+        entropy = os.urandom(KEY_LENGTH)
+    else:
+        entropy = os.getrandom(KEY_LENGTH, flags=0)
+
     assert len(entropy) == KEY_LENGTH
 
     return hash_chain(entropy)

@@ -251,15 +251,17 @@ class TestXOR(unittest.TestCase):
 
 class TestCSPRNG(unittest.TestCase):
 
-    def setUp(self):
-        # Fallback to urandom on Travis' Python3.6 that currently lacks os.getrandom call.
-        if 'TRAVIS' in os.environ and os.environ['TRAVIS'] == 'true':
-            self.o_getrandom = os.getrandom
-            os.getrandom     = lambda n, flags: os.urandom(n)
+    def test_travis_mock(self):
+        # Setup
+        o_environ  = os.environ
+        os.environ = dict(TRAVIS='true')
 
-    def tearDown(self):
-        if 'TRAVIS' in os.environ and os.environ['TRAVIS'] == 'true':
-            os.getrandom = self.o_getrandom
+        # Test
+        self.assertEqual(len(csprng()), KEY_LENGTH)
+        self.assertIsInstance(csprng(), bytes)
+
+        # Teardown
+        os.environ = o_environ
 
     def test_key_generation(self):
         self.assertEqual(len(csprng()), KEY_LENGTH)

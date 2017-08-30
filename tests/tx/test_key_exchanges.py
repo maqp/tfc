@@ -40,7 +40,9 @@ class TestLocalKey(TFCTestCase):
     def setUp(self):
         self.o_input     = builtins.input
         self.o_urandom   = os.urandom
-        self.o_getrandom = os.getrandom
+
+        if 'TRAVIS' not in os.environ or not os.environ['TRAVIS'] == 'true':
+            self.o_getrandom = os.getrandom
 
         self.contact_list = ContactList()
         self.settings     = Settings()
@@ -51,7 +53,9 @@ class TestLocalKey(TFCTestCase):
     def tearDown(self):
         builtins.input = self.o_input
         os.urandom     = self.o_urandom
-        os.getrandom   = self.o_getrandom
+
+        if 'TRAVIS' not in os.environ or not os.environ['TRAVIS'] == 'true':
+            os.getrandom = self.o_getrandom
 
         for key in self.queues.keys():
             while not self.queues[key].empty():
@@ -72,7 +76,9 @@ class TestLocalKey(TFCTestCase):
         self.settings.nh_bypass_messages      = False
         self.settings.session_traffic_masking = False
 
-        os.getrandom   = lambda n, flags: n * b'\xff'
+        if 'TRAVIS' not in os.environ or not os.environ['TRAVIS'] == 'true':
+            os.getrandom = lambda n, flags: n * b'\xff'
+
         os.urandom     = lambda n:        n * b'\xff'
         input_list     = ['bad', 'resend', 'ff']
         gen            = iter(input_list)
@@ -204,26 +210,31 @@ class TestKeyExchange(TFCTestCase):
 class TestPSK(TFCTestCase):
 
     def setUp(self):
-        self.o_input     = builtins.input
-        self.o_getrandom = os.getrandom
-        self.o_getpass   = getpass.getpass
+        if 'TRAVIS' not in os.environ or not os.environ['TRAVIS'] == 'true':
+            self.o_getrandom = os.getrandom
 
+        self.o_input      = builtins.input
+        self.o_getpass    = getpass.getpass
         self.contact_list = ContactList()
         self.settings     = Settings(disable_gui_dialog=True)
         self.queues       = {COMMAND_PACKET_QUEUE: Queue(),
                              KEY_MANAGEMENT_QUEUE: Queue()}
 
-        os.getrandom    = lambda n, flags: n * b'\x00'
+        if 'TRAVIS' not in os.environ or not os.environ['TRAVIS'] == 'true':
+            os.getrandom = lambda n, flags: n * b'\x00'
+
         getpass.getpass = lambda _: 'test_password'
         input_list      = ['/root/',  # Invalid directory
-                          '.']        # Valid directory
+                           '.']        # Valid directory
         gen             = iter(input_list)
         builtins.input  = lambda _: str(next(gen))
 
     def tearDown(self):
         builtins.input  = self.o_input
-        os.getrandom    = self.o_getrandom
         getpass.getpass = self.o_getpass
+
+        if 'TRAVIS' not in os.environ or not os.environ['TRAVIS'] == 'true':
+            os.getrandom = self.o_getrandom
 
         with ignored(OSError):
             os.remove('user@jabber.org.psk - Give to alice@jabber.org')

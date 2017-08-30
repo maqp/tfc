@@ -74,13 +74,12 @@ class TestProcessCommand(TFCTestCase):
 class TestPrintAbout(TFCTestCase):
 
     def test_print_about(self):
-        print_about()
         self.assertPrints(CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER + """\
 
- Tinfoil Chat {}                           
+ Tinfoil Chat {}
 
- Website:     https://github.com/maqp/tfc/            
- Wikipage:    https://github.com/maqp/tfc/wiki        
+ Website:     https://github.com/maqp/tfc/
+ Wikipage:    https://github.com/maqp/tfc/wiki
  White paper: https://cs.helsinki.fi/u/oottela/tfc.pdf
 
 """.format(VERSION), print_about)
@@ -312,6 +311,7 @@ class TestExportFile(TFCTestCase):
         self.assertFR("Error: Command is disabled during traffic masking.",
                       export_file, Settings(session_traffic_masking=True), None)
 
+    @unittest.skipIf("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true", "Skip as Travis has no $DISPLAY.")
     def test_unknown_file_raises_fr(self):
         # Setup
         tkinter.filedialog.askopenfilename = lambda title: 'unknown_file'

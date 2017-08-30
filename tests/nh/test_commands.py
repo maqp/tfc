@@ -171,6 +171,7 @@ class TestRxMImport(unittest.TestCase):
         time.sleep(0.1)
         self.queue_to_rxm.close()
 
+    @unittest.skipIf("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true", "Skip as Travis has no $DISPLAY.")
     def test_rxm_import(self):
         self.assertIsNone(rxm_import(self.settings, self.queue_to_rxm))
         time.sleep(0.1)

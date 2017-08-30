@@ -25,6 +25,7 @@ import struct
 import threading
 import unittest
 
+from datetime        import datetime
 from multiprocessing import Queue
 
 from src.common.db_contacts import ContactList
@@ -138,6 +139,8 @@ class TestAccessHistoryAndPrintLogs(TFCTestCase):
         self.contact_list          = ContactList(self.masterkey, self.settings)
         self.contact_list.contacts = list(map(create_contact, ['Alice', 'Charlie']))
 
+        self.time = datetime.fromtimestamp(struct.unpack('<L', binascii.unhexlify('08ceae02'))[0]).strftime('%H:%M')
+
         self.group_list = GroupList(groups=['test_group'])
         group           = self.group_list.get_group('test_group')
         group.members   = self.contact_list.contacts
@@ -187,11 +190,11 @@ class TestAccessHistoryAndPrintLogs(TFCTestCase):
             write_log_entry(p, 'alice@jabber.org', self.settings, self.masterkey)
 
         # Test
-        self.assertPrints((CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER + """\
+        self.assertPrints((CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER + f"""\
 Logfile of messages to/from Alice
 ════════════════════════════════════════════════════════════════════════════════
-00:54 Alice: Hi Bob
-00:54    Me: Hi Alice
+{self.time} Alice: Hi Bob
+{self.time}    Me: Hi Alice
 <End of logfile>
 
 """), access_logs, self.window, self.contact_list, self.group_list, self.settings, self.masterkey)
@@ -208,11 +211,11 @@ Logfile of messages to/from Alice
 
         with open("UtM - Plaintext log (Alice)") as f:
             exported_log = f.read()
-        self.assertEqual(exported_log, """\
+        self.assertEqual(exported_log, f"""\
 Logfile of messages to/from Alice
 ════════════════════════════════════════════════════════════════════════════════
-00:54 Alice: Hi Bob
-00:54    Me: Hi Alice
+{self.time} Alice: Hi Bob
+{self.time}    Me: Hi Alice
 <End of logfile>
 
 """)
@@ -239,10 +242,10 @@ Logfile of messages to/from Alice
             write_log_entry(p, 'alice@jabber.org', self.settings, self.masterkey)
 
         # Test
-        self.assertPrints((CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER + """\
+        self.assertPrints((CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER + f"""\
 Logfile of messages to/from Alice
 ════════════════════════════════════════════════════════════════════════════════
-00:54 Alice: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean
+{self.time} Alice: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean
              condimentum consectetur purus quis dapibus. Fusce venenatis lacus
              ut rhoncus faucibus. Cras sollicitudin commodo sapien, sed bibendum
              velit maximus in. Aliquam ac metus risus. Sed cursus ornare luctus.
@@ -257,7 +260,7 @@ Logfile of messages to/from Alice
              sem elit, fringilla id viverra commodo, sagittis varius purus.
              Pellentesque rutrum lobortis neque a facilisis. Mauris id tortor
              placerat, aliquam dolor ac, venenatis arcu.
-00:54    Me: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean
+{self.time}    Me: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean
              condimentum consectetur purus quis dapibus. Fusce venenatis lacus
              ut rhoncus faucibus. Cras sollicitudin commodo sapien, sed bibendum
              velit maximus in. Aliquam ac metus risus. Sed cursus ornare luctus.
@@ -287,12 +290,12 @@ Logfile of messages to/from Alice
             write_log_entry(p, 'charlie@jabber.org', self.settings, self.masterkey, origin=ORIGIN_CONTACT_HEADER)
 
         # Test
-        self.assertPrints((CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER + """\
+        self.assertPrints((CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER + f"""\
 Logfile of messages to/from test_group
 ════════════════════════════════════════════════════════════════════════════════
-00:54      Me: This is a short message
-00:54   Alice: This is a short message
-00:54 Charlie: This is a short message
+{self.time}      Me: This is a short message
+{self.time}   Alice: This is a short message
+{self.time} Charlie: This is a short message
 <End of logfile>
 
 """), access_logs, self.window, self.contact_list, self.group_list, self.settings, self.masterkey)
@@ -331,10 +334,10 @@ Logfile of messages to/from test_group
 
         # Test
         access_logs(self.window, self.contact_list, self.group_list, self.settings, self.masterkey)
-        self.assertPrints((CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER + """\
+        self.assertPrints((CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER + f"""\
 Logfile of messages to/from test_group
 ════════════════════════════════════════════════════════════════════════════════
-00:54      Me: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean
+{self.time}      Me: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean
                condimentum consectetur purus quis dapibus. Fusce venenatis lacus
                ut rhoncus faucibus. Cras sollicitudin commodo sapien, sed
                bibendum velit maximus in. Aliquam ac metus risus. Sed cursus
@@ -350,7 +353,7 @@ Logfile of messages to/from test_group
                commodo, sagittis varius purus. Pellentesque rutrum lobortis
                neque a facilisis. Mauris id tortor placerat, aliquam dolor ac,
                venenatis arcu.
-00:54   Alice: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean
+{self.time}   Alice: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean
                condimentum consectetur purus quis dapibus. Fusce venenatis lacus
                ut rhoncus faucibus. Cras sollicitudin commodo sapien, sed
                bibendum velit maximus in. Aliquam ac metus risus. Sed cursus
@@ -366,7 +369,7 @@ Logfile of messages to/from test_group
                commodo, sagittis varius purus. Pellentesque rutrum lobortis
                neque a facilisis. Mauris id tortor placerat, aliquam dolor ac,
                venenatis arcu.
-00:54 Charlie: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean
+{self.time} Charlie: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean
                condimentum consectetur purus quis dapibus. Fusce venenatis lacus
                ut rhoncus faucibus. Cras sollicitudin commodo sapien, sed
                bibendum velit maximus in. Aliquam ac metus risus. Sed cursus
@@ -394,6 +397,7 @@ class TestReEncrypt(TFCTestCase):
         self.new_key       = MasterKey(master_key=os.urandom(32))
         self.settings      = Settings()
         self.o_struct_pack = struct.pack
+        self.time          = datetime.fromtimestamp(struct.unpack('<L', binascii.unhexlify('08ceae02'))[0]).strftime('%H:%M')
         struct.pack        = lambda *_: binascii.unhexlify('08ceae02')
 
     def tearDown(self):
@@ -421,11 +425,11 @@ class TestReEncrypt(TFCTestCase):
             write_log_entry(p, 'alice@jabber.org', self.settings, self.old_key)
 
         # Test
-        self.assertPrints((CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER + """\
+        self.assertPrints((CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER + f"""\
 Logfile of messages to/from Alice
 ════════════════════════════════════════════════════════════════════════════════
-00:54 Alice: This is a short message
-00:54    Me: This is a short message
+{self.time} Alice: This is a short message
+{self.time}    Me: This is a short message
 <End of logfile>
 
 """), access_logs, window, contact_list, group_list, self.settings, self.old_key)
@@ -433,11 +437,11 @@ Logfile of messages to/from Alice
         self.assertIsNone(re_encrypt(self.old_key.master_key, self.new_key.master_key, self.settings))
 
         # Test that decryption works with new key
-        self.assertPrints((CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER + """\
+        self.assertPrints((CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER + f"""\
 Logfile of messages to/from Alice
 ════════════════════════════════════════════════════════════════════════════════
-00:54 Alice: This is a short message
-00:54    Me: This is a short message
+{self.time} Alice: This is a short message
+{self.time}    Me: This is a short message
 <End of logfile>
 
 """), access_logs, window, contact_list, group_list, self.settings, self.new_key)
@@ -451,7 +455,7 @@ class TestRemoveLog(TFCTestCase):
     def setUp(self):
         self.masterkey = MasterKey()
         self.settings  = Settings()
-
+        self.time      = datetime.fromtimestamp(struct.unpack('<L', binascii.unhexlify('08ceae02'))[0]).strftime('%H:%M')
         self.msg = ("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean condimentum consectetur purus quis"
                     " dapibus. Fusce venenatis lacus ut rhoncus faucibus. Cras sollicitudin commodo sapien, sed bibendu"
                     "m velit maximus in. Aliquam ac metus risus. Sed cursus ornare luctus. Integer aliquet lectus id ma"

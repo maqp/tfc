@@ -38,6 +38,7 @@ class TestRxWindow(TFCTestCase):
         self.settings     = Settings()
         self.packet_list  = PacketList()
         self.ts           = datetime.fromtimestamp(1502750000)
+        self.time         = self.ts.strftime('%H:%M')
 
         group         = self.group_list.get_group('test_group')
         group.members = list(map(self.contact_list.get_contact, ['Alice', 'Bob', 'Charlie']))
@@ -150,7 +151,7 @@ class TestRxWindow(TFCTestCase):
         window.handle_dict = {LOCAL_ID: LOCAL_ID}
 
         # Test
-        self.assertEqual(window.get_handle(self.ts, LOCAL_ID, ORIGIN_USER_HEADER, False), "01:33 -!- ")
+        self.assertEqual(window.get_handle(self.ts, LOCAL_ID, ORIGIN_USER_HEADER, False), f"{self.time} -!- ")
 
     def test_get_contact_handle(self):
         # Setup
@@ -159,12 +160,12 @@ class TestRxWindow(TFCTestCase):
         window.handle_dict = {'alice@jabber.org': 'Alice'}
 
         # Test
-        self.assertEqual(window.get_handle(self.ts, 'alice@jabber.org', ORIGIN_USER_HEADER, False),    "01:33    Me: ")
-        self.assertEqual(window.get_handle(self.ts, 'alice@jabber.org', ORIGIN_CONTACT_HEADER, False), "01:33 Alice: ")
+        self.assertEqual(window.get_handle(self.ts, 'alice@jabber.org', ORIGIN_USER_HEADER, False),    f"{self.time}    Me: ")
+        self.assertEqual(window.get_handle(self.ts, 'alice@jabber.org', ORIGIN_CONTACT_HEADER, False), f"{self.time} Alice: ")
 
         window.is_active = False
-        self.assertEqual(window.get_handle(self.ts, 'alice@jabber.org', ORIGIN_USER_HEADER, False),    "01:33 Me (private message): ")
-        self.assertEqual(window.get_handle(self.ts, 'alice@jabber.org', ORIGIN_CONTACT_HEADER, False), "01:33 Alice (private message): ")
+        self.assertEqual(window.get_handle(self.ts, 'alice@jabber.org', ORIGIN_USER_HEADER, False),    f"{self.time} Me (private message): ")
+        self.assertEqual(window.get_handle(self.ts, 'alice@jabber.org', ORIGIN_CONTACT_HEADER, False), f"{self.time} Alice (private message): ")
 
     def test_get_group_contact_handle(self):
         # Setup
@@ -176,12 +177,12 @@ class TestRxWindow(TFCTestCase):
                               'eric@jabber.org':    'eric@jabber.org'}
 
         # Test
-        self.assertEqual(window.get_handle(self.ts, 'alice@jabber.org',   ORIGIN_USER_HEADER, False),    "01:33               Me: ")
-        self.assertEqual(window.get_handle(self.ts, 'charlie@jabber.org', ORIGIN_CONTACT_HEADER, False), "01:33          Charlie: ")
+        self.assertEqual(window.get_handle(self.ts, 'alice@jabber.org',   ORIGIN_USER_HEADER, False),    f"{self.time}               Me: ")
+        self.assertEqual(window.get_handle(self.ts, 'charlie@jabber.org', ORIGIN_CONTACT_HEADER, False), f"{self.time}          Charlie: ")
 
         window.is_active = False
-        self.assertEqual(window.get_handle(self.ts, 'alice@jabber.org',   ORIGIN_USER_HEADER, False),    "01:33 Me (group test_group): ")
-        self.assertEqual(window.get_handle(self.ts, 'charlie@jabber.org', ORIGIN_CONTACT_HEADER, False), "01:33 Charlie (group test_group): ")
+        self.assertEqual(window.get_handle(self.ts, 'alice@jabber.org',   ORIGIN_USER_HEADER, False),    f"{self.time} Me (group test_group): ")
+        self.assertEqual(window.get_handle(self.ts, 'charlie@jabber.org', ORIGIN_CONTACT_HEADER, False), f"{self.time} Charlie (group test_group): ")
 
     def test_print_to_inactive_window_preview_on_short_message(self):
         # Setup
@@ -192,7 +193,7 @@ class TestRxWindow(TFCTestCase):
         msg_tuple          = (self.ts, "Hi Bob", 'bob@jabber.org', ORIGIN_USER_HEADER, False)
 
         # Test
-        self.assertPrints(f"{BOLD_ON}01:33 Me (private message): {NORMAL_TEXT}Hi Bob\n{CURSOR_UP_ONE_LINE}{CLEAR_ENTIRE_LINE}",
+        self.assertPrints(f"{BOLD_ON}{self.time} Me (private message): {NORMAL_TEXT}Hi Bob\n{CURSOR_UP_ONE_LINE}{CLEAR_ENTIRE_LINE}",
                           window.print, msg_tuple)
 
     def test_print_to_inactive_window_preview_on_long_message(self):
@@ -210,7 +211,7 @@ class TestRxWindow(TFCTestCase):
         msg_tuple          = (self.ts, long_message, 'bob@jabber.org', ORIGIN_USER_HEADER, False)
 
         # Test
-        self.assertPrints(f"{BOLD_ON}01:33 Me (private message): {NORMAL_TEXT}Lorem ipsum dolor sit "
+        self.assertPrints(f"{BOLD_ON}{self.time} Me (private message): {NORMAL_TEXT}Lorem ipsum dolor sit "
                           f"amet, consectetur adipisc...\n{CURSOR_UP_ONE_LINE}{CLEAR_ENTIRE_LINE}",
                           window.print, msg_tuple)
 
@@ -223,7 +224,7 @@ class TestRxWindow(TFCTestCase):
         msg_tuple          = (self.ts, "Hi Bob", 'bob@jabber.org', ORIGIN_USER_HEADER, False)
 
         # Test
-        self.assertPrints(f"{BOLD_ON}01:33 Me (private message): {NORMAL_TEXT}{BOLD_ON}1 unread message{NORMAL_TEXT}\n"
+        self.assertPrints(f"{BOLD_ON}{self.time} Me (private message): {NORMAL_TEXT}{BOLD_ON}1 unread message{NORMAL_TEXT}\n"
                           f"{CURSOR_UP_ONE_LINE}{CLEAR_ENTIRE_LINE}", window.print, msg_tuple)
 
     def test_print_to_active_window_no_date_change(self):
@@ -236,7 +237,7 @@ class TestRxWindow(TFCTestCase):
         msg_tuple              = (self.ts, "Hi Alice", 'bob@jabber.org', ORIGIN_CONTACT_HEADER, False)
 
         # Test
-        self.assertPrints(f"{BOLD_ON}01:33 Bob: {NORMAL_TEXT}Hi Alice\n",
+        self.assertPrints(f"{BOLD_ON}{self.time} Bob: {NORMAL_TEXT}Hi Alice\n",
                           window.print, msg_tuple)
 
     def test_print_to_active_window_with_date_change_and_whisper(self):
@@ -247,11 +248,12 @@ class TestRxWindow(TFCTestCase):
         window.handle_dict     = {'bob@jabber.org': 'Bob'}
         window.settings        = Settings(new_message_notify_preview=False)
         msg_tuple              = (self.ts, "Hi Alice", 'bob@jabber.org', ORIGIN_CONTACT_HEADER, True)
+        self.time              = self.ts.strftime('%H:%M')
 
         # Test
         self.assertPrints(f"""\
 {BOLD_ON}00:00 -!- Day changed to 2017-08-15{NORMAL_TEXT}
-{BOLD_ON}01:33 Bob (whisper): {NORMAL_TEXT}Hi Alice
+{BOLD_ON}{self.time} Bob (whisper): {NORMAL_TEXT}Hi Alice
 """, window.print, msg_tuple)
 
     def test_print_to_active_window_with_date_change_and_whisper_empty_message(self):
@@ -266,7 +268,7 @@ class TestRxWindow(TFCTestCase):
         # Test
         self.assertPrints(f"""\
 {BOLD_ON}00:00 -!- Day changed to 2017-08-15{NORMAL_TEXT}
-{BOLD_ON}01:33 Bob (whisper): {NORMAL_TEXT}
+{BOLD_ON}{self.time} Bob (whisper): {NORMAL_TEXT}
 """, window.print, msg_tuple)
 
     def test_print_new(self):
@@ -287,7 +289,7 @@ class TestRxWindow(TFCTestCase):
 
         # Test
         self.assertPrints(f"""\
-{CLEAR_ENTIRE_SCREEN}{CURSOR_LEFT_UP_CORNER}{BOLD_ON}01:33   Bob: {NORMAL_TEXT}Hi Alice
+{CLEAR_ENTIRE_SCREEN}{CURSOR_LEFT_UP_CORNER}{BOLD_ON}{self.time}   Bob: {NORMAL_TEXT}Hi Alice
 """, window.redraw)
         self.assertEqual(window.unread_messages, 0)
 

@@ -36,8 +36,9 @@ from tests.mock_classes import ContactList, Gateway, GroupList, MasterKey, Setti
 class TestInputLoop(unittest.TestCase):
 
     def setUp(self):
+        if 'TRAVIS' not in os.environ or not os.environ['TRAVIS'] == 'true':
+            self.o_getrandom = os.getrandom
         self.o_input      = builtins.input
-        self.o_getrandom  = os.getrandom
         self.o_urandom    = os.urandom
         self.gateway      = Gateway()
         self.settings     = Settings(disable_gui_dialog=True)
@@ -72,15 +73,18 @@ class TestInputLoop(unittest.TestCase):
                           '/exit']                      # Enter exit command
         gen            = iter(input_list)
         builtins.input = lambda _: str(next(gen))
-        os.getrandom   = lambda n, flags: n * b'a'
+        if 'TRAVIS' not in os.environ or not os.environ['TRAVIS'] == 'true':
+            os.getrandom = lambda n, flags: n * b'a'
         os.urandom     = lambda n:        n * b'a'
 
         self.o_exit_tfc          = src.tx.commands.exit_tfc
         src.tx.commands.exit_tfc = lambda *_: (_ for _ in ()).throw(SystemExit)
 
     def tearDown(self):
+        if 'TRAVIS' not in os.environ or not os.environ['TRAVIS'] == 'true':
+            os.getrandom = self.o_getrandom
+
         builtins.input           = self.o_input
-        os.getrandom             = self.o_getrandom
         os.urandom               = self.o_urandom
         src.tx.commands.exit_tfc = self.o_exit_tfc
 

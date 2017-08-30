@@ -119,9 +119,9 @@ def process_command(user_input:   'UserInput',
 def print_about() -> None:
     """Print URLs that direct to TFC's project site and documentation."""
     clear_screen()
-    print(f"\n Tinfoil Chat {VERSION}                           \n\n"
-           " Website:     https://github.com/maqp/tfc/            \n"
-           " Wikipage:    https://github.com/maqp/tfc/wiki        \n"
+    print(f"\n Tinfoil Chat {VERSION}\n\n"
+           " Website:     https://github.com/maqp/tfc/\n"
+           " Wikipage:    https://github.com/maqp/tfc/wiki\n"
            " White paper: https://cs.helsinki.fi/u/oottela/tfc.pdf\n")
 
 
@@ -528,7 +528,7 @@ def wipe(settings: 'Settings', queues: Dict[bytes, 'Queue']) -> None:
         if settings.local_testing_mode:
             time.sleep(0.8)
             if settings.data_diode_sockets:
-               time.sleep(2.2)
+                time.sleep(2.2)
         else:
             time.sleep(settings.race_condition_delay)
 

@@ -5,6 +5,7 @@ python:
 
 before_install:
   - sudo apt install python3-tk
+  - export TZ=Europe/Helsinki
 
 install:
   - pip install pytest pytest-cov pyyaml coveralls

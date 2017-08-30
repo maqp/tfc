@@ -60,6 +60,7 @@ class TestAskPathGui(TFCTestCase):
         # Test
         self.assertEqual(ask_path_gui('prompt_msg', self.settings, get_file=True), '/bin/mv')
 
+    @unittest.skipIf("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true", "Skip as Travis has no $DISPLAY.")
     def test_get_path_to_file_gui(self):
         # Setup
         filedialog.askopenfilename = lambda title: 'test_path_to_file'
@@ -67,6 +68,7 @@ class TestAskPathGui(TFCTestCase):
         # Test
         self.assertEqual(ask_path_gui('test message', self.settings, get_file=True), 'test_path_to_file')
 
+    @unittest.skipIf("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true", "Skip as Travis has no $DISPLAY.")
     def test_no_path_to_file_raises_fr(self):
         # Setup
         filedialog.askopenfilename = lambda title: ''
@@ -74,6 +76,7 @@ class TestAskPathGui(TFCTestCase):
         # Test
         self.assertFR("File selection aborted.", ask_path_gui, 'test message', self.settings, True)
 
+    @unittest.skipIf("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true", "Skip as Travis has no $DISPLAY.")
     def test_get_path_gui(self):
         # Setup
         filedialog.askdirectory = lambda title: 'test_path'
@@ -81,6 +84,7 @@ class TestAskPathGui(TFCTestCase):
         # Test
         self.assertEqual(ask_path_gui('test message', self.settings, get_file=False), 'test_path')
 
+    @unittest.skipIf("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true", "Skip as Travis has no $DISPLAY.")
     def test_no_path_raises_fr(self):
         # Setup
         filedialog.askdirectory = lambda title: ''

@@ -179,6 +179,7 @@ class TestLogCommand(TFCTestCase):
         self.settings          = Settings()
         self.master_key        = MasterKey()
 
+        self.time          = datetime.fromtimestamp(struct.unpack('<L', binascii.unhexlify('08ceae02'))[0]).strftime('%H:%M')
         self.o_struct_pack = struct.pack
         struct.pack        = lambda *_: binascii.unhexlify('08ceae02')
 
@@ -205,10 +206,10 @@ class TestLogCommand(TFCTestCase):
         with open('UtM - Plaintext log (None)') as f:
             data = f.read()
 
-        self.assertEqual(data, """\
+        self.assertEqual(data, f"""\
 Logfile of 1 most recent message to/from None
 ════════════════════════════════════════════════════════════════════════════════
-00:54   Bob: A short message
+{self.time}   Bob: A short message
 <End of logfile>
 
 """)
