@@ -92,7 +92,7 @@ The only data input to TxM is the public key of contact (e.g.
 which is manually typed by the user.
 
 3. The NH is assumed to be compromised: all sensitive data that passes through
-NH is always encrypted and signed.
+it is always encrypted and signed.
 
 ![](https://cs.helsinki.fi/u/oottela/tfcwiki/tfc_attacks.jpg)
 
