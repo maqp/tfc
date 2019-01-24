@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright (C) 2013-2017  Markus Ottela
+TFC - Onion-routed, endpoint secure messaging system
+Copyright (C) 2013-2019  Markus Ottela
 
 This file is part of TFC.
 
@@ -15,28 +16,30 @@ without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with TFC. If not, see <http://www.gnu.org/licenses/>.
+along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
 import inspect
 import sys
-import time
 import typing
 
 from datetime import datetime
+from typing   import Optional
 
-from src.common.output import c_print, clear_screen
+from src.common.output  import clear_screen, m_print
+from src.common.statics import *
 
 if typing.TYPE_CHECKING:
-    from src.rx.windows import RxWindow
+    from src.receiver.windows import RxWindow
 
 
 class CriticalError(Exception):
-    """A variety of errors during which TFC should gracefully exit."""
+    """A severe exception that requires TFC to gracefully exit."""
 
-    def __init__(self, error_message: str) -> None:
-        graceful_exit("Critical error in function '{}':\n{}"
-                      .format(inspect.stack()[1][3], error_message), clear=False, exit_code=1)
+    def __init__(self, error_message: str, exit_code: int = 1) -> None:
+        """A severe exception that requires TFC to gracefully exit."""
+        graceful_exit(f"Critical error in function '{inspect.stack()[1][3]}':\n{error_message}",
+                      clear=False, exit_code=exit_code)
 
 
 class FunctionReturn(Exception):
@@ -44,33 +47,40 @@ class FunctionReturn(Exception):
 
     def __init__(self,
                  message:    str,
-                 output:     bool       = True,
-                 delay:      float      = 0,
-                 window:     'RxWindow' = None,
-                 head:       int        = 1,
-                 tail:       int        = 1,
-                 head_clear: bool       = False,
-                 tail_clear: bool       = False) -> None:
+                 window:     Optional['RxWindow'] = None,   # The window to include the message in
+                 output:     bool                 = True,   # When False, doesn't print message when adding it to window
+                 bold:       bool                 = False,  # When True, prints the message in bold
+                 head_clear: bool                 = False,  # When True, clears the screen before printing message
+                 tail_clear: bool                 = False,  # When True, clears the screen after message (needs delay)
+                 delay:      float                = 0,      # The delay before continuing
+                 head:       int                  = 1,      # The number of new-lines to print before the message
+                 tail:       int                  = 1,      # The number of new-lines to print after message
+                 ) -> None:
+        """Print return message and return to exception handler function."""
         self.message = message
 
         if window is None:
             if output:
-                if head_clear:
-                    clear_screen()
-                c_print(self.message, head=head, tail=tail)
-            time.sleep(delay)
-            if tail_clear:
-                clear_screen()
+                m_print(self.message,
+                        bold=bold,
+                        head_clear=head_clear,
+                        tail_clear=tail_clear,
+                        delay=delay,
+                        head=head,
+                        tail=tail)
         else:
             window.add_new(datetime.now(), self.message, output=output)
 
 
-def graceful_exit(message: str ='', clear: bool = True, exit_code: int = 0) -> None:
+def graceful_exit(message:   str  ='',     # Exit message to print
+                  clear:     bool = True,  # When False, does not clear screen before printing message
+                  exit_code: int  = 0      # Value returned to parent process
+                  ) -> None:
     """Display a message and exit TFC."""
     if clear:
         clear_screen()
     if message:
         print('\n' + message)
-    print("\nExiting TFC.\n")
+    print(f"\nExiting {TFC}.\n")
 
     sys.exit(exit_code)

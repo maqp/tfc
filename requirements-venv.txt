@@ -1,0 +1,5 @@
+# Sub-dependencies are listed below dependencies
+
+# Virtual environment (Used to create an isolated Python environment for TFC dependencies)
+virtualenv==16.2.0 --hash=sha512:d08800652cf3c2a695971b54be32ded4bccd6b0223b8586c6e2348b8f60be2df7f47aed693f20e106fba11267819c81b7f7a5c3a75f89e36740c6639274a9a50
+setuptools==40.6.3 --hash=sha512:bdbd2079d053409838690709389fa09cb498ee055c829e622d57c0b07069b0ec5065c64f5f76994c27fc8563ad47cd08eef843240539744223f5371b4d2daf1a

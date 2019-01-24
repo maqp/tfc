@@ -2,116 +2,138 @@
 
 ### Tinfoil Chat
 
-[![Build Status](https://travis-ci.org/maqp/tfc.svg?branch=master)](https://travis-ci.org/maqp/tfc) [![Coverage Status](https://coveralls.io/repos/github/maqp/tfc/badge.svg?branch=master)](https://coveralls.io/github/maqp/tfc?branch=master)
+[![Build Status](https://travis-ci.org/maqp/tfc.svg?branch=master)](https://travis-ci.org/maqp/tfc) 
+[![Coverage Status](https://coveralls.io/repos/github/maqp/tfc/badge.svg?branch=master)](https://coveralls.io/github/maqp/tfc?branch=master)
 
-Tinfoil Chat (TFC) is a high assurance encrypted messaging system that
-operates on top of existing IM clients. The 
-[free and open source software](https://www.gnu.org/philosophy/free-sw.html)
-is used together with free hardware to protect users from 
+Tinfoil Chat (TFC) is a 
+[FOSS](https://www.gnu.org/philosophy/free-sw.html)+[FHD](https://www.gnu.org/philosophy/free-hardware-designs.en.html) 
+messaging system that relies on high assurance hardware architecture to protect 
+users from
 [passive eavesdropping](https://en.wikipedia.org/wiki/Upstream_collection), 
 [active MITM attacks](https://en.wikipedia.org/wiki/Man-in-the-middle_attack)
-and [remote CNE](https://www.youtube.com/watch?v=3euYBPlX9LM) practised by
-organized crime and nation state attackers.
-
-[XSalsa20](https://cr.yp.to/snuffle/salsafamily-20071225.pdf)
-encryption and
-[Poly1305-AES](https://cr.yp.to/mac/poly1305-20050329.pdf)
-MACs provide
-[end-to-end encrypted](https://en.wikipedia.org/wiki/End-to-end_encryption)
-communication with
-[deniable authentication](https://en.wikipedia.org/wiki/Deniable_encryption#Deniable_authentication):
-Symmetric keys are either pre-shared, or exchanged using
-[X25519](https://cr.yp.to/ecdh/curve25519-20060209.pdf),
-the base-10 fingerprints of which are verified via out-of-band channel. TFC provides
-per-packet forward secrecy with
-[hash ratchet](https://en.wikipedia.org/wiki/Double_Ratchet_Algorithm)
-the KDF of which chains
-[SHA3-256](http://keccak.noekeon.org/Keccak-implementation-3.2.pdf),
-[Blake2s](https://blake2.net/blake2_20130129.pdf)
 and
-[SHA256](http://www.iwar.org.uk/comsec/resources/cipher/sha256-384-512.pdf).
+[remote exfiltration](https://www.youtube.com/watch?v=3euYBPlX9LM) 
+(=hacking) practised by organized crime and nation state actors.
 
-The software is used in hardware configuration that provides strong endpoint
-security: Encryption and decryption are separated on two isolated computers.
-The split
+##### State-of-the-art cryptography
+TFC uses
+[XChaCha20](https://cr.yp.to/chacha/chacha-20080128.pdf)-[Poly1305](https://cr.yp.to/mac/poly1305-20050329.pdf)
+[end-to-end encryption](https://en.wikipedia.org/wiki/End-to-end_encryption)
+with
+[deniable authentication](https://en.wikipedia.org/wiki/Deniable_encryption#Deniable_authentication).
+The symmetric keys are either
+[pre-shared](https://en.wikipedia.org/wiki/Pre-shared_key),
+or exchanged using
+[X448](https://eprint.iacr.org/2015/625.pdf),
+the base-10
+[fingerprints](https://en.wikipedia.org/wiki/Public_key_fingerprint)
+of which are verified via out-of-band channel. TFC provides per-message
+[forward secrecy](https://en.wikipedia.org/wiki/Forward_secrecy)
+with
+[BLAKE2b](https://blake2.net/blake2.pdf) 
+based
+[hash ratchet](https://en.wikipedia.org/wiki/Double_Ratchet_Algorithm).
+All persistent user data is encrypted locally using XChaCha20-Poly1305, the key 
+of which is derived from password and salt using 
+[Argon2d](https://github.com/P-H-C/phc-winner-argon2/blob/master/argon2-specs.pdf). 
+Key generation of TFC relies on Linux kernel's 
+[getrandom()](https://manpages.debian.org/testing/manpages-dev/getrandom.2.en.html),
+a syscall for its ChaCha20 based CSPRNG.
+
+##### First messaging system with endpoint security
+The software is used in hardware configuration that provides strong
+[endpoint security](https://en.wikipedia.org/wiki/Endpoint_security):
+Encryption and decryption are separated on two isolated computers. The split
 [TCB](https://en.wikipedia.org/wiki/Trusted_computing_base)
-interacts with a third, networked computer through unidirectional
-[serial](https://en.wikipedia.org/wiki/Universal_asynchronous_receiver/transmitter)
-interfaces. Direction of data flow is enforced with free hardware design
-[data diodes](https://en.wikipedia.org/wiki/Unidirectional_network);
-Lack of bidirectional channels to isolated computers prevents insertion of malware
-to the encrypting computer and exfiltration of keys and plaintexts from the
-decrypting computer -- even with exploits against
-[zero-day vulnerabilities](https://en.wikipedia.org/wiki/Zero-day_(computing))
-in software and operating systems running on the TCB halves.
+interacts with a third, Networked Computer, through unidirectional
+[serial](https://en.wikipedia.org/wiki/Universal_asynchronous_receiver/transmitter) 
+interfaces. The direction of data flow is enforced with free hardware design
+[data diodes](https://en.wikipedia.org/wiki/Unidirectional_network), 
+technology the certified implementations of which are typically found in 
+critical infrastructure protection and government networks where classification 
+level of data varies.
 
-TFC supports multiple IM accounts per user to hide the social graph of
-communicating parties, even during end-to-end encrypted group conversations.
-
-TFC allows a group or two parties to defeat metadata about quantity and
-schedule of communication with traffic masking, where messages and background
-file transmission is inserted into a constant stream of encrypted noise traffic.
+##### Anonymous by design
+TFC routes all communication through next generation
+[Tor](https://www.torproject.org/about/overview.html.en)
+([v3](https://trac.torproject.org/projects/tor/wiki/doc/NextGenOnions))
+[Onion Services](https://www.torproject.org/docs/onion-services) 
+to hide metadata about real-life identity and geolocation of users, when and how 
+much they communicate, the social graph of the users and the fact TFC is 
+running. TFC also features a traffic masking mode that hides the type, quantity,
+and schedule of communication, even if the Networked Computer is compromised.
 
 
 ### How it works
 
-![](https://cs.helsinki.fi/u/oottela/tfcwiki/tfc_overview.jpg)
+![](https://www.cs.helsinki.fi/u/oottela/wiki/readme/how_it_works.png)
+[System overview](https://www.cs.helsinki.fi/u/oottela/wiki/readme/how_it_works.png)
 
-TFC uses three computers per endpoint. Alice enters her messages and commands
-to Transmitter program running on her transmitter computer (TxM), a TCB
-separated from network. The Transmitter program encrypts and signs plaintext
-data and relays the ciphertext from TxM to her networked computer (NH) trough a
-serial interface and a hardware data diode.
+TFC uses three computers per endpoint: Source Computer, Networked Computer, and 
+Destination Computer.
 
-Messages and commands received to NH are relayed to IM client (Pidgin or
-Finch), and to Alice's receiver computer (RxM) via another serial interface and
-data diode. The Receiver program on Alice's RxM authenticates, decrypts and
-processes the received messages and commands.
+Alice enters messages and commands to Transmitter Program running on her Source 
+Computer. Transmitter Program encrypts and signs plaintext data and relays the 
+ciphertexts from Source Computer to her Networked Computer through a serial 
+interface and a hardware data diode.
 
-The IM client sends the packet either directly or through Tor network to IM
-server, that then forwards it directly (or again through Tor) to Bob.
+Relay Program on Alice's Networked Computer relays commands and copies of 
+outgoing messages to her Destination Computer via the serial interface and data 
+diode. Receiver Program on Alice's Destination Computer authenticates, decrypts 
+and processes the received message/command.
 
-IM client on Bob's NH forwards packet to nh.py plugin program, that then
-forwards it to Bob's RxM (again through serial interface and data diode).
-Bob's Receiver program on his RxM then authenticates, decrypts, and processes
-the packet.
+Alice's Relay Program shares messages and files to Bob over Tor Onion Service. 
+The web client of Bob's Relay Program fetches the ciphertext from Alice's Onion 
+Service and forwards it to his Destination Computer (again through a serial 
+interface and data diode). Bob's Receiver Program then authenticates, decrypts 
+and processes the received message/file.
 
-When Bob responds, he will type the message to his transmitter computer and in
-the end, Alice reads the message from her receiver computer.
+When Bob responds, he will type his message to his Source Computer, and after a 
+mirrored process, Alice reads the message from her Destination Computer.
 
 
-### Why keys can not be exfiltrated
+### Why keys and plaintexts cannot be exfiltrated
 
-1. Malware that exploits an unknown vulnerability in RxM can infiltrate the
-system, but is unable to exfiltrate keys or plaintexts, as data diode prevents
-all outbound traffic.
+TFC is designed to combine the 
+[classical and alternative data diode models](https://en.wikipedia.org/wiki/Unidirectional_network#Applications) 
+to provide hardware enforced endpoint security: 
 
-2. Malware can not infiltrate TxM as data diode prevents all inbound traffic.
-The only data input to TxM is the public key of contact (e.g.
-`5J8 C2h AVE Wv2 cGz oSd oQv Nkm 9tu ABP qwt Kz8 ou4 xvA HGx HUh sJC`),
-which is manually typed by the user.
+1. The Destination Computer uses the classical data diode model. It is designed 
+to receive data from the insecure Networked Computer while preventing the export 
+of any data back to the Networked Computer. Not even malware on Destination 
+Computer can exfiltrate keys or plaintexts as the data diode prevents all 
+outbound traffic.
 
-3. The NH is assumed to be compromised: all sensitive data that passes through
-it is always encrypted and signed.
+2. The Source Computer uses the alternative data diode model that is designed to 
+allow the export of data to the Networked Computer. The data diode protects the 
+Source Computer from attacks by physically preventing all inbound traffic. To 
+allow key exchanges, the short elliptic-curve public keys are input manually by 
+the user.
 
-![](https://cs.helsinki.fi/u/oottela/tfcwiki/tfc_attacks.jpg)
+3. The Networked Computer is assumed to be compromised. All sensitive data that 
+passes through it is encrypted and signed with no exceptions.
 
+![](https://www.cs.helsinki.fi/u/oottela/wiki/readme/attacks.png)
+[Exfiltration security](https://www.cs.helsinki.fi/u/oottela/wiki/readme/attacks.png)
+
+#### Data diode
 Optical repeater inside the
-[optocoupler](https://en.wikipedia.org/wiki/Opto-isolator)
-of the data diode (below) enforces direction of data transmission with the laws
-of physics.
+[optocouplers](https://en.wikipedia.org/wiki/Opto-isolator)
+of the data diode (below) enforce direction of data transmission with the 
+fundamental laws of physics.
 
-![](https://www.cs.helsinki.fi/u/oottela/tfcwiki/ttl_dd_pb/23.jpg)
+![](https://www.cs.helsinki.fi/u/oottela/wiki/readme/readme_dd.jpg)
+[TFC data diode](https://www.cs.helsinki.fi/u/oottela/wiki/readme/readme_dd.jpg)
 
 
 ### Supported Operating Systems
 
-#### TxM and RxM
-- *buntu 17.04 (64-bit)
+#### Source/Destination Computer
+- *buntu 18.04 (or newer)
 
-#### NH
-- Tails 3.1
-- *buntu 17.04 (64-bit)
+#### Networked Computer
+- Tails (Debian Buster or newer)
+- *buntu 18.04 (or newer)
 
 
 ### More information
@@ -127,4 +149,4 @@ Software<Br>
 &nbsp;&nbsp;&nbsp;&nbsp;[Installation](https://github.com/maqp/tfc/wiki/Installation)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[How to use](https://github.com/maqp/tfc/wiki/How-to-use)<br>
 
-[Update Log](https://github.com/maqp/tfc/wiki/Update-Log)<br>
+[Update log](https://github.com/maqp/tfc/wiki/Update-Log)<br>

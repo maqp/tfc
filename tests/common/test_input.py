@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright (C) 2013-2017  Markus Ottela
+TFC - Onion-routed, endpoint secure messaging system
+Copyright (C) 2013-2019  Markus Ottela
 
 This file is part of TFC.
 
@@ -15,142 +16,109 @@ without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with TFC. If not, see <http://www.gnu.org/licenses/>.
+along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
-import builtins
-import getpass
 import unittest
 
-from src.common.input   import ask_confirmation_code, box_input, get_b58_key, nh_bypass_msg, pwd_prompt, yes
+from unittest import mock
+
+from src.common.input   import ask_confirmation_code, box_input, get_b58_key, nc_bypass_msg, pwd_prompt, yes
 from src.common.statics import *
 
 from tests.mock_classes import Settings
+from tests.utils        import nick_to_short_address, VALID_ECDHE_PUB_KEY, VALID_LOCAL_KEY_KDK
 
 
 class TestAskConfirmationCode(unittest.TestCase):
 
-    def setUp(self):
-        self.o_input   = builtins.input
-        builtins.input = lambda _: 'ff'
+    confirmation_code = 'ff'
 
-    def tearDown(self):
-        builtins.input = self.o_input
-
-    def test_ask_confirmation_code(self):
-        self.assertEqual(ask_confirmation_code(), 'ff')
+    @mock.patch('builtins.input', return_value=confirmation_code)
+    def test_ask_confirmation_code(self, _):
+        self.assertEqual(ask_confirmation_code('Receiver'), self.confirmation_code)
 
 
 class TestBoxInput(unittest.TestCase):
 
-    def setUp(self):
-        self.o_input        = builtins.input
-        input_list          = ['mock_input', 'mock_input', '', 'bad', 'ok']
-        gen                 = iter(input_list)
-        builtins.input      = lambda _: str(next(gen))
-        self.mock_validator = lambda string, *_: '' if string == 'ok' else 'Error'
-
-    def tearDown(self):
-        builtins.input = self.o_input
-
-    def test_box_input(self):
+    @mock.patch('time.sleep',     return_value=None)
+    @mock.patch('builtins.input', side_effect=['mock_input', 'mock_input', '', 'invalid', 'ok'])
+    def test_box_input(self, *_):
         self.assertEqual(box_input('test title'), 'mock_input')
         self.assertEqual(box_input('test title', head=1,                       expected_len=20), 'mock_input')
         self.assertEqual(box_input('test title', head=1, default='mock_input', expected_len=20), 'mock_input')
-        self.assertEqual(box_input('test title', validator=self.mock_validator), 'ok')
+        self.assertEqual(box_input('test title', validator=lambda string, *_: '' if string == 'ok' else 'Error'), 'ok')
 
 
 class TestGetB58Key(unittest.TestCase):
 
     def setUp(self):
-        self.o_input  = builtins.input
         self.settings = Settings()
 
-    def tearDown(self):
-        builtins.input = self.o_input
-
-    def test_get_b58_key(self):
+    @mock.patch('time.sleep',               return_value=None)
+    @mock.patch('shutil.get_terminal_size', return_value=[200, 200])
+    @mock.patch('builtins.input',           side_effect=(2*['invalid', VALID_LOCAL_KEY_KDK[:-1], VALID_LOCAL_KEY_KDK] +
+                                                         2*['invalid', VALID_ECDHE_PUB_KEY[:-1], VALID_ECDHE_PUB_KEY]))
+    def test_get_b58_key(self, *_):
         for boolean in [True, False]:
             self.settings.local_testing_mode = boolean
-            for key_type in [B58_PUB_KEY, B58_LOCAL_KEY]:
-                input_list    = ["bad",
-                                 "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTa",
-                                 "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ"]
-                gen            = iter(input_list)
-                builtins.input = lambda _: str(next(gen))
-                key            = get_b58_key(key_type, self.settings)
+            key = get_b58_key(B58_LOCAL_KEY, self.settings)
 
-                self.assertIsInstance(key, bytes)
-                self.assertEqual(len(key), KEY_LENGTH)
+            self.assertIsInstance(key, bytes)
+            self.assertEqual(len(key), SYMMETRIC_KEY_LENGTH)
 
             with self.assertRaises(SystemExit):
-                get_b58_key('invalid_keytype', self.settings)
+                get_b58_key('invalid_key_type', self.settings)
 
         for boolean in [True, False]:
             self.settings.local_testing_mode = boolean
-            for key_type in [B58_FILE_KEY]:
-                input_list    = ["bad",
-                                 "91avARGdfge8E4tZfYLoxeJ5sGBdNJQH4kvjJoQFacbgwi1C2Ga",
-                                 "91avARGdfge8E4tZfYLoxeJ5sGBdNJQH4kvjJoQFacbgwi1C2GD"]
-                gen            = iter(input_list)
-                builtins.input = lambda _: str(next(gen))
-                key            = get_b58_key(key_type, self.settings)
+            key = get_b58_key(B58_PUBLIC_KEY, self.settings, nick_to_short_address('Alice'))
 
-                self.assertIsInstance(key, bytes)
-                self.assertEqual(len(key), KEY_LENGTH)
+            self.assertIsInstance(key, bytes)
+            self.assertEqual(len(key), TFC_PUBLIC_KEY_LENGTH)
 
             with self.assertRaises(SystemExit):
-                get_b58_key('invalid_keytype', self.settings)
+                get_b58_key('invalid_key_type', self.settings)
+
+    @mock.patch('builtins.input',           return_value='')
+    @mock.patch('shutil.get_terminal_size', return_value=[200, 200])
+    def test_empty_pub_key_returns_empty_bytes(self, *_):
+        key = get_b58_key(B58_PUBLIC_KEY, self.settings)
+        self.assertEqual(key, b'')
 
 
-class TestNHBypassMsg(unittest.TestCase):
+class TestNCBypassMsg(unittest.TestCase):
 
-    def setUp(self):
-        self.o_input   = builtins.input
-        self.settings  = Settings()
-        builtins.input = lambda _: ''
-
-    def tearDown(self):
-        builtins.input = self.o_input
-
-    def test_nh_bypass_msg(self):
-        self.assertIsNone(nh_bypass_msg(NH_BYPASS_START, self.settings))
-        self.assertIsNone(nh_bypass_msg(NH_BYPASS_STOP, self.settings))
+    @mock.patch('builtins.input', return_value='')
+    def test_nc_bypass_msg(self, _):
+        settings = Settings(nc_bypass_messages=True)
+        self.assertIsNone(nc_bypass_msg(NC_BYPASS_START, settings))
+        self.assertIsNone(nc_bypass_msg(NC_BYPASS_STOP,  settings))
 
 
 class TestPwdPrompt(unittest.TestCase):
 
-    def setUp(self):
-        self.o_input    = builtins.input
-        self.o_getpass  = getpass.getpass
-        getpass.getpass = lambda x: 'testpwd'
-
-    def tearDown(self):
-        builtins.input  = self.o_input
-        getpass.getpass = self.o_getpass
-
-    def test_pwd_prompt(self):
-        self.assertEqual(pwd_prompt("test prompt"), 'testpwd')
+    @mock.patch('getpass.getpass', return_value='test_password')
+    def test_pwd_prompt(self, _):
+        self.assertEqual(pwd_prompt("test prompt"), 'test_password')
 
 
 class TestYes(unittest.TestCase):
 
-    def setUp(self):
-        self.o_input   = builtins.input
-        self.o_getpass = getpass.getpass
-        input_list     = ['BAD', '', 'bad', 'Y', 'YES', 'N', 'NO']
-        gen            = iter(input_list)
-        builtins.input = lambda _: str(next(gen))
-
-    def tearDown(self):
-        builtins.input  = self.o_input
-        getpass.getpass = self.o_getpass
-
-    def test_yes(self):
+    @mock.patch('builtins.input', side_effect=['Invalid', '', 'invalid', 'Y', 'YES', 'N', 'NO',
+                                               KeyboardInterrupt, KeyboardInterrupt, EOFError, EOFError])
+    def test_yes(self, _):
         self.assertTrue(yes('test prompt', head=1, tail=1))
         self.assertTrue(yes('test prompt'))
+
         self.assertFalse(yes('test prompt', head=1, tail=1))
         self.assertFalse(yes('test prompt'))
+
+        self.assertTrue(yes('test prompt', head=1, tail=1, abort=True))
+        self.assertFalse(yes('test prompt', abort=False))
+
+        self.assertTrue(yes('test prompt', head=1, tail=1, abort=True))
+        self.assertFalse(yes('test prompt', abort=False))
 
 
 if __name__ == '__main__':

@@ -1,0 +1,32 @@
+# Sub-dependencies are listed below dependencies
+
+# Pyserial (Connects the Source/Destination Computer to the Networked Computer)
+pyserial==3.4       --hash=sha512:8333ac2843fd136d5d0d63b527b37866f7d18afc3bb33c4938b63af077492aeb118eb32a89ac78547f14d59a2adb1e5d00728728275de62317da48dadf6cdff9
+
+# Stem (Connects to Tor and manages Onion Services)
+stem==1.7.1         --hash=sha512:a275f59bba650cb5bb151cf53fb1dd820334f9abbeae1a25e64502adc854c7f54c51bc3d6c1656b595d142fc0695ffad53aab3c57bc285421c1f4f10c9c3db4c
+
+# PySocks (Routes requests library through SOCKS5 proxy making Onion Service connections possible)
+pysocks==1.6.8      --hash=sha512:9b544cf11464142a5f347cd5688b48422249363a425ccf3887117152f2f1969713674c4bba714242432ae85f3d62e03edeb9cb7b73ebd225ed3b47b3da6896d5
+
+# Requests (Connects to the contact's Tor Onion Service)
+requests==2.21.0    --hash=sha512:f5db1cc049948a8cc38d1c3c2de9f997bc99b65b88bd2e052be62a8c2934773d33f471ce86d8cdcacc2e651b1545d88cc571ace62154a6ccb285a19c83836483
+certifi==2018.11.29 --hash=sha512:6f6cb73ec56d85ffc62eddd506c44fa597dfd3a7b74bad7f301482cad47c79d0ab7a3a390905ae46fe2a49f1007f6a1c33c41987ce769f9b5a1ea5fa773ea4eb
+chardet==3.0.4      --hash=sha512:bfae58c8ea19c87cc9c9bf3d0b6146bfdb3630346bd954fe8e9f7da1f09da1fc0d6943ff04802798a665ea3b610ee2d65658ce84fe5a89f9e93625ea396a17f4
+idna==2.8           --hash=sha512:fb07dbec1de86efbad82a4f73d98123c59b083c1f1277445204bef75de99ca200377ad2f1db8924ae79b31b3dd984891c87d0a6344ec4d07a0ddbbbc655821a3
+urllib3==1.24.1     --hash=sha512:fdba3d58539eb31dff22cdfad91536587db3ce575af4f4c803758211dbec46944e6cf9d5459d22da620c49a36fe3ca1ae2067c741bb3f643e7b548c4abfb0d7f
+
+# Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)
+flask==1.0.2        --hash=sha512:0cca42400dc1019eb8c9fae32460967f64880f05627bdcb06c8df0ef0f7cc2d791c2a96ab6313bca10120a6f785aa0ccdad093e6ab3d7e997ed354fd432257e7
+click==7.0          --hash=sha512:6b30987349df7c45c5f41cff9076ed45b178b444fca1ab1965f4ae33d1631522ce0a2868392c736666e83672b8b20e9503ae9ce5016dce3fa8f77bc8a3674130
+itsdangerous==1.1.0 --hash=sha512:891c294867f705eb9c66274bd04ac5d93140d6e9beea6cbf9a44e7f9c13c0e2efa3554bdf56620712759a5cd579e112a782d25f3f91ba9419d60b2b4d2bc5b7c
+jinja2==2.10        --hash=sha512:672c1a112f76f399600a069c5ee882d5fdf065ff25f6b729ec12a266d7ef6f638c26d5cc680db7b3a375d9e1ae7323aed3c2a49eb03fc39dd1a1ca8b0d658b63
+markupsafe==1.1.0   --hash=sha512:103e80f9307ebb46178aad44d8d0fe36cfc019656ecb0249767d2cd249e8fbfc48ee9b2a5d7f25845312662ccf8b09dbee0a93f5ff573883eb40ec4511c89959
+werkzeug==0.14.1    --hash=sha512:0fa694cd71fa83d4a178e9f831fa9784c26e42feb5987e390ed88eb60ea2f829da5795206983236e3442ee1479dd4ca587d26dcb074a881d6d1b055bfc493c56
+
+# Cryptography (Handles URL token derivation)
+cryptography==2.5   --hash=sha512:820b591f3c838f86ee59e027986511abd3eb537bf8f5f4d2d499ab950a128bd2960c138616f0a6c36408fc72d6eefc27a14fddab9c5a6f4118e6bbad5e9d9d7f
+asn1crypto==0.24.0  --hash=sha512:8d9bc344981079ac6c00e71e161c34b6f403e575bbfe1ad06e30a3bcb33e0db317bdcb7aed2d18d510cb1b3ee340a649f7f77a00d271fcf3cc388e6655b67533
+cffi==1.11.5        --hash=sha512:32631c8a407f77c4580e75122a79d2f14fbc90ea958ecd9ff0a01c83280aec8b48ac202fc55c1d4aaf09975c9d1b8c21858666076ab554a71577c7a89236e87f
+pycparser==2.19     --hash=sha512:7f830e1c9066ee2d297a55e2bf6db4bf6447b6d9da0145d11a88c3bb98505755fb7986eafa6e06ae0b7680838f5e5d6a6d188245ca5ad45c2a727587bac93ab5
+six==1.12.0         --hash=sha512:326574c7542110d2cd8071136a36a6cffc7637ba948b55e0abb7f30f3821843073223301ecbec1d48b8361b0d7ccb338725eeb0424696efedc3f6bd2a23331d3

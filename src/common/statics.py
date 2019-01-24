@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright (C) 2013-2017  Markus Ottela
+TFC - Onion-routed, endpoint secure messaging system
+Copyright (C) 2013-2019  Markus Ottela
 
 This file is part of TFC.
 
@@ -15,32 +16,44 @@ without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with TFC. If not, see <http://www.gnu.org/licenses/>.
+along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
 """Program details"""
 TFC     = 'TFC'
-VERSION = '1.17.08'
+TXP     = 'Transmitter'
+RXP     = 'Receiver'
+RP      = 'Relay'
+VERSION = '1.19.01'
 
 
-"""Identifiers"""
-LOCAL_ID      = 'local_id'
-DUMMY_CONTACT = 'dummy_contact'
-DUMMY_USER    = 'dummy_user'
-DUMMY_STR     = 'dummy_str'
-DUMMY_MEMBER  = 'dummy_member'
+"""Identifiers
+
+Placeholder accounts for databases need to be valid v3 Onion addresses.
+"""
+LOCAL_ID      = 'localidlocalidlocalidlocalidlocalidlocalidlocalidloj7uyd'
+LOCAL_PUBKEY  = b'[\x84\x05\xa0kp\x80\xb4\rn\x10\x16\x81\xad\xc2\x02\xd05\xb8@Z\x06\xb7\x08\x0b@\xd6\xe1\x01h\x1a\xdc'
+LOCAL_NICK    = 'local Source Computer'
+DUMMY_CONTACT = 'dummycontactdummycontactdummycontactdummycontactdumhsiid'
+DUMMY_MEMBER  = 'dummymemberdummymemberdummymemberdummymemberdummymedakad'
+DUMMY_NICK    = 'dummy_nick'
 DUMMY_GROUP   = 'dummy_group'
 TX            = 'tx'
 RX            = 'rx'
-NH            = 'nh'
+NC            = 'nc'
 TAILS         = b'Tails'
 
 
-"""Window identifiers (string)"""
-WIN_TYPE_COMMAND = 'win_type_command'
-WIN_TYPE_FILE    = 'win_type_file'
-WIN_TYPE_CONTACT = 'win_type_contact'
-WIN_TYPE_GROUP   = 'win_type_group'
+"""Window identifiers"""
+WIN_TYPE_COMMAND = 'system messages'
+WIN_TYPE_FILE    = 'incoming files'
+WIN_TYPE_CONTACT = 'contact'
+WIN_TYPE_GROUP   = 'group'
+
+
+"""Window UIDs"""
+WIN_UID_LOCAL = b'win_uid_local'
+WIN_UID_FILE  = b'win_uid_file'
 
 
 """Packet types"""
@@ -59,14 +72,18 @@ UNKNOWN_ACCOUNTS = 'unknown_accounts'
 
 
 """Base58 key types"""
-B58_PUB_KEY   = 'b58_pub_key'
-B58_LOCAL_KEY = 'b58_local_key'
-B58_FILE_KEY  = 'b58_file_key'
+B58_PUBLIC_KEY = 'b58_public_key'
+B58_LOCAL_KEY  = 'b58_local_key'
+
+
+"""Key input guides"""
+B58_PUBLIC_KEY_GUIDE = '   A       B       C       D       E       F       H       H       I       J       K       L   '
+B58_LOCAL_KEY_GUIDE  = ' A   B   C   D   E   F   G   H   I   J   K   L   M   N   O   P   Q '
 
 
 """Key exchange types"""
-X25519 = 'x25519'
-PSK    = 'psk'
+ECDHE = 'X448'
+PSK   = 'PSK'
 
 
 """Contact setting types"""
@@ -76,30 +93,32 @@ NOTIFY  = 'notify'
 
 
 """Command identifiers"""
-CLEAR = 'clear'
-RESET = 'reset'
-
+CLEAR    = 'clear'
+RESET    = 'reset'
+POWEROFF = 'poweroff'
 
 """Contact setting management"""
-ENABLE  = b'es'
-DISABLE = b'ds'
-ALL     = 'all'
+CONTACT_SETTING_HEADER_LENGTH = 2
+ENABLE                        = b'es'
+DISABLE                       = b'ds'
+ALL                           = 'all'
 
 
-"""NH bypass states"""
-NH_BYPASS_START = 'nh_bypass_start'
-NH_BYPASS_STOP  = 'nh_bypass_stop'
-RESEND          = 'resend'
+"""Networked Computer bypass states"""
+NC_BYPASS_START = 'nc_bypass_start'
+NC_BYPASS_STOP  = 'nc_bypass_stop'
 
 
-"""Phase messages"""
-DONE = 'DONE'
+"""Status messages"""
+DONE  = 'DONE'
+EVENT = '-!-'
+ME    = 'Me'
 
 
 """VT100 codes
 
-VT100 codes are used to control printing to terminals. These
-make building functions like text box drawers possible.
+VT100 codes are used to control printing to the terminal. These make 
+building functions like textbox drawers possible.
 """
 CURSOR_UP_ONE_LINE      = '\x1b[1A'
 CURSOR_RIGHT_ONE_COLUMN = '\x1b[1C'
@@ -112,182 +131,247 @@ NORMAL_TEXT             = '\033[0m'
 
 """Separators
 
-Separator byte/char is a non-printable byte used
-to separate fields in serialized data structures.
+Separator byte is a non-printable byte used to separate fields in 
+serialized data structures.
 """
 US_BYTE = b'\x1f'
-US_STR  =  '\x1f'
 
 
 """Datagram headers
 
 These headers are prepended to datagrams that are transmitted over
-Serial or over the network. They tell receiving device what type of
-packet is in question.
+serial or over the network. They tell the receiving device what type of
+datagram is in question.
 
-Local key packets are only accepted by NH from local TxM. Even if NH is
-compromised, the worst case scenario is a denial of service attack 
-where RxM receives new local keys. As user does not know the correct 
-decryption key, they would have to manually cancel packets.
+Datagrams with local key header contain the encrypted local key, used to
+encrypt commands and data transferred between local Source and 
+Destination computers. Packets with the header are only accepted by the 
+Relay Program when they originate from the user's Source Computer. Even 
+if the Networked Computer is compromised and the local key datagram is 
+injected to the Destination Computer, the injected key could not be 
+accepted by the user as they don't know the decryption key for it. The
+worst case scenario is a DoS attack where the Receiver Program receives 
+new local keys continuously. Such an attack would, however, reveal the 
+user they are under a sophisticated attack, and that their Networked 
+Computer has been compromised.
 
-Public keys are delivered from contact all the way to RxM provided they
-are of correct format.
+Datagrams with Public key header contain TCB-level public keys that 
+originate from the sender's Source Computer, and are displayed by the
+recipient's Networked Computer, from where they are manually typed to
+recipient's Destination Computer.
 
-Message and command packet headers tell RxM whether to parse trailing
-fields that determine which XSalsa20-Poly1305 decryption keys it should 
-load. Contacts can alter their packets to deliver COMMAND_PACKET_HEADER 
-header, but NH will by design drop them and even if it somehow couldn't, 
-RxM would drop the packet after MAC verification of encrypted harac 
-fails.
+Message and command type datagrams tell the Receiver Program whether to 
+parse the trailing fields that determine which XChaCha20-Poly1305 
+decryption keys it should load. Contacts can of course try to alter 
+their datagrams to contain a COMMAND_DATAGRAM_HEADER header, but Relay 
+Program will by design drop them. Even if a compromised Networked 
+Computer injects such a datagram to Destination Computer, the Receiver 
+Program will drop the datagram when the MAC verification of the 
+encrypted hash ratchet counter value fails.
 
-Unencrypted packet headers are intended to notify NH that the packet
-is intended for it. These commands are not delivered to RxM, but a 
-standard encrypted command is sent to RxM before any unencrypted command 
-is sent to NH. During traffic masking connection, unencrypted commands 
-are disabled to hide the quantity and schedule of communication even if 
-NH is compromised and monitoring the user. Unencrypted commands do not 
-cause issues in security because if adversary can compromise NH to the 
-point it can issue commands to NH, they could DoS NH anyway.
+File type datagram contains an encrypted file that the Receiver Program 
+caches until its decryption key arrives from the sender inside a 
+special, automated key delivery message.
 
-File CT headers are for file export from TxM to NH and in receiving end,
-import from NH to RxM.
+Unencrypted type datagrams contain commands intended for the Relay 
+Program. These commands are in some cases preceded by an encrypted 
+version of the command, that the Relay Program forwards to Receiver 
+Program on Destination Computer. The unencrypted Relay commands are 
+disabled during traffic masking to hide the quantity and schedule of 
+communication even from the Networked Computer (in case it's compromised 
+and monitoring the user). The fact these commands are unencrypted, do 
+not cause security issues because if an adversary can compromise the 
+Networked Computer to the point it can issue commands to the Relay 
+Program, they could DoS the Relay Program, and thus TFC, anyway.
 """
-LOCAL_KEY_PACKET_HEADER   = b'L'
-PUBLIC_KEY_PACKET_HEADER  = b'P'
-MESSAGE_PACKET_HEADER     = b'M'
-COMMAND_PACKET_HEADER     = b'Y'
-UNENCRYPTED_PACKET_HEADER = b'U'
-EXPORTED_FILE_HEADER      = b'O'
-IMPORTED_FILE_HEADER      = b'I'
+DATAGRAM_TIMESTAMP_LENGTH   = 8
+DATAGRAM_HEADER_LENGTH      = 1
+LOCAL_KEY_DATAGRAM_HEADER   = b'L'
+PUBLIC_KEY_DATAGRAM_HEADER  = b'P'
+MESSAGE_DATAGRAM_HEADER     = b'M'
+COMMAND_DATAGRAM_HEADER     = b'K'
+FILE_DATAGRAM_HEADER        = b'F'
+UNENCRYPTED_DATAGRAM_HEADER = b'U'
+
+
+"""Group management headers
+
+Group management datagrams are are automatic messages that the 
+Transmitter Program recommends the user to send when they make changes 
+to the member list of a group, or when they add or remove groups. These 
+messages are displayed by the Relay Program.
+"""
+GROUP_ID_LENGTH             = 4
+GROUP_ID_ENC_LENGTH         = 13
+GROUP_MSG_ID_LENGTH         = 16
+GROUP_MGMT_HEADER_LENGTH    = 1
+GROUP_MSG_INVITE_HEADER     = b'I'
+GROUP_MSG_JOIN_HEADER       = b'J'
+GROUP_MSG_MEMBER_ADD_HEADER = b'N'
+GROUP_MSG_MEMBER_REM_HEADER = b'R'
+GROUP_MSG_EXIT_GROUP_HEADER = b'X'
 
 
 """Assembly packet headers
 
-These one byte assembly packet headers are not part of the padded 
+These one-byte assembly packet headers are not part of the padded 
 message parsed from assembly packets. They are however the very first
-plaintext byte, prepended to every padded assembly packet delivered to
-recipient or local RxM. They deliver information about if and when to
-process the packet and when to drop previously collected assembly 
-packets.
+plaintext byte, prepended to every padded assembly packet that is 
+delivered to the recipient/local Destination Computer. The header 
+delivers the information about if and when to assemble the packet,
+as well as when to drop any previously collected assembly packets.
 """
+FILE_PACKET_CTR_LENGTH        = 8
+ASSEMBLY_PACKET_HEADER_LENGTH = 1
+
 M_S_HEADER = b'a'  # Short message packet
-M_L_HEADER = b'b'  # First packet of multi-packet message
+M_L_HEADER = b'b'  # First    packet of multi-packet message
 M_A_HEADER = b'c'  # Appended packet of multi-packet message
-M_E_HEADER = b'd'  # Last packet of multi-packet message
-M_C_HEADER = b'e'  # Cancelled multi-packet message
+M_E_HEADER = b'd'  # Last     packet of multi-packet message
+M_C_HEADER = b'e'  # Cancelled          multi-packet message
 P_N_HEADER = b'f'  # Noise message packet
 
 F_S_HEADER = b'A'  # Short file packet
-F_L_HEADER = b'B'  # First packet of multi-packet file
+F_L_HEADER = b'B'  # First    packet of multi-packet file
 F_A_HEADER = b'C'  # Appended packet of multi-packet file
-F_E_HEADER = b'D'  # Last packet of multi-packet file
-F_C_HEADER = b'E'  # Cancelled multi-packet file
+F_E_HEADER = b'D'  # Last     packet of multi-packet file
+F_C_HEADER = b'E'  # Cancelled          multi-packet file
 
 C_S_HEADER = b'0'  # Short command packet
-C_L_HEADER = b'1'  # First packet of multi-packet command
+C_L_HEADER = b'1'  # First    packet of multi-packet command
 C_A_HEADER = b'2'  # Appended packet of multi-packet command
-C_E_HEADER = b'3'  # Last packet of multi-packet command
-C_C_HEADER = b'4'  # Cancelled multi-packet command (not implemented)
+C_E_HEADER = b'3'  # Last     packet of multi-packet command
+C_C_HEADER = b'4'  # Cancelled          multi-packet command (reserved but not in use)
 C_N_HEADER = b'5'  # Noise command packet
 
 
 """Unencrypted command headers
 
-These two-byte headers are only used to control NH. These commands will
-not be used during traffic masking to hide when TFC is being used. These 
-commands are not encrypted because if attacker is able to inject 
-commands from within NH, they could also access any keys stored on NH.
+These two-byte headers are only used to control the Relay Program on 
+Networked Computer. These commands will not be used during traffic 
+masking, as they would reveal when TFC is being used. These commands do
+not require encryption, because if an attacker can compromise the 
+Networked Computer to the point it could inject commands to Relay 
+Program, it could most likely also access any decryption keys used by 
+the Relay Program.
 """
-UNENCRYPTED_SCREEN_CLEAR   = b'UC'
-UNENCRYPTED_SCREEN_RESET   = b'UR'
-UNENCRYPTED_EXIT_COMMAND   = b'UX'
-UNENCRYPTED_IMPORT_COMMAND = b'UI'
-UNENCRYPTED_EC_RATIO       = b'UE'
-UNENCRYPTED_BAUDRATE       = b'UB'
-UNENCRYPTED_GUI_DIALOG     = b'UD'
-UNENCRYPTED_WIPE_COMMAND   = b'UW'
+UNENCRYPTED_COMMAND_HEADER_LENGTH = 2
+UNENCRYPTED_SCREEN_CLEAR          = b'UC'
+UNENCRYPTED_SCREEN_RESET          = b'UR'
+UNENCRYPTED_EXIT_COMMAND          = b'UX'
+UNENCRYPTED_EC_RATIO              = b'UE'
+UNENCRYPTED_BAUDRATE              = b'UB'
+UNENCRYPTED_WIPE_COMMAND          = b'UW'
+UNENCRYPTED_ADD_NEW_CONTACT       = b'UN'
+UNENCRYPTED_ADD_EXISTING_CONTACT  = b'UA'
+UNENCRYPTED_REM_CONTACT           = b'UD'
+UNENCRYPTED_ONION_SERVICE_DATA    = b'UO'
+UNENCRYPTED_MANAGE_CONTACT_REQ    = b'UM'
 
 
 """Encrypted command headers
 
-These two-byte headers are prepended to each command delivered to local
-RxM. The header is evaluated after RxM has received all assembly packets
-of one transmission. These headers tell RxM to what function the command
-must be redirected to.
+These two-byte headers determine the type of command for Receiver 
+Program on local Destination Computer. The header is evaluated after the 
+Receiver Program has received all assembly packets and assembled the 
+command. These headers tell the Receiver Program to which function the 
+provided parameters (if any) must be redirected.
 """
-LOCAL_KEY_INSTALLED_HEADER  = b'LI'
-SHOW_WINDOW_ACTIVITY_HEADER = b'SA'
-WINDOW_SELECT_HEADER        = b'WS'
-CLEAR_SCREEN_HEADER         = b'SC'
-RESET_SCREEN_HEADER         = b'SR'
-EXIT_PROGRAM_HEADER         = b'EX'
-LOG_DISPLAY_HEADER          = b'LD'
-LOG_EXPORT_HEADER           = b'LE'
-LOG_REMOVE_HEADER           = b'LR'
-CHANGE_MASTER_K_HEADER      = b'MK'
-CHANGE_NICK_HEADER          = b'NC'
-CHANGE_SETTING_HEADER       = b'CS'
-CHANGE_LOGGING_HEADER       = b'CL'
-CHANGE_FILE_R_HEADER        = b'CF'
-CHANGE_NOTIFY_HEADER        = b'CN'
-GROUP_CREATE_HEADER         = b'GC'
-GROUP_ADD_HEADER            = b'GA'
-GROUP_REMOVE_M_HEADER       = b'GR'
-GROUP_DELETE_HEADER         = b'GD'
-KEY_EX_X25519_HEADER        = b'KE'
-KEY_EX_PSK_TX_HEADER        = b'KT'
-KEY_EX_PSK_RX_HEADER        = b'KR'
-CONTACT_REMOVE_HEADER       = b'CR'
-WIPE_USER_DATA_HEADER       = b'WD'
+ENCRYPTED_COMMAND_HEADER_LENGTH = 2
+LOCAL_KEY_RDY                   = b'LI'
+WIN_ACTIVITY                    = b'SA'
+WIN_SELECT                      = b'WS'
+CLEAR_SCREEN                    = b'SC'
+RESET_SCREEN                    = b'SR'
+EXIT_PROGRAM                    = b'EX'
+LOG_DISPLAY                     = b'LD'
+LOG_EXPORT                      = b'LE'
+LOG_REMOVE                      = b'LR'
+CH_MASTER_KEY                   = b'MK'
+CH_NICKNAME                     = b'NC'
+CH_SETTING                      = b'CS'
+CH_LOGGING                      = b'CL'
+CH_FILE_RECV                    = b'CF'
+CH_NOTIFY                       = b'CN'
+GROUP_CREATE                    = b'GC'
+GROUP_ADD                       = b'GA'
+GROUP_REMOVE                    = b'GR'
+GROUP_DELETE                    = b'GD'
+GROUP_RENAME                    = b'GN'
+KEY_EX_ECDHE                    = b'KE'
+KEY_EX_PSK_TX                   = b'KT'
+KEY_EX_PSK_RX                   = b'KR'
+CONTACT_REM                     = b'CR'
+WIPE_USR_DATA                   = b'WD'
 
 
 """Origin headers
 
-This one byte header notifies RxM whether the account 
-included in the packet is the source or destination.
+This one-byte header tells the Relay and Receiver Programs whether the 
+account included in the packet is the source or the destination of the
+transmission. The user origin header is used when the Relay Program 
+forwards the message packets from user's Source Computer to user's 
+Destination Computer. The contact origin header is used when the program 
+forwards packets that are loaded from servers of contacts to the user's 
+Destination Computer. 
+
+On Destination Computer, the Receiver Program uses the origin header to
+determine which unidirectional keys it should load to decrypt the 
+datagram payload. 
 """
+ORIGIN_HEADER_LENGTH  = 1
 ORIGIN_USER_HEADER    = b'o'
 ORIGIN_CONTACT_HEADER = b'i'
 
 
 """Message headers
 
-This one byte header will be prepended to each plaintext message prior 
-to padding and splitting the message. It will be evaluated once RxM has 
-received all assembly packets. It allows RxM to detect whether the 
-message should be displayed on private or group window. This does not 
-allow spoofing of messages in unauthorized group windows, because the 
-(group configuration managed personally by the recipient) white lists 
-accounts who are authorized to display the message under the group 
-window.
+This one-byte header will be prepended to each plaintext message before 
+padding and splitting the message. It will be evaluated once the Relay 
+Program has received all assembly packets and assembled the message.
 
-Whisper message header is message with "sender based control". Unless
-contact is malicious, these messages are not logged.
+The private and group message headers allow the Receiver Program to 
+determine whether the message should be displayed in a private or in a 
+group window. This does not allow re-direction of messages to 
+unauthorized group windows, because TFC's manually managed group 
+configuration is also a whitelist for accounts that are authorized to 
+display messages under the group's window.
+
+Messages with the whisper message header have "sender-based control". 
+Unless the contact maliciously alters their Receiver Program's behavior, 
+whispered messages are not logged regardless of in-program controlled
+settings.
+
+Messages with file key header contain the hash of the file ciphertext 
+that was sent to the user earlier. It also contains the symmetric 
+decryption key for that file. 
 """
+MESSAGE_HEADER_LENGTH  = 1
+WHISPER_FIELD_LENGTH   = 1
 PRIVATE_MESSAGE_HEADER = b'p'
 GROUP_MESSAGE_HEADER   = b'g'
-WHISPER_MESSAGE_HEADER = b'w'
-
-
-"""Group management headers
-
-Group messages are automatically parsed messages that TxM recommends 
-user to send when they make changes to group members or add/remove 
-groups. These messages are displayed temporarily on whatever active 
-window and later in command window.
-"""
-GROUP_MSG_INVITEJOIN_HEADER = b'T'
-GROUP_MSG_MEMBER_ADD_HEADER = b'N'
-GROUP_MSG_MEMBER_REM_HEADER = b'R'
-GROUP_MSG_EXIT_GROUP_HEADER = b'X'
+FILE_KEY_HEADER        = b'k'
 
 
 """Delays
 
-Traffic masking packet queue check delay ensures that 
-the lookup time for packet queue is obfuscated.
+Traffic masking packet queue check delay ensures that the lookup time 
+for the packet queue is obfuscated.
+
+The local testing packet delay is an arbitrary delay that simulates the 
+slight delay caused by data transmission over a serial interface.
+
+The Relay client delays are values that determine the delays between
+checking the online status of the contact (and the state of their 
+ephemeral URL token public key).
 """
 TRAFFIC_MASKING_QUEUE_CHECK_DELAY = 0.1
+TRAFFIC_MASKING_MIN_STATIC_DELAY  = 0.1
+TRAFFIC_MASKING_MIN_RANDOM_DELAY  = 0.1
+LOCAL_TESTING_PACKET_DELAY        = 0.1
+RELAY_CLIENT_MAX_DELAY            = 16
+RELAY_CLIENT_MIN_DELAY            = 0.125
+CLIENT_OFFLINE_THRESHOLD          = 4.0
 
 
 """Constant time delay types"""
@@ -296,144 +380,202 @@ TRAFFIC_MASKING = 'traffic_masking'
 
 
 """Default folders"""
-DIR_USER_DATA = 'user_data/'
-DIR_RX_FILES  = 'received_files/'
-DIR_IMPORTED  = 'imported_files/'
+DIR_USER_DATA  = 'user_data/'
+DIR_RECV_FILES = 'received_files/'
+DIR_TFC        = 'tfc/'
 
 
-"""Regular expressions
-
-These are used to specify exact format of some inputs.
-"""
-ACCOUNT_FORMAT = '(^.[^/:,]*@.[^/:,]*\.[^/:,]*.$)'  # <something>@<something>.<something>
+"""Key exchange status states"""
+KEX_STATUS_NONE       = b'\xa0'
+KEX_STATUS_PENDING    = b'\xa1'
+KEX_STATUS_UNVERIFIED = b'\xa2'
+KEX_STATUS_VERIFIED   = b'\xa3'
+KEX_STATUS_NO_RX_PSK  = b'\xa4'
+KEX_STATUS_HAS_RX_PSK = b'\xa5'
+KEX_STATUS_LOCAL_KEY  = b'\xa6'
 
 
 """Queue dictionary keys"""
-
 # Common
 EXIT_QUEUE     = b'exit'
 GATEWAY_QUEUE  = b'gateway'
-UNITTEST_QUEUE = b'unittest_queue'
+UNITTEST_QUEUE = b'unittest'
 
 # Transmitter
-MESSAGE_PACKET_QUEUE = b'message_packet'
-FILE_PACKET_QUEUE    = b'file_packet'
-COMMAND_PACKET_QUEUE = b'command_packet'
-NH_PACKET_QUEUE      = b'nh_packet'
-LOG_PACKET_QUEUE     = b'log_packet'
-NOISE_PACKET_QUEUE   = b'noise_packet'
-NOISE_COMMAND_QUEUE  = b'noise_command'
-KEY_MANAGEMENT_QUEUE = b'key_management'
-WINDOW_SELECT_QUEUE  = b'window_select'
+MESSAGE_PACKET_QUEUE    = b'message_packet'
+COMMAND_PACKET_QUEUE    = b'command_packet'
+TM_MESSAGE_PACKET_QUEUE = b'tm_message_packet'
+TM_FILE_PACKET_QUEUE    = b'tm_file_packet'
+TM_COMMAND_PACKET_QUEUE = b'tm_command_packet'
+TM_NOISE_PACKET_QUEUE   = b'tm_noise_packet'
+TM_NOISE_COMMAND_QUEUE  = b'tm_noise_command'
+RELAY_PACKET_QUEUE      = b'relay_packet'
+LOG_PACKET_QUEUE        = b'log_packet'
+LOG_SETTING_QUEUE       = b'log_setting'
+TRAFFIC_MASKING_QUEUE   = b'traffic_masking'
+LOGFILE_MASKING_QUEUE   = b'logfile_masking'
+KEY_MANAGEMENT_QUEUE    = b'key_management'
+SENDER_MODE_QUEUE       = b'sender_mode'
+WINDOW_SELECT_QUEUE     = b'window_select'
 
-# NH
-TXM_INCOMING_QUEUE = b'txm_incoming'
-RXM_OUTGOING_QUEUE = b'rxm_outgoing'
-TXM_TO_IM_QUEUE    = b'txm_to_im'
-TXM_TO_NH_QUEUE    = b'txm_to_nh'
-TXM_TO_RXM_QUEUE   = b'txm_to_rxm'
-NH_TO_IM_QUEUE     = b'nh_to_im'
+# Relay
+DST_COMMAND_QUEUE  = b'dst_command'
+DST_MESSAGE_QUEUE  = b'dst_message'
+M_TO_FLASK_QUEUE   = b'm_to_flask'
+F_TO_FLASK_QUEUE   = b'f_to_flask'
+SRC_TO_RELAY_QUEUE = b'src_to_relay'
+URL_TOKEN_QUEUE    = b'url_token'
+GROUP_MGMT_QUEUE   = b'group_mgmt'
+GROUP_MSG_QUEUE    = b'group_msg'
+CONTACT_REQ_QUEUE  = b'contact_req'
+F_REQ_MGMT_QUEUE   = b'f_req_mgmt'
+CONTACT_KEY_QUEUE  = b'contact_key'
+C_REQ_MGR_QUEUE    = b'c_req_mgr'
+ONION_KEY_QUEUE    = b'onion_key'
+ONION_CLOSE_QUEUE  = b'close_onion'
+TOR_DATA_QUEUE     = b'tor_data'
 
 
 """Queue signals"""
 KDB_ADD_ENTRY_HEADER         = 'ADD'
 KDB_REMOVE_ENTRY_HEADER      = 'REM'
 KDB_CHANGE_MASTER_KEY_HEADER = 'KEY'
+KDB_UPDATE_SIZE_HEADER       = 'STO'
+RP_ADD_CONTACT_HEADER        = 'RAC'
+RP_REMOVE_CONTACT_HEADER     = 'RRC'
 EXIT                         = 'EXIT'
 WIPE                         = 'WIPE'
 
 
-"""Static values
+"""Static values"""
 
-These values are not settings but descriptive integer values.
-"""
+# Serial interface
+BAUDS_PER_BYTE        = 10
+SERIAL_RX_MIN_TIMEOUT = 0.05
+
+# CLI indents
+CONTACT_LIST_INDENT  = 4
+FILE_TRANSFER_INDENT = 4
+SETTINGS_INDENT      = 2
+
+# Compression
+COMPRESSION_LEVEL = 9
+MAX_MESSAGE_SIZE  = 100_000  # bytes
+
+# Traffic masking
+NOISE_PACKET_BUFFER = 100
+
+# Local testing
+LOCALHOST            = 'localhost'
+SRC_DD_LISTEN_SOCKET = 5005
+RP_LISTEN_SOCKET     = 5006
+DST_DD_LISTEN_SOCKET = 5007
+DST_LISTEN_SOCKET    = 5008
+
+# Field lengths
+ENCODED_BOOLEAN_LENGTH  = 1
+ENCODED_BYTE_LENGTH     = 1
+TIMESTAMP_LENGTH        = 4
+ENCODED_INTEGER_LENGTH  = 8
+ENCODED_FLOAT_LENGTH    = 8
+FILE_ETA_FIELD_LENGTH   = 8
+FILE_SIZE_FIELD_LENGTH  = 8
+GROUP_DB_HEADER_LENGTH  = 32
+PADDED_UTF32_STR_LENGTH = 1024
+CONFIRM_CODE_LENGTH     = 1
+PACKET_CHECKSUM_LENGTH  = 16
+
+# Onion address format
+ONION_ADDRESS_CHECKSUM_ID     = b".onion checksum"
+ONION_SERVICE_VERSION         = b'\x03'
+ONION_SERVICE_VERSION_LENGTH  = 1
+ONION_ADDRESS_CHECKSUM_LENGTH = 2
+ONION_ADDRESS_LENGTH          = 56
 
 # Misc
-BAUDS_PER_BYTE    = 10
-COMPRESSION_LEVEL = 9
-ENTROPY_THRESHOLD = 512
+MAX_INT              = 2 ** 64 - 1
+B58_CHECKSUM_LENGTH  = 4
+TRUNC_ADDRESS_LENGTH = 5
+
+# Key derivation
+ARGON2_SALT_LENGTH      = 32
+ARGON2_ROUNDS           = 25
+ARGON2_MIN_MEMORY       = 64000  # bytes
+MIN_KEY_DERIVATION_TIME = 3.0    # seconds
+
+# Cryptographic field sizes
+TFC_PRIVATE_KEY_LENGTH           = 56
+TFC_PUBLIC_KEY_LENGTH            = 56
+FINGERPRINT_LENGTH               = 32
+ONION_SERVICE_PRIVATE_KEY_LENGTH = 32
+ONION_SERVICE_PUBLIC_KEY_LENGTH  = 32
+XCHACHA20_NONCE_LENGTH           = 24
+SYMMETRIC_KEY_LENGTH             = 32
+POLY1305_TAG_LENGTH              = 16
+BLAKE2_DIGEST_LENGTH             = 32
+BLAKE2_DIGEST_LENGTH_MAX         = 64
+ENTROPY_THRESHOLD                = 512
+HARAC_LENGTH                     = 8
+PADDING_LENGTH                   = 255
 
 # Forward secrecy
 INITIAL_HARAC        = 0
-HARAC_WARN_THRESHOLD = 1000
-
-# CLI indents
-CONTACT_LIST_INDENT = 4
-SETTINGS_INDENT     = 2
-
-# Local testing
-TXM_DD_LISTEN_SOCKET       = 5000
-NH_LISTEN_SOCKET           = 5001
-RXM_DD_LISTEN_SOCKET       = 5002
-RXM_LISTEN_SOCKET          = 5003
-LOCAL_TESTING_PACKET_DELAY = 0.1
-
-# Field lengths
-BOOLEAN_SETTING_LEN  = 1
-ORIGIN_HEADER_LEN    = 1
-TIMESTAMP_LEN        = 4
-INTEGER_SETTING_LEN  = 8
-FLOAT_SETTING_LEN    = 8
-FILE_PACKET_CTR_LEN  = 8
-FILE_ETA_FIELD_LEN   = 8
-FILE_SIZE_FIELD_LEN  = 8
-GROUP_MSG_ID_LEN     = 16
-GROUP_DB_HEADER_LEN  = 32
-PADDED_UTF32_STR_LEN = 1024
-
-ARGON2_SALT_LEN    = 32
-ARGON2_ROUNDS      = 25
-ARGON2_MIN_MEMORY  = 64000
-XSALSA20_NONCE_LEN = 24
-POLY1305_TAG_LEN   = 16
-
-FINGERPRINT_LEN = 32
-KEY_LENGTH      = 32
-HARAC_LEN       = 8
-B58_CHKSUM_LEN  = 4
-
-PADDING_LEN         = 255
-ASSEMBLY_PACKET_LEN = 256
+HARAC_WARN_THRESHOLD = 100_000
 
 # Special messages
-PLACEHOLDER_DATA = P_N_HEADER + bytes(PADDING_LEN)
-
+PLACEHOLDER_DATA = P_N_HEADER + bytes(PADDING_LENGTH)
 
 # Field lengths
-MESSAGE_LENGTH = (XSALSA20_NONCE_LEN
-                  + HARAC_LEN
-                  + POLY1305_TAG_LEN
+ASSEMBLY_PACKET_LENGTH = ASSEMBLY_PACKET_HEADER_LENGTH + PADDING_LENGTH
 
-                  + XSALSA20_NONCE_LEN
-                  + ASSEMBLY_PACKET_LEN
-                  + POLY1305_TAG_LEN)
+HARAC_CT_LENGTH = (XCHACHA20_NONCE_LENGTH
+                   + HARAC_LENGTH
+                   + POLY1305_TAG_LENGTH)
 
-PACKET_LENGTH  = (len(MESSAGE_PACKET_HEADER)
-                  + MESSAGE_LENGTH
-                  + ORIGIN_HEADER_LEN)
+ASSEMBLY_PACKET_CT_LENGTH = (XCHACHA20_NONCE_LENGTH
+                             + ASSEMBLY_PACKET_LENGTH
+                             + POLY1305_TAG_LENGTH)
 
-CONTACT_LENGTH = (3*PADDED_UTF32_STR_LEN
-                  + 2*FINGERPRINT_LEN
-                  + 3*BOOLEAN_SETTING_LEN)
+MESSAGE_LENGTH = HARAC_CT_LENGTH + ASSEMBLY_PACKET_CT_LENGTH
 
-KEYSET_LENGTH = (PADDED_UTF32_STR_LEN
-                 + 4*KEY_LENGTH
-                 + 2*HARAC_LEN)
+COMMAND_LENGTH = (DATAGRAM_HEADER_LENGTH
+                  + MESSAGE_LENGTH)
 
-PSK_FILE_SIZE = (XSALSA20_NONCE_LEN
-                 + ARGON2_SALT_LEN
-                 + 2*KEY_LENGTH
-                 + POLY1305_TAG_LEN)
+PACKET_LENGTH = (DATAGRAM_HEADER_LENGTH
+                 + MESSAGE_LENGTH
+                 + ORIGIN_HEADER_LENGTH)
 
-LOG_ENTRY_LENGTH = (XSALSA20_NONCE_LEN
-                    + PADDED_UTF32_STR_LEN
-                    + TIMESTAMP_LEN
-                    + ORIGIN_HEADER_LEN
-                    + ASSEMBLY_PACKET_LEN
-                    + POLY1305_TAG_LEN)
+GROUP_STATIC_LENGTH = (PADDED_UTF32_STR_LENGTH
+                       + GROUP_ID_LENGTH
+                       + 2 * ENCODED_BOOLEAN_LENGTH)
 
-SETTING_LENGTH = (XSALSA20_NONCE_LEN
-                  + 5*INTEGER_SETTING_LEN
-                  + 4*FLOAT_SETTING_LEN
-                  + 13*BOOLEAN_SETTING_LEN
-                  + POLY1305_TAG_LEN)
+CONTACT_LENGTH = (ONION_SERVICE_PUBLIC_KEY_LENGTH
+                  + 2 * FINGERPRINT_LENGTH
+                  + 4 * ENCODED_BOOLEAN_LENGTH
+                  + PADDED_UTF32_STR_LENGTH)
+
+KEYSET_LENGTH = (ONION_SERVICE_PUBLIC_KEY_LENGTH
+                 + 4 * SYMMETRIC_KEY_LENGTH
+                 + 2 * HARAC_LENGTH)
+
+PSK_FILE_SIZE = (XCHACHA20_NONCE_LENGTH
+                 + ARGON2_SALT_LENGTH
+                 + 2 * SYMMETRIC_KEY_LENGTH
+                 + POLY1305_TAG_LENGTH)
+
+LOG_ENTRY_LENGTH = (XCHACHA20_NONCE_LENGTH
+                    + ONION_SERVICE_PUBLIC_KEY_LENGTH
+                    + TIMESTAMP_LENGTH
+                    + ORIGIN_HEADER_LENGTH
+                    + ASSEMBLY_PACKET_LENGTH
+                    + POLY1305_TAG_LENGTH)
+
+MASTERKEY_DB_SIZE = (ARGON2_SALT_LENGTH
+                     + BLAKE2_DIGEST_LENGTH
+                     + 2 * ENCODED_INTEGER_LENGTH)
+
+SETTING_LENGTH = (XCHACHA20_NONCE_LENGTH
+                  + 4 * ENCODED_INTEGER_LENGTH
+                  + 3 * ENCODED_FLOAT_LENGTH
+                  + 11 * ENCODED_BOOLEAN_LENGTH
+                  + POLY1305_TAG_LENGTH)

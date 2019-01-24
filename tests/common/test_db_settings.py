@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright (C) 2013-2017  Markus Ottela
+TFC - Onion-routed, endpoint secure messaging system
+Copyright (C) 2013-2019  Markus Ottela
 
 This file is part of TFC.
 
@@ -15,149 +16,157 @@ without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with TFC. If not, see <http://www.gnu.org/licenses/>.
+along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
-import builtins
 import os.path
-import shutil
 import unittest
+
+from unittest import mock
 
 from src.common.db_settings import Settings
 from src.common.statics     import *
 
-from tests.mock_classes import create_group, ContactList, GroupList, MasterKey
-from tests.utils        import cleanup, TFCTestCase
+from tests.mock_classes import ContactList, create_group, GroupList, MasterKey
+from tests.utils        import cd_unittest, cleanup, tamper_file, TFCTestCase
 
 
 class TestSettings(TFCTestCase):
 
     def setUp(self):
-        self.o_input              = builtins.input
-        builtins.input            = lambda _: 'yes'
-        self.masterkey            = MasterKey()
-        self.settings             = Settings(self.masterkey, operation='ut', local_test=False, dd_sockets=False)
-        self.contact_list         = ContactList(nicks=['contact_{}'.format(n) for n in range(18)])
-        self.group_list           = GroupList(groups=['group_{}'.format(n) for n in range(18)])
-        self.group_list.groups[0] = create_group('group_0', ['contact_{}'.format(n) for n in range(18)])
+        self.unittest_dir         = cd_unittest()
+        self.file_name            = f"{DIR_USER_DATA}{TX}_settings"
+        self.master_key           = MasterKey()
+        self.settings             = Settings(self.master_key, operation=TX, local_test=False)
+        self.contact_list         = ContactList(nicks=[f'contact_{n}' for n in range(18)])
+        self.group_list           = GroupList(groups=[f'group_{n}' for n in range(18)])
+        self.group_list.groups[0] = create_group('group_0', [f'contact_{n}' for n in range(18)])
+        self.args                 = self.contact_list, self.group_list
 
     def tearDown(self):
-        cleanup()
-        builtins.input = self.o_input
+        cleanup(self.unittest_dir)
 
     def test_invalid_type_raises_critical_error_on_store(self):
-        self.settings.serial_error_correction = b'bytestring'
+        self.settings.tm_random_delay = b'bytestring'
         with self.assertRaises(SystemExit):
             self.settings.store_settings()
 
     def test_invalid_type_raises_critical_error_on_load(self):
         with self.assertRaises(SystemExit):
-            self.settings.nh_bypass_messages = b'bytestring'
+            self.settings.nc_bypass_messages = b'bytestring'
             self.settings.load_settings()
 
-    def test_store_and_load_settings(self):
+    def test_store_and_load_tx_settings(self):
         # Test store
         self.assertFalse(self.settings.disable_gui_dialog)
         self.settings.disable_gui_dialog = True
         self.settings.store_settings()
-        self.assertEqual(os.path.getsize(f"{DIR_USER_DATA}ut_settings"), SETTING_LENGTH)
+        self.assertEqual(os.path.getsize(self.file_name), SETTING_LENGTH)
 
         # Test load
-        settings2 = Settings(self.masterkey, 'ut', False, False)
+        settings2 = Settings(self.master_key, TX, False)
         self.assertTrue(settings2.disable_gui_dialog)
+
+    def test_store_and_load_rx_settings(self):
+        # Setup
+        self.settings = Settings(self.master_key, operation=RX, local_test=False)
+
+        # Test store
+        self.assertFalse(self.settings.disable_gui_dialog)
+        self.settings.disable_gui_dialog = True
+        self.settings.store_settings()
+        self.assertEqual(os.path.getsize(self.file_name), SETTING_LENGTH)
+
+        # Test load
+        settings2 = Settings(self.master_key, RX, False)
+        self.assertTrue(settings2.disable_gui_dialog)
+
+    def test_load_of_modified_database_raises_critical_error(self):
+        # Store settings to database
+        self.settings.store_settings()
+
+        # Test reading from database works normally
+        self.assertIsInstance(Settings(self.master_key, operation=TX, local_test=False), Settings)
+
+        # Test loading of the tampered database raises CriticalError
+        tamper_file(self.file_name, tamper_size=1)
+        with self.assertRaises(SystemExit):
+            Settings(self.master_key, operation=TX, local_test=False)
 
     def test_invalid_type_raises_critical_error_when_changing_settings(self):
         self.settings.traffic_masking = b'bytestring'
         with self.assertRaises(SystemExit):
-            self.assertIsNone(self.settings.change_setting('traffic_masking', 'True', self.contact_list, self.group_list))
+            self.assertIsNone(self.settings.change_setting('traffic_masking', 'True', *self.args))
 
     def test_change_settings(self):
-        self.assertFR("Error: Invalid value 'Falsee'",               self.settings.change_setting, 'disable_gui_dialog',           'Falsee',     self.contact_list, self.group_list)
-        self.assertFR("Error: Invalid value '1.1'",                  self.settings.change_setting, 'max_number_of_group_members',  '1.1',        self.contact_list, self.group_list)
-        self.assertFR("Error: Invalid value '-1.1'",                 self.settings.change_setting, 'max_duration_of_random_delay', '-1.1',       self.contact_list, self.group_list)
-        self.assertFR("Error: Invalid value '18446744073709551616'", self.settings.change_setting, 'serial_error_correction',      str(2 ** 64), self.contact_list, self.group_list)
-        self.assertFR("Error: Invalid value 'True'",                 self.settings.change_setting, 'traffic_masking_static_delay', 'True',       self.contact_list, self.group_list)
+        self.assert_fr("Error: Invalid value 'Falsee'.",
+                       self.settings.change_setting, 'disable_gui_dialog', 'Falsee',           *self.args)
+        self.assert_fr("Error: Invalid value '1.1'.",
+                       self.settings.change_setting, 'max_number_of_group_members',     '1.1', *self.args)
+        self.assert_fr("Error: Invalid value '18446744073709551616'.",
+                       self.settings.change_setting, 'max_number_of_contacts',   str(2 ** 64), *self.args)
+        self.assert_fr("Error: Invalid value '-1.1'.",
+                       self.settings.change_setting, 'tm_static_delay',                '-1.1', *self.args)
+        self.assert_fr("Error: Invalid value 'True'.",
+                       self.settings.change_setting, 'tm_static_delay',                'True', *self.args)
 
-        self.assertIsNone(self.settings.change_setting('serial_error_correction', '10',   self.contact_list, self.group_list))
-        self.assertIsNone(self.settings.change_setting('rxm_usb_serial_adapter',  'True', self.contact_list, self.group_list))
-        self.assertIsNone(self.settings.change_setting('traffic_masking',         'True', self.contact_list, self.group_list))
+        self.assertIsNone(self.settings.change_setting('traffic_masking',             'True', *self.args))
+        self.assertIsNone(self.settings.change_setting('max_number_of_group_members',  '100', *self.args))
 
-    def test_validate_key_value_pair(self):
-        self.assertFR("Error: Database padding settings must be divisible by 10.", self.settings.validate_key_value_pair, 'max_number_of_group_members',  0,   self.contact_list, self.group_list)
-        self.assertFR("Error: Database padding settings must be divisible by 10.", self.settings.validate_key_value_pair, 'max_number_of_group_members', 18,   self.contact_list, self.group_list)
-        self.assertFR("Error: Database padding settings must be divisible by 10.", self.settings.validate_key_value_pair, 'max_number_of_groups',        18,   self.contact_list, self.group_list)
-        self.assertFR("Error: Database padding settings must be divisible by 10.", self.settings.validate_key_value_pair, 'max_number_of_contacts',      18,   self.contact_list, self.group_list)
-        self.assertFR("Error: Can't set max number of members lower than 20.",     self.settings.validate_key_value_pair, 'max_number_of_group_members', 10,   self.contact_list, self.group_list)
-        self.assertFR("Error: Can't set max number of groups lower than 20.",      self.settings.validate_key_value_pair, 'max_number_of_groups',        10,   self.contact_list, self.group_list)
-        self.assertFR("Error: Can't set max number of contacts lower than 20.",    self.settings.validate_key_value_pair, 'max_number_of_contacts',      10,   self.contact_list, self.group_list)
-        self.assertFR("Error: Specified baud rate is not supported.",              self.settings.validate_key_value_pair, 'serial_baudrate',             10,   self.contact_list, self.group_list)
-        self.assertFR("Error: Invalid value for error correction ratio.",          self.settings.validate_key_value_pair, 'serial_error_correction',     0,    self.contact_list, self.group_list)
-        self.assertFR("Error: Invalid value for error correction ratio.",          self.settings.validate_key_value_pair, 'serial_error_correction',     -1,   self.contact_list, self.group_list)
-        self.assertFR("Error: Too small value for message notify duration.",       self.settings.validate_key_value_pair, 'new_message_notify_duration', 0.04, self.contact_list, self.group_list)
+    @mock.patch('builtins.input', side_effect=['No', 'Yes'])
+    def test_validate_key_value_pair(self, _):
+        self.assert_fr("Error: Database padding settings must be divisible by 10.",
+                       self.settings.validate_key_value_pair, 'max_number_of_group_members',    0, *self.args)
+        self.assert_fr("Error: Database padding settings must be divisible by 10.",
+                       self.settings.validate_key_value_pair, 'max_number_of_group_members',   18, *self.args)
+        self.assert_fr("Error: Database padding settings must be divisible by 10.",
+                       self.settings.validate_key_value_pair, 'max_number_of_groups',          18, *self.args)
+        self.assert_fr("Error: Database padding settings must be divisible by 10.",
+                       self.settings.validate_key_value_pair, 'max_number_of_contacts',        18, *self.args)
+        self.assert_fr("Error: Can't set the max number of members lower than 20.",
+                       self.settings.validate_key_value_pair, 'max_number_of_group_members',   10, *self.args)
+        self.assert_fr("Error: Can't set the max number of groups lower than 20.",
+                       self.settings.validate_key_value_pair, 'max_number_of_groups',          10, *self.args)
+        self.assert_fr("Error: Can't set the max number of contacts lower than 20.",
+                       self.settings.validate_key_value_pair, 'max_number_of_contacts',        10, *self.args)
+        self.assert_fr("Error: Too small value for message notify duration.",
+                       self.settings.validate_key_value_pair, 'new_message_notify_duration', 0.04, *self.args)
+        self.assert_fr("Error: Can't set static delay lower than 0.1.",
+                       self.settings.validate_key_value_pair, 'tm_static_delay',             0.01, *self.args)
+        self.assert_fr("Error: Can't set random delay lower than 0.1.",
+                       self.settings.validate_key_value_pair, 'tm_random_delay',             0.01, *self.args)
+        self.assert_fr("Aborted traffic masking setting change.",
+                       self.settings.validate_key_value_pair, 'tm_random_delay',              0.1, *self.args)
 
-        self.assertIsNone(self.settings.validate_key_value_pair("serial_baudrate", 9600, self.contact_list, self.group_list))
+        self.assertIsNone(self.settings.validate_key_value_pair("serial_baudrate",  9600, *self.args))
+        self.assertIsNone(self.settings.validate_key_value_pair("tm_static_delay",     1, *self.args))
 
-    def test_too_narrow_terminal_raises_fr_when_printing_settings(self):
-        # Setup
-        o_get_terminal_size      = shutil.get_terminal_size
-        shutil.get_terminal_size = lambda: [64, 64]
-
+    @mock.patch('shutil.get_terminal_size', return_value=(64, 64))
+    def test_too_narrow_terminal_raises_fr_when_printing_settings(self, _):
         # Test
-        self.assertFR("Error: Screen width is too small.", self.settings.print_settings)
-
-        # Teardown
-        shutil.get_terminal_size = o_get_terminal_size
-
-    def test_setup(self):
-        # Setup
-        builtins.input = lambda _: 'No'
-
-        # Test
-        self.settings.software_operation = TX
-        self.settings.setup()
-        self.assertFalse(self.settings.txm_usb_serial_adapter)
-
-        self.settings.software_operation = RX
-        self.settings.setup()
-        self.assertFalse(self.settings.rxm_usb_serial_adapter)
+        self.assert_fr("Error: Screen width is too small.", self.settings.print_settings)
 
     def test_print_settings(self):
-        self.settings.max_number_of_group_members  = 30
-        self.settings.log_messages_by_default      = True
-        self.settings.traffic_masking_static_delay = 10.2
-        self.assertPrints(CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER + """\
+        self.settings.max_number_of_group_members = 30
+        self.settings.log_messages_by_default     = True
+        self.settings.tm_static_delay             = 10.2
+        self.assert_prints(CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER + """\
 
 Setting name                    Current value   Default value   Description
 ────────────────────────────────────────────────────────────────────────────────
 disable_gui_dialog              False           False           True replaces
-                                                                Tkinter dialogs
-                                                                with CLI prompts
+                                                                GUI dialogs with
+                                                                CLI prompts
 
-max_number_of_group_members     30              20              Max members in
-                                                                group (TxM/RxM
-                                                                must have the
-                                                                same value)
+max_number_of_group_members     30              50              Maximum number
+                                                                of members in a
+                                                                group
 
-max_number_of_groups            20              20              Max number of
-                                                                groups (TxM/RxM
-                                                                must have the
-                                                                same value)
+max_number_of_groups            50              50              Maximum number
+                                                                of groups
 
-max_number_of_contacts          20              20              Max number of
-                                                                contacts
-                                                                (TxM/RxM must
-                                                                have the same
-                                                                value)
-
-serial_baudrate                 19200           19200           The speed of
-                                                                serial interface
-                                                                in bauds per
-                                                                second
-
-serial_error_correction         5               5               Number of byte
-                                                                errors serial
-                                                                datagrams can
-                                                                recover from
+max_number_of_contacts          50              50              Maximum number
+                                                                of contacts
 
 log_messages_by_default         True            False           Default logging
                                                                 setting for new
@@ -173,18 +182,15 @@ show_notifications_by_default   True            True            Default message
                                                                 setting for new
                                                                 contacts/groups
 
-logfile_masking                 False           False           True hides real
-                                                                size of logfile
+log_file_masking                False           False           True hides real
+                                                                size of log file
                                                                 during traffic
                                                                 masking
 
-txm_usb_serial_adapter          True            True            False uses
-                                                                system's
-                                                                integrated
-                                                                serial interface
-
-nh_bypass_messages              True            True            False removes NH
-                                                                bypass interrupt
+nc_bypass_messages              False           False           False removes
+                                                                Networked
+                                                                Computer bypass
+                                                                interrupt
                                                                 messages
 
 confirm_sent_files              True            True            False sends
@@ -202,32 +208,21 @@ traffic_masking                 False           False           True enables
                                                                 traffic masking
                                                                 to hide metadata
 
-traffic_masking_static_delay    10.2            2.0             Static delay
+tm_static_delay                 10.2            2.0             The static delay
                                                                 between traffic
                                                                 masking packets
 
-traffic_masking_random_delay    2.0             2.0             Max random delay
+tm_random_delay                 2.0             2.0             Max random delay
                                                                 for traffic
                                                                 masking timing
                                                                 obfuscation
 
-multi_packet_random_delay       False           False           True adds IM
-                                                                server spam
-                                                                guard evading
-                                                                delay
-
-max_duration_of_random_delay    10.0            10.0            Maximum time for
-                                                                random spam
-                                                                guard evasion
-                                                                delay
-
-rxm_usb_serial_adapter          True            True            False uses
-                                                                system's
-                                                                integrated
-                                                                serial interface
+allow_contact_requests          True            True            When False, does
+                                                                not show TFC
+                                                                contact requests
 
 new_message_notify_preview      False           False           When True, shows
-                                                                preview of
+                                                                a preview of the
                                                                 received message
 
 new_message_notify_duration     1.0             1.0             Number of
@@ -236,6 +231,11 @@ new_message_notify_duration     1.0             1.0             Number of
                                                                 notification
                                                                 appears
 
+max_decompress_size             100000000       100000000       Max size
+                                                                Receiver accepts
+                                                                when
+                                                                decompressing
+                                                                file
 
 """, self.settings.print_settings)
 

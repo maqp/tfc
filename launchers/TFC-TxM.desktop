@@ -1,8 +1,0 @@
-[Desktop Entry]
-Version=1.17.08
-Name=TFC-TxM
-Exec=gnome-terminal --disable-factory --maximize -x bash -c "cd $HOME/tfc && source venv_tfc/bin/activate && python3.6 'tfc.py' && deactivate || bash"
-Icon=tfc.png
-Terminal=false
-Type=Application
-Categories=Network;Messaging;Security;

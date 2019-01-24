@@ -1,0 +1,7 @@
+# Static type checking tool
+mypy
+
+# Unit test tools
+pytest
+pytest-cov
+pytest-xdist

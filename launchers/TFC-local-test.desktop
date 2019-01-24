@@ -1,8 +1,8 @@
 [Desktop Entry]
-Version=1.17.08
+Version=1.19.01
 Name=TFC-LR
 Comment=Local testing
-Exec=terminator -m -p tfc -l tfc-lr
+Exec=terminator -m -u -p tfc -l tfc-lr
 Icon=tfc.png
 Terminal=false
 Type=Application
@@ -11,15 +11,15 @@ Actions=TFC-RL;TFC-DD-LR;TFC-DD-RL
 
 [Desktop Action TFC-RL]
 Name=TFC-RL
-Exec=terminator -m -p tfc -l tfc-rl
+Exec=terminator -m -u -p tfc -l tfc-rl
 OnlyShowIn=Unity;
 
 [Desktop Action TFC-DD-LR]
 Name=TFC-DD-LR
-Exec=terminator -m -p tfc -l tfc-dd-lr
+Exec=terminator -m -u -p tfc-dd -l tfc-dd-lr
 OnlyShowIn=Unity;
 
 [Desktop Action TFC-DD-RL]
 Name=TFC-DD-RL
-Exec=terminator -m -p tfc -l tfc-dd-rl
+Exec=terminator -m -u -p tfc-dd -l tfc-dd-rl
 OnlyShowIn=Unity;

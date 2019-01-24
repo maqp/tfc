@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright (C) 2013-2017  Markus Ottela
+TFC - Onion-routed, endpoint secure messaging system
+Copyright (C) 2013-2019  Markus Ottela
 
 This file is part of TFC.
 
@@ -15,7 +16,7 @@ without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with TFC. If not, see <http://www.gnu.org/licenses/>.
+along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
 import unittest
@@ -51,8 +52,8 @@ class TestGracefulExit(unittest.TestCase):
 
     def test_graceful_exit(self):
         with self.assertRaises(SystemExit):
-            graceful_exit('test message', clear=True)
             graceful_exit('test message')
+            graceful_exit('test message', clear=False)
             graceful_exit('test message', exit_code=1)
             graceful_exit('test message', exit_code=2)
 

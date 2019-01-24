@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright (C) 2013-2017  Markus Ottela
+TFC - Onion-routed, endpoint secure messaging system
+Copyright (C) 2013-2019  Markus Ottela
 
 This file is part of TFC.
 
@@ -15,42 +16,43 @@ without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with TFC. If not, see <http://www.gnu.org/licenses/>.
+along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
 import getpass
 import typing
 
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from src.common.encoding   import b58decode
 from src.common.exceptions import CriticalError
-from src.common.misc       import get_terminal_width
-from src.common.output     import box_print, c_print, clear_screen, message_printer, print_on_previous_line
+from src.common.misc       import get_terminal_width, terminal_width_check
+from src.common.output     import clear_screen, m_print, print_on_previous_line, print_spacing
 from src.common.statics    import *
 
 if typing.TYPE_CHECKING:
     from src.common.db_settings import Settings
 
 
-def ask_confirmation_code() -> str:
+def ask_confirmation_code(source: str  # The system the confirmation code is displayed by
+                          ) -> str:    # The confirmation code entered by the user
     """\
-    Ask user to input confirmation code from RxM
-    to verify that local key has been installed.
-
-    Input box accommodates room for the 'resend' command.
+    Ask the user to input confirmation code from Source Computer to
+    verify local key has been installed.
     """
-    title = "Enter confirmation code (from RxM): "
-    space = len(' resend ')
+    title       = f"Enter confirmation code (from {source}): "
+    input_space = len(' ff ')
 
-    upper_line = ('┌' + (len(title) + space) * '─' + '┐')
-    title_line = ('│' +      title  + space  * ' ' + '│')
-    lower_line = ('└' + (len(title) + space) * '─' + '┘')
+    upper_line = ('┌' + (len(title) + input_space) * '─' + '┐')
+    title_line = ('│' +      title  + input_space  * ' ' + '│')
+    lower_line = ('└' + (len(title) + input_space) * '─' + '┘')
 
     terminal_w = get_terminal_width()
     upper_line = upper_line.center(terminal_w)
     title_line = title_line.center(terminal_w)
     lower_line = lower_line.center(terminal_w)
+
+    terminal_width_check(len(upper_line))
 
     print(upper_line)
     print(title_line)
@@ -58,152 +60,137 @@ def ask_confirmation_code() -> str:
     print(3 * CURSOR_UP_ONE_LINE)
 
     indent = title_line.find('│')
-    return input(indent * ' ' + '│ {}'.format(title))
+    return input(indent * ' ' + f'│ {title}')
 
 
-def box_input(message:        str,
-              default:        str      = '',
-              head:           int      = 0,
-              tail:           int      = 1,
-              expected_len:   int      = 0,
-              validator:      Callable = None,
-              validator_args: Any      = None,
-              key_input:      bool     = False) -> str:
-    """Display boxed input prompt with title.
+def box_input(message:        str,                         # Input prompt message
+              default:        str                = '',     # Default return value
+              head:           int                = 0,      # Number of new lines to print before the input
+              tail:           int                = 1,      # Number of new lines to print after input
+              expected_len:   int                = 0,      # Expected length of the input
+              key_type:       str                = '',     # When specified, sets input width
+              guide:          bool               = False,  # When True, prints the guide for key
+              validator:      Optional[Callable] = None,   # Input validator function
+              validator_args: Optional[Any]      = None    # Arguments required by the validator
+              ) -> str:                                    # Input from user
+    """Display boxed input prompt with the title."""
+    print_spacing(head)
 
-    :param message:        Input prompt message
-    :param default:        Default return value
-    :param head:           Number of new lines to print before input
-    :param tail:           Number of new lines to print after input
-    :param expected_len    Expected length of input
-    :param validator:      Input validator function
-    :param validator_args: Arguments required by the validator
-    :param key_input:      When True, prints key input position guide
-    :return:               Input from user
-    """
-    for _ in range(head):
+    terminal_width = get_terminal_width()
+
+    if key_type:
+        key_guide = {B58_LOCAL_KEY:  B58_LOCAL_KEY_GUIDE,
+                     B58_PUBLIC_KEY: B58_PUBLIC_KEY_GUIDE}.get(key_type, '')
+        if guide:
+            inner_spc = len(key_guide) + 2
+        else:
+            inner_spc = (86 if key_type == B58_PUBLIC_KEY else 53)
+    else:
+        key_guide = ''
+        inner_spc = terminal_width - 2 if expected_len == 0 else expected_len + 2
+
+    upper_line = '┌'  + inner_spc * '─'  +  '┐'
+    guide_line = '│ ' + key_guide        + ' │'
+    input_line = '│'  + inner_spc * ' '  +  '│'
+    lower_line = '└'  + inner_spc * '─'  +  '┘'
+    box_indent = (terminal_width - len(upper_line)) // 2 * ' '
+
+    terminal_width_check(len(upper_line))
+
+    print(box_indent + upper_line)
+    if guide:
+        print(box_indent + guide_line)
+    print(box_indent + input_line)
+    print(box_indent + lower_line)
+    print((5 if guide else 4) * CURSOR_UP_ONE_LINE)
+    print(box_indent + '┌─┤' + message + '├')
+    if guide:
         print('')
 
-    terminal_w = get_terminal_width()
-    input_len  = terminal_w - 2 if expected_len == 0 else expected_len + 2
-
-    if key_input:
-        input_len += 2
-
-    input_top_line = '┌'   + input_len * '─'                 +   '┐'
-    key_pos_guide  = '│  ' + '   '.join('ABCDEFGHIJKLMNOPQ') + '  │'
-    input_line     = '│'   + input_len * ' '                 +   '│'
-    input_bot_line = '└'   + input_len * '─'                 +   '┘'
-
-    input_line_indent = (terminal_w - len(input_line)) // 2
-    input_box_indent  = input_line_indent * ' '
-
-    print(input_box_indent + input_top_line)
-    if key_input:
-        print(input_box_indent + key_pos_guide)
-    print(input_box_indent + input_line)
-    print(input_box_indent + input_bot_line)
-    print((5 if key_input else 4) * CURSOR_UP_ONE_LINE)
-    print(input_box_indent + '┌─┤' + message + '├')
-    if key_input:
-        print('')
-
-    user_input = input(input_box_indent + '│ ')
+    user_input = input(box_indent + '│ ')
 
     if user_input == '':
         print(2 * CURSOR_UP_ONE_LINE)
-        print(input_box_indent + '│ {}'.format(default))
+        print(box_indent + '│ ' + default)
         user_input = default
 
     if validator is not None:
         error_msg = validator(user_input, validator_args)
         if error_msg:
-            c_print("Error: {}".format(error_msg), head=1)
-            print_on_previous_line(reps=4, delay=1.5)
-            return box_input(message, default, head, tail, expected_len, validator, validator_args)
+            m_print(error_msg, head=1)
+            print_on_previous_line(reps=4, delay=1)
+            return box_input(message, default, head, tail, expected_len, key_type, guide, validator, validator_args)
 
-    for _ in range(tail):
-        print('')
+    print_spacing(tail)
 
     return user_input
 
 
-def get_b58_key(key_type: str, settings: 'Settings') -> bytes:
-    """Ask user to input Base58 encoded public key from RxM.
-
-    For file keys, use testnet address format instead to
-    prevent file injected via import from accidentally
-    being decrypted with public key from adversary.
-    """
-    if key_type == B58_PUB_KEY:
+def get_b58_key(key_type:      str,         # The type of Base58 key to be entered
+                settings:      'Settings',  # Settings object
+                short_address: str = ''     # The contact's short Onion address
+                ) -> bytes:                 # The B58 decoded key
+    """Ask the user to input a Base58 encoded key."""
+    if key_type == B58_PUBLIC_KEY:
         clear_screen()
-        c_print("Import public key from RxM", head=1, tail=1)
-        c_print("WARNING")
-        message_printer("Outside specific requests TxM (this computer) "
-                        "makes, you must never copy any data from "
-                        "NH/RxM to TxM. Doing so could infect TxM, that "
-                        "could then later covertly transmit private "
-                        "keys/messages to attacker.", head=1, tail=1)
-        message_printer("You can resend your public key by typing 'resend'", tail=1)
-        box_msg = "Enter contact's public key from RxM"
+        m_print(f"{ECDHE} key exchange", head=1, tail=1, bold=True)
+        m_print("If needed, resend your public key to the contact by pressing <Enter>", tail=1)
+
+        box_msg = f"Enter public key of {short_address} (from Relay)"
     elif key_type == B58_LOCAL_KEY:
-        box_msg = "Enter local key decryption key from TxM"
-    elif key_type == B58_FILE_KEY:
-        box_msg = "Enter file decryption key"
+        box_msg = "Enter local key decryption key (from Transmitter)"
     else:
         raise CriticalError("Invalid key type")
 
     while True:
-        if settings.local_testing_mode or key_type == B58_FILE_KEY:
-            pub_key = box_input(box_msg, expected_len=51)
-            small   = True
-        else:
-            pub_key = box_input(box_msg, expected_len=65, key_input=True)
-            small   = False
-        pub_key = ''.join(pub_key.split())
+        rx_pk = box_input(box_msg, key_type=key_type, guide=not settings.local_testing_mode)
+        rx_pk = ''.join(rx_pk.split())
 
-        if key_type == B58_PUB_KEY and pub_key == RESEND:
-            return pub_key.encode()
+        if key_type == B58_PUBLIC_KEY and rx_pk == '':
+            return rx_pk.encode()
 
         try:
-            return b58decode(pub_key, file_key=(key_type==B58_FILE_KEY))
+            return b58decode(rx_pk, public_key=(key_type == B58_PUBLIC_KEY))
         except ValueError:
-            c_print("Checksum error - Check that entered key is correct.", head=1)
-            print_on_previous_line(reps=5 if small else 6, delay=1.5)
+            m_print("Checksum error - Check that the entered key is correct.")
+            print_on_previous_line(reps=(4 if settings.local_testing_mode else 5), delay=1)
 
 
-def nh_bypass_msg(key: str, settings: 'Settings') -> None:
-    """Print messages about bypassing NH.
+def nc_bypass_msg(key: str, settings: 'Settings') -> None:
+    """Print messages about bypassing Networked Computer.
 
-    During ciphertext delivery of local key exchange, NH bypass messages
-    tell user when to bypass and remove bypass of NH. This makes initial
-    key bootstrap more secure in case key decryption key input is not safe.
+    During ciphertext delivery of local key exchange, these bypass
+    messages tell the user when to bypass and remove bypass of Networked
+    Computer. Bypass of Networked Computer makes initial bootstrap more
+    secure by denying remote attacker the access to the encrypted local
+    key. Without the ciphertext, e.g. a visually collected local key
+    decryption key is useless.
     """
-    m = {NH_BYPASS_START: "Bypass NH if needed. Press <Enter> to send local key.",
-         NH_BYPASS_STOP:  "Remove bypass of NH. Press <Enter> to continue."}
+    m = {NC_BYPASS_START: "Bypass Networked Computer if needed. Press <Enter> to send local key.",
+         NC_BYPASS_STOP:  "Remove bypass of Networked Computer. Press <Enter> to continue."}
 
-    if settings.nh_bypass_messages:
-        box_print(m[key], manual_proceed=True, head=(1 if key == NH_BYPASS_STOP else 0))
+    if settings.nc_bypass_messages:
+        m_print(m[key], manual_proceed=True, box=True, head=(1 if key == NC_BYPASS_STOP else 0))
 
 
-def pwd_prompt(message: str, second: bool = False) -> str:
-    """Prompt user to enter a password.
+def pwd_prompt(message: str,          # Prompt message
+               repeat:  bool = False  # When True, prints corner chars for the second box
+               ) -> str:              # Password from user
+    """Prompt the user to enter a password.
 
-    :param message: Prompt message
-    :param second:  When True, prints corner chars for second box
-    :return:        Password from user
+    The getpass library ensures the password is not echoed on screen
+    when it is typed.
     """
-    l, r = {False: ('┌', '┐'),
-            True:  ('├', '┤')}[second]
+    l, r = ('├', '┤') if repeat else ('┌', '┐')
 
-    upper_line = ( l  + (len(message) + 3) * '─' +  r )
-    title_line = ('│' +      message  + 3  * ' ' + '│')
-    lower_line = ('└' + (len(message) + 3) * '─' + '┘')
+    terminal_w  = get_terminal_width()
+    input_space = len(' c ')  # `c` is where the caret sits
 
-    terminal_w = get_terminal_width()
-    upper_line = upper_line.center(terminal_w)
-    title_line = title_line.center(terminal_w)
-    lower_line = lower_line.center(terminal_w)
+    upper_line = ( l  + (len(message) + input_space) * '─' +  r ).center(terminal_w)
+    title_line = ('│' +      message  + input_space  * ' ' + '│').center(terminal_w)
+    lower_line = ('└' + (len(message) + input_space) * '─' + '┘').center(terminal_w)
+
+    terminal_width_check(len(upper_line))
 
     print(upper_line)
     print(title_line)
@@ -211,27 +198,25 @@ def pwd_prompt(message: str, second: bool = False) -> str:
     print(3 * CURSOR_UP_ONE_LINE)
 
     indent     = title_line.find('│')
-    user_input = getpass.getpass(indent * ' ' + '│ {}'.format(message))
+    user_input = getpass.getpass(indent * ' ' + f'│ {message}')
 
     return user_input
 
 
-def yes(prompt: str, head: int = 0, tail: int = 0) -> bool:
-    """Prompt user a question that is answered with yes / no.
+def yes(prompt: str,                    # Question to be asked
+        abort:  Optional[bool] = None,  # Determines the return value of ^C and ^D
+        head:   int = 0,                # Number of new lines to print before prompt
+        tail:   int = 0                 # Number of new lines to print after prompt
+        ) -> bool:                      # True/False depending on input
+    """Prompt the user a question that is answered with yes/no."""
+    print_spacing(head)
 
-    :param prompt: Question to be asked
-    :param head:   Number of new lines to print before prompt
-    :param tail:   Number of new lines to print after prompt
-    :return:       True if user types 'y' or 'yes'
-                   False if user types 'n' or 'no'
-    """
-    for _ in range(head):
-        print('')
+    prompt      = f"{prompt} (y/n): "
+    input_space = len(' yes ')
 
-    prompt     = "{} (y/n): ".format(prompt)
-    upper_line = ('┌' + (len(prompt) + 5) * '─' + '┐')
-    title_line = ('│' +       prompt + 5  * ' ' + '│')
-    lower_line = ('└' + (len(prompt) + 5) * '─' + '┘')
+    upper_line = ('┌' + (len(prompt) + input_space) * '─' + '┐')
+    title_line = ('│' +      prompt  + input_space  * ' ' + '│')
+    lower_line = ('└' + (len(prompt) + input_space) * '─' + '┘')
 
     terminal_w = get_terminal_width()
     upper_line = upper_line.center(terminal_w)
@@ -240,25 +225,33 @@ def yes(prompt: str, head: int = 0, tail: int = 0) -> bool:
 
     indent = title_line.find('│')
 
+    terminal_width_check(len(upper_line))
+
     print(upper_line)
     while True:
         print(title_line)
         print(lower_line)
         print(3 * CURSOR_UP_ONE_LINE)
-        user_input = input(indent * ' ' + '│ {}'.format(prompt))
+
+        try:
+            user_input = input(indent * ' ' + f'│ {prompt}')
+        except (EOFError, KeyboardInterrupt):
+            if abort is None:
+                raise
+            print('')
+            user_input = 'y' if abort else 'n'
+
         print_on_previous_line()
 
         if user_input == '':
             continue
 
         if user_input.lower() in ['y', 'yes']:
-            print(indent * ' ' + '│ {}Yes │\n'.format(prompt))
-            for _ in range(tail):
-                print('')
+            print(indent * ' ' + f'│ {prompt}Yes │\n')
+            print_spacing(tail)
             return True
 
         elif user_input.lower() in ['n', 'no']:
-            print(indent * ' ' + '│ {}No  │\n'.format(prompt))
-            for _ in range(tail):
-                print('')
+            print(indent * ' ' + f'│ {prompt}No  │\n')
+            print_spacing(tail)
             return False

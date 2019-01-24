@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright (C) 2013-2017  Markus Ottela
+TFC - Onion-routed, endpoint secure messaging system
+Copyright (C) 2013-2019  Markus Ottela
 
 This file is part of TFC.
 
@@ -15,44 +16,63 @@ without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with TFC. If not, see <http://www.gnu.org/licenses/>.
+along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
-import getpass
+import os
 import os.path
 import unittest
 
+from unittest import mock
+
 from src.common.db_masterkey import MasterKey
+from src.common.misc         import ensure_dir
 from src.common.statics      import *
 
-from tests.utils import cleanup
+from tests.utils import cd_unittest, cleanup
 
 
 class TestMasterKey(unittest.TestCase):
+    input_list = ['password', 'different_password',  # Invalid new password pair
+                  'password', 'password',            # Valid   new password pair
+                  'invalid_password',                # Invalid login password
+                  'password']                        # Valid   login password
 
     def setUp(self):
-        self.o_get_password = getpass.getpass
-
-        input_list      = ['invalid_password', 'test_password',  # Invalid new password pair
-                           'test_password',    'test_password',  # Valid new password pair
-                           'invalid_password',                   # Invalid login password
-                           'test_password']                      # Valid login password
-        gen             = iter(input_list)
-        getpass.getpass = lambda _: str(next(gen))
+        self.unittest_dir = cd_unittest()
+        self.operation    = TX
+        self.file_name    = f"{DIR_USER_DATA}{self.operation}_login_data"
 
     def tearDown(self):
-        getpass.getpass = self.o_get_password
-        cleanup()
+        cleanup(self.unittest_dir)
 
-    def test_master_key_generation_and_load(self):
-        masterkey = MasterKey('ut', local_test=False)
-        self.assertIsInstance(masterkey.master_key, bytes)
+    @mock.patch('time.sleep', return_value=None)
+    def test_invalid_data_in_db_raises_critical_error(self, _):
+        for delta in [-1, 1]:
+            ensure_dir(DIR_USER_DATA)
+            with open(self.file_name, 'wb+') as f:
+                f.write(os.urandom(MASTERKEY_DB_SIZE + delta))
 
-        os.path.isfile(f"{DIR_USER_DATA}ut_login_data")
-        self.assertEqual(os.path.getsize(f"{DIR_USER_DATA}ut_login_data"), ARGON2_SALT_LEN + KEY_LENGTH + 3*INTEGER_SETTING_LEN)
+            with self.assertRaises(SystemExit):
+                _ = MasterKey(self.operation, local_test=False)
 
-        masterkey = MasterKey('ut', local_test=False)
-        self.assertIsInstance(masterkey.master_key, bytes)
+    @mock.patch('src.common.db_masterkey.ARGON2_MIN_MEMORY',       100)
+    @mock.patch('src.common.db_masterkey.ARGON2_ROUNDS',           1)
+    @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.1)
+    @mock.patch('os.path.isfile',  side_effect=[KeyboardInterrupt, False, True])
+    @mock.patch('getpass.getpass', side_effect=input_list)
+    @mock.patch('time.sleep',      return_value=None)
+    def test_master_key_generation_and_load(self, *_):
+        with self.assertRaises(SystemExit):
+            MasterKey(self.operation, local_test=True)
+
+        master_key = MasterKey(self.operation, local_test=True)
+        self.assertIsInstance(master_key.master_key, bytes)
+        self.assertEqual(os.path.getsize(self.file_name), MASTERKEY_DB_SIZE)
+
+        master_key2 = MasterKey(self.operation, local_test=True)
+        self.assertIsInstance(master_key2.master_key, bytes)
+        self.assertEqual(master_key.master_key, master_key2.master_key)
 
 
 if __name__ == '__main__':

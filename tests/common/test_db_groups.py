@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright (C) 2013-2017  Markus Ottela
+TFC - Onion-routed, endpoint secure messaging system
+Copyright (C) 2013-2019  Markus Ottela
 
 This file is part of TFC.
 
@@ -15,7 +16,7 @@ without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with TFC. If not, see <http://www.gnu.org/licenses/>.
+along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
@@ -23,223 +24,331 @@ import unittest
 
 from src.common.db_contacts import Contact, ContactList
 from src.common.db_groups   import Group, GroupList
+from src.common.encoding    import b58encode
+from src.common.misc        import ensure_dir
 from src.common.statics     import *
 
-from tests.mock_classes import create_contact, MasterKey, Settings
-from tests.utils        import cleanup, TFCTestCase
+from tests.mock_classes import create_contact, group_name_to_group_id, MasterKey, nick_to_pub_key, Settings
+from tests.utils        import cd_unittest, cleanup, tamper_file, TFCTestCase
 
 
 class TestGroup(unittest.TestCase):
 
     def setUp(self):
-        members       = list(map(create_contact, ['Alice', 'Bob', 'Charlie']))
-        self.settings = Settings()
-        self.group    = Group('testgroup', False, False, members, self.settings, lambda: None)
+        self.unittest_dir = cd_unittest()
+        self.nicks        = ['Alice', 'Bob', 'Charlie']
+        members           = list(map(create_contact, self.nicks))
+        self.settings     = Settings()
+        self.group        = Group(name         ='test_group',
+                                  group_id     =group_name_to_group_id('test_group'),
+                                  log_messages =False,
+                                  notifications=False,
+                                  members      =members,
+                                  settings     =self.settings,
+                                  store_groups =lambda: None)
+        ensure_dir(DIR_USER_DATA)
 
     def tearDown(self):
-        cleanup()
+        cleanup(self.unittest_dir)
 
     def test_group_iterates_over_contact_objects(self):
         for c in self.group:
             self.assertIsInstance(c, Contact)
 
-    def test_len_returns_number_of_members(self):
-        self.assertEqual(len(self.group), 3)
+    def test_len_returns_the_number_of_members(self):
+        self.assertEqual(len(self.group), len(self.nicks))
 
-    def test_serialize_g(self):
+    def test_group_serialization_length_and_type(self):
         serialized = self.group.serialize_g()
         self.assertIsInstance(serialized, bytes)
-        self.assertEqual(len(serialized),
-                         PADDED_UTF32_STR_LEN
-                         + (2 * BOOLEAN_SETTING_LEN)
-                         + (self.settings.max_number_of_group_members * PADDED_UTF32_STR_LEN))
+        self.assertEqual(len(serialized), GROUP_STATIC_LENGTH + (self.settings.max_number_of_group_members
+                                                                 * ONION_SERVICE_PUBLIC_KEY_LENGTH))
 
     def test_add_members(self):
-        self.group.members = []
-        self.assertFalse(self.group.has_member('david@jabber.org'))
-        self.assertFalse(self.group.has_member('eric@jabber.org'))
+        # Test members to be added are not already in group
+        self.assertFalse(self.group.has_member(nick_to_pub_key('David')))
+        self.assertFalse(self.group.has_member(nick_to_pub_key('Eric')))
 
-        self.group.add_members([create_contact(n) for n in ['David', 'Eric']])
-        self.assertTrue(self.group.has_member('david@jabber.org'))
-        self.assertTrue(self.group.has_member('eric@jabber.org'))
+        self.assertIsNone(self.group.add_members(list(map(create_contact, ['Alice', 'David', 'Eric']))))
+
+        # Test new members were added
+        self.assertTrue(self.group.has_member(nick_to_pub_key('David')))
+        self.assertTrue(self.group.has_member(nick_to_pub_key('Eric')))
+
+        # Test Alice was not added twice
+        self.assertEqual(len(self.group), len(['Alice', 'Bob', 'Charlie', 'David', 'Eric']))
 
     def test_remove_members(self):
-        self.assertTrue(self.group.has_member('alice@jabber.org'))
-        self.assertTrue(self.group.has_member('bob@jabber.org'))
-        self.assertTrue(self.group.has_member('charlie@jabber.org'))
+        # Test members to be removed are part of group
+        self.assertTrue(self.group.has_member(nick_to_pub_key('Alice')))
+        self.assertTrue(self.group.has_member(nick_to_pub_key('Bob')))
+        self.assertTrue(self.group.has_member(nick_to_pub_key('Charlie')))
 
-        self.assertTrue(self.group.remove_members(['charlie@jabber.org', 'eric@jabber.org']))
-        self.assertFalse(self.group.remove_members(['charlie@jabber.org', 'eric@jabber.org']))
+        # Test first attempt to remove returns True (because Charlie was removed)
+        self.assertTrue(self.group.remove_members([nick_to_pub_key('Charlie'), nick_to_pub_key('Unknown')]))
 
-        self.assertTrue(self.group.has_member('alice@jabber.org'))
-        self.assertTrue(self.group.has_member('bob@jabber.org'))
-        self.assertFalse(self.group.has_member('charlie@jabber.org'))
+        # Test second attempt to remove returns False (because no-one was removed)
+        self.assertFalse(self.group.remove_members([nick_to_pub_key('Charlie'), nick_to_pub_key('Unknown')]))
 
-    def test_get_list_of_member_accounts(self):
-        self.assertEqual(self.group.get_list_of_member_accounts(),
-                         ['alice@jabber.org', 'bob@jabber.org', 'charlie@jabber.org'])
+        # Test Charlie was removed
+        self.assertFalse(self.group.has_member(nick_to_pub_key('Charlie')))
 
-    def test_get_list_of_member_nicks(self):
-        self.assertEqual(self.group.get_list_of_member_nicks(), ['Alice', 'Bob', 'Charlie'])
+        # Test no other members were removed
+        self.assertTrue(self.group.has_member(nick_to_pub_key('Alice')))
+        self.assertTrue(self.group.has_member(nick_to_pub_key('Bob')))
+
+    def test_get_list_of_member_pub_keys(self):
+        self.assertEqual(first=self.group.get_list_of_member_pub_keys(),
+                         second=[nick_to_pub_key('Alice'),
+                                 nick_to_pub_key('Bob'),
+                                 nick_to_pub_key('Charlie')])
 
     def test_has_member(self):
-        self.assertTrue(self.group.has_member('charlie@jabber.org'))
-        self.assertFalse(self.group.has_member('david@jabber.org'))
+        self.assertTrue(self.group.has_member(nick_to_pub_key('Charlie')))
+        self.assertFalse(self.group.has_member(nick_to_pub_key('David')))
 
     def test_has_members(self):
-        self.assertTrue(self.group.has_members())
+        self.assertFalse(self.group.empty())
         self.group.members = []
-        self.assertFalse(self.group.has_members())
+        self.assertTrue(self.group.empty())
 
 
 class TestGroupList(TFCTestCase):
 
     def setUp(self):
+        self.unittest_dir = cd_unittest()
         self.master_key   = MasterKey()
         self.settings     = Settings()
+        self.file_name    = f'{DIR_USER_DATA}{self.settings.software_operation}_groups'
         self.contact_list = ContactList(self.master_key, self.settings)
         self.group_list   = GroupList(self.master_key, self.settings, self.contact_list)
-        members           = [create_contact(n) for n in ['Alice', 'Bob', 'Charlie', 'David', 'Eric',
-                                                         'Fido', 'Guido', 'Heidi', 'Ivan', 'Joana', 'Karol']]
+        self.nicks        = ['Alice', 'Bob', 'Charlie', 'David', 'Eric',
+                             'Fido', 'Guido', 'Heidi', 'Ivan', 'Joana', 'Karol']
+        self.group_names  = ['test_group_1', 'test_group_2', 'test_group_3', 'test_group_4', 'test_group_5',
+                             'test_group_6', 'test_group_7', 'test_group_8', 'test_group_9', 'test_group_10',
+                             'test_group_11']
+        members           = list(map(create_contact, self.nicks))
+
         self.contact_list.contacts = members
 
-        groups = [Group(n, False, False, members, self.settings, self.group_list.store_groups)
-                  for n in ['testgroup_1', 'testgroup_2', 'testgroup_3', 'testgroup_4', 'testgroup_5',
-                            'testgroup_6', 'testgroup_7', 'testgroup_8', 'testgroup_9', 'testgroup_10',
-                            'testgroup_11']]
+        self.group_list.groups = \
+            [Group(name         =name,
+                   group_id     =group_name_to_group_id(name),
+                   log_messages =False,
+                   notifications=False,
+                   members      =members,
+                   settings     =self.settings,
+                   store_groups =self.group_list.store_groups)
+             for name in self.group_names]
 
-        self.group_list.groups = groups
-        self.group_list.store_groups()
-
-        self.single_member_data = (PADDED_UTF32_STR_LEN
-                                   + (2 * BOOLEAN_SETTING_LEN)
-                                   + (self.settings.max_number_of_group_members * PADDED_UTF32_STR_LEN))
+        self.single_member_data_len = (GROUP_STATIC_LENGTH
+                                       + self.settings.max_number_of_group_members * ONION_SERVICE_PUBLIC_KEY_LENGTH)
 
     def tearDown(self):
-        cleanup()
+        cleanup(self.unittest_dir)
 
     def test_group_list_iterates_over_group_objects(self):
         for g in self.group_list:
             self.assertIsInstance(g, Group)
 
-    def test_len_returns_number_of_groups(self):
-        self.assertEqual(len(self.group_list), 11)
+    def test_len_returns_the_number_of_groups(self):
+        self.assertEqual(len(self.group_list), len(self.group_names))
 
-    def test_database_size(self):
-        self.assertTrue(os.path.isfile(f'{DIR_USER_DATA}ut_groups'))
-        self.assertEqual(os.path.getsize(f'{DIR_USER_DATA}ut_groups'),
-                         XSALSA20_NONCE_LEN
-                         + GROUP_DB_HEADER_LEN
-                         + self.settings.max_number_of_groups * self.single_member_data
-                         + POLY1305_TAG_LEN)
+    def test_storing_and_loading_of_groups(self):
+        self.group_list.store_groups()
 
+        self.assertTrue(os.path.isfile(self.file_name))
+        self.assertEqual(os.path.getsize(self.file_name),
+                         XCHACHA20_NONCE_LENGTH
+                         + GROUP_DB_HEADER_LENGTH
+                         + self.settings.max_number_of_groups * self.single_member_data_len
+                         + POLY1305_TAG_LENGTH)
+
+        # Reduce setting values from 20 to 10
         self.settings.max_number_of_groups        = 10
         self.settings.max_number_of_group_members = 10
 
         group_list2 = GroupList(self.master_key, self.settings, self.contact_list)
         self.assertEqual(len(group_list2), 11)
 
-        # Check that load_groups() function increases setting values with larger db
-        self.assertEqual(self.settings.max_number_of_groups, 20)
+        # Check that `_load_groups()` increased setting values back to 20 so it fits the 11 groups
+        self.assertEqual(self.settings.max_number_of_groups,        20)
         self.assertEqual(self.settings.max_number_of_group_members, 20)
 
         # Check that removed contact from contact list updates group
-        self.contact_list.remove_contact('Alice')
+        self.contact_list.remove_contact_by_address_or_nick('Alice')
         group_list3 = GroupList(self.master_key, self.settings, self.contact_list)
-        self.assertEqual(len(group_list3.get_group('testgroup_1').members), 10)
+        self.assertEqual(len(group_list3.get_group('test_group_1').members), 10)
 
-        group_list4 = GroupList(self.master_key, self.settings, self.contact_list)
-        self.assertEqual(len(group_list4.get_group('testgroup_2').members), 10)
+    def test_load_of_modified_database_raises_critical_error(self):
+        self.group_list.store_groups()
+
+        # Test reading works normally
+        self.assertIsInstance(GroupList(self.master_key, self.settings, self.contact_list), GroupList)
+
+        # Test loading of the tampered database raises CriticalError
+        tamper_file(self.file_name, tamper_size=1)
+        with self.assertRaises(SystemExit):
+            GroupList(self.master_key, self.settings, self.contact_list)
+
+    def test_check_db_settings(self):
+        self.assertFalse(self.group_list._check_db_settings(
+            number_of_actual_groups=self.settings.max_number_of_groups,
+            members_in_largest_group=self.settings.max_number_of_group_members))
+
+        self.assertTrue(self.group_list._check_db_settings(
+            number_of_actual_groups=self.settings.max_number_of_groups + 1,
+            members_in_largest_group=self.settings.max_number_of_group_members))
+
+        self.assertTrue(self.group_list._check_db_settings(
+            number_of_actual_groups=self.settings.max_number_of_groups,
+            members_in_largest_group=self.settings.max_number_of_group_members + 1))
 
     def test_generate_group_db_header(self):
-        header = self.group_list.generate_group_db_header()
-        self.assertEqual(len(header), GROUP_DB_HEADER_LEN)
+        header = self.group_list._generate_group_db_header()
+        self.assertEqual(len(header), GROUP_DB_HEADER_LENGTH)
         self.assertIsInstance(header, bytes)
 
     def test_generate_dummy_group(self):
-        dummy_group = self.group_list.generate_dummy_group()
-        self.assertEqual(len(dummy_group.serialize_g()), self.single_member_data)
+        dummy_group = self.group_list._generate_dummy_group()
         self.assertIsInstance(dummy_group, Group)
+        self.assertEqual(len(dummy_group.serialize_g()), self.single_member_data_len)
+
+    def test_dummy_groups(self):
+        dummies = self.group_list._dummy_groups()
+        self.assertEqual(len(dummies), self.settings.max_number_of_contacts - len(self.nicks))
+        for g in dummies:
+            self.assertIsInstance(g, Group)
 
     def test_add_group(self):
         members = [create_contact('Laura')]
-        self.group_list.add_group('testgroup_12', False, False, members)
-        self.group_list.add_group('testgroup_12', False, True, members)
-        self.assertTrue(self.group_list.get_group('testgroup_12').notifications)
-        self.assertEqual(len(self.group_list), 12)
+        self.group_list.add_group('test_group_12', bytes(GROUP_ID_LENGTH), False, False, members)
+        self.group_list.add_group('test_group_12', bytes(GROUP_ID_LENGTH), False, True, members)
+        self.assertTrue(self.group_list.get_group('test_group_12').notifications)
+        self.assertEqual(len(self.group_list), len(self.group_names)+1)
 
-    def test_remove_group(self):
-        self.assertEqual(len(self.group_list), 11)
+    def test_remove_group_by_name(self):
+        self.assertEqual(len(self.group_list), len(self.group_names))
 
-        self.assertIsNone(self.group_list.remove_group('testgroup_12'))
-        self.assertEqual(len(self.group_list), 11)
+        # Remove non-existing group
+        self.assertIsNone(self.group_list.remove_group_by_name('test_group_12'))
+        self.assertEqual(len(self.group_list), len(self.group_names))
 
-        self.assertIsNone(self.group_list.remove_group('testgroup_11'))
-        self.assertEqual(len(self.group_list), 10)
+        # Remove existing group
+        self.assertIsNone(self.group_list.remove_group_by_name('test_group_11'))
+        self.assertEqual(len(self.group_list), len(self.group_names)-1)
 
-    def test_get_list_of_group_names(self):
-        g_names = ['testgroup_1', 'testgroup_2', 'testgroup_3', 'testgroup_4', 'testgroup_5', 'testgroup_6',
-                   'testgroup_7', 'testgroup_8', 'testgroup_9', 'testgroup_10', 'testgroup_11']
-        self.assertEqual(self.group_list.get_list_of_group_names(), g_names)
+    def test_remove_group_by_id(self):
+        self.assertEqual(len(self.group_list), len(self.group_names))
+
+        # Remove non-existing group
+        self.assertIsNone(self.group_list.remove_group_by_id(group_name_to_group_id('test_group_12')))
+        self.assertEqual(len(self.group_list), len(self.group_names))
+
+        # Remove existing group
+        self.assertIsNone(self.group_list.remove_group_by_id(group_name_to_group_id('test_group_11')))
+        self.assertEqual(len(self.group_list), len(self.group_names)-1)
 
     def test_get_group(self):
-        self.assertEqual(self.group_list.get_group('testgroup_3').name, 'testgroup_3')
+        self.assertEqual(self.group_list.get_group('test_group_3').name, 'test_group_3')
+
+    def test_get_group_by_id(self):
+        members  = [create_contact('Laura')]
+        group_id = os.urandom(GROUP_ID_LENGTH)
+        self.group_list.add_group('test_group_12', group_id, False, False, members)
+        self.assertEqual(self.group_list.get_group_by_id(group_id).name, 'test_group_12')
+
+    def test_get_list_of_group_names(self):
+        self.assertEqual(self.group_list.get_list_of_group_names(), self.group_names)
+
+    def test_get_list_of_group_ids(self):
+        self.assertEqual(self.group_list.get_list_of_group_ids(),
+                         list(map(group_name_to_group_id, self.group_names)))
+
+    def test_get_list_of_hr_group_ids(self):
+        self.assertEqual(self.group_list.get_list_of_hr_group_ids(),
+                         [b58encode(gid) for gid in list(map(group_name_to_group_id, self.group_names))])
 
     def test_get_group_members(self):
-        members = self.group_list.get_group_members('testgroup_1')
+        members = self.group_list.get_group_members(group_name_to_group_id('test_group_1'))
         for c in members:
             self.assertIsInstance(c, Contact)
 
     def test_has_group(self):
-        self.assertTrue(self.group_list.has_group('testgroup_11'))
-        self.assertFalse(self.group_list.has_group('testgroup_12'))
+        self.assertTrue(self.group_list.has_group('test_group_11'))
+        self.assertFalse(self.group_list.has_group('test_group_12'))
 
-    def test_has_groups(self):
-        self.assertTrue(self.group_list.has_groups())
-        self.group_list.groups = []
-        self.assertFalse(self.group_list.has_groups())
+    def test_has_group_id(self):
+        members  = [create_contact('Laura')]
+        group_id = os.urandom(GROUP_ID_LENGTH)
+        self.assertFalse(self.group_list.has_group_id(group_id))
+        self.group_list.add_group('test_group_12', group_id, False, False, members)
+        self.assertTrue(self.group_list.has_group_id(group_id))
 
     def test_largest_group(self):
-        self.assertEqual(self.group_list.largest_group(), 11)
+        self.assertEqual(self.group_list.largest_group(), len(self.nicks))
 
     def test_print_group(self):
-        self.group_list.get_group("testgroup_1").log_messages  = True
-        self.group_list.get_group("testgroup_2").notifications = True
-        self.group_list.get_group("testgroup_3").members       = []
-        self.assertPrints("""\
-Group            Logging     Notify     Members
+        self.group_list.get_group("test_group_1").name          = "group"
+        self.group_list.get_group("test_group_2").log_messages  = True
+        self.group_list.get_group("test_group_3").notifications = True
+        self.group_list.get_group("test_group_4").log_messages  = True
+        self.group_list.get_group("test_group_4").notifications = True
+        self.group_list.get_group("test_group_5").members       = []
+        self.group_list.get_group("test_group_6").members       = list(map(create_contact, ['Alice', 'Bob', 'Charlie',
+                                                                                            'David', 'Eric', 'Fido']))
+        self.assert_prints("""\
+Group            Group ID         Logging     Notify    Members
 ────────────────────────────────────────────────────────────────────────────────
-testgroup_1      Yes         No         Alice, Bob, Charlie, David, Eric, Fido,
-                                        Guido, Heidi, Ivan, Joana, Karol
+group            2drs4c4VcDdrP    No          No        Alice, Bob, Charlie,
+                                                        David, Eric, Fido,
+                                                        Guido, Heidi, Ivan,
+                                                        Joana, Karol
 
-testgroup_2      No          Yes        Alice, Bob, Charlie, David, Eric, Fido,
-                                        Guido, Heidi, Ivan, Joana, Karol
+test_group_2     2dnGTyhkThmPi    Yes         No        Alice, Bob, Charlie,
+                                                        David, Eric, Fido,
+                                                        Guido, Heidi, Ivan,
+                                                        Joana, Karol
 
-testgroup_3      No          No         <Empty group>
+test_group_3     2df7s3LZhwLDw    No          Yes       Alice, Bob, Charlie,
+                                                        David, Eric, Fido,
+                                                        Guido, Heidi, Ivan,
+                                                        Joana, Karol
 
-testgroup_4      No          No         Alice, Bob, Charlie, David, Eric, Fido,
-                                        Guido, Heidi, Ivan, Joana, Karol
+test_group_4     2djy3XwUQVR8q    Yes         Yes       Alice, Bob, Charlie,
+                                                        David, Eric, Fido,
+                                                        Guido, Heidi, Ivan,
+                                                        Joana, Karol
 
-testgroup_5      No          No         Alice, Bob, Charlie, David, Eric, Fido,
-                                        Guido, Heidi, Ivan, Joana, Karol
+test_group_5     2dvbcgnjiLLMo    No          No        <Empty group>
 
-testgroup_6      No          No         Alice, Bob, Charlie, David, Eric, Fido,
-                                        Guido, Heidi, Ivan, Joana, Karol
+test_group_6     2dwBRWAqWKHWv    No          No        Alice, Bob, Charlie,
+                                                        David, Eric, Fido
 
-testgroup_7      No          No         Alice, Bob, Charlie, David, Eric, Fido,
-                                        Guido, Heidi, Ivan, Joana, Karol
+test_group_7     2eDPg5BAM6qF4    No          No        Alice, Bob, Charlie,
+                                                        David, Eric, Fido,
+                                                        Guido, Heidi, Ivan,
+                                                        Joana, Karol
 
-testgroup_8      No          No         Alice, Bob, Charlie, David, Eric, Fido,
-                                        Guido, Heidi, Ivan, Joana, Karol
+test_group_8     2dqdayy5TJKcf    No          No        Alice, Bob, Charlie,
+                                                        David, Eric, Fido,
+                                                        Guido, Heidi, Ivan,
+                                                        Joana, Karol
 
-testgroup_9      No          No         Alice, Bob, Charlie, David, Eric, Fido,
-                                        Guido, Heidi, Ivan, Joana, Karol
+test_group_9     2e45bLYvSX3C8    No          No        Alice, Bob, Charlie,
+                                                        David, Eric, Fido,
+                                                        Guido, Heidi, Ivan,
+                                                        Joana, Karol
 
-testgroup_10     No          No         Alice, Bob, Charlie, David, Eric, Fido,
-                                        Guido, Heidi, Ivan, Joana, Karol
+test_group_10    2dgkncX9xRibh    No          No        Alice, Bob, Charlie,
+                                                        David, Eric, Fido,
+                                                        Guido, Heidi, Ivan,
+                                                        Joana, Karol
 
-testgroup_11     No          No         Alice, Bob, Charlie, David, Eric, Fido,
-                                        Guido, Heidi, Ivan, Joana, Karol
+test_group_11    2e6vAGmHmSEEJ    No          No        Alice, Bob, Charlie,
+                                                        David, Eric, Fido,
+                                                        Guido, Heidi, Ivan,
+                                                        Joana, Karol
 
 
 """, self.group_list.print_groups)

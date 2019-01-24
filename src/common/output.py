@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright (C) 2013-2017  Markus Ottela
+TFC - Onion-routed, endpoint secure messaging system
+Copyright (C) 2013-2019  Markus Ottela
 
 This file is part of TFC.
 
@@ -15,98 +16,40 @@ without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with TFC. If not, see <http://www.gnu.org/licenses/>.
+along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
-import binascii
 import textwrap
 import time
 import typing
 import sys
 
-from typing import List, Union
+from datetime import datetime
+from typing   import List, Optional, Union
 
-from src.common.encoding import b58encode
+from src.common.encoding import b10encode, b58encode, pub_key_to_onion_address
 from src.common.misc     import get_terminal_width, split_string
 from src.common.statics  import *
 
 if typing.TYPE_CHECKING:
     from src.common.db_contacts import ContactList
     from src.common.db_settings import Settings
-
-
-def box_print(msg_list:       Union[str, list],
-              manual_proceed: bool = False,
-              head:           int  = 0,
-              tail:           int  = 0) -> None:
-    """Print message inside a box.
-
-    :param msg_list:       List of lines to print
-    :param manual_proceed: Wait for user input before continuing
-    :param head:           Number of new lines to print before box
-    :param tail:           Number of new lines to print after box
-    :return:               None
-    """
-    for _ in range(head):
-        print('')
-
-    if isinstance(msg_list, str):
-        msg_list = [msg_list]
-
-    len_widest = max(len(m) for m in msg_list)
-    msg_list   = ['{:^{}}'.format(m, len_widest) for m in msg_list]
-
-    top_line = '┌' + (len(msg_list[0]) + 2) * '─' + '┐'
-    bot_line = '└' + (len(msg_list[0]) + 2) * '─' + '┘'
-    msg_list = ['│ {} │'.format(m) for m in msg_list]
-
-    terminal_w = get_terminal_width()
-    top_line   = top_line.center(terminal_w)
-    msg_list   = [m.center(terminal_w) for m in msg_list]
-    bot_line   = bot_line.center(terminal_w)
-
-    print(top_line)
-    for m in msg_list:
-        print(m)
-    print(bot_line)
-
-    for _ in range(tail):
-        print('')
-
-    if manual_proceed:
-        input('')
-        print_on_previous_line()
-
-
-def c_print(string: str, head: int = 0, tail: int = 0) -> None:
-    """Print string to center of screen.
-
-    :param string: String to print
-    :param head:   Number of new lines to print before string
-    :param tail:   Number of new lines to print after string
-    :return:       None
-    """
-    for _ in range(head):
-        print('')
-
-    print(string.center(get_terminal_width()))
-
-    for _ in range(tail):
-        print('')
+    from src.common.gateway     import GatewaySettings as GWSettings
 
 
 def clear_screen(delay: float = 0.0) -> None:
-    """Clear terminal window."""
+    """Clear the terminal window."""
     time.sleep(delay)
     sys.stdout.write(CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER)
     sys.stdout.flush()
 
 
-def group_management_print(key:          str,
-                           members:      List[str],
-                           contact_list: 'ContactList',
-                           group_name:   str = '') -> None:
-    """List purported member status during group management."""
+def group_management_print(key:          str,            # Group management message identifier
+                           members:      List[bytes],    # List of members' Onion public keys
+                           contact_list: 'ContactList',  # ContactList object
+                           group_name:   str = ''        # Name of the group
+                           ) -> None:
+    """Print group management command results."""
     m = {NEW_GROUP:        "Created new group '{}' with following members:".format(group_name),
          ADDED_MEMBERS:    "Added following accounts to group '{}':"       .format(group_name),
          ALREADY_MEMBER:   "Following accounts were already in group '{}':".format(group_name),
@@ -115,155 +58,194 @@ def group_management_print(key:          str,
          UNKNOWN_ACCOUNTS: "Following unknown accounts were ignored:"}[key]
 
     if members:
-        m_list = ([contact_list.get_contact(m).nick for m in members if contact_list.has_contact(m)]
-                  + [m for m in members if not contact_list.has_contact(m)])
+        m_list = ([contact_list.get_contact_by_pub_key(m).nick for m in members if     contact_list.has_pub_key(m)]
+                  + [pub_key_to_onion_address(m)               for m in members if not contact_list.has_pub_key(m)])
 
         just_len  = max(len(m) for m in m_list)
-        justified = [m] + ["  * {}".format(m.ljust(just_len)) for m in m_list]
-        box_print(justified, head=1, tail=1)
+        justified = [m] + [f"  * {m.ljust(just_len)}" for m in m_list]
+        m_print(justified, box=True)
 
 
-def message_printer(message: str, head: int = 0, tail: int = 0) -> None:
-    """Print long message in the middle of the screen.
+def m_print(msg_list:       Union[str, list],  # List of lines to print
+            manual_proceed: bool  = False,     # Wait for user input before continuing
+            bold:           bool  = False,     # When True, prints the message in bold style
+            center:         bool  = True,      # When False, does not center message
+            box:            bool  = False,     # When True, prints a box around the message
+            head_clear:     bool  = False,     # When True, clears screen before printing message
+            tail_clear:     bool  = False,     # When True, clears screen after printing message (requires delay)
+            delay:          float = 0,         # Delay before continuing
+            max_width:      int   = 0,         # Maximum width of message
+            head:           int   = 0,         # Number of new lines to print before the message
+            tail:           int   = 0,         # Number of new lines to print after the message
+            ) -> None:
+    """Print message to screen.
 
-    :param message: Message to print
-    :param head:    Number of new lines to print before message
-    :param tail:    Number of new lines to print after message
-    :return:        None
+    The message automatically wraps if the terminal is too narrow to
+    display the message.
     """
-    for _ in range(head):
-        print('')
+    if isinstance(msg_list, str):
+        msg_list = [msg_list]
 
-    line_list = (textwrap.fill(message, min(49, (get_terminal_width() - 6))).split('\n'))
-    for l in line_list:
-        c_print(l)
+    terminal_width = get_terminal_width()
+    len_widest_msg = max(len(m) for m in msg_list)
+    spc_around_msg = 4 if box else 2
+    max_msg_width  = terminal_width - spc_around_msg
 
-    for _ in range(tail):
-        print('')
+    if max_width:
+        max_msg_width = min(max_width, max_msg_width)
+
+    # Split any message too wide on separate lines
+    if len_widest_msg > max_msg_width:
+        new_msg_list = []
+        for msg in msg_list:
+            if len(msg) > max_msg_width:
+                new_msg_list.extend(textwrap.fill(msg, max_msg_width).split('\n'))
+            else:
+                new_msg_list.append(msg)
+
+        msg_list       = new_msg_list
+        len_widest_msg = max(len(m) for m in msg_list)
+
+    if box or center:
+        # Insert whitespace around every line to make them equally long
+        msg_list = [f'{m:^{len_widest_msg}}' for m in msg_list]
+
+    if box:
+        # Add box chars around the message
+        msg_list = [f'│ {m} │' for m in msg_list]
+        msg_list.insert(0, '┌' + (len_widest_msg + 2) * '─' + '┐')
+        msg_list.append(   '└' + (len_widest_msg + 2) * '─' + '┘')
+
+    # Print the message
+    if head_clear:
+        clear_screen()
+    print_spacing(head)
+
+    for message in msg_list:
+        if center:
+            message = message.center(terminal_width)
+        if bold:
+            message = BOLD_ON + message + NORMAL_TEXT
+        print(message)
+
+    print_spacing(tail)
+    time.sleep(delay)
+    if tail_clear:
+        clear_screen()
+
+    # Check if message needs to be manually dismissed
+    if manual_proceed:
+        input('')
+        print_on_previous_line()
 
 
-def phase(string: str,
-          done:   bool = False,
-          head:   int  = 0,
-          offset: int  = 2) -> None:
-    """Print name of next phase.
+def phase(string: str,            # Description of the phase
+          done:   bool  = False,  # When True, uses string as the phase completion message
+          head:   int   = 0,      # Number of inserted new lines before print
+          offset: int   = 4,      # Offset of phase string from center to left
+          delay:  float = 0.5     # Duration of phase completion message
+          ) -> None:
+    """Print the name of the next phase.
 
-    Message about completion will be printed on same line.
-
-    :param string: String to be printed
-    :param done:   When True, allows custom string to notify completion
-    :param head:   Number of inserted new lines before print
-    :param offset: Offset of message from center to left
-    :return:       None
+    The notification of completion of the phase is printed on the same
+    line as the phase message.
     """
-    for _ in range(head):
-        print('')
+    print_spacing(head)
 
     if string == DONE or done:
         print(string)
-        time.sleep(0.5)
+        time.sleep(delay)
     else:
-        string = '{}... '.format(string)
-        indent = ((get_terminal_width() - (len(string) + offset)) // 2) * ' '
+        string += '... '
+        indent  = ((get_terminal_width() - (len(string) + offset)) // 2) * ' '
 
         print(indent + string, end='', flush=True)
 
 
-def print_fingerprint(fp: bytes, msg: str = '') -> None:
-    """Print formatted message and fingerprint inside box.
+def print_fingerprint(fp:  bytes,    # Contact's fingerprint
+                      msg: str = ''  # Title message
+                      ) -> None:
+    """Print a formatted message and fingerprint inside the box.
 
-    :param fp:  Contact's fingerprint
-    :param msg: Title message
-    :return:    None
+    Truncate fingerprint for clean layout with three rows that have
+    five groups of five numbers. The resulting fingerprint has
+    249.15 bits of entropy which is more than the symmetric security
+    of X448.
     """
-
-    def base10encode(fingerprint: bytes) -> str:
-        """Encode fingerprint to decimals for distinct communication.
-
-        Base64 has 75% efficiency but encoding is bad as user might
-               confuse upper case I with lower case l, 0 with O etc.
-
-        Base58 has 73% efficiency and removes the problem of Base64
-               explained above, but works only when manually typing
-               strings because user has to take time to explain which
-               letters were capitalized etc.
-
-        Base16 has 50% efficiency and removes the capitalisation problem
-               with Base58 but the choice is bad as '3', 'b', 'c', 'd'
-               and 'e' are hard to distinguish in English language
-               (fingerprints are usually read aloud over off band call).
-
-        Base10 has 41% efficiency but as languages have evolved in a
-               way that makes clear distinction between the way different
-               numbers are pronounced: reading them is faster and less
-               error prone. Compliments to OWS/WA developers for
-               discovering this.
-
-        Truncate fingerprint for clean layout with three rows that each
-        have five groups of five numbers. The resulting fingerprint has
-        249.15 bits of entropy.
-        """
-        hex_representation = binascii.hexlify(fingerprint)
-        dec_representation = str(int(hex_representation, base=16))
-        return dec_representation[:75]
-
     p_lst  = [msg, ''] if msg else []
-    parts  = split_string(base10encode(fp), item_len=25)
-    p_lst += [' '.join(p[i:i + 5] for i in range(0, len(p), 5)) for p in parts]
+    b10fp  = b10encode(fp)[:(3*5*5)]
+    parts  = split_string(b10fp, item_len=(5*5))
+    p_lst += [' '.join(split_string(p, item_len=5)) for p in parts]
 
-    box_print(p_lst)
+    m_print(p_lst, box=True)
 
 
-def print_key(message:   str,
-              key_bytes: bytes,
-              settings:  'Settings',
-              no_split:  bool = False,
-              file_key:  bool = False) -> None:
-    """Print symmetric key.
+def print_key(message:    str,                              # Instructive message
+              key_bytes:  bytes,                            # 32-byte key to be displayed
+              settings:   Union['Settings', 'GWSettings'],  # Settings object
+              public_key: bool = False                      # When True, uses Testnet address WIF format
+              ) -> None:
+    """Print a symmetric key in WIF format.
 
-    If local testing is not enabled, this function will add spacing in the
-    middle of the key to help user keep track of typing progress. The ideal
-    substring length in Cowan's `focus of attention` is four digits:
+    If local testing is not enabled, this function adds spacing in the
+    middle of the key, as well as guide letters to help the user keep
+    track of typing progress:
 
-        https://en.wikipedia.org/wiki/Working_memory#Working_memory_as_part_of_long-term_memory
+    Local key encryption keys:
 
-    The 51 char KDK is however not divisible by 4, and remembering which
-    symbols are letters and if they are capitalized is harder than remembering
-    just digits. 51 is divisible by 3. The 17 segments are displayed with guide
-    letter A..Q to help keep track when typing:
+     A   B   C   D   E   F   G   H   I   J   K   L   M   N   O   P   Q
+    5Ka 52G yNz vjF nM4 2jw Duu rWo 7di zgi Y8g iiy yGd 78L cCx mwQ mWV
 
-         A   B   C   D   E   F   G   H   I   J   K   L   M   N   O   P   Q
-        5Ka 52G yNz vjF nM4 2jw Duu rWo 7di zgi Y8g iiy yGd 78L cCx mwQ mWV
+    X448 public keys:
 
-    :param message:   Message to print
-    :param key_bytes: Decryption key
-    :param settings:  Settings object
-    :param no_split:  When True, does not split decryption key to chunks
-    :param file_key   When True, uses testnet address format
-    :return:          None
+       A       B       C       D       E       F       H       H       I       J       K       L
+    4EcuqaD ddsdsuc gBX2PY2 qR8hReA aeSN2oh JB9w5Cv q6BQjDa PPgzSvW 932aHio sT42SKJ Gu2PpS1 Za3Xrao
     """
-    b58key = b58encode(key_bytes, file_key)
-    if settings.local_testing_mode or no_split:
-        box_print([message, b58key])
+    b58key = b58encode(key_bytes, public_key)
+    if settings.local_testing_mode:
+        m_print([message, b58key], box=True)
     else:
-        box_print([message,
-                   '   '.join('ABCDEFGHIJKLMNOPQ'),
-                   ' '.join(split_string(b58key, item_len=3))])
+        guide, chunk_len = (B58_PUBLIC_KEY_GUIDE, 7) if public_key else (B58_LOCAL_KEY_GUIDE, 3)
+
+        key = ' '.join(split_string(b58key, item_len=chunk_len))
+        m_print([message, guide, key], box=True)
 
 
-def print_on_previous_line(reps:  int   = 1,
-                           delay: float = 0.0,
-                           flush: bool  = False) -> None:
-    """Next message will be printed on upper line.
+def print_title(operation: str) -> None:
+    """Print the TFC title."""
+    operation_name = {TX: TXP, RX: RXP, NC: RP}[operation]
+    m_print(f"{TFC} - {operation_name} {VERSION}", bold=True, head_clear=True, head=1, tail=1)
 
-    :param reps:  Number of times to repeat action
-    :param delay: Time to sleep before clearing lines above
-    :param flush: Flush stdout when true
-    :return:      None
-    """
+
+def print_on_previous_line(reps:  int   = 1,     # Number of times to repeat the action
+                           delay: float = 0.0,   # Time to sleep before clearing lines above
+                           flush: bool  = False  # Flush stdout when true
+                           ) -> None:
+    """Next message is printed on upper line."""
     time.sleep(delay)
 
     for _ in range(reps):
         sys.stdout.write(CURSOR_UP_ONE_LINE + CLEAR_ENTIRE_LINE)
     if flush:
         sys.stdout.flush()
+
+
+def print_spacing(count: int = 0) -> None:
+    """Print `count` many new-lines."""
+    for _ in range(count):
+        print()
+
+
+def rp_print(message: str,                          # Message to print
+             ts:      Optional['datetime'] = None,  # Timestamp for displayed event
+             bold:    bool                 = False  # When True, prints the message in bold style
+             ) -> None:
+    """Print an event in Relay Program."""
+    if ts is None:
+        ts = datetime.now()
+    ts_fmt = ts.strftime('%b %d - %H:%M:%S.%f')[:-4]
+
+    if bold:
+        print(f"{BOLD_ON}{ts_fmt} - {message}{NORMAL_TEXT}")
+    else:
+        print(f"{ts_fmt} - {message}")

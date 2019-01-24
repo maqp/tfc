@@ -3,13 +3,23 @@ language: python
 python:
   - '3.6'
 
+dist: xenial
+sudo: required
+
 before_install:
-  - sudo apt install python3-tk
-  - export TZ=Europe/Helsinki
+  - echo     "deb https://deb.torproject.org/torproject.org xenial main"                    | sudo tee -a /etc/apt/sources.list.d/torproject.list
+  - echo "deb-src https://deb.torproject.org/torproject.org xenial main"                    | sudo tee -a /etc/apt/sources.list.d/torproject.list
+  - echo     "deb https://deb.torproject.org/torproject.org tor-nightly-master-xenial main" | sudo tee -a /etc/apt/sources.list.d/torproject.list
+  - echo "deb-src https://deb.torproject.org/torproject.org tor-nightly-master-xenial main" | sudo tee -a /etc/apt/sources.list.d/torproject.list
+  - gpg --keyserver khkp://keys.gnupg.net --recv-keys A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89
+  - gpg --export A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89 | sudo apt-key add -
+  - sudo apt update
+  - sudo apt install python3-setuptools python3-tk tor -y
 
 install:
   - pip install pytest pytest-cov pyyaml coveralls
-  - pip install -r requirements.txt --require-hashes
+  - pip install -r requirements.txt       --require-hashes
+  - pip install -r requirements-relay.txt --require-hashes
 
 script:
   - py.test --cov=src tests/
