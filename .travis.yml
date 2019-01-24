@@ -15,6 +15,7 @@ before_install:
   - gpg --export A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89 | sudo apt-key add -
   - sudo apt update
   - sudo apt install python3-setuptools python3-tk tor -y
+  - export TZ=Europe/Helsinki
 
 install:
   - pip install pytest pytest-cov pyyaml coveralls
