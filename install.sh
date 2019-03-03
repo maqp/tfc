@@ -155,9 +155,9 @@ install_tcb () {
 
     kill_network
 
-    create_user_data_dir
-
     verify_files
+
+    create_user_data_dir
 
     sudo python3.6 -m pip install /opt/tfc/${VIRTUALENV}
     sudo python3.6 -m virtualenv /opt/tfc/venv_tcb --system-site-packages --never-download
@@ -186,9 +186,9 @@ install_tcb () {
     sudo rm    /opt/tfc/requirements-relay.txt
     sudo rm    /opt/tfc/requirements-venv.txt
     sudo rm    /opt/tfc/${VIRTUALENV}
-    sudo rm    /opt/install.sh
-    sudo rm    /opt/install.sh.asc
-    sudo rm    /opt/pubkey.asc
+    sudo rm -f /opt/install.sh
+    sudo rm -f /opt/install.sh.asc
+    sudo rm -f /opt/pubkey.asc
     process_tcb_dependencies "rm"
 
     add_serial_permissions
@@ -206,8 +206,11 @@ install_local_test () {
     sudo torsocks git clone https://github.com/maqp/tfc.git /opt/tfc
 
     verify_tcb_requirements_files
+
     sudo torsocks python3.6 -m pip download --no-cache-dir -r /opt/tfc/requirements-venv.txt --require-hashes -d /opt/tfc/
     sudo torsocks python3.6 -m pip download --no-cache-dir -r /opt/tfc/requirements.txt      --require-hashes -d /opt/tfc/
+
+    verify_files
 
     upgrade_tor
 
@@ -239,9 +242,9 @@ install_local_test () {
     sudo rm    /opt/tfc/requirements-relay.txt
     sudo rm    /opt/tfc/requirements-venv.txt
     sudo rm    /opt/tfc/${VIRTUALENV}
-    sudo rm    /opt/install.sh
-    sudo rm    /opt/install.sh.asc
-    sudo rm    /opt/pubkey.asc
+    sudo rm -f /opt/install.sh
+    sudo rm -f /opt/install.sh.asc
+    sudo rm -f /opt/pubkey.asc
     process_tcb_dependencies "rm"
 
     install_complete "Installation of TFC for local testing is now complete."
@@ -250,6 +253,10 @@ install_local_test () {
 
 install_developer () {
     dpkg_check
+
+    if [[ -d "$HOME/tfc/" ]]; then
+        sudo rm -r $HOME/tfc/
+    fi
 
     upgrade_tor
     sudo torsocks apt install git libssl-dev python3-pip python3-setuptools python3-tk terminator -y
@@ -275,6 +282,10 @@ install_developer () {
 
     chmod a+rwx -R $HOME/tfc/
 
+    sudo rm -f /opt/install.sh
+    sudo rm -f /opt/install.sh.asc
+    sudo rm -f /opt/pubkey.asc
+
     add_serial_permissions
 
     install_complete "Installation of the TFC dev environment is now complete."
@@ -293,6 +304,8 @@ install_relay_ubuntu () {
 
     sudo torsocks python3.6 -m pip download --no-cache-dir -r /opt/tfc/requirements-venv.txt --require-hashes -d /opt/tfc/
     sudo torsocks python3.6 -m pip download --no-cache-dir -r /opt/tfc/requirements.txt      --require-hashes -d /opt/tfc/
+
+    verify_files
 
     upgrade_tor
 
@@ -322,9 +335,9 @@ install_relay_ubuntu () {
     sudo rm    /opt/tfc/requirements-venv.txt
     sudo rm    /opt/tfc/tfc.py
     sudo rm    /opt/tfc/${VIRTUALENV}
-    sudo rm    /opt/install.sh
-    sudo rm    /opt/install.sh.asc
-    sudo rm    /opt/pubkey.asc
+    sudo rm -f /opt/install.sh
+    sudo rm -f /opt/install.sh.asc
+    sudo rm -f /opt/pubkey.asc
     process_tcb_dependencies "rm"
 
     add_serial_permissions
@@ -343,6 +356,9 @@ install_relay_tails () {
     t_sudo apt update
     t_sudo apt install git libssl-dev python3-pip python3-setuptools -y
     t_sudo git clone https://github.com/maqp/tfc.git /opt/tfc
+
+    verify_tcb_requirements_files
+    verify_files
 
     create_user_data_dir
 
@@ -419,9 +435,9 @@ install_relay_tails () {
     t_sudo rm    /opt/tfc/${PYCPARSER}
     t_sudo rm    /opt/tfc/${CFFI}
     t_sudo rm    /opt/tfc/${CRYPTOGRAPHY}
-    t_sudo rm    /opt/install.sh
-    t_sudo rm    /opt/install.sh.asc
-    t_sudo rm    /opt/pubkey.asc
+    t_sudo rm -f /opt/install.sh
+    t_sudo rm -f /opt/install.sh.asc
+    t_sudo rm -f /opt/pubkey.asc
 
     install_complete "Installation of the TFC Relay configuration is now complete."
 }
