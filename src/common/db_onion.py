@@ -24,11 +24,12 @@ import typing
 
 import nacl.signing
 
-from src.common.crypto   import auth_and_decrypt, csprng, encrypt_and_sign
-from src.common.encoding import pub_key_to_onion_address, pub_key_to_short_address
-from src.common.misc     import ensure_dir
-from src.common.output   import phase
-from src.common.statics  import *
+from src.common.crypto     import auth_and_decrypt, csprng, encrypt_and_sign
+from src.common.encoding   import pub_key_to_onion_address, pub_key_to_short_address
+from src.common.exceptions import CriticalError
+from src.common.misc       import ensure_dir
+from src.common.output     import phase
+from src.common.statics    import *
 
 if typing.TYPE_CHECKING:
     from src.common.db_masterkey import MasterKey
@@ -65,8 +66,6 @@ class OnionService(object):
             self.onion_private_key = self.new_onion_service_private_key()
             self.store_onion_service_private_key()
 
-        assert len(self.onion_private_key) == ONION_SERVICE_PRIVATE_KEY_LENGTH
-
         self.public_key = bytes(nacl.signing.SigningKey(seed=self.onion_private_key).verify_key)
 
         self.user_onion_address = pub_key_to_onion_address(self.public_key)
@@ -94,6 +93,9 @@ class OnionService(object):
             ct_bytes = f.read()
 
         onion_private_key = auth_and_decrypt(ct_bytes, self.master_key.master_key, database=self.file_name)
+
+        if len(onion_private_key) != ONION_SERVICE_PRIVATE_KEY_LENGTH:
+            raise CriticalError("Invalid Onion Service private key length.")
 
         return onion_private_key
 

@@ -103,9 +103,9 @@ class TestArgon2KDF(unittest.TestCase):
         self.assertIsInstance(key, bytes)
         self.assertEqual(len(key), SYMMETRIC_KEY_LENGTH)
 
-    def test_invalid_salt_length_raises_assertion_error(self):
+    def test_invalid_salt_length_raises_critical_error(self):
         for salt_length in [v for v in range(1000) if v != ARGON2_SALT_LENGTH]:
-            with self.assertRaises(AssertionError):
+            with self.assertRaises(SystemExit):
                 argon2_kdf('password', salt_length * b'a')
 
 
@@ -137,7 +137,17 @@ class TestX448(unittest.TestCase):
     def test_private_key_generation(self):
         self.assertIsInstance(X448.generate_private_key(), X448PrivateKey)
 
-    def test_x448(self):
+    def test_incorrect_public_key_length_raises_critical_error(self):
+        sk = X448PrivateKey.generate()
+        for key in [key_len * b'a' for key_len in range(1, 100) if key_len != TFC_PUBLIC_KEY_LENGTH]:
+            with self.assertRaises(SystemExit):
+                X448.shared_key(sk, key)
+
+    def test_zero_public_key_raises_critical_error(self):
+        with self.assertRaises(SystemExit):
+            X448.shared_key(X448PrivateKey.generate(), bytes(TFC_PUBLIC_KEY_LENGTH))
+
+    def test_with_test_vectors(self):
         sk_alice_ = X448PrivateKey.from_private_bytes(TestX448.sk_alice)
         sk_bob_   = X448PrivateKey.from_private_bytes(TestX448.sk_bob)
 
@@ -238,6 +248,13 @@ class TestXChaCha20Poly1305(unittest.TestCase):
         self.assertEqual(auth_and_decrypt(self.ietf_nonce_ct_tag, self.key, ad=self.ad),
                          self.plaintext)
 
+    def test_invalid_key_size_raises_critical_error(self):
+        with self.assertRaises(SystemExit):
+            encrypt_and_sign(self.plaintext, self.key + b'a')
+
+        with self.assertRaises(SystemExit):
+            auth_and_decrypt(self.nonce_ct_tag, self.key + b'a')
+
     def test_database_decryption_error_raises_critical_error(self):
         with self.assertRaises(SystemExit):
             auth_and_decrypt(self.nonce_ct_tag, key=bytes(SYMMETRIC_KEY_LENGTH), database='path/database_filename')
@@ -291,10 +308,23 @@ class TestCSPRNG(unittest.TestCase):
             key = csprng(key_size)
             self.assertEqual(len(key), key_size)
 
-    def test_exceeding_hash_function_max_digest_size_raises_assertion_error(self):
-        with self.assertRaises(AssertionError):
+    def test_exceeding_hash_function_max_digest_size_raises_critical_error(self):
+        with self.assertRaises(SystemExit):
             csprng(BLAKE2_DIGEST_LENGTH_MAX + 1)
 
+    @mock.patch('os.getrandom', side_effect=[(SYMMETRIC_KEY_LENGTH-1) * b'a',
+                                             (SYMMETRIC_KEY_LENGTH+1) * b'a'])
+    def test_invalid_entropy_raises_critical_error(self, _):
+        with self.assertRaises(SystemExit):
+            csprng()
+            csprng()
+
+    @mock.patch('src.common.crypto.blake2b', side_effect=[(SYMMETRIC_KEY_LENGTH-1) * b'a',
+                                                          (SYMMETRIC_KEY_LENGTH+1) * b'a'])
+    def test_invalid_blake2b_digest_raises_critical_error(self, _):
+        with self.assertRaises(SystemExit):
+            csprng()
+            csprng()
 
 class TestCheckKernelEntropy(unittest.TestCase):
 

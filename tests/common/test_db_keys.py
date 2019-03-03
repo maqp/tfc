@@ -22,9 +22,10 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 import os.path
 import unittest
 
-from src.common.crypto   import blake2b
+from src.common.crypto   import blake2b, encrypt_and_sign
 from src.common.db_keys  import KeyList, KeySet
 from src.common.encoding import int_to_bytes
+from src.common.misc     import ensure_dir
 from src.common.statics  import *
 
 from tests.mock_classes import create_keyset, MasterKey, nick_to_pub_key, Settings
@@ -116,6 +117,20 @@ class TestKeyList(unittest.TestCase):
 
         # Test loading of the tampered database raises CriticalError
         tamper_file(self.file_name, tamper_size=1)
+        with self.assertRaises(SystemExit):
+            KeyList(self.master_key, self.settings)
+
+    def test_invalid_content_raises_critical_error(self):
+        # Setup
+        invalid_data = b'a'
+        pt_bytes     = b''.join([k.serialize_k() for k in self.keylist.keysets + self.keylist._dummy_keysets()])
+        ct_bytes     = encrypt_and_sign(pt_bytes + invalid_data, self.master_key.master_key)
+
+        ensure_dir(DIR_USER_DATA)
+        with open(self.file_name, 'wb+') as f:
+            f.write(ct_bytes)
+
+        # Test
         with self.assertRaises(SystemExit):
             KeyList(self.master_key, self.settings)
 

@@ -19,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
+import os
 import threading
 import time
 import unittest
@@ -31,7 +32,7 @@ import stem.control
 from src.common.misc    import validate_onion_addr
 from src.common.statics import *
 
-from src.relay.onion import get_available_port, onion_service, Tor
+from src.relay.onion import get_available_port, onion_service, stem_compatible_ed25519_key_from_private_key, Tor
 
 from tests.utils import gen_queue_dict
 
@@ -73,6 +74,18 @@ class TestTor(unittest.TestCase):
         tor = Tor()
         self.assertIsNone(tor.connect('1234'))
         tor.stop()
+
+
+class TestTorKeyExpansion(unittest.TestCase):
+
+    def test_invalid_key_size_raises_critical_error(self):
+        for ks in [ks for ks in range(64) if ks != ONION_SERVICE_PRIVATE_KEY_LENGTH]:
+            with self.assertRaises(SystemExit):
+                stem_compatible_ed25519_key_from_private_key(os.urandom(ks))
+
+    def test_valid_key_size(self):
+        self.assertEqual(stem_compatible_ed25519_key_from_private_key(bytes(ONION_SERVICE_PRIVATE_KEY_LENGTH)),
+                         'UEatwduoOIZ7K7v90MNCPli1eXC1JnqQ9XlgkkqH8VYKaoXqpkLayDVCS118jWN8AECMenPaZyt/SYUhQgtt0w==')
 
 
 class TestOnionService(unittest.TestCase):

@@ -202,6 +202,14 @@ class TestWriteLogEntry(unittest.TestCase):
     def tearDown(self):
         cleanup(self.unittest_dir)
 
+    def test_oversize_packet_raises_critical_error(self):
+        # Setup
+        assembly_p = F_S_HEADER + bytes(PADDING_LENGTH) + b'a'
+
+        # Test
+        with self.assertRaises(SystemExit):
+            write_log_entry(assembly_p, nick_to_pub_key('Alice'), self.settings, self.master_key)
+
     def test_log_entry_is_concatenated(self):
         for i in range(5):
             assembly_p = F_S_HEADER + bytes(PADDING_LENGTH)

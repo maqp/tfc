@@ -110,7 +110,7 @@ def flask_server(queues:               'QueueDict',
             for url_token in pub_key_dict:
                 valid_url_token |= hmac.compare_digest(purp_url_token, url_token)
 
-            return valid_url_token
+        return valid_url_token
 
     @app.route('/')
     def index() -> str:

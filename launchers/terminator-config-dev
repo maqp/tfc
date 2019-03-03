@@ -1,0 +1,264 @@
+[global_config]
+  geometry_hinting              = False
+  suppress_multiple_term_dialog = True
+[keybindings]
+[layouts]
+  [[default]]
+    [[[child1]]]
+      parent     = window0
+      type       = Terminal
+    [[[window0]]]
+      parent     = ""
+      type       = Window
+
+
+  [[tfc-lr]]
+    [[[root]]]
+      fullscreen = False
+      maximised  = True
+      order      = 0
+      parent     = ""
+      position   = 0:0
+      title      = TFC
+      type       = Window
+    [[[child1]]]
+      order      = 0
+      parent     = root
+      ratio      = 0.585
+      type       = HPaned
+    [[[child2]]]
+      order      = 0
+      parent     = child1
+      ratio      = 0.5
+      type       = VPaned
+
+    [[[source_computer_emulator]]]
+      command    = cd $HOME/tfc/ && source venv_tfc/bin/activate && python3.6 tfc.py -l && deactivate || bash
+      directory  = ""
+      order      = 1
+      parent     = child2
+      profile    = tfc
+      type       = Terminal
+    [[[destination_computer_emulator]]]
+      command    = cd $HOME/tfc/ && source venv_tfc/bin/activate && python3.6 tfc.py -l -r && deactivate || bash
+      directory  = ""
+      order      = 0
+      parent     = child2
+      profile    = tfc
+      type       = Terminal
+    [[[networked_computer_emulator]]]
+      command    = cd $HOME/tfc/ && source venv_tfc/bin/activate && python3.6 relay.py -l && deactivate || bash
+      directory  = ""
+      order      = 1
+      parent     = child1
+      profile    = tfc
+      type       = Terminal
+
+
+  [[tfc-rl]]
+    [[[root]]]
+      fullscreen = False
+      maximised  = True
+      order      = 0
+      parent     = ""
+      position   = 0:0
+      title      = TFC
+      type       = Window
+    [[[child1]]]
+      order      = 0
+      parent     = root
+      ratio      = 0.415
+      type       = HPaned
+    [[[child2]]]
+      order      = 1
+      parent     = child1
+      ratio      = 0.5
+      type       = VPaned
+
+    [[[source_computer_emulator]]]
+      command    = cd $HOME/tfc/ && source venv_tfc/bin/activate && python3.6 tfc.py -l && deactivate || bash
+      directory  = ""
+      order      = 1
+      parent     = child2
+      profile    = tfc
+      type       = Terminal
+    [[[destination_computer_emulator]]]
+      command    = cd $HOME/tfc/ && source venv_tfc/bin/activate && python3.6 tfc.py -l -r && deactivate || bash
+      directory  = ""
+      order      = 0
+      parent     = child2
+      profile    = tfc
+      type       = Terminal
+    [[[networked_computer_emulator]]]
+      command    = cd $HOME/tfc/ && source venv_tfc/bin/activate && python3.6 relay.py -l && deactivate || bash
+      directory  = ""
+      order      = 0
+      parent     = child1
+      profile    = tfc
+      type       = Terminal
+
+
+  [[tfc-dd-lr]]
+    [[[root]]]
+      fullscreen = False
+      maximised  = True
+      order      = 0
+      parent     = ""
+      position   = 0:0
+      title      = TFC
+      type       = Window
+    [[[child1]]]
+      order      = 0
+      parent     = root
+      ratio      = 0.545
+      type       = HPaned
+    [[[child2]]]
+      order      = 0
+      parent     = child1
+      ratio      = 0.5
+      type       = VPaned
+    [[[child3]]]
+      order      = 1
+      parent     = child1
+      ratio      = 0.14
+      type       = HPaned
+    [[[child4]]]
+      order      = 0
+      parent     = child3
+      ratio      = 0.5
+      type       = VPaned
+
+    [[[source_computer_emulator]]]
+      command    = cd $HOME/tfc/ && source venv_tfc/bin/activate && python3.6 tfc.py -l -d && deactivate || bash
+      directory  = ""
+      order      = 1
+      parent     = child2
+      profile    = tfc-dd
+      type       = Terminal
+    [[[destination_computer_emulator]]]
+      command    = cd $HOME/tfc/ && source venv_tfc/bin/activate && python3.6 tfc.py -l -r && deactivate || bash
+      directory  = ""
+      order      = 0
+      parent     = child2
+      profile    = tfc-dd
+      type       = Terminal
+    [[[networked_computer_emulator]]]
+      command    = cd $HOME/tfc/ && source venv_tfc/bin/activate && python3.6 relay.py -l -d && deactivate || bash
+      directory  = ""
+      order      = 1
+      parent     = child3
+      profile    = tfc-dd
+      type       = Terminal
+
+    [[[source_computer_dd_emulator]]]
+      command    = cd $HOME/tfc/ && python3.6 dd.py scnclr
+      directory  = ""
+      order      = 1
+      parent     = child4
+      profile    = tfc-dd
+      type       = Terminal
+    [[[destination_computer_dd_emulator]]]
+      command    = cd $HOME/tfc/ && python3.6 dd.py ncdclr
+      directory  = ""
+      order      = 0
+      parent     = child4
+      profile    = tfc-dd
+      type       = Terminal
+
+
+  [[tfc-dd-rl]]
+    [[[root]]]
+      fullscreen = False
+      maximised  = True
+      order      = 0
+      parent     = ""
+      position   = 0:0
+      title      = TFC
+      type       = Window
+    [[[child1]]]
+      order      = 0
+      parent     = root
+      ratio      = 0.451
+      type       = HPaned
+    [[[child2]]]
+      order      = 0
+      parent     = child1
+      ratio      = 0.867
+      type       = HPaned
+    [[[child3]]]
+      order      = 1
+      parent     = child2
+      ratio      = 0.5
+      type       = VPaned
+    [[[child4]]]
+      order      = 1
+      parent     = child1
+      ratio      = 0.5
+      type       = VPaned
+
+    [[[source_computer_emulator]]]
+      command    = cd $HOME/tfc/ && source venv_tfc/bin/activate && python3.6 tfc.py -l -d && deactivate || bash
+      directory  = ""
+      order      = 1
+      parent     = child4
+      profile    = tfc-dd
+      type       = Terminal
+    [[[destination_computer_emulator]]]
+      command    = cd $HOME/tfc/ && source venv_tfc/bin/activate && python3.6 tfc.py -l -r && deactivate || bash
+      directory  = ""
+      order      = 0
+      parent     = child4
+      profile    = tfc-dd
+      type       = Terminal
+    [[[networked_computer_emulator]]]
+      command    = cd $HOME/tfc/ && source venv_tfc/bin/activate && python3.6 relay.py -l -d && deactivate || bash
+      directory  = ""
+      order      = 0
+      parent     = child2
+      profile    = tfc-dd
+      type       = Terminal
+
+    [[[source_computer_dd_emulator]]]
+      command    = cd $HOME/tfc/ && python3.6 dd.py scncrl
+      directory  = ""
+      order      = 1
+      parent     = child3
+      profile    = tfc-dd
+      type       = Terminal
+    [[[destination_computer_dd_emulator]]]
+      command    = cd $HOME/tfc/ && python3.6 dd.py ncdcrl
+      directory  = ""
+      order      = 0
+      parent     = child3
+      profile    = tfc-dd
+      type       = Terminal
+
+
+[plugins]
+[profiles]
+  [[default]]
+    background_color    = "#3c3f41"
+    background_image    = None
+    foreground_color    = "#a1b6bd"
+    scrollback_infinite = True
+    show_titlebar       = False
+  
+  [[tfc]]
+    background_color    = "#3c3f41"
+    background_image    = None
+    use_system_font     = False
+    font                = Monospace 11
+    foreground_color    = "#a1b6bd"
+    scrollback_infinite = True
+    show_titlebar       = False
+    scrollbar_position  = hidden
+
+  [[tfc-dd]]
+    background_color    = "#3c3f41"
+    background_image    = None
+    use_system_font     = False
+    font                = Monospace 10.5
+    foreground_color    = "#a1b6bd"
+    scrollback_infinite = True
+    show_titlebar       = False
+    scrollbar_position  = hidden

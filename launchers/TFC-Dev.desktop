@@ -1,0 +1,25 @@
+[Desktop Entry]
+Version=1.19.03
+Name=TFC-Dev
+Comment=Local testing
+Exec=terminator -m -u -g $HOME/tfc/launchers/terminator-config-dev -p tfc -l tfc-lr
+Icon=tfc.png
+Terminal=false
+Type=Application
+Categories=Network;Messaging;Security;
+Actions=TFC-RL;TFC-DD-LR;TFC-DD-RL
+
+[Desktop Action TFC-RL]
+Name=TFC-RL
+Exec=terminator -m -u -g $HOME/tfc/launchers/terminator-config-dev -p tfc -l tfc-rl
+OnlyShowIn=Unity;
+
+[Desktop Action TFC-DD-LR]
+Name=TFC-DD-LR
+Exec=terminator -m -u -g $HOME/tfc/launchers/terminator-config-dev -p tfc-dd -l tfc-dd-lr
+OnlyShowIn=Unity;
+
+[Desktop Action TFC-DD-RL]
+Name=TFC-DD-RL
+Exec=terminator -m -u -g $HOME/tfc/launchers/terminator-config-dev -p tfc-dd -l tfc-dd-rl
+OnlyShowIn=Unity;

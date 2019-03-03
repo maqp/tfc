@@ -24,12 +24,13 @@ import typing
 
 from typing import Generator, Iterable, List, Optional, Sized
 
-from src.common.crypto   import auth_and_decrypt, encrypt_and_sign
-from src.common.encoding import bool_to_bytes, pub_key_to_onion_address, str_to_bytes, pub_key_to_short_address
-from src.common.encoding import bytes_to_bool, onion_address_to_pub_key, bytes_to_str
-from src.common.misc     import ensure_dir, get_terminal_width, separate_headers, split_byte_string
-from src.common.output   import clear_screen
-from src.common.statics  import *
+from src.common.crypto     import auth_and_decrypt, encrypt_and_sign
+from src.common.encoding   import bool_to_bytes, pub_key_to_onion_address, str_to_bytes, pub_key_to_short_address
+from src.common.encoding   import bytes_to_bool, onion_address_to_pub_key, bytes_to_str
+from src.common.exceptions import CriticalError
+from src.common.misc       import ensure_dir, get_terminal_width, separate_headers, split_byte_string
+from src.common.output     import clear_screen
+from src.common.statics    import *
 
 if typing.TYPE_CHECKING:
     from src.common.db_masterkey import MasterKey
@@ -273,7 +274,8 @@ class ContactList(Iterable, Sized):
         df_blocks = [b for b in blocks if not b.startswith(self.dummy_contact.onion_pub_key)]
 
         for block in df_blocks:
-            assert len(block) == CONTACT_LENGTH
+            if len(block) != CONTACT_LENGTH:
+                raise CriticalError("Invalid data in contact database.")
 
             (onion_pub_key, tx_fingerprint, rx_fingerprint, kex_status_byte,
              log_messages_byte, file_reception_byte, notifications_byte,

@@ -24,8 +24,9 @@ import unittest
 
 from unittest import mock
 
+from src.common.crypto   import encrypt_and_sign
 from src.common.db_onion import OnionService
-from src.common.misc     import validate_onion_addr
+from src.common.misc     import ensure_dir, validate_onion_addr
 from src.common.statics  import *
 
 from tests.mock_classes import MasterKey
@@ -62,6 +63,19 @@ class TestOnionService(unittest.TestCase):
         onion_service2 = OnionService(self.master_key)
         self.assertIsInstance(onion_service2.onion_private_key, bytes)
         self.assertEqual(onion_service.onion_private_key, onion_service2.onion_private_key)
+
+    @mock.patch('time.sleep', return_value=None)
+    def test_loading_invalid_onion_key_raises_critical_error(self, _):
+        # Setup
+        ct_bytes = encrypt_and_sign((ONION_SERVICE_PRIVATE_KEY_LENGTH +1) * b'a', self.master_key.master_key)
+
+        ensure_dir(DIR_USER_DATA)
+        with open(f'{DIR_USER_DATA}{TX}_onion_db', 'wb+') as f:
+            f.write(ct_bytes)
+
+        # Test
+        with self.assertRaises(SystemExit):
+            OnionService(self.master_key)
 
     @mock.patch('time.sleep', return_value=None)
     def test_load_of_modified_database_raises_critical_error(self, _):

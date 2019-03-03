@@ -73,7 +73,7 @@ def box_input(message:        str,                         # Input prompt messag
               validator:      Optional[Callable] = None,   # Input validator function
               validator_args: Optional[Any]      = None    # Arguments required by the validator
               ) -> str:                                    # Input from user
-    """Display boxed input prompt with the title."""
+    """Display boxed input prompt with a message."""
     print_spacing(head)
 
     terminal_width = get_terminal_width()
@@ -129,7 +129,7 @@ def box_input(message:        str,                         # Input prompt messag
 def get_b58_key(key_type:      str,         # The type of Base58 key to be entered
                 settings:      'Settings',  # Settings object
                 short_address: str = ''     # The contact's short Onion address
-                ) -> bytes:                 # The B58 decoded key
+                ) -> bytes:                 # The Base58 decoded key
     """Ask the user to input a Base58 encoded key."""
     if key_type == B58_PUBLIC_KEY:
         clear_screen()

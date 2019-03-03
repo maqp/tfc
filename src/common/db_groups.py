@@ -25,12 +25,13 @@ import typing
 
 from typing import Callable, Generator, Iterable, List, Sized
 
-from src.common.crypto   import auth_and_decrypt, encrypt_and_sign
-from src.common.encoding import bool_to_bytes, int_to_bytes, str_to_bytes, onion_address_to_pub_key, b58encode
-from src.common.encoding import bytes_to_bool, bytes_to_int, bytes_to_str
-from src.common.misc     import ensure_dir, get_terminal_width, round_up, separate_header, separate_headers
-from src.common.misc     import split_byte_string
-from src.common.statics  import *
+from src.common.crypto     import auth_and_decrypt, encrypt_and_sign
+from src.common.encoding   import bool_to_bytes, int_to_bytes, str_to_bytes, onion_address_to_pub_key, b58encode
+from src.common.encoding   import bytes_to_bool, bytes_to_int, bytes_to_str
+from src.common.exceptions import CriticalError
+from src.common.misc       import ensure_dir, get_terminal_width, round_up, separate_header, separate_headers
+from src.common.misc       import split_byte_string
+from src.common.statics    import *
 
 if typing.TYPE_CHECKING:
     from src.common.db_contacts  import Contact, ContactList
@@ -241,7 +242,7 @@ class GroupList(Iterable, Sized):
         members. In addition, the group database stores the header that
         contains four 8-byte values. The database plaintext length with
         50 groups, each with 50 members is
-            4*8 + 50*( 1024 + 4 + 2*1 + 50*32)
+            4*8 + 50*(1024 + 4 + 2*1 + 50*32)
           =  32 + 50*2630
           = 131532 bytes.
 
@@ -292,7 +293,8 @@ class GroupList(Iterable, Sized):
 
         # Deserialize group objects
         for block in blocks:
-            assert len(block) == bytes_per_group
+            if len(block) != bytes_per_group:
+                raise CriticalError("Invalid data in group database.")
 
             name_bytes, group_id, log_messages_byte, notification_byte, ser_pub_keys \
                 = separate_headers(block, [PADDED_UTF32_STR_LENGTH, GROUP_ID_LENGTH] + 2*[ENCODED_BOOLEAN_LENGTH])

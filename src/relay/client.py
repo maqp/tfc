@@ -44,11 +44,11 @@ if typing.TYPE_CHECKING:
     QueueDict = Dict[bytes, Queue]
 
 
-def client_manager(queues:                'QueueDict',
-                   gateway:               'Gateway',
-                   url_token_private_key: X448PrivateKey,
-                   unittest:              bool = False
-                   ) -> None:
+def client_scheduler(queues:                'QueueDict',
+                     gateway:               'Gateway',
+                     url_token_private_key: X448PrivateKey,
+                     unittest:              bool = False
+                     ) -> None:
     """Manage `client` processes."""
     proc_dict = dict()  # type: Dict[bytes, Process]
 
@@ -155,12 +155,13 @@ def client(onion_pub_key:         bytes,
             if url_token_public_key_hex != cached_pk:
                 try:
                     public_key = bytes.fromhex(url_token_public_key_hex)
-                    assert len(public_key) == TFC_PUBLIC_KEY_LENGTH
-                    assert public_key != bytes(TFC_PUBLIC_KEY_LENGTH)
+
+                    if len(public_key) != TFC_PUBLIC_KEY_LENGTH or public_key == bytes(TFC_PUBLIC_KEY_LENGTH):
+                        raise ValueError
 
                     shared_secret = url_token_private_key.exchange(X448PublicKey.from_public_bytes(public_key))
                     url_token     = hashlib.blake2b(shared_secret, digest_size=SYMMETRIC_KEY_LENGTH).hexdigest()
-                except (AssertionError, TypeError, ValueError):
+                except (TypeError, ValueError):
                     continue
 
                 cached_pk = url_token_public_key_hex                     # Update client's URL token public key

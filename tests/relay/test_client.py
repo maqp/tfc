@@ -33,7 +33,7 @@ from src.common.crypto   import X448
 from src.common.db_onion import pub_key_to_onion_address, pub_key_to_short_address
 from src.common.statics  import *
 
-from src.relay.client import c_req_manager, client, client_manager, g_msg_manager, get_data_loop
+from src.relay.client import c_req_manager, client, client_scheduler, g_msg_manager, get_data_loop
 
 from tests.mock_classes import Gateway
 from tests.utils        import gen_queue_dict, nick_to_onion_address, nick_to_pub_key, tear_queues
@@ -320,9 +320,9 @@ class TestGroupManager(unittest.TestCase):
         tear_queues(queues)
 
 
-class TestClientManager(unittest.TestCase):
+class TestClientScheduler(unittest.TestCase):
 
-    def test_client_manager(self):
+    def test_client_scheduler(self):
         queues             = gen_queue_dict()
         gateway            = Gateway()
         server_private_key = X448.generate_private_key()
@@ -344,7 +344,7 @@ class TestClientManager(unittest.TestCase):
 
         threading.Thread(target=queue_delayer).start()
 
-        self.assertIsNone(client_manager(queues, gateway, server_private_key, unittest=True))
+        self.assertIsNone(client_scheduler(queues, gateway, server_private_key, unittest=True))
         tear_queues(queues)
 
 

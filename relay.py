@@ -33,7 +33,7 @@ from src.common.misc    import ensure_dir, monitor_processes, process_arguments
 from src.common.output  import print_title
 from src.common.statics import *
 
-from src.relay.client   import c_req_manager, client_manager, g_msg_manager
+from src.relay.client   import c_req_manager, client_scheduler, g_msg_manager
 from src.relay.commands import relay_command
 from src.relay.onion    import onion_service
 from src.relay.server   import flask_server
@@ -87,24 +87,24 @@ def main() -> None:
                        |          commands) │               │┈(Outgoing msg/file/public key)
                     ┃  |                    │               │                                 ┃
       Source ───▶|─────(── gateway_loop ─> src_incoming ─> flask_server <─┐
-    Computer        ┃  |                           |                      |                   ┃
-                       |                           |                      |
-                    ┃  |   (Local keys, commands   |                      |                   ┃
-                       |   and copies of messages)┄|                      |
-                    ┃  |            ┊              ↓                      |                   ┃
- Destination <──|◀─────(───────────────────── dst_outgoing                |
-    Computer        ┃  |                   ┊        ↑                     |                   ┃
-                       ├──> g_msg_manager  ┊        │                     |
-                    ┃  |              ↑    ┊        │                     |                   ┃
-                       |       (Group┈│   (Incoming┈│         (URL token)┈|
-                    ┃  |   management │   messages) │                     |                   ┃
-                       │    messages) │             │                     |
-                    ┃  ↓              │             │                     |                   ┃
-                      client_mgr      │             │                     |
-                    ┃         └─> client ───────────┴─────────────────────┘                   ┃
-                                      ↑
-                    ┃                 │                                                       ┃
-                                      └──────────────────────────────────────────────────────────── flask_server on
+    Computer        ┃  |                            |                     |                   ┃
+                       |                            |                     |
+                    ┃  |    (Local keys, commands   |                     |                   ┃
+                       |    and copies of messages)┄|                     |
+                    ┃  |             ┊              ↓                     |                   ┃
+ Destination <──|◀─────(────────────────────── dst_outgoing               |
+    Computer        ┃  |                    ┊       ↑                     |                   ┃
+                       ├──> g_msg_manager   ┊       │                     |
+                    ┃  |               ↑    ┊       │                     |                   ┃
+                       |        (Group┈│  (Incoming┈│         (URL token)┈|
+                    ┃  |    management │  messages) │                     |                   ┃
+                       │     messages) │            │                     |
+                    ┃  ↓               │            │                     |                   ┃
+                      client_scheduler │            │                     |
+                    ┃         └──> client ──────────┴─────────────────────┘                   ┃
+                                       ↑
+                    ┃                  │                                                      ┃
+                                       └─────────────────────────────────────────────────────────── flask_server on
                     ┃                                        ┊                                ┃     contact's Networked
                                 (Incoming message/file/public key/group management message)         Computer
                     ┃                                                                         ┃
@@ -162,15 +162,15 @@ def main() -> None:
          EXIT_QUEUE:         Queue()   # EXIT/WIPE signal            from `relay_command`         to `main`
          }  # type: Dict[bytes, Queue]
 
-    process_list = [Process(target=gateway_loop,   args=(queues, gateway                       )),
-                    Process(target=src_incoming,   args=(queues, gateway                       )),
-                    Process(target=dst_outgoing,   args=(queues, gateway                       )),
-                    Process(target=client_manager, args=(queues, gateway, url_token_private_key)),
-                    Process(target=g_msg_manager,  args=(queues,                               )),
-                    Process(target=c_req_manager,  args=(queues,                               )),
-                    Process(target=flask_server,   args=(queues,           url_token_public_key)),
-                    Process(target=onion_service,  args=(queues,                               )),
-                    Process(target=relay_command,  args=(queues, gateway, sys.stdin.fileno())  )]
+    process_list = [Process(target=gateway_loop,     args=(queues, gateway                       )),
+                    Process(target=src_incoming,     args=(queues, gateway                       )),
+                    Process(target=dst_outgoing,     args=(queues, gateway                       )),
+                    Process(target=client_scheduler, args=(queues, gateway, url_token_private_key)),
+                    Process(target=g_msg_manager,    args=(queues,                               )),
+                    Process(target=c_req_manager,    args=(queues,                               )),
+                    Process(target=flask_server,     args=(queues,           url_token_public_key)),
+                    Process(target=onion_service,    args=(queues,                               )),
+                    Process(target=relay_command,    args=(queues, gateway, sys.stdin.fileno())  )]
 
     for p in process_list:
         p.start()

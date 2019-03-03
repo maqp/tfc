@@ -31,7 +31,7 @@ from typing   import Dict, IO, List, Tuple, Union
 
 from src.common.crypto     import auth_and_decrypt, encrypt_and_sign
 from src.common.encoding   import b58encode, bytes_to_bool, bytes_to_timestamp, pub_key_to_short_address
-from src.common.exceptions import FunctionReturn
+from src.common.exceptions import CriticalError, FunctionReturn
 from src.common.misc       import ensure_dir, get_terminal_width, ignored, separate_header, separate_headers
 from src.common.output     import clear_screen
 from src.common.statics    import *
@@ -169,7 +169,8 @@ def write_log_entry(assembly_packet: bytes,                      # Assembly pack
     pt_bytes = onion_pub_key + timestamp + origin + assembly_packet
     ct_bytes = encrypt_and_sign(pt_bytes, key=master_key.master_key)
 
-    assert len(ct_bytes) == LOG_ENTRY_LENGTH
+    if len(ct_bytes) != LOG_ENTRY_LENGTH:
+        raise CriticalError("Invalid log entry ciphertext length.")
 
     ensure_dir(DIR_USER_DATA)
     file_name = f'{DIR_USER_DATA}{settings.software_operation}_logs'

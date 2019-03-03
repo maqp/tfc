@@ -153,7 +153,8 @@ def argon2_kdf(password:    str,                      # Password to derive the k
     * https://github.com/P-H-C/phc-winner-argon2
       https://github.com/hynek/argon2_cffi
     """
-    assert len(salt) == ARGON2_SALT_LENGTH
+    if len(salt) != ARGON2_SALT_LENGTH:
+        raise CriticalError("Invalid salt length.")
 
     key = argon2.low_level.hash_secret_raw(secret=password.encode(),
                                            salt=salt,
@@ -214,7 +215,7 @@ class X448(object):
         """Derive the X448 shared key.
 
         Since the shared secret is zero if contact's public key is zero,
-        this function asserts the public key is a valid non-zero
+        this function checks the public key is a valid non-zero
         bytestring.
 
         Because the raw bits of the X448 shared secret might not be
@@ -222,8 +223,11 @@ class X448(object):
         towards 0 or 1), the raw shared secret is passed through BLAKE2b
         CSPRF to ensure uniformly random shared key.
         """
-        assert len(public_key) == TFC_PUBLIC_KEY_LENGTH
-        assert public_key != bytes(TFC_PUBLIC_KEY_LENGTH)
+        if len(public_key) != TFC_PUBLIC_KEY_LENGTH:
+            raise CriticalError("Invalid public key length.")
+
+        if public_key == bytes(TFC_PUBLIC_KEY_LENGTH):
+            raise CriticalError("Received zero public key.")
 
         shared_secret = private_key.exchange(X448PublicKey.from_public_bytes(public_key))
         return blake2b(shared_secret, digest_size=SYMMETRIC_KEY_LENGTH)
@@ -286,7 +290,8 @@ def encrypt_and_sign(plaintext: bytes,       # Plaintext to encrypt
     * https://github.com/jedisct1/libsodium/tree/master/src/libsodium/crypto_aead/xchacha20poly1305/sodium
       https://github.com/pyca/pynacl/blob/master/src/nacl/bindings/crypto_aead.py
     """
-    assert len(key) == SYMMETRIC_KEY_LENGTH
+    if len(key) != SYMMETRIC_KEY_LENGTH:
+        raise CriticalError("Invalid key length.")
 
     nonce = csprng(XCHACHA20_NONCE_LENGTH)
     ct_tag = nacl.bindings.crypto_aead_xchacha20poly1305_ietf_encrypt(plaintext, ad, nonce, key)  # type: bytes
@@ -317,7 +322,8 @@ def auth_and_decrypt(nonce_ct_tag: bytes,       # Nonce + ciphertext + tag
     processing the unsafe data and warn the user in which database the
     issue was detected.
     """
-    assert len(key) == SYMMETRIC_KEY_LENGTH
+    if len(key) != SYMMETRIC_KEY_LENGTH:
+        raise CriticalError("Invalid key length.")
 
     nonce, ct_tag = separate_header(nonce_ct_tag, XCHACHA20_NONCE_LENGTH)
 
@@ -356,7 +362,8 @@ def byte_padding(bytestring: bytes  # Bytestring to be padded
     padding_len = PADDING_LENGTH - (len(bytestring) % PADDING_LENGTH)
     bytestring += padding_len * bytes([padding_len])
 
-    assert len(bytestring) % PADDING_LENGTH == 0
+    if len(bytestring) % PADDING_LENGTH != 0:  # pragma: no cover
+        raise CriticalError("Invalid padding length.")
 
     return bytestring
 
@@ -410,7 +417,7 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH) -> bytes:
 
     Since the largest key generated in TFC is the 56-byte X448 private
     key, GETRANDOM is guaranteed to always work. As a good practice
-    however, TFC asserts that the length of the obtained entropy is
+    however, TFC checks that the length of the obtained entropy is
     correct.
 
     The output of GETRANDOM is further compressed with BLAKE2b. The
@@ -424,13 +431,18 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH) -> bytes:
     size of the key to 64 bytes. This is not a problem for TFC because
     again, the largest key it generates is the 56-byte X448 private key.
     """
-    assert key_length <= BLAKE2_DIGEST_LENGTH_MAX
+    if key_length > BLAKE2_DIGEST_LENGTH_MAX:
+        raise CriticalError("Invalid key size.")
 
     entropy = os.getrandom(key_length, flags=0)
-    assert len(entropy) == key_length
+
+    if len(entropy) != key_length:
+        raise CriticalError("GETRANDOM returned invalid amount of entropy.")
 
     compressed = blake2b(entropy, digest_size=key_length)
-    assert len(compressed) == key_length
+
+    if len(compressed) != key_length:
+        raise CriticalError("Invalid final key size.")
 
     return compressed
 

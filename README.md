@@ -145,6 +145,8 @@ Hardware<Br>
 &nbsp;&nbsp;&nbsp;&nbsp;[Data diode (breadboard)](https://github.com/maqp/tfc/wiki/TTL-Data-Diode-(breadboard))<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[Data diode (perfboard)](https://github.com/maqp/tfc/wiki/TTL-Data-Diode-(perfboard))<br>
 
-[Update log](https://github.com/maqp/tfc/wiki/Update-Log)<br>
+Software<Br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Installation](https://github.com/maqp/tfc/wiki/Installation)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[How to use](https://github.com/maqp/tfc/wiki/How-to-use)<br>
 
-For the rest of the articles, see [TFC wiki](https://github.com/maqp/tfc/wiki).
+[Update log](https://github.com/maqp/tfc/wiki/Update-Log)<br>

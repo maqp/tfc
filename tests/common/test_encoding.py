@@ -106,9 +106,9 @@ class TestUnicodePadding(unittest.TestCase):
             # Verify removal of padding doesn't alter the string
             self.assertEqual(string, padded[:-ord(padded[-1:])])
 
-    def test_oversize_msg_raises_assertion_error(self):
-        for s in range(PADDING_LENGTH, 260):
-            with self.assertRaises(AssertionError):
+    def test_oversize_msg_raises_critical_error(self):
+        for s in range(PADDING_LENGTH, 500):
+            with self.assertRaises(SystemExit):
                 unicode_padding(s * 'm')
 
 

@@ -309,13 +309,13 @@ def key_ex_psk_rx(packet:       bytes,
     if any(k == bytes(SYMMETRIC_KEY_LENGTH) for k in [rx_mk, rx_hk]):
         raise FunctionReturn("Error: Received invalid keys from contact.", head_clear=True)
 
-    contact.kex_status = KEX_STATUS_HAS_RX_PSK
-    contact_list.store_contacts()
-
     keyset       = key_list.get_keyset(onion_pub_key)
     keyset.rx_mk = rx_mk
     keyset.rx_hk = rx_hk
     key_list.store_keys()
+
+    contact.kex_status = KEX_STATUS_HAS_RX_PSK
+    contact_list.store_contacts()
 
     # Pipes protects against shell injection. Source of command's parameter is
     # the program itself, and therefore trusted, but it's still good practice.

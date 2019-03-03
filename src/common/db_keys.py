@@ -228,7 +228,8 @@ class KeyList(object):
         df_blocks = [b for b in blocks if not b.startswith(self.dummy_id)]
 
         for block in df_blocks:
-            assert len(block) == KEYSET_LENGTH
+            if len(block) != KEYSET_LENGTH:
+                raise CriticalError("Invalid data in key database.")
 
             onion_pub_key, tx_mk, rx_mk, tx_hk, rx_hk, tx_harac_bytes, rx_harac_bytes \
                 = separate_headers(block, [ONION_SERVICE_PUBLIC_KEY_LENGTH] + 4*[SYMMETRIC_KEY_LENGTH] + [HARAC_LENGTH])

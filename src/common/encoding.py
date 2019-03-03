@@ -147,12 +147,16 @@ def unicode_padding(string: str) -> str:
     Database fields are padded with Unicode chars and then encoded
     with UTF-32 to hide the metadata about plaintext field length.
     """
-    assert len(string) < PADDING_LENGTH
+    from src.common.exceptions import CriticalError
+
+    if len(string) >= PADDING_LENGTH:
+        raise CriticalError("Invalid input size.")
 
     length  = PADDING_LENGTH - (len(string) % PADDING_LENGTH)
     string += length * chr(length)
 
-    assert len(string) == PADDING_LENGTH
+    if len(string) != PADDING_LENGTH:  # pragma: no cover
+        raise CriticalError("Invalid padded string size.")
 
     return string
 

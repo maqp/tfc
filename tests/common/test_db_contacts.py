@@ -22,7 +22,9 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 import os
 import unittest
 
+from src.common.crypto      import encrypt_and_sign
 from src.common.db_contacts import Contact, ContactList
+from src.common.misc        import ensure_dir
 from src.common.statics     import *
 
 from tests.mock_classes import create_contact, MasterKey, Settings
@@ -95,6 +97,20 @@ class TestContactList(TFCTestCase):
         self.assertEqual(len(contact_list2.contacts), len(self.full_contact_list))
         for c in contact_list2:
             self.assertIsInstance(c, Contact)
+
+    def test_invalid_content_raises_critical_error(self):
+        # Setup
+        invalid_data = b'a'
+        pt_bytes     = b''.join([c.serialize_c() for c in self.contact_list.contacts + self.contact_list._dummy_contacts()])
+        ct_bytes     = encrypt_and_sign(pt_bytes + invalid_data, self.master_key.master_key)
+
+        ensure_dir(DIR_USER_DATA)
+        with open(self.file_name, 'wb+') as f:
+            f.write(ct_bytes)
+
+        # Test
+        with self.assertRaises(SystemExit):
+            ContactList(self.master_key, self.settings)
 
     def test_load_of_modified_database_raises_critical_error(self):
         self.contact_list.store_contacts()

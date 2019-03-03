@@ -22,6 +22,7 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 import os
 import unittest
 
+from src.common.crypto      import encrypt_and_sign
 from src.common.db_contacts import Contact, ContactList
 from src.common.db_groups   import Group, GroupList
 from src.common.encoding    import b58encode
@@ -179,6 +180,21 @@ class TestGroupList(TFCTestCase):
         self.contact_list.remove_contact_by_address_or_nick('Alice')
         group_list3 = GroupList(self.master_key, self.settings, self.contact_list)
         self.assertEqual(len(group_list3.get_group('test_group_1').members), 10)
+
+    def test_invalid_content_raises_critical_error(self):
+        # Setup
+        invalid_data = b'a'
+        pt_bytes     = self.group_list._generate_group_db_header()
+        pt_bytes    += b''.join([g.serialize_g() for g in (self.group_list.groups + self.group_list._dummy_groups())])
+        ct_bytes     = encrypt_and_sign(pt_bytes + invalid_data, self.master_key.master_key)
+
+        ensure_dir(DIR_USER_DATA)
+        with open(self.file_name, 'wb+') as f:
+            f.write(ct_bytes)
+
+        # Test
+        with self.assertRaises(SystemExit):
+            GroupList(self.master_key, self.settings, self.contact_list)
 
     def test_load_of_modified_database_raises_critical_error(self):
         self.group_list.store_groups()

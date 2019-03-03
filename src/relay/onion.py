@@ -146,8 +146,11 @@ def stem_compatible_ed25519_key_from_private_key(private_key: bytes) -> str:
         h = hashlib.sha512(sk).digest()
         a = 2 ** (b - 2) + sum(2 ** i * bit(h, i) for i in range(3, b - 2))
         k = b''.join([bytes([h[i]]) for i in range(b // 8, b // 4)])
-        assert len(k) == ONION_SERVICE_PRIVATE_KEY_LENGTH
+
         return encode_int(a) + k
+
+    if len(private_key) != ONION_SERVICE_PRIVATE_KEY_LENGTH:
+        raise CriticalError("Onion Service private key had invalid length.")
 
     expanded_private_key = expand_private_key(private_key)
 
@@ -213,7 +216,10 @@ def onion_service(queues: Dict[bytes, 'Queue']) -> None:
             time.sleep(0.1)
 
             if queues[ONION_KEY_QUEUE].qsize() > 0:
-                queues[ONION_KEY_QUEUE].get()  # Discard re-sent private keys
+                _, c_code = queues[ONION_KEY_QUEUE].get()
+
+                m_print(["Onion Service is already running.", '',
+                         f"Onion Service confirmation code (to Transmitter): {c_code.hex()}"], box=True)
 
             if queues[ONION_CLOSE_QUEUE].qsize() > 0:
                 command = queues[ONION_CLOSE_QUEUE].get()
