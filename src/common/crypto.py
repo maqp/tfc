@@ -40,6 +40,7 @@ import nacl.exceptions
 import nacl.secret
 import nacl.utils
 
+from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448PublicKey
 from cryptography.hazmat.primitives.serialization   import Encoding, PublicFormat
 
@@ -359,8 +360,9 @@ def byte_padding(bytestring: bytes  # Bytestring to be padded
     For a better explanation, see
         https://en.wikipedia.org/wiki/Padding_(cryptography)#PKCS#5_and_PKCS#7
     """
-    padding_len = PADDING_LENGTH - (len(bytestring) % PADDING_LENGTH)
-    bytestring += padding_len * bytes([padding_len])
+    padder = padding.PKCS7(PADDING_LENGTH_BITS).padder()
+    bytestring = padder.update(bytestring)
+    bytestring += padder.finalize()
 
     if len(bytestring) % PADDING_LENGTH != 0:  # pragma: no cover
         raise CriticalError("Invalid padding length.")
@@ -375,8 +377,11 @@ def rm_padding_bytes(bytestring: bytes  # Bytestring from which padding is remov
     The length of padding is determined by the ord-value of the last
     byte that is always part of the padding.
     """
-    length = ord(bytestring[-1:])
-    return bytestring[:-length]
+    unpadder = padding.PKCS7(PADDING_LENGTH_BITS).unpadder()
+    bytestring = unpadder.update(bytestring)
+    bytestring += unpadder.finalize()
+
+    return bytestring
 
 
 def csprng(key_length: int = SYMMETRIC_KEY_LENGTH) -> bytes:

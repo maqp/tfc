@@ -517,6 +517,7 @@ BLAKE2_DIGEST_LENGTH_MAX         = 64
 ENTROPY_THRESHOLD                = 512
 HARAC_LENGTH                     = 8
 PADDING_LENGTH                   = 255
+PADDING_LENGTH_BITS              = PADDING_LENGTH * 8
 
 # Forward secrecy
 INITIAL_HARAC        = 0
