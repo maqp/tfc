@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -88,7 +88,7 @@ def traffic_masking_loop(queues:   'QueueDict',
     The traffic is masked the following way: If both m_queue and f_queue
     are empty, a noise assembly packet is loaded from np_queue. If no
     command packet is available in c_queue, a noise command packet is
-    loaded from nc_queue. Both noise queues are filled with independent
+    loaded from nc_queue. Both noise queues are filled by independent
     processes that ensure both noise queues always have packets to
     output.
 
@@ -167,11 +167,14 @@ def traffic_masking_loop(queues:   'QueueDict',
                         command = packet[DATAGRAM_HEADER_LENGTH:]
                         if command in [UNENCRYPTED_EXIT_COMMAND, UNENCRYPTED_WIPE_COMMAND]:
                             gateway.write(packet)
-                            queues[EXIT_QUEUE].put(command)
+                            time.sleep(gateway.settings.local_testing_mode * 0.1)
+                            time.sleep(gateway.settings.data_diode_sockets * 1.5)
+                            signal = WIPE if command == UNENCRYPTED_WIPE_COMMAND else EXIT
+                            queues[EXIT_QUEUE].put(signal)
 
-            # If traffic masking has been disabled, move all packets to standard_sender_loop queues.
+            # If traffic masking has been disabled, wait until queued messages are sent before returning.
             if sm_queue.qsize() != 0 and all(q.qsize() == 0 for q in (m_queue, f_queue, c_queue)):
-                settings = queues[SENDER_MODE_QUEUE].get()
+                settings = sm_queue.get()
                 return settings
 
 

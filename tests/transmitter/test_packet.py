@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -335,7 +335,7 @@ class TestQueueAssemblyPackets(unittest.TestCase):
 
     def test_queue_message_traffic_masking(self):
         # Setup
-        packet_list = split_to_assembly_packets(os.urandom(200), MESSAGE)
+        packet_list                   = split_to_assembly_packets(os.urandom(200), MESSAGE)
         self.settings.traffic_masking = True
 
         # Test

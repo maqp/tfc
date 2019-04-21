@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -40,6 +40,7 @@ import nacl.exceptions
 import nacl.secret
 import nacl.utils
 
+from cryptography.hazmat.primitives                 import padding
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448PublicKey
 from cryptography.hazmat.primitives.serialization   import Encoding, PublicFormat
 
@@ -87,7 +88,7 @@ def blake2b(message:     bytes,                        # Message to hash
         o 128-bit collision/preimage/second-preimage resistance against
           Grover's algorithm running on a quantum Turing machine.
 
-        o The algorithm is bundled in Python3.6's hashlib.
+        o The algorithm is bundled in Python3.7's hashlib.
 
         o Compared to SHA3-256, the algorithm runs faster on CPUs which
           means better hash ratchet performance.
@@ -102,18 +103,18 @@ def blake2b(message:     bytes,                        # Message to hash
     The correctness of the BLAKE2b implementation* is tested by TFC unit
     tests. The testing is done in limited scope by using an official KAT.
 
-    * https://github.com/python/cpython/tree/3.6/Modules/_blake2
-      https://github.com/python/cpython/blob/3.6/Lib/hashlib.py
+    * https://github.com/python/cpython/tree/3.7/Modules/_blake2
+      https://github.com/python/cpython/blob/3.7/Lib/hashlib.py
     """
     return hashlib.blake2b(message, digest_size=digest_size, key=key, salt=salt, person=person).digest()
 
 
-def argon2_kdf(password:    str,                      # Password to derive the key from
-               salt:        bytes,                    # Salt to derive the key from
-               rounds:      int = ARGON2_ROUNDS,      # Number of iterations
-               memory:      int = ARGON2_MIN_MEMORY,  # Amount of memory to use (in bytes)
-               parallelism: int = 1                   # Number of threads to use
-               ) -> bytes:                            # The derived key
+def argon2_kdf(password:    str,                           # Password to derive the key from
+               salt:        bytes,                         # Salt to derive the key from
+               time_cost:   int = ARGON2_PSK_TIME_COST,    # Number of iterations
+               memory_cost: int = ARGON2_PSK_MEMORY_COST,  # Amount of memory to use (in bytes)
+               parallelism: int = 2                        # Number of threads to use
+               ) -> bytes:                                 # The derived key
     """Derive an encryption key from password and salt using Argon2d.
 
     Argon2 is a key derivation function (KDF) designed by Alex Biryukov,
@@ -158,8 +159,8 @@ def argon2_kdf(password:    str,                      # Password to derive the k
 
     key = argon2.low_level.hash_secret_raw(secret=password.encode(),
                                            salt=salt,
-                                           time_cost=rounds,
-                                           memory_cost=memory,
+                                           time_cost=time_cost,
+                                           memory_cost=memory_cost,
                                            parallelism=parallelism,
                                            hash_len=SYMMETRIC_KEY_LENGTH,
                                            type=argon2.Type.D)  # type: bytes
@@ -359,8 +360,9 @@ def byte_padding(bytestring: bytes  # Bytestring to be padded
     For a better explanation, see
         https://en.wikipedia.org/wiki/Padding_(cryptography)#PKCS#5_and_PKCS#7
     """
-    padding_len = PADDING_LENGTH - (len(bytestring) % PADDING_LENGTH)
-    bytestring += padding_len * bytes([padding_len])
+    padder      = padding.PKCS7(PADDING_LENGTH * BITS_PER_BYTE).padder()
+    bytestring  = padder.update(bytestring)
+    bytestring += padder.finalize()
 
     if len(bytestring) % PADDING_LENGTH != 0:  # pragma: no cover
         raise CriticalError("Invalid padding length.")
@@ -375,8 +377,11 @@ def rm_padding_bytes(bytestring: bytes  # Bytestring from which padding is remov
     The length of padding is determined by the ord-value of the last
     byte that is always part of the padding.
     """
-    length = ord(bytestring[-1:])
-    return bytestring[:-length]
+    unpadder    = padding.PKCS7(PADDING_LENGTH * BITS_PER_BYTE).unpadder()
+    bytestring  = unpadder.update(bytestring)
+    bytestring += unpadder.finalize()
+
+    return bytestring
 
 
 def csprng(key_length: int = SYMMETRIC_KEY_LENGTH) -> bytes:
@@ -389,7 +394,7 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH) -> bytes:
 
     Since Python 3.6.0, `os.urandom` is a wrapper for best available
     CSPRNG. The 3.17 and earlier versions of Linux kernel do not support
-    the GETRANDOM call, and Python 3.6's `os.urandom` will in those
+    the GETRANDOM call, and Python 3.7's `os.urandom` will in those
     cases fall back to non-blocking `/dev/urandom` that is not secure on
     live distros as they have low entropy at the start of the session.
 
@@ -437,12 +442,12 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH) -> bytes:
     entropy = os.getrandom(key_length, flags=0)
 
     if len(entropy) != key_length:
-        raise CriticalError("GETRANDOM returned invalid amount of entropy.")
+        raise CriticalError(f"GETRANDOM returned invalid amount of entropy ({len(entropy)} bytes).")
 
     compressed = blake2b(entropy, digest_size=key_length)
 
     if len(compressed) != key_length:
-        raise CriticalError("Invalid final key size.")
+        raise CriticalError(f"Invalid final key size ({len(compressed)} bytes).")
 
     return compressed
 

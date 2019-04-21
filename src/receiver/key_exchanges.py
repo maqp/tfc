@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -64,6 +64,8 @@ def process_local_key(ts:            'datetime',
                       ) -> None:
     """Decrypt local key packet and add local contact/keyset."""
     bootstrap = not key_list.has_local_keyset()
+    plaintext = None
+
     try:
         packet_hash = blake2b(packet)
 
@@ -111,6 +113,10 @@ def process_local_key(ts:            'datetime',
                     raise FunctionReturn("Error: Incorrect key decryption key.", delay=1)
 
             break
+
+        # This catches PyCharm's weird claim that plaintext might be referenced before assignment
+        if plaintext is None:  # pragma: no cover
+            raise FunctionReturn("Error: Could not decrypt local key.")
 
         # Add local contact to contact list database
         contact_list.add_contact(LOCAL_PUBKEY,
@@ -292,7 +298,7 @@ def key_ex_psk_rx(packet:       bytes,
         try:
             password = MasterKey.get_password("PSK password")
             phase("Deriving the key decryption key", head=2)
-            kdk = argon2_kdf(password, salt, rounds=ARGON2_ROUNDS, memory=ARGON2_MIN_MEMORY)
+            kdk = argon2_kdf(password, salt, time_cost=ARGON2_PSK_TIME_COST, memory_cost=ARGON2_PSK_MEMORY_COST)
             psk = auth_and_decrypt(ct_tag, kdk)
             phase(DONE)
             break

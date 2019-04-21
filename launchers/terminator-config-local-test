@@ -33,21 +33,21 @@
       type       = VPaned
 
     [[[source_computer_emulator]]]
-      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.6 tfc.py -l && deactivate || bash
+      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.7 tfc.py -l && deactivate || bash
       directory  = ""
       order      = 1
       parent     = child2
       profile    = tfc
       type       = Terminal
     [[[destination_computer_emulator]]]
-      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.6 tfc.py -l -r && deactivate || bash
+      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.7 tfc.py -l -r && deactivate || bash
       directory  = ""
       order      = 0
       parent     = child2
       profile    = tfc
       type       = Terminal
     [[[networked_computer_emulator]]]
-      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.6 relay.py -l && deactivate || bash
+      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.7 relay.py -l && deactivate || bash
       directory  = ""
       order      = 1
       parent     = child1
@@ -76,21 +76,21 @@
       type       = VPaned
 
     [[[source_computer_emulator]]]
-      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.6 tfc.py -l && deactivate || bash
+      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.7 tfc.py -l && deactivate || bash
       directory  = ""
       order      = 1
       parent     = child2
       profile    = tfc
       type       = Terminal
     [[[destination_computer_emulator]]]
-      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.6 tfc.py -l -r && deactivate || bash
+      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.7 tfc.py -l -r && deactivate || bash
       directory  = ""
       order      = 0
       parent     = child2
       profile    = tfc
       type       = Terminal
     [[[networked_computer_emulator]]]
-      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.6 relay.py -l && deactivate || bash
+      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.7 relay.py -l && deactivate || bash
       directory  = ""
       order      = 0
       parent     = child1
@@ -129,21 +129,21 @@
       type       = VPaned
 
     [[[source_computer_emulator]]]
-      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.6 tfc.py -l -d && deactivate || bash
+      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.7 tfc.py -l -d && deactivate || bash
       directory  = ""
       order      = 1
       parent     = child2
       profile    = tfc-dd
       type       = Terminal
     [[[destination_computer_emulator]]]
-      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.6 tfc.py -l -r && deactivate || bash
+      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.7 tfc.py -l -r && deactivate || bash
       directory  = ""
       order      = 0
       parent     = child2
       profile    = tfc-dd
       type       = Terminal
     [[[networked_computer_emulator]]]
-      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.6 relay.py -l -d && deactivate || bash
+      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.7 relay.py -l -d && deactivate || bash
       directory  = ""
       order      = 1
       parent     = child3
@@ -151,14 +151,14 @@
       type       = Terminal
 
     [[[source_computer_dd_emulator]]]
-      command    = cd /opt/tfc/ && python3.6 dd.py scnclr
+      command    = cd /opt/tfc/ && python3.7 dd.py scnclr
       directory  = ""
       order      = 1
       parent     = child4
       profile    = tfc-dd
       type       = Terminal
     [[[destination_computer_dd_emulator]]]
-      command    = cd /opt/tfc/ && python3.6 dd.py ncdclr
+      command    = cd /opt/tfc/ && python3.7 dd.py ncdclr
       directory  = ""
       order      = 0
       parent     = child4
@@ -197,21 +197,21 @@
       type       = VPaned
 
     [[[source_computer_emulator]]]
-      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.6 tfc.py -l -d && deactivate || bash
+      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.7 tfc.py -l -d && deactivate || bash
       directory  = ""
       order      = 1
       parent     = child4
       profile    = tfc-dd
       type       = Terminal
     [[[destination_computer_emulator]]]
-      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.6 tfc.py -l -r && deactivate || bash
+      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.7 tfc.py -l -r && deactivate || bash
       directory  = ""
       order      = 0
       parent     = child4
       profile    = tfc-dd
       type       = Terminal
     [[[networked_computer_emulator]]]
-      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.6 relay.py -l -d && deactivate || bash
+      command    = cd /opt/tfc/ && source venv_tfc/bin/activate && python3.7 relay.py -l -d && deactivate || bash
       directory  = ""
       order      = 0
       parent     = child2
@@ -219,14 +219,14 @@
       type       = Terminal
 
     [[[source_computer_dd_emulator]]]
-      command    = cd /opt/tfc/ && python3.6 dd.py scncrl
+      command    = cd /opt/tfc/ && python3.7 dd.py scncrl
       directory  = ""
       order      = 1
       parent     = child3
       profile    = tfc-dd
       type       = Terminal
     [[[destination_computer_dd_emulator]]]
-      command    = cd /opt/tfc/ && python3.6 dd.py ncdcrl
+      command    = cd /opt/tfc/ && python3.7 dd.py ncdcrl
       directory  = ""
       order      = 0
       parent     = child3

@@ -1,7 +1,7 @@
 [Desktop Entry]
-Version=1.19.03
+Version=1.19.04
 Name=TFC-Receiver
-Exec=gnome-terminal --disable-factory --maximize -x bash -c "cd /opt/tfc && source venv_tcb/bin/activate && python3.6 'tfc.py' -r && deactivate || bash"
+Exec=gnome-terminal --disable-factory --maximize -x bash -c "cd /opt/tfc && source venv_tcb/bin/activate && python3.7 'tfc.py' -r && deactivate || bash"
 Icon=tfc.png
 Terminal=false
 Type=Application

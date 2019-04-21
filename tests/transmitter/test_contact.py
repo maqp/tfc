@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -78,7 +78,7 @@ class TestAddNewContact(TFCTestCase):
     @mock.patch('builtins.input',  side_effect=[nick_to_onion_address("Alice"), 'Alice_', 'psk', '.'])
     @mock.patch('getpass.getpass', return_value='test_password')
     @mock.patch('time.sleep',      return_value=None)
-    @mock.patch('src.transmitter.key_exchanges.ARGON2_MIN_MEMORY',       1000)
+    @mock.patch('src.transmitter.key_exchanges.ARGON2_PSK_MEMORY_COST',  200)
     @mock.patch('src.transmitter.key_exchanges.MIN_KEY_DERIVATION_TIME', 0.01)
     def test_standard_nick_psk_kex(self, *_):
         self.onion_service.account = nick_to_onion_address('Bob').encode()
@@ -235,6 +235,15 @@ class TestChangeNick(TFCTestCase):
 
         # Test
         self.assert_fr("Error: Nick must be printable.", change_nick, UserInput("nick Alice\x01"), window, *self.args)
+
+    def test_no_contact_raises_fr(self):
+        # Setup
+        window = TxWindow(type=WIN_TYPE_CONTACT,
+                          contact=create_contact('Bob'))
+        window.contact = None
+
+        # Test
+        self.assert_fr("Error: Window does not have contact.", change_nick, UserInput("nick Alice\x01"), window, *self.args)
 
     def test_successful_nick_change(self):
         # Setup

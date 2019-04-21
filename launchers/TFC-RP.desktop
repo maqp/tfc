@@ -1,7 +1,7 @@
 [Desktop Entry]
-Version=1.19.03
+Version=1.19.04
 Name=TFC-Relay
-Exec=gnome-terminal --disable-factory -x bash -c "cd /opt/tfc && source venv_relay/bin/activate && python3.6 'relay.py' && deactivate || bash"
+Exec=gnome-terminal --disable-factory -x bash -c "cd /opt/tfc && source venv_relay/bin/activate && python3.7 'relay.py' && deactivate || bash"
 Icon=tfc.png
 Terminal=false
 Type=Application

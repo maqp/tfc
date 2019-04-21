@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -137,13 +137,13 @@ def process_message(ts:                 'datetime',
         packet.clear_assembly_packets()
 
 
-def process_group_message(assembled:     bytes,
-                          ts:            'datetime',
-                          onion_pub_key: bytes,
-                          origin:        bytes,
-                          whisper:       bool,
-                          group_list:    'GroupList',
-                          window_list:   'WindowList'
+def process_group_message(assembled:     bytes,        # Group message and its headers
+                          ts:            'datetime',   # Timestamp of group message
+                          onion_pub_key: bytes,        # Onion address of associated contact
+                          origin:        bytes,        # Origin of group message (user / contact)
+                          whisper:       bool,         # When True, message is not logged.
+                          group_list:    'GroupList',  # GroupList object
+                          window_list:   'WindowList'  # WindowList object
                           ) -> bool:
     """Process a group message."""
     group_id, assembled = separate_header(assembled, GROUP_ID_LENGTH)
@@ -177,11 +177,11 @@ def process_group_message(assembled:     bytes,
     return group.log_messages
 
 
-def process_file_key_message(assembled:     bytes,
-                             onion_pub_key: bytes,
-                             origin:        bytes,
-                             contact_list:  'ContactList',
-                             file_keys:     Dict[bytes, bytes]
+def process_file_key_message(assembled:     bytes,              # File decryption key
+                             onion_pub_key: bytes,              # Onion address of associated contact
+                             origin:        bytes,              # Origin of file key packet (user / contact)
+                             contact_list:  'ContactList',      # ContactList object
+                             file_keys:     Dict[bytes, bytes]  # Dictionary of file identifiers and decryption keys
                              ) -> str:
     """Process received file key delivery message."""
     if origin == ORIGIN_USER_HEADER:

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -208,13 +208,13 @@ class TxWindow(Iterable, Sized):
     def deselect(self) -> None:
         """Deselect active window."""
         self.window_contacts = []
-        self.contact         = None  # type: Contact
-        self.group           = None  # type: Group
+        self.contact         = None  # type: Optional[Contact]
+        self.group           = None  # type: Optional[Group]
         self.name            = ''    # type: str
         self.uid             = b''   # type: bytes
-        self.log_messages    = None  # type: bool
+        self.log_messages    = None  # type: Optional[bool]
         self.type            = ''    # type: str
-        self.type_print      = None  # type: str
+        self.type_print      = None  # type: Optional[str]
 
     def is_selected(self) -> bool:
         """Return True if a window is selected, else False."""

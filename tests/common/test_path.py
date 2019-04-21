@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -29,7 +29,7 @@ from unittest.mock import MagicMock
 from src.common.path import ask_path_cli, ask_path_gui, Completer
 
 from tests.mock_classes import Settings
-from tests.utils        import ignored, TFCTestCase
+from tests.utils        import cd_unittest, cleanup, ignored, TFCTestCase
 
 
 class TestAskPathGui(TFCTestCase):
@@ -78,21 +78,34 @@ class TestAskPathGui(TFCTestCase):
 class TestCompleter(unittest.TestCase):
 
     def setUp(self):
-        self.cwd = os.getcwd()
-        os.chdir('/bin')
+        self.cwd          = os.getcwd()
+        self.unittest_dir = cd_unittest()
+
+        # Create test directory structure for the completer.
+        os.mkdir('outer')
+        os.chdir('outer/')
+        with open('file', 'w+') as f:
+            f.write('text')
+        os.mkdir('middle')
+        os.chdir('middle/')
+        os.mkdir('inner')
+        os.chdir('..')
+        os.chdir('..')
 
     def tearDown(self):
+        cleanup(self.unittest_dir)
         os.chdir(self.cwd)
 
     def test_completer(self):
         # Test path
         completer = Completer(get_file=False)
-        self.assertEqual(completer.complete_path('/bin/'),   [])
-        self.assertEqual(completer.path_complete(['/bin']),  [])
-        self.assertEqual(completer.path_complete(),          [])
-        self.assertEqual(completer.complete_path(''),        [])
-        self.assertEqual(completer.complete_path('/bin/sh'), ['/bin/sh '])
-        self.assertNotEqual(completer.listdir('/etc/'),      [])
+        self.assertEqual(completer.complete_path('outer/'),       ['outer/middle/'])
+        self.assertEqual(completer.path_complete(['/outer']),     [])
+        self.assertEqual(completer.path_complete(),               ['./outer/'])
+        self.assertEqual(completer.complete_path(''),             ['outer/'])
+        self.assertEqual(completer.complete_path('outer/middle'), ['outer/middle/inner/'])
+        self.assertEqual(completer.complete_path('outer/file'),   ['outer/file '])
+        self.assertNotEqual(completer.listdir('outer/'),          [])
 
         # Test file
         completer = Completer(get_file=True)

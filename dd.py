@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -123,7 +123,7 @@ def process_arguments() -> Tuple[str, int, int]:
 
     except (IndexError, KeyError):
         clear_screen()
-        print("\nUsage: python3.6 dd.py [OPTION]\n\n"
+        print("\nUsage: python3.7 dd.py [OPTION]\n\n"
               "\nMandatory arguments"
               "\n Argument  Simulate data diodes between..."
               "\n   scnclr    Source Computer    and Networked Computer   (left to right)"

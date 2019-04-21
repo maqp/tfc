@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -44,7 +44,6 @@ class TestInputLoop(unittest.TestCase):
                   VALID_ECDHE_PUB_KEY,             # Enter public key for contact
                   'Yes',                           # Accept key fingerprints for Alice
                   conf_code,                       # Confirmation code
-                  'Alice',                         # Select Alice as the recipient
                   'Alice',                         # Select Alice as the recipient
                   'Test',                          # Send test message
                   '/file',                         # Open file selection prompt

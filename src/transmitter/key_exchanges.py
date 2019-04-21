@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -266,7 +266,7 @@ def start_key_exchange(onion_pub_key: bytes,          # Public key of contact's 
 
     This function first creates the X448 key pair. It then outputs the
     public key to Relay Program on Networked Computer, that passes the
-    public key to contact's Relay Program. When Contact's public key
+    public key to contact's Relay Program. When contact's public key
     reaches the user's Relay Program, the user will manually copy the
     key into their Transmitter Program.
 
@@ -467,7 +467,7 @@ def create_pre_shared_key(onion_pub_key: bytes,           # Public key of contac
         password = MasterKey.new_password("password for PSK")
 
         phase("Deriving key encryption key", head=2)
-        kek = argon2_kdf(password, salt, rounds=ARGON2_ROUNDS, memory=ARGON2_MIN_MEMORY)
+        kek = argon2_kdf(password, salt, time_cost=ARGON2_PSK_TIME_COST, memory_cost=ARGON2_PSK_MEMORY_COST)
         phase(DONE)
 
         ct_tag = encrypt_and_sign(tx_mk + tx_hk, key=kek)

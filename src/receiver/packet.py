@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -223,8 +223,6 @@ class Packet(object):
 
         if self.type == FILE:
             self.new_file_packet()
-            sh, _, packet = separate_headers(packet, [ASSEMBLY_PACKET_HEADER_LENGTH] + [2*ENCODED_INTEGER_LENGTH])
-            packet        = sh + packet
 
         self.assembly_pt_list = [packet]
         self.long_active      = False
@@ -244,14 +242,13 @@ class Packet(object):
         if self.type == FILE:
             self.new_file_packet()
             try:
-                lh, no_p_bytes, time_bytes, size_bytes, packet \
+                lh, no_p_bytes, time_bytes, size_bytes, _ \
                     = separate_headers(packet, [ASSEMBLY_PACKET_HEADER_LENGTH] + 3*[ENCODED_INTEGER_LENGTH])
 
                 self.packets = bytes_to_int(no_p_bytes)  # added by transmitter.packet.split_to_assembly_packets
                 self.time    = str(timedelta(seconds=bytes_to_int(time_bytes)))
                 self.size    = readable_size(bytes_to_int(size_bytes))
                 self.name    = packet.split(US_BYTE)[0].decode()
-                packet       = lh + packet
 
                 m_print([f'Receiving file from {self.contact.nick}:',
                          f'{self.name} ({self.size})',
@@ -357,6 +354,9 @@ class Packet(object):
         """Assemble file packet and store it."""
         padded  = b''.join([p[ASSEMBLY_PACKET_HEADER_LENGTH:] for p in self.assembly_pt_list])
         payload = rm_padding_bytes(padded)
+
+        no_fields   = 3 if len(self.assembly_pt_list) > 1 else 2
+        *_, payload = separate_headers(payload, no_fields * [ENCODED_INTEGER_LENGTH])
 
         process_assembled_file(ts, payload, onion_pub_key, self.contact.nick, self.settings, window_list)
 

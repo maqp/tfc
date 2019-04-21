@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -26,6 +26,7 @@ import unittest
 from datetime        import datetime
 from multiprocessing import Queue
 from unittest        import mock
+from unittest.mock   import MagicMock
 
 from src.common.db_logs  import write_log_entry
 from src.common.encoding import int_to_bytes
@@ -236,8 +237,9 @@ class TestChMasterKey(TFCTestCase):
 
     @mock.patch('getpass.getpass', return_value='a')
     @mock.patch('time.sleep',      return_value=None)
-    @mock.patch('src.common.db_masterkey.ARGON2_MIN_MEMORY',       1000)
+    @mock.patch('os.popen',        return_value=MagicMock(read=MagicMock(return_value='foo\nMemFree 200')))
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.01)
+    @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 1.01)
     def test_master_key_change(self, *_):
         # Setup
         write_log_entry(F_S_HEADER + bytes(PADDING_LENGTH), nick_to_pub_key("Alice"), self.settings, self.master_key)

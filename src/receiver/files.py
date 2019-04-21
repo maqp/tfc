@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -111,7 +111,7 @@ def process_assembled_file(ts:            'datetime',    # Timestamp last receiv
     window.add_new(ts, message, onion_pub_key, output=True, event_msg=True)
 
 
-def new_file(ts:           'datetime',
+def new_file(ts:           'datetime',                             # Timestamp of received_packet
              packet:       bytes,                                  # Sender of file and file ciphertext
              file_keys:    Dict[bytes, bytes],                     # Dictionary for file decryption keys
              file_buf:     Dict[bytes, Tuple['datetime', bytes]],  # Dictionary for cached file ciphertexts

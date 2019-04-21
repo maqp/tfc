@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -49,7 +49,7 @@ class TestStatics(unittest.TestCase):
         self.assertEqual(len(list(set(variable_list))), len(variable_list))
 
     def test_group_id_length_is_not_same_as_onion_service_pub_key_length(self):
-        """}
+        """\
         In current implementation, `src.common.db_logs.remove_logs`
         determines the type of data to be removed from the length of
         provided `selector` parameter. If group ID length is set to same

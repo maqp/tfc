@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -307,8 +307,8 @@ class TestKeyExPSKRx(TFCTestCase):
         # Test
         self.assert_fr("Error: The PSK data in the file was invalid.", key_ex_psk_rx, *self.args)
 
-    @mock.patch('time.sleep',      return_value=None)
-    @mock.patch('builtins.input',  return_value=file_name)
+    @mock.patch('time.sleep',     return_value=None)
+    @mock.patch('builtins.input', return_value=file_name)
     def test_permission_error_raises_fr(self, *_):
         # Setup
         with open(self.file_name, 'wb+') as f:
@@ -324,8 +324,8 @@ class TestKeyExPSKRx(TFCTestCase):
             self.assertEqual("Error: No read permission for the PSK file.", inst.message)
         self.assertTrue(e_raised)
 
-    @mock.patch('src.receiver.key_exchanges.ARGON2_ROUNDS',     1)
-    @mock.patch('src.receiver.key_exchanges.ARGON2_MIN_MEMORY', 100)
+    @mock.patch('src.receiver.key_exchanges.ARGON2_PSK_TIME_COST',   1)
+    @mock.patch('src.receiver.key_exchanges.ARGON2_PSK_MEMORY_COST', 100)
     @mock.patch('getpass.getpass', side_effect=['invalid', 'password'])
     @mock.patch('time.sleep',      return_value=None)
     @mock.patch('os.urandom',      side_effect=[bytes(XCHACHA20_NONCE_LENGTH)])
@@ -339,7 +339,7 @@ class TestKeyExPSKRx(TFCTestCase):
         salt   = bytes(ARGON2_SALT_LENGTH)
         rx_key = bytes(SYMMETRIC_KEY_LENGTH)
         rx_hek = bytes(SYMMETRIC_KEY_LENGTH)
-        kek    = argon2_kdf('password', salt, rounds=1, memory=100)
+        kek    = argon2_kdf('password', salt, time_cost=1, memory_cost=100)
         ct_tag = encrypt_and_sign(rx_key + rx_hek, key=kek)
 
         with open(self.file_name, 'wb+') as f:
@@ -348,8 +348,8 @@ class TestKeyExPSKRx(TFCTestCase):
         # Test
         self.assert_fr("Error: Received invalid keys from contact.", key_ex_psk_rx, *self.args)
 
-    @mock.patch('src.receiver.key_exchanges.ARGON2_ROUNDS',     1)
-    @mock.patch('src.receiver.key_exchanges.ARGON2_MIN_MEMORY', 100)
+    @mock.patch('src.receiver.key_exchanges.ARGON2_PSK_TIME_COST',   1)
+    @mock.patch('src.receiver.key_exchanges.ARGON2_PSK_MEMORY_COST', 100)
     @mock.patch('time.sleep',      return_value=None)
     @mock.patch('builtins.input',  return_value=file_name)
     @mock.patch('getpass.getpass', return_value='test_password')
@@ -361,7 +361,7 @@ class TestKeyExPSKRx(TFCTestCase):
         salt          = os.urandom(ARGON2_SALT_LENGTH)
         rx_key        = os.urandom(SYMMETRIC_KEY_LENGTH)
         rx_hek        = os.urandom(SYMMETRIC_KEY_LENGTH)
-        kek           = argon2_kdf('test_password', salt, rounds=1, memory=100)
+        kek           = argon2_kdf('test_password', salt, time_cost=1, memory_cost=100)
         ct_tag        = encrypt_and_sign(rx_key + rx_hek, key=kek)
 
         with open(self.file_name, 'wb+') as f:
@@ -374,8 +374,8 @@ class TestKeyExPSKRx(TFCTestCase):
         self.assertEqual(keyset.rx_mk, rx_key)
         self.assertEqual(keyset.rx_hk, rx_hek)
 
-    @mock.patch('src.receiver.key_exchanges.ARGON2_ROUNDS',     1)
-    @mock.patch('src.receiver.key_exchanges.ARGON2_MIN_MEMORY', 100)
+    @mock.patch('src.receiver.key_exchanges.ARGON2_PSK_TIME_COST',   1)
+    @mock.patch('src.receiver.key_exchanges.ARGON2_PSK_MEMORY_COST', 100)
     @mock.patch('subprocess.Popen')
     @mock.patch('time.sleep',      return_value=None)
     @mock.patch('builtins.input',  side_effect=[file_name, ''])
@@ -389,7 +389,7 @@ class TestKeyExPSKRx(TFCTestCase):
         salt   = os.urandom(ARGON2_SALT_LENGTH)
         rx_key = os.urandom(SYMMETRIC_KEY_LENGTH)
         rx_hek = os.urandom(SYMMETRIC_KEY_LENGTH)
-        kek    = argon2_kdf('test_password', salt, rounds=1, memory=100)
+        kek    = argon2_kdf('test_password', salt, time_cost=1, memory_cost=100)
         ct_tag = encrypt_and_sign(rx_key + rx_hek, key=kek)
 
         with open(self.file_name, 'wb+') as f:
@@ -402,8 +402,8 @@ class TestKeyExPSKRx(TFCTestCase):
         self.assertEqual(keyset.rx_mk, rx_key)
         self.assertEqual(keyset.rx_hk, rx_hek)
 
-    @mock.patch('src.receiver.key_exchanges.ARGON2_ROUNDS',     1)
-    @mock.patch('src.receiver.key_exchanges.ARGON2_MIN_MEMORY', 100)
+    @mock.patch('src.receiver.key_exchanges.ARGON2_PSK_TIME_COST',   1)
+    @mock.patch('src.receiver.key_exchanges.ARGON2_PSK_MEMORY_COST', 100)
     @mock.patch('subprocess.Popen')
     @mock.patch('time.sleep',      return_value=None)
     @mock.patch('builtins.input',  side_effect=[file_name, ''])

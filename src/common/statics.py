@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -24,7 +24,7 @@ TFC     = 'TFC'
 TXP     = 'Transmitter'
 RXP     = 'Receiver'
 RP      = 'Relay'
-VERSION = '1.19.03'
+VERSION = '1.19.04'
 
 
 """Identifiers
@@ -379,7 +379,7 @@ STATIC          = 'static'
 TRAFFIC_MASKING = 'traffic_masking'
 
 
-"""Default folders"""
+"""Default directories"""
 DIR_USER_DATA  = 'user_data/'
 DIR_RECV_FILES = 'received_files/'
 DIR_TFC        = 'tfc/'
@@ -448,7 +448,6 @@ WIPE                         = 'WIPE'
 
 
 """Static values"""
-
 # Serial interface
 BAUDS_PER_BYTE        = 10
 SERIAL_RX_MIN_TIMEOUT = 0.05
@@ -493,15 +492,18 @@ ONION_ADDRESS_CHECKSUM_LENGTH = 2
 ONION_ADDRESS_LENGTH          = 56
 
 # Misc
+BITS_PER_BYTE        = 8
 MAX_INT              = 2 ** 64 - 1
 B58_CHECKSUM_LENGTH  = 4
 TRUNC_ADDRESS_LENGTH = 5
 
 # Key derivation
+ARGON_2_MIN_MEMORY_COST = 8
 ARGON2_SALT_LENGTH      = 32
-ARGON2_ROUNDS           = 25
-ARGON2_MIN_MEMORY       = 64000  # bytes
-MIN_KEY_DERIVATION_TIME = 3.0    # seconds
+ARGON2_PSK_TIME_COST    = 25
+ARGON2_PSK_MEMORY_COST  = 512 * 1024  # kibibytes
+MIN_KEY_DERIVATION_TIME = 3.0         # seconds
+MAX_KEY_DERIVATION_TIME = 4.0         # seconds
 
 # Cryptographic field sizes
 TFC_PRIVATE_KEY_LENGTH           = 56
@@ -572,7 +574,7 @@ LOG_ENTRY_LENGTH = (XCHACHA20_NONCE_LENGTH
 
 MASTERKEY_DB_SIZE = (ARGON2_SALT_LENGTH
                      + BLAKE2_DIGEST_LENGTH
-                     + 2 * ENCODED_INTEGER_LENGTH)
+                     + 3 * ENCODED_INTEGER_LENGTH)
 
 SETTING_LENGTH = (XCHACHA20_NONCE_LENGTH
                   + 4 * ENCODED_INTEGER_LENGTH

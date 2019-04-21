@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -25,7 +25,6 @@ import os
 import random
 import shlex
 import socket
-import subprocess
 import tempfile
 import time
 
@@ -157,24 +156,8 @@ def stem_compatible_ed25519_key_from_private_key(private_key: bytes) -> str:
     return base64.b64encode(expanded_private_key).decode()
 
 
-def kill_background_tor() -> None:
-    """Kill any open TFC-related Tor instances left open.
-
-    Copies of Tor might stay open in cases where the user has closed the
-    application from Terminator's close window ((x) button).
-    """
-    try:
-        pids = subprocess.check_output("ps aux |grep '[t]fc/tor' | awk '{print $2}' 2>/dev/null", shell=True)
-        for pid in pids.split(b'\n'):
-            subprocess.Popen("kill {}".format(int(pid)), shell=True).wait()
-    except ValueError:
-        pass
-
-
 def onion_service(queues: Dict[bytes, 'Queue']) -> None:
     """Manage the Tor Onion Service and control Tor via stem."""
-    kill_background_tor()
-
     rp_print("Setup   0% - Waiting for Onion Service configuration...", bold=True)
     while queues[ONION_KEY_QUEUE].qsize() == 0:
         time.sleep(0.1)

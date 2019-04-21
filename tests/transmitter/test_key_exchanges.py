@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -252,8 +252,8 @@ class TestPSK(TFCTestCase):
     @mock.patch('builtins.input',  side_effect=['/root/', '.'])
     @mock.patch('time.sleep',      return_value=None)
     @mock.patch('getpass.getpass', return_value='test_password')
-    @mock.patch('src.transmitter.key_exchanges.ARGON2_MIN_MEMORY',       1000)
-    @mock.patch('src.transmitter.key_exchanges.MIN_KEY_DERIVATION_TIME', 0.01)
+    @mock.patch('src.transmitter.key_exchanges.ARGON2_PSK_MEMORY_COST', 1000)
+    @mock.patch('src.transmitter.key_exchanges.ARGON2_PSK_TIME_COST',   1)
     def test_psk_creation(self, *_):
         self.assertIsNone(create_pre_shared_key(nick_to_pub_key("Alice"), 'Alice', *self.args))
 
@@ -323,9 +323,9 @@ class TestReceiverLoadPSK(TFCTestCase):
         # Test
         self.assert_fr(f"Error: The current key was exchanged with {ECDHE}.",
                        rxp_load_psk, window, contact_list, *self.args)
-
-    @mock.patch('src.transmitter.key_exchanges.ARGON2_MIN_MEMORY',       1000)
-    @mock.patch('src.transmitter.key_exchanges.MIN_KEY_DERIVATION_TIME', 0.01)
+    
+    @mock.patch('src.transmitter.key_exchanges.ARGON2_PSK_MEMORY_COST', 1000)
+    @mock.patch('src.transmitter.key_exchanges.ARGON2_PSK_TIME_COST',   0.01)
     @mock.patch('time.sleep',     return_value=None)
     @mock.patch('builtins.input', side_effect=[b'0'.hex(), blake2b(nick_to_pub_key('Alice'),
                                                                    digest_size=CONFIRM_CODE_LENGTH).hex()])

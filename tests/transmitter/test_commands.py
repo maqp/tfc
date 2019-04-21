@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -22,10 +22,12 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 import os
 import unittest
 
-from unittest import mock
+from unittest      import mock
+from unittest.mock import MagicMock
 
-from src.common.db_logs import write_log_entry
-from src.common.statics import *
+from src.common.db_logs  import write_log_entry
+from src.common.encoding import bool_to_bytes
+from src.common.statics  import *
 
 from src.transmitter.commands import change_master_key, change_setting, clear_screens, exit_tfc, log_command
 from src.transmitter.commands import print_about, print_help, print_recipients, print_settings, process_command
@@ -240,9 +242,9 @@ class TestLogCommand(TFCTestCase):
     @mock.patch('builtins.input', return_value='Yes')
     def test_successful_export_command(self, *_):
         # Setup
-        self.window.type = 'contact'
+        self.window.type = WIN_TYPE_CONTACT
         self.window.uid  = nick_to_pub_key('Alice')
-        whisper_header   = b'\x00'
+        whisper_header   = bool_to_bytes(False)
         packet           = split_to_assembly_packets(whisper_header + PRIVATE_MESSAGE_HEADER + b'test', MESSAGE)[0]
         write_log_entry(packet, nick_to_pub_key('Alice'), self.settings, self.master_key)
 
@@ -473,9 +475,9 @@ class TestChangeMasterKey(TFCTestCase):
         self.assert_fr("Error: Invalid target system 't'.",
                        change_master_key, UserInput("passwd t"), *self.args)
 
+    @mock.patch('os.popen',        return_value=MagicMock(read=MagicMock(return_value='foo\nMemFree 200')))
     @mock.patch('getpass.getpass', return_value='a')
     @mock.patch('time.sleep',      return_value=None)
-    @mock.patch('src.common.db_masterkey.ARGON2_MIN_MEMORY',       1000)
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.01)
     def test_transmitter_command(self, *_):
         # Setup

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -198,7 +198,8 @@ def change_nick(user_input:   'UserInput',
     if window.type == WIN_TYPE_GROUP:
         rename_group(nick, window, contact_list, group_list, settings, queues)
 
-    assert window.contact is not None
+    if window.contact is None:
+        raise FunctionReturn("Error: Window does not have contact.")
 
     onion_pub_key = window.contact.onion_pub_key
     error_msg     = validate_nick(nick, (contact_list, group_list, onion_pub_key))

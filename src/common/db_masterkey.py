@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -22,6 +22,8 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 import multiprocessing
 import os.path
 import time
+
+from typing import Tuple
 
 from src.common.crypto     import argon2_kdf, blake2b, csprng
 from src.common.encoding   import bytes_to_int, int_to_bytes
@@ -52,60 +54,157 @@ class MasterKey(object):
         except (EOFError, KeyboardInterrupt):
             graceful_exit()
 
+    @staticmethod
+    def timed_key_derivation(password:    str,
+                             salt:        bytes,
+                             time_cost:   int,
+                             memory_cost: int,
+                             parallelism: int
+                             ) -> Tuple[bytes, float]:
+        """Derive key and measure its derivation time."""
+        time_start = time.monotonic()
+        master_key = argon2_kdf(password, salt, time_cost, memory_cost, parallelism)
+        kd_time    = time.monotonic() - time_start
+
+        return master_key, kd_time
+
+    @staticmethod
+    def get_free_memory() -> int:
+        """Return the amount of free memory in the system."""
+        fields   = os.popen("cat /proc/meminfo").read().splitlines()
+        field    = [f for f in fields if f.startswith('MemFree')][0]
+        mem_free = int(field.split()[1])
+
+        return mem_free
+
     def new_master_key(self) -> bytes:
         """Create a new master key from password and salt.
 
         The generated master key depends on a 256-bit salt and the
         password entered by the user. Additional computational strength
-        is added by the slow hash function (Argon2d). This method
-        automatically tweaks the Argon2 memory parameter so that key
-        derivation on used hardware takes at least three seconds. The
-        more cores and the faster each core is, the more security a
-        given password provides.
+        is added by the slow hash function (Argon2d). The more cores and
+        the faster each core is, and the more memory the system has, the
+        more secure TFC data is under the same password.
 
-        The preimage resistance of BLAKE2b prevents derivation of master
+        This method automatically tweaks the Argon2 time and memory cost
+        parameters according to best practices as determined in
+
+            https://tools.ietf.org/html/draft-irtf-cfrg-argon2-04#section-4
+
+        1) For Argon 2 type (y), Argon2d has is selected because the
+           adversary does not have side channel access to the
+           data-diode separated devices that run the algorithm.
+
+        2) The maximum number of threads (h) is determined by the number
+           available in the system. However, during local testing this
+           number is reduced to half to allow simultaneous login to
+           Transmitter and Receiver Program.
+
+        3) The maximum amount of memory (m) is what the system has to
+           offer. For hard-drive encryption purposes, the recommendation
+           is 6GB. TFC will use that amount (or even more) if available.
+           However, on less powerful systems, it will settle for less.
+
+        4) For key derivation time (x), the value is set to at least 3
+           seconds, with the maximum being 4 seconds. The minimum value
+           is the same as the recommendation for hard-drive encryption.
+
+        5) The salt length is set to 256-bits which is double the recommended
+           length. The salt size ensures that even in a group of 4.8*10^29
+           users, the probability that two users share the same salt is just
+           10^(-18).*
+            * https://en.wikipedia.org/wiki/Birthday_attack
+
+           The salt does not need additional protection as the security it
+           provides depends on the salt space in relation to the number of
+           attacked targets (i.e. if two or more physically compromised
+           systems happen to share the same salt, the attacker can speed up
+           the attack against those systems with time-memory-trade-off
+           attack).
+
+        6) The tag length isn't utilized. The result of the key derivation is
+           the master encryption key itself, which is set to 32 bytes for
+           use in XChaCha20-Poly1305.
+
+        7) Memory wiping feature is not provided by argon2_cffi.
+
+        To recognize the password is correct, the BLAKE2b hash of the master
+        key is stored together with key derivation parameters into the
+        login database.
+            The preimage resistance of BLAKE2b prevents derivation of master
         key from the stored hash, and Argon2d ensures brute force and
         dictionary attacks against the master password are painfully
         slow even with GPUs/ASICs/FPGAs, as long as the password is
         sufficiently strong.
-
-        The salt does not need additional protection as the security it
-        provides depends on the salt space in relation to the number of
-        attacked targets (i.e. if two or more physically compromised
-        systems happen to share the same salt, the attacker can speed up
-        the attack against those systems with time-memory-trade-off
-        attack).
-
-        A 256-bit salt ensures that even in a group of 4.8*10^29 users,
-        the probability that two users share the same salt is just
-        10^(-18).*
-            * https://en.wikipedia.org/wiki/Birthday_attack
         """
-        password = MasterKey.new_password()
-        salt     = csprng(ARGON2_SALT_LENGTH)
-        memory   = ARGON2_MIN_MEMORY
+        password  = MasterKey.new_password()
+        salt      = csprng(ARGON2_SALT_LENGTH)
+        time_cost = 1
 
+        # Determine the amount of memory used from the amount of free RAM in the system.
+        memory_cost = self.get_free_memory()
+        if self.local_test:
+            memory_cost //= 2
+
+        # Determine the amount of threads to use
         parallelism = multiprocessing.cpu_count()
         if self.local_test:
             parallelism = max(1, parallelism // 2)
 
         phase("Deriving master key", head=2)
-        while True:
-            time_start = time.monotonic()
-            master_key = argon2_kdf(password, salt, ARGON2_ROUNDS, memory, parallelism)
-            kd_time    = time.monotonic() - time_start
 
-            if kd_time < MIN_KEY_DERIVATION_TIME:
-                memory *= 2
-            else:
-                ensure_dir(DIR_USER_DATA)
-                with open(self.file_name, 'wb+') as f:
-                    f.write(salt
-                            + blake2b(master_key)
-                            + int_to_bytes(memory)
-                            + int_to_bytes(parallelism))
-                phase(DONE)
-                return master_key
+        # Initial key derivation
+        master_key, kd_time = self.timed_key_derivation(password, salt, time_cost, memory_cost, parallelism)
+
+        # If derivation was too fast, increase time_cost
+        while kd_time < MIN_KEY_DERIVATION_TIME:
+            time_cost += 1
+            master_key, kd_time = self.timed_key_derivation(password, salt, time_cost, memory_cost, parallelism)
+
+        # At this point time_cost may have value of 1 or it may have increased to e.g. 3, which might make it take
+        # longer than MAX_KEY_DERIVATION_TIME. If that's the case, it makes no sense to lower it back to 2 because even
+        # with all memory, time_cost=2 will still be too fast. We therefore accept the time_cost whatever it is.
+
+        # If the key derivation time is too long, we do a binary search on the amount
+        # of memory to use until we hit the desired key derivation time range.
+        if kd_time > MAX_KEY_DERIVATION_TIME:
+
+            lower_bound = ARGON_2_MIN_MEMORY_COST
+            upper_bound = memory_cost
+
+            while kd_time < MIN_KEY_DERIVATION_TIME or kd_time > MAX_KEY_DERIVATION_TIME:
+
+                middle              = (lower_bound + upper_bound) // 2
+                master_key, kd_time = self.timed_key_derivation(password, salt, time_cost, middle, parallelism)
+
+                # End of search might happen e.g. if external CPU load causes delay in key derivation, which causes
+                # the search to continue into wrong branch. In such situation the search is restarted. The binary search
+                # is problematic with tight key derivation time target ranges, so if the search keeps restarting,
+                # increasing MAX_KEY_DERIVATION_TIME (and thus expanding the range) will help finding suitable
+                # memory_cost value faster. Increasing MAX_KEY_DERIVATION_TIME slightly affects security (positively)
+                # and user experience (negatively).
+                if middle == lower_bound or middle == upper_bound:
+                    lower_bound = ARGON_2_MIN_MEMORY_COST
+                    upper_bound = memory_cost
+                    continue
+
+                if kd_time < MIN_KEY_DERIVATION_TIME:
+                    lower_bound = middle
+
+                elif kd_time > MAX_KEY_DERIVATION_TIME:
+                    upper_bound = middle
+
+        # Store values to database
+        ensure_dir(DIR_USER_DATA)
+        with open(self.file_name, 'wb+') as f:
+            f.write(salt
+                    + blake2b(master_key)
+                    + int_to_bytes(time_cost)
+                    + int_to_bytes(memory_cost)
+                    + int_to_bytes(parallelism))
+        phase(DONE)
+
+        return master_key
 
     def load_master_key(self) -> bytes:
         """Derive the master key from password and salt.
@@ -122,16 +221,18 @@ class MasterKey(object):
         if len(data) != MASTERKEY_DB_SIZE:
             raise CriticalError(f"Invalid {self.file_name} database size.")
 
-        salt, key_hash, memory_bytes, parallelism_bytes \
-            = separate_headers(data, [ARGON2_SALT_LENGTH, BLAKE2_DIGEST_LENGTH, ENCODED_INTEGER_LENGTH])
+        salt, key_hash, time_bytes, memory_bytes, parallelism_bytes \
+            = separate_headers(data, [ARGON2_SALT_LENGTH, BLAKE2_DIGEST_LENGTH,
+                                      ENCODED_INTEGER_LENGTH, ENCODED_INTEGER_LENGTH])
 
-        memory      = bytes_to_int(memory_bytes)
+        time_cost   = bytes_to_int(time_bytes)
+        memory_cost = bytes_to_int(memory_bytes)
         parallelism = bytes_to_int(parallelism_bytes)
 
         while True:
             password = MasterKey.get_password()
             phase("Deriving master key", head=2, offset=len("Password correct"))
-            purp_key = argon2_kdf(password, salt, ARGON2_ROUNDS, memory, parallelism)
+            purp_key = argon2_kdf(password, salt, time_cost, memory_cost, parallelism)
 
             if blake2b(purp_key) == key_hash:
                 phase("Password correct", done=True, delay=1)

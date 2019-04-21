@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -99,7 +99,7 @@ class TestArgon2KDF(unittest.TestCase):
         self.assertEqual(key.hex(), '7e12cb75695277c0ab974e4ae943b87da08e36dd065aca8de3ca009125ae8953')
 
     def test_argon2d_kdf(self):
-        key = argon2_kdf('password', ARGON2_SALT_LENGTH*b'a', rounds=1, memory=100)
+        key = argon2_kdf('password', ARGON2_SALT_LENGTH*b'a', time_cost=1, memory_cost=100)
         self.assertIsInstance(key, bytes)
         self.assertEqual(len(key), SYMMETRIC_KEY_LENGTH)
 
@@ -265,13 +265,21 @@ class TestXChaCha20Poly1305(unittest.TestCase):
 
 
 class TestBytePadding(unittest.TestCase):
+    """Unittests of the cryptography library are available at
+        https://github.com/pyca/cryptography/blob/master/tests/hazmat/primitives/test_padding.py
+    """
 
     def test_padding_length_is_divisible_by_packet_length(self):
+        padded_bytestrings = []
+
         for length in range(1000):
             string = length * b'm'
             padded = byte_padding(string)
             self.assertIsInstance(padded, bytes)
             self.assertEqual(len(padded) % PADDING_LENGTH, 0)
+
+            padded_bytestrings.append(len(padded))
+        self.assertNotEqual(len(list(set(padded_bytestrings))), 1)
 
     def test_packet_length_equal_to_padding_size_adds_dummy_block(self):
         string = PADDING_LENGTH * b'm'
@@ -317,6 +325,7 @@ class TestCSPRNG(unittest.TestCase):
     def test_invalid_entropy_raises_critical_error(self, _):
         with self.assertRaises(SystemExit):
             csprng()
+        with self.assertRaises(SystemExit):
             csprng()
 
     @mock.patch('src.common.crypto.blake2b', side_effect=[(SYMMETRIC_KEY_LENGTH-1) * b'a',
@@ -324,6 +333,7 @@ class TestCSPRNG(unittest.TestCase):
     def test_invalid_blake2b_digest_raises_critical_error(self, _):
         with self.assertRaises(SystemExit):
             csprng()
+        with self.assertRaises(SystemExit):
             csprng()
 
 class TestCheckKernelEntropy(unittest.TestCase):

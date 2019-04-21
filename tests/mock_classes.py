@@ -1,5 +1,6 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
+
 """
 TFC - Onion-routed, endpoint secure messaging system
 Copyright (C) 2013-2019  Markus Ottela

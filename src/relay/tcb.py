@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -63,7 +63,7 @@ def src_incoming(queues:   'QueueDict',
                  unittest: bool = False
                  ) -> None:
     """\
-    Redirect messages received from Source Computer to appropriate queues.
+    Redirect datagrams received from Source Computer to appropriate queues.
     """
     packets_from_sc   = queues[GATEWAY_QUEUE]
     packets_to_dc     = queues[DST_MESSAGE_QUEUE]

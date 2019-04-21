@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 
 """
@@ -179,6 +179,7 @@ def monitor_processes(process_list:       List[Process],
     while True:
         with ignored(EOFError, KeyboardInterrupt):
             time.sleep(0.1)
+
             if not all([p.is_alive() for p in process_list]):
                 for p in process_list:
                     p.terminate()
@@ -205,6 +206,7 @@ def monitor_processes(process_list:       List[Process],
                         for d in [DIR_USER_DATA, DIR_RECV_FILES]:
                             with ignored(FileNotFoundError):
                                 shutil.rmtree(d)
+
                     os.system(POWEROFF)
 
 
@@ -215,7 +217,7 @@ def process_arguments() -> Tuple[str, bool, bool]:
     Terminator configuration file for local testing. The descriptions
     here are provided for the sake of completeness.
     """
-    parser = argparse.ArgumentParser(f'python3.6 {sys.argv[0]}',
+    parser = argparse.ArgumentParser(f'python3.7 {sys.argv[0]}',
                                      usage='%(prog)s [OPTION]',
                                      epilog='Full documentation at: <https://github.com/maqp/tfc/wiki>')
 
