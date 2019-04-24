@@ -32,7 +32,7 @@ of which are verified via out-of-band channel. TFC provides per-message
 with
 [BLAKE2b](https://blake2.net/blake2.pdf) 
 based
-[hash ratchet](https://en.wikipedia.org/wiki/Double_Ratchet_Algorithm).
+[hash ratchet](https://www.youtube.com/watch?v=9sO2qdTci-s#t=1m34s).
 All persistent user data is encrypted locally using XChaCha20-Poly1305, the key 
 of which is derived from password and salt using 
 [Argon2d](https://github.com/P-H-C/phc-winner-argon2/blob/master/argon2-specs.pdf). 
