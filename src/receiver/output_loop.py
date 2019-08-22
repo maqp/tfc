@@ -24,7 +24,7 @@ import sys
 import time
 import typing
 
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from src.common.exceptions import FunctionReturn
 from src.common.output     import clear_screen
@@ -48,7 +48,7 @@ if typing.TYPE_CHECKING:
     from src.common.gateway      import Gateway
 
 
-def output_loop(queues:       Dict[bytes, 'Queue'],
+def output_loop(queues:       Dict[bytes, 'Queue[Any]'],
                 gateway:      'Gateway',
                 settings:     'Settings',
                 contact_list: 'ContactList',
@@ -56,7 +56,7 @@ def output_loop(queues:       Dict[bytes, 'Queue'],
                 group_list:   'GroupList',
                 master_key:   'MasterKey',
                 stdin_fd:     int,
-                unittest:     bool = False
+                unit_test:    bool = False
                 ) -> None:
     """Process packets in message queues according to their priority."""
     l_queue = queues[LOCAL_KEY_DATAGRAM_HEADER]
@@ -146,7 +146,7 @@ def output_loop(queues:       Dict[bytes, 'Queue'],
 
             time.sleep(0.01)
 
-            if unittest and queues[UNITTEST_QUEUE].qsize() != 0:
+            if unit_test and queues[UNIT_TEST_QUEUE].qsize() != 0:
                 break
 
         except (FunctionReturn, KeyError, KeyboardInterrupt):

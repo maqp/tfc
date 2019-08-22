@@ -52,7 +52,7 @@ if typing.TYPE_CHECKING:
     from src.common.db_settings  import Settings
     from src.common.gateway      import Gateway
     from src.transmitter.windows import TxWindow
-    QueueDict = Dict[bytes, Queue]
+    QueueDict = Dict[bytes, Queue[Any]]
 
 
 def process_command(user_input:    'UserInput',
@@ -95,7 +95,7 @@ def process_command(user_input:    'UserInput',
          'reset':    (clear_screens,           user_input, window,                           settings, queues                                    ),
          'rm':       (remove_contact,          user_input, window, contact_list, group_list, settings, queues, master_key                        ),
          'rmlogs':   (remove_log,              user_input,         contact_list, group_list, settings, queues, master_key                        ),
-         'set':      (change_setting,          user_input, window, contact_list, group_list, settings, queues,                            gateway),
+         'set':      (change_setting,          user_input, window, contact_list, group_list, settings, queues, master_key,                gateway),
          'settings': (print_settings,                                                        settings,                                    gateway),
          'store':    (contact_setting,         user_input, window, contact_list, group_list, settings, queues                                    ),
          'unread':   (rxp_display_unread,                                                    settings, queues                                    ),
@@ -245,10 +245,19 @@ def log_command(user_input:   'UserInput',
 
     Transmitter Program processes sent, Receiver Program sent and
     received, messages of all participants in the active window.
+
+    Having the capability to export the log file from the encrypted
+    database is a bad idea, but as it's required by the GDPR
+    (https://gdpr-info.eu/art-20-gdpr/), it should be done as securely
+    as possible.
+
+    Therefore, before allowing export, TFC will ask for the master
+    password to ensure no unauthorized user who gains momentary
+    access to the system can the export logs from the database.
     """
-    cmd            = user_input.plaintext.split()[0]
-    export, header = dict(export =(True,  LOG_EXPORT),
-                          history=(False, LOG_DISPLAY))[cmd]
+    cmd                    = user_input.plaintext.split()[0]
+    export, header, action = dict(export =(True,  LOG_EXPORT,  'export'),
+                                  history=(False, LOG_DISPLAY, 'view'  ))[cmd]
 
     try:
         msg_to_load = int(user_input.plaintext.split()[1])
@@ -262,16 +271,23 @@ def log_command(user_input:   'UserInput',
     except struct.error:
         raise FunctionReturn("Error: Invalid number of messages.", head_clear=True)
 
-    if export:
-        if not yes(f"Export logs for '{window.name}' in plaintext?", abort=False):
-            raise FunctionReturn("Log file export aborted.", tail_clear=True, head=0, delay=1)
+    if export and not yes(f"Export logs for '{window.name}' in plaintext?", abort=False):
+        raise FunctionReturn("Log file export aborted.", tail_clear=True, head=0, delay=1)
 
-    queue_command(command, settings, queues)
+    if settings.ask_password_for_log_access:
+        try:
+            authenticated = master_key.load_master_key() == master_key.master_key
+        except (EOFError, KeyboardInterrupt):
+            raise FunctionReturn(f"Log file {action} aborted.", tail_clear=True, head=2, delay=1)
+    else:
+        authenticated = True
 
-    access_logs(window, contact_list, group_list, settings, master_key, msg_to_load, export)
+    if authenticated:
+        queue_command(command, settings, queues)
+        access_logs(window, contact_list, group_list, settings, master_key, msg_to_load, export=export)
 
-    if export:
-        raise FunctionReturn(f"Exported log file of {window.type} '{window.name}'.", head_clear=True)
+        if export:
+            raise FunctionReturn(f"Exported log file of {window.type} '{window.name}'.", head_clear=True)
 
 
 def send_onion_service_key(contact_list:  'ContactList',
@@ -494,6 +510,7 @@ def change_setting(user_input:   'UserInput',
                    group_list:   'GroupList',
                    settings:     'Settings',
                    queues:       'QueueDict',
+                   master_key:   'MasterKey',
                    gateway:      'Gateway'
                    ) -> None:
     """Change setting on Transmitter and Receiver Program."""
@@ -520,6 +537,15 @@ def change_setting(user_input:   'UserInput',
 
     if setting in ['use_serial_usb_adapter', 'built_in_serial_interface']:
         raise FunctionReturn("Error: Serial interface setting can only be changed manually.", head_clear=True)
+
+    if setting == 'ask_password_for_log_access':
+        try:
+            authenticated = master_key.load_master_key() == master_key.master_key
+        except (EOFError, KeyboardInterrupt):
+            raise FunctionReturn(f"Setting change aborted.", tail_clear=True, head=2, delay=1)
+
+        if not authenticated:
+            raise FunctionReturn("Error: No permission to change setting.", head_clear=True)
 
     # Change the setting
     if setting in gateway.settings.key_list:

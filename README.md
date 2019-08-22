@@ -35,7 +35,7 @@ based
 [hash ratchet](https://www.youtube.com/watch?v=9sO2qdTci-s#t=1m34s).
 All persistent user data is encrypted locally using XChaCha20-Poly1305, the key 
 of which is derived from password and salt using 
-[Argon2d](https://github.com/P-H-C/phc-winner-argon2/blob/master/argon2-specs.pdf). 
+[Argon2id](https://github.com/P-H-C/phc-winner-argon2/blob/master/argon2-specs.pdf). 
 Key generation of TFC relies on Linux kernel's 
 [getrandom()](https://manpages.debian.org/testing/manpages-dev/getrandom.2.en.html),
 a syscall for its ChaCha20 based CSPRNG.
@@ -56,9 +56,9 @@ level of data varies.
 
 ##### Anonymous by design
 TFC routes all communication through next generation
-[Tor](https://www.torproject.org/about/overview.html.en)
+[Tor](https://2019.www.torproject.org/about/overview.html.en)
 ([v3](https://trac.torproject.org/projects/tor/wiki/doc/NextGenOnions))
-[Onion Services](https://www.torproject.org/docs/onion-services) 
+[Onion Services](https://2019.www.torproject.org/docs/onion-services) 
 to hide metadata about real-life identity and geolocation of users, when and how 
 much they communicate, the social graph of the users and the fact TFC is 
 running. TFC also features a traffic masking mode that hides the type, quantity,
@@ -130,10 +130,12 @@ fundamental laws of physics.
 ### Supported Operating Systems
 
 #### Source/Destination Computer
+- Debian 10
 - *buntu 19.04 (or newer)
 
 #### Networked Computer
 - Tails (Debian Buster or newer)
+- Debian 10
 - *buntu 19.04 (or newer)
 
 

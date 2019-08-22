@@ -17,7 +17,7 @@
 # along with TFC. If not, see <https://www.gnu.org/licenses/>.
 
 
-yn_prompt () {
+function yn_prompt {
     echo "${1} (Y/N): "
     read -s -n 1 REPLY
 
@@ -25,14 +25,13 @@ yn_prompt () {
     then
         eval $2
     fi
-
 }
 
 
-remove_prompt () {
+function remove_prompt {
     echo ''
     if [[ $(dpkg-query -W -f='${Status}' '$1' 2>/dev/null | grep -c "ok installed") -eq 0 ]]; then
-        yn_prompt "Remove ${1} ?" "sudo apt -y remove ${1}"
+        yn_prompt "Remove ${1} ?" "sudo apt remove ${1} -y"
     fi
 }
 
@@ -50,7 +49,7 @@ yn_prompt "Remove user data?" "rm -rf $HOME/tfc/"
 
 clear
 echo "The uninstaller will next prompt you to select APT dependencies to uninstall."
-echo "If you're unsure, select No."
+echo "If you're unsure about whether you need it, select No."
 echo ''
 
 remove_prompt "git"

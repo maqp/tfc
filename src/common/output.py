@@ -66,17 +66,17 @@ def group_management_print(key:          str,            # Group management mess
         m_print(justified, box=True)
 
 
-def m_print(msg_list:       Union[str, list],  # List of lines to print
-            manual_proceed: bool  = False,     # Wait for user input before continuing
-            bold:           bool  = False,     # When True, prints the message in bold style
-            center:         bool  = True,      # When False, does not center message
-            box:            bool  = False,     # When True, prints a box around the message
-            head_clear:     bool  = False,     # When True, clears screen before printing message
-            tail_clear:     bool  = False,     # When True, clears screen after printing message (requires delay)
-            delay:          float = 0,         # Delay before continuing
-            max_width:      int   = 0,         # Maximum width of message
-            head:           int   = 0,         # Number of new lines to print before the message
-            tail:           int   = 0,         # Number of new lines to print after the message
+def m_print(msg_list:       Union[str, List[str]],  # List of lines to print
+            manual_proceed: bool  = False,          # Wait for user input before continuing
+            bold:           bool  = False,          # When True, prints the message in bold style
+            center:         bool  = True,           # When False, does not center message
+            box:            bool  = False,          # When True, prints a box around the message
+            head_clear:     bool  = False,          # When True, clears screen before printing message
+            tail_clear:     bool  = False,          # When True, clears screen after printing message (requires delay)
+            delay:          float = 0,              # Delay before continuing
+            max_width:      int   = 0,              # Maximum width of message
+            head:           int   = 0,              # Number of new lines to print before the message
+            tail:           int   = 0,              # Number of new lines to print after the message
             ) -> None:
     """Print message to screen.
 
@@ -193,13 +193,13 @@ def print_key(message:    str,                              # Instructive messag
 
     Local key encryption keys:
 
-     A   B   C   D   E   F   G   H   I   J   K   L   M   N   O   P   Q
-    5Ka 52G yNz vjF nM4 2jw Duu rWo 7di zgi Y8g iiy yGd 78L cCx mwQ mWV
+         A   B   C   D   E   F   G   H   I   J   K   L   M   N   O   P   Q
+        5Ka 52G yNz vjF nM4 2jw Duu rWo 7di zgi Y8g iiy yGd 78L cCx mwQ mWV
 
     X448 public keys:
 
-       A       B       C       D       E       F       H       H       I       J       K       L
-    4EcuqaD ddsdsuc gBX2PY2 qR8hReA aeSN2oh JB9w5Cv q6BQjDa PPgzSvW 932aHio sT42SKJ Gu2PpS1 Za3Xrao
+           A       B       C       D       E       F       H       H       I       J       K       L
+        4EcuqaD ddsdsuc gBX2PY2 qR8hReA aeSN2oh JB9w5Cv q6BQjDa PPgzSvW 932aHio sT42SKJ Gu2PpS1 Za3Xrao
     """
     b58key = b58encode(key_bytes, public_key)
     if settings.local_testing_mode:
@@ -213,7 +213,7 @@ def print_key(message:    str,                              # Instructive messag
 
 def print_title(operation: str) -> None:
     """Print the TFC title."""
-    operation_name = {TX: TXP, RX: RXP, NC: RP}[operation]
+    operation_name = {TX: TRANSMITTER, RX: RECEIVER, NC: RELAY}[operation]
     m_print(f"{TFC} - {operation_name} {VERSION}", bold=True, head_clear=True, head=1, tail=1)
 
 

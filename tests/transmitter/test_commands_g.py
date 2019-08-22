@@ -27,10 +27,10 @@ from src.common.encoding import b58encode
 from src.common.statics  import *
 
 from src.transmitter.commands_g import group_add_member, group_create, group_rm_group, group_rm_member
-from src.transmitter.commands_g import process_group_command, rename_group
+from src.transmitter.commands_g import process_group_command, group_rename
 
 from tests.mock_classes import create_group, Contact, ContactList, GroupList, MasterKey, Settings, UserInput, TxWindow
-from tests.utils        import cd_unittest, cleanup, gen_queue_dict, nick_to_pub_key, tear_queues, TFCTestCase
+from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, nick_to_pub_key, tear_queues, TFCTestCase
 
 
 class TestProcessGroupCommand(TFCTestCase):
@@ -206,17 +206,17 @@ class TestGroupAddMember(TFCTestCase):
 class TestGroupRmMember(TFCTestCase):
 
     def setUp(self):
-        self.unittest_dir = cd_unittest()
-        self.user_input   = UserInput()
-        self.contact_list = ContactList(nicks=['Alice', 'Bob'])
-        self.group_list   = GroupList(groups=["test_group"])
-        self.settings     = Settings()
-        self.queues       = gen_queue_dict()
-        self.master_key   = MasterKey()
-        self.args         = self.contact_list, self.group_list, self.settings, self.queues, self.settings
+        self.unit_test_dir = cd_unit_test()
+        self.user_input    = UserInput()
+        self.contact_list  = ContactList(nicks=['Alice', 'Bob'])
+        self.group_list    = GroupList(groups=["test_group"])
+        self.settings      = Settings()
+        self.queues        = gen_queue_dict()
+        self.master_key    = MasterKey()
+        self.args          = self.contact_list, self.group_list, self.settings, self.queues, self.settings
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
         tear_queues(self.queues)
 
     @mock.patch('time.sleep',     return_value=None)
@@ -236,20 +236,20 @@ class TestGroupRmMember(TFCTestCase):
         self.assertEqual(self.queues[RELAY_PACKET_QUEUE].qsize(), 1)
 
 
-class TestGroupRemoveGroup(TFCTestCase):
+class TestGroupRmGroup(TFCTestCase):
 
     def setUp(self):
-        self.unittest_dir = cd_unittest()
-        self.user_input   = UserInput()
-        self.contact_list = ContactList(nicks=['Alice', 'Bob'])
-        self.group_list   = GroupList(groups=['test_group'])
-        self.settings     = Settings()
-        self.queues       = gen_queue_dict()
-        self.master_key   = MasterKey()
-        self.args         = self.contact_list, self.group_list, self.settings, self.queues, self.settings
+        self.unit_test_dir = cd_unit_test()
+        self.user_input    = UserInput()
+        self.contact_list  = ContactList(nicks=['Alice', 'Bob'])
+        self.group_list    = GroupList(groups=['test_group'])
+        self.settings      = Settings()
+        self.queues        = gen_queue_dict()
+        self.master_key    = MasterKey()
+        self.args          = self.contact_list, self.group_list, self.settings, self.queues, self.settings
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
         tear_queues(self.queues)
 
     @mock.patch('time.sleep',     return_value=None)
@@ -277,7 +277,7 @@ class TestGroupRemoveGroup(TFCTestCase):
         self.assertEqual(self.queues[RELAY_PACKET_QUEUE].qsize(),   1)
 
 
-class TestRenameGroup(TFCTestCase):
+class TestGroupRename(TFCTestCase):
 
     def setUp(self):
         self.queues       = gen_queue_dict()
@@ -295,7 +295,7 @@ class TestRenameGroup(TFCTestCase):
         self.window.type = WIN_TYPE_CONTACT
 
         # Test
-        self.assert_fr("Error: Selected window is not a group window.", rename_group, "window", *self.args)
+        self.assert_fr("Error: Selected window is not a group window.", group_rename, "window", *self.args)
 
     def test_invalid_group_name_raises_fr(self):
         # Setup
@@ -303,7 +303,7 @@ class TestRenameGroup(TFCTestCase):
         self.window.group = self.group_list.get_group('test_group')
 
         # Test
-        self.assert_fr("Error: Group name must be printable.", rename_group, "window\x1f", *self.args)
+        self.assert_fr("Error: Group name must be printable.", group_rename, "window\x1f", *self.args)
 
     @mock.patch('time.sleep', return_value=None)
     def test_successful_group_change(self, _):
@@ -314,7 +314,7 @@ class TestRenameGroup(TFCTestCase):
         self.window.group = group
 
         # Test
-        self.assert_fr("Renamed group 'test_group' to 'window'.", rename_group, "window", *self.args)
+        self.assert_fr("Renamed group 'test_group' to 'window'.", group_rename, "window", *self.args)
         self.assertEqual(self.queues[COMMAND_PACKET_QUEUE].qsize(), 1)
 
 

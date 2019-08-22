@@ -34,7 +34,7 @@ from src.transmitter.packet import send_file, send_packet, split_to_assembly_pac
 
 from tests.mock_classes import create_contact, create_group, create_keyset, Gateway, ContactList, KeyList
 from tests.mock_classes import nick_to_pub_key, OnionService, Settings, TxWindow, UserInput
-from tests.utils        import cd_unittest, cleanup, gen_queue_dict, tear_queue, tear_queues, TFCTestCase
+from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, tear_queue, tear_queues, TFCTestCase
 
 
 class TestQueueMessage(unittest.TestCase):
@@ -84,16 +84,16 @@ class TestQueueMessage(unittest.TestCase):
 class TestSendFile(TFCTestCase):
 
     def setUp(self):
-        self.unittest_dir  = cd_unittest()
-        self.settings      = Settings()
-        self.queues        = gen_queue_dict()
-        self.window        = TxWindow()
-        self.onion_service = OnionService()
-        self.contact_list  = ContactList(nicks=['Alice', 'Bob', 'Charlie'])
-        self.args          = self.settings, self.queues, self.window
+        self.unit_test_dir  = cd_unit_test()
+        self.settings       = Settings()
+        self.queues         = gen_queue_dict()
+        self.window         = TxWindow()
+        self.onion_service  = OnionService()
+        self.contact_list   = ContactList(nicks=['Alice', 'Bob', 'Charlie'])
+        self.args           = self.settings, self.queues, self.window
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
         tear_queues(self.queues)
 
     def test_traffic_masking_raises_fr(self):
@@ -149,11 +149,11 @@ class TestQueueFile(TFCTestCase):
                  'rx_serial_settings.json', 'tx_onion_db')
 
     def setUp(self):
-        self.unittest_dir = cd_unittest()
+        self.unit_test_dir = cd_unit_test()
         self.queues       = gen_queue_dict()
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
         tear_queues(self.queues)
 
     @mock.patch('time.sleep',     return_value=None)

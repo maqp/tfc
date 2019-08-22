@@ -32,7 +32,7 @@ from src.transmitter.key_exchanges import create_pre_shared_key, export_onion_se
 from src.transmitter.key_exchanges import rxp_load_psk, start_key_exchange, verify_fingerprints
 
 from tests.mock_classes import ContactList, create_contact, Gateway, OnionService, Settings, TxWindow
-from tests.utils        import cd_unittest, cleanup, gen_queue_dict, ignored, nick_to_pub_key
+from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, ignored, nick_to_pub_key
 from tests.utils        import nick_to_short_address, tear_queues, TFCTestCase, VALID_ECDHE_PUB_KEY
 
 
@@ -78,6 +78,7 @@ class TestLocalKey(TFCTestCase):
                                                SYMMETRIC_KEY_LENGTH*b'a',
                                                SYMMETRIC_KEY_LENGTH*b'a'])
     @mock.patch('os.urandom',     return_value=CONFIRM_CODE_LENGTH*b'a')
+    @mock.patch('os.system',      return_value=None)
     def test_new_local_key(self, *_):
         # Setup
         self.settings.nc_bypass_messages = False
@@ -234,15 +235,15 @@ class TestKeyExchange(TFCTestCase):
 class TestPSK(TFCTestCase):
 
     def setUp(self):
-        self.unittest_dir  = cd_unittest()
-        self.contact_list  = ContactList()
-        self.settings      = Settings(disable_gui_dialog=True)
-        self.queues        = gen_queue_dict()
-        self.onion_service = OnionService()
-        self.args          = self.contact_list, self.settings, self.onion_service, self.queues
+        self.unit_test_dir  = cd_unit_test()
+        self.contact_list   = ContactList()
+        self.settings       = Settings(disable_gui_dialog=True)
+        self.queues         = gen_queue_dict()
+        self.onion_service  = OnionService()
+        self.args           = self.contact_list, self.settings, self.onion_service, self.queues
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
         with ignored(OSError):
             os.remove(f"{self.onion_service.user_short_address}.psk - Give to {nick_to_short_address('Alice')}")

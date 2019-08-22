@@ -26,7 +26,7 @@ import typing
 
 from datetime        import datetime
 from multiprocessing import Process, Queue
-from typing          import Dict, List
+from typing          import Any, Dict, List
 
 import requests
 
@@ -41,13 +41,13 @@ from src.common.statics  import *
 if typing.TYPE_CHECKING:
     from src.common.gateway import Gateway
     from requests.sessions  import Session
-    QueueDict = Dict[bytes, Queue]
+    QueueDict = Dict[bytes, Queue[Any]]
 
 
 def client_scheduler(queues:                'QueueDict',
                      gateway:               'Gateway',
                      url_token_private_key: X448PrivateKey,
-                     unittest:              bool = False
+                     unit_test:             bool = False
                      ) -> None:
     """Manage `client` processes."""
     proc_dict = dict()  # type: Dict[bytes, Process]
@@ -63,10 +63,10 @@ def client_scheduler(queues:                'QueueDict',
     while True:
         with ignored(EOFError, KeyboardInterrupt):
 
-            while queues[CONTACT_KEY_QUEUE].qsize() == 0:
+            while queues[CONTACT_MGMT_QUEUE].qsize() == 0:
                 time.sleep(0.1)
 
-            command, ser_public_keys, is_existing_contact = queues[CONTACT_KEY_QUEUE].get()
+            command, ser_public_keys, is_existing_contact = queues[CONTACT_MGMT_QUEUE].get()
 
             onion_pub_keys = split_byte_string(ser_public_keys, ONION_SERVICE_PUBLIC_KEY_LENGTH)
 
@@ -87,7 +87,7 @@ def client_scheduler(queues:                'QueueDict',
                         proc_dict.pop(onion_pub_key)
                         rp_print(f"Removed {pub_key_to_short_address(onion_pub_key)}", bold=True)
 
-            if unittest and queues[UNITTEST_QUEUE].qsize() != 0:
+            if unit_test and queues[UNIT_TEST_QUEUE].qsize() != 0:
                 break
 
 
@@ -97,7 +97,7 @@ def client(onion_pub_key:         bytes,
            tor_port:              str,
            gateway:               'Gateway',
            onion_addr_user:       str,
-           unittest:              bool = False
+           unit_test:             bool = False
            ) -> None:
     """Load packets from contact's Onion Service."""
     url_token   = ''
@@ -118,7 +118,7 @@ def client(onion_pub_key:         bytes,
     if onion_addr_user:
         while True:
             try:
-                reply = session.get(f'http://{onion_addr}.onion/contact_request/{onion_addr_user}', timeout=45).text
+                reply = session.get(f'http://{onion_addr}.onion/contact_request/{onion_addr_user}', timeout=5).text
                 if reply == "OK":
                     break
             except requests.exceptions.RequestException:
@@ -133,7 +133,7 @@ def client(onion_pub_key:         bytes,
 
             # Load URL token public key from contact's Onion Service root domain
             try:
-                url_token_public_key_hex = session.get(f'http://{onion_addr}.onion/', timeout=45).text
+                url_token_public_key_hex = session.get(f'http://{onion_addr}.onion/', timeout=5).text
             except requests.exceptions.RequestException:
                 url_token_public_key_hex = ''
 
@@ -160,7 +160,7 @@ def client(onion_pub_key:         bytes,
                         raise ValueError
 
                     shared_secret = url_token_private_key.exchange(X448PublicKey.from_public_bytes(public_key))
-                    url_token     = hashlib.blake2b(shared_secret, digest_size=SYMMETRIC_KEY_LENGTH).hexdigest()
+                    url_token     = hashlib.blake2b(shared_secret, digest_size=URL_TOKEN_LENGTH).hexdigest()
                 except (TypeError, ValueError):
                     continue
 
@@ -172,7 +172,7 @@ def client(onion_pub_key:         bytes,
 
             get_data_loop(onion_addr, url_token, short_addr, onion_pub_key, queues, session, gateway)
 
-            if unittest:
+            if unit_test:
                 break
 
 
@@ -237,16 +237,17 @@ def get_data_loop(onion_addr:    str,
                 else:
                     rp_print(f"Received invalid packet from {short_addr}", ts, bold=True)
 
-
         except requests.exceptions.RequestException:
             break
 
 
-def g_msg_manager(queues: 'QueueDict', unittest: bool = False) -> None:
+def g_msg_manager(queues:    'QueueDict',
+                  unit_test: bool = False
+                  ) -> None:
     """Show group management messages according to contact list state.
 
     This process keeps track of existing contacts for whom there's a
-    page_loader process. When a group management message from a contact
+    `client` process. When a group management message from a contact
     is received, existing contacts are displayed under "known contacts",
     and non-existing contacts are displayed under "unknown contacts".
     """
@@ -308,25 +309,27 @@ def g_msg_manager(queues: 'QueueDict', unittest: bool = False) -> None:
                          "Unless you remove the contact from the group, they",
                          "can still read messages you send to the group."], box=True)
 
-            if unittest and queues[UNITTEST_QUEUE].qsize() != 0:
+            if unit_test and queues[UNIT_TEST_QUEUE].qsize() != 0:
                 break
 
 
-def c_req_manager(queues: 'QueueDict', unittest: bool = False) -> None:
+def c_req_manager(queues:    'QueueDict',
+                  unit_test: bool = False
+                  ) -> None:
     """Manage incoming contact requests."""
     existing_contacts = []  # type: List[bytes]
     contact_requests  = []  # type: List[bytes]
 
-    packet_queue  = queues[CONTACT_REQ_QUEUE]
-    contact_queue = queues[F_REQ_MGMT_QUEUE]
-    setting_queue = queues[C_REQ_MGR_QUEUE]
+    request_queue = queues[CONTACT_REQ_QUEUE]
+    contact_queue = queues[C_REQ_MGMT_QUEUE]
+    setting_queue = queues[C_REQ_STATE_QUEUE]
     show_requests = True
 
     while True:
         with ignored(EOFError, KeyboardInterrupt):
-            while packet_queue.qsize() == 0:
+            while request_queue.qsize() == 0:
                 time.sleep(0.1)
-            purp_onion_address = packet_queue.get()
+            purp_onion_address = request_queue.get()
 
             while setting_queue.qsize() != 0:
                 show_requests = setting_queue.get()
@@ -349,8 +352,9 @@ def c_req_manager(queues: 'QueueDict', unittest: bool = False) -> None:
                     continue
 
                 if show_requests:
-                    m_print(["New contact request from an unknown TFC account:", purp_onion_address], box=True)
+                    ts_fmt = datetime.now().strftime('%b %d - %H:%M:%S.%f')[:-4]
+                    m_print([f"{ts_fmt} - New contact request from an unknown TFC account:", purp_onion_address], box=True)
                 contact_requests.append(onion_pub_key)
 
-            if unittest and queues[UNITTEST_QUEUE].qsize() != 0:
+            if unit_test and queues[UNIT_TEST_QUEUE].qsize() != 0:
                 break

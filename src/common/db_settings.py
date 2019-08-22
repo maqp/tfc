@@ -67,6 +67,7 @@ class Settings(object):
         self.accept_files_by_default       = False
         self.show_notifications_by_default = True
         self.log_file_masking              = False
+        self.ask_password_for_log_access   = True
 
         # Transmitter settings
         self.nc_bypass_messages = False
@@ -252,6 +253,7 @@ class Settings(object):
             "accept_files_by_default":       "Default file reception setting for new contacts",
             "show_notifications_by_default": "Default message notification setting for new contacts/groups",
             "log_file_masking":              "True hides real size of log file during traffic masking",
+            "ask_password_for_log_access":   "False disables password prompt when viewing/exporting logs",
 
             # Transmitter settings
             "nc_bypass_messages":            "False removes Networked Computer bypass interrupt messages",

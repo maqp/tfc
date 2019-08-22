@@ -27,7 +27,7 @@ import time
 import typing
 
 from datetime import datetime
-from typing   import Dict, IO, List, Tuple, Union
+from typing   import Any, Dict, List, Tuple, Union
 
 from src.common.crypto     import auth_and_decrypt, encrypt_and_sign
 from src.common.encoding   import b58encode, bytes_to_bool, bytes_to_timestamp, pub_key_to_short_address
@@ -50,9 +50,9 @@ if typing.TYPE_CHECKING:
 MsgTuple = Tuple[datetime, str, bytes, bytes, bool, bool]
 
 
-def log_writer_loop(queues:   Dict[bytes, 'Queue'],  # Dictionary of queues
-                    settings: 'Settings',            # Settings object
-                    unittest: bool = False           # When True, exits the loop when UNITTEST_QUEUE is no longer empty.
+def log_writer_loop(queues:    Dict[bytes, 'Queue[Any]'],  # Dictionary of queues
+                    settings:  'Settings',                 # Settings object
+                    unit_test: bool = False                # When True, exits the loop when UNIT_TEST_QUEUE is no longer empty.
                     ) -> None:
     """Write assembly packets to log database.
 
@@ -133,7 +133,7 @@ def log_writer_loop(queues:   Dict[bytes, 'Queue'],  # Dictionary of queues
 
             write_log_entry(assembly_packet, onion_pub_key, settings, master_key)
 
-            if unittest and queues[UNITTEST_QUEUE].qsize() != 0:
+            if unit_test and queues[UNIT_TEST_QUEUE].qsize() != 0:
                 break
 
 
@@ -178,12 +178,11 @@ def write_log_entry(assembly_packet: bytes,                      # Assembly pack
         f.write(ct_bytes)
 
 
-def get_logfile(file_name: str) -> IO:
-    """Load file descriptor for log database."""
+def check_log_file_exists(file_name: str) -> None:
+    """Check that the log file exists."""
     ensure_dir(DIR_USER_DATA)
     if not os.path.isfile(file_name):
         raise FunctionReturn("No log database available.")
-    return open(file_name, 'rb')
 
 
 def access_logs(window:       Union['TxWindow', 'RxWindow'],
@@ -202,10 +201,12 @@ def access_logs(window:       Union['TxWindow', 'RxWindow'],
     the window will be retrieved from the log database.
     """
     file_name    = f'{DIR_USER_DATA}{settings.software_operation}_logs'
-    log_file     = get_logfile(file_name)
     packet_list  = PacketList(settings, contact_list)
     message_log  = []  # type: List[MsgTuple]
     group_msg_id = b''
+
+    check_log_file_exists(file_name)
+    log_file = open(file_name, 'rb')
 
     for ct in iter(lambda: log_file.read(LOG_ENTRY_LENGTH), b''):
         plaintext = auth_and_decrypt(ct, master_key.master_key, database=file_name)
@@ -334,11 +335,13 @@ def remove_logs(contact_list: 'ContactList',
     ensure_dir(DIR_USER_DATA)
     file_name   = f'{DIR_USER_DATA}{settings.software_operation}_logs'
     temp_name   = f'{file_name}_temp'
-    log_file    = get_logfile(file_name)
     packet_list = PacketList(settings, contact_list)
     ct_to_keep  = []  # type: List[bytes]
     removed     = False
     contact     = len(selector) == ONION_SERVICE_PUBLIC_KEY_LENGTH
+
+    check_log_file_exists(file_name)
+    log_file = open(file_name, 'rb')
 
     for ct in iter(lambda: log_file.read(LOG_ENTRY_LENGTH), b''):
         plaintext = auth_and_decrypt(ct, master_key.master_key, database=file_name)

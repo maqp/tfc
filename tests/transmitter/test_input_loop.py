@@ -70,6 +70,7 @@ class TestInputLoop(unittest.TestCase):
     @mock.patch('src.transmitter.commands.exit_tfc', side_effect=SystemExit)
     @mock.patch('sys.stdin',                         MagicMock())
     @mock.patch('time.sleep',                        return_value=None)
+    @mock.patch('os.system',                         return_value=None)
     def test_input_loop_functions(self, *_):
         with self.assertRaises(SystemExit):
             self.assertIsNone(input_loop(self.queues, self.settings, self.gateway, self.contact_list,

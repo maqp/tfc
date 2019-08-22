@@ -21,12 +21,13 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 
 import typing
 
-from typing import Dict, Generator, Iterable, List, Optional, Sized
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Sized
 
-from src.common.exceptions import FunctionReturn
-from src.common.input      import yes
-from src.common.output     import clear_screen
-from src.common.statics    import *
+from src.common.db_contacts import Contact
+from src.common.exceptions  import FunctionReturn
+from src.common.input       import yes
+from src.common.output      import clear_screen
+from src.common.statics     import *
 
 from src.transmitter.contact       import add_new_contact
 from src.transmitter.key_exchanges import export_onion_service_data, start_key_exchange
@@ -34,16 +35,16 @@ from src.transmitter.packet        import queue_command
 
 if typing.TYPE_CHECKING:
     from multiprocessing            import Queue
-    from src.common.db_contacts     import Contact, ContactList
+    from src.common.db_contacts     import ContactList
     from src.common.db_groups       import Group, GroupList
     from src.common.db_onion        import OnionService
     from src.common.db_settings     import Settings
     from src.common.gateway         import Gateway
     from src.transmitter.user_input import UserInput
-    QueueDict = Dict[bytes, Queue]
+    QueueDict = Dict[bytes, Queue[Any]]
 
 
-class MockWindow(Iterable):
+class MockWindow(Iterable[Contact]):
     """\
     Mock window simplifies queueing of message assembly packets for
     automatically generated group management and key delivery messages.
@@ -58,12 +59,12 @@ class MockWindow(Iterable):
         self.uid             = uid
         self.log_messages    = self.window_contacts[0].log_messages
 
-    def __iter__(self) -> Generator:
+    def __iter__(self) -> Iterator[Contact]:
         """Iterate over contact objects in the window."""
         yield from self.window_contacts
 
 
-class TxWindow(Iterable, Sized):
+class TxWindow(Iterable[Contact], Sized):
     """\
     TxWindow object contains data about the active recipient (contact or
     group).
@@ -86,7 +87,7 @@ class TxWindow(Iterable, Sized):
         self.type            = ''    # type: str
         self.type_print      = None  # type: Optional[str]
 
-    def __iter__(self) -> Generator:
+    def __iter__(self) -> Iterator[Contact]:
         """Iterate over Contact objects in the window."""
         yield from self.window_contacts
 
@@ -208,13 +209,13 @@ class TxWindow(Iterable, Sized):
     def deselect(self) -> None:
         """Deselect active window."""
         self.window_contacts = []
-        self.contact         = None  # type: Optional[Contact]
-        self.group           = None  # type: Optional[Group]
-        self.name            = ''    # type: str
-        self.uid             = b''   # type: bytes
-        self.log_messages    = None  # type: Optional[bool]
-        self.type            = ''    # type: str
-        self.type_print      = None  # type: Optional[str]
+        self.contact         = None
+        self.group           = None
+        self.name            = ''
+        self.uid             = b''
+        self.log_messages    = None
+        self.type            = ''
+        self.type_print      = None
 
     def is_selected(self) -> bool:
         """Return True if a window is selected, else False."""

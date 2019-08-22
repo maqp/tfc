@@ -95,12 +95,13 @@ def ignored(*exceptions):
         pass
 
 
-def cd_unittest():
-    """Change working directory to one for unittests.
+def cd_unit_test():
+    """Create a directory for the unit test and change to it.
 
-    Separate working directory for unittests protects existing user data.
+    Separate working directory for unit test protects existing user data
+    and allows running tests in parallel.
     """
-    name = f"unittest_{(os.urandom(16)).hex()}/"
+    name = f"unit_test_{(os.urandom(16)).hex()}/"
     try:
         os.mkdir(name)
     except FileExistsError:
@@ -110,9 +111,9 @@ def cd_unittest():
 
 
 def cleanup(name):
-    """Remove unittest related directory."""
-    os.chdir("..")
-    shutil.rmtree(f"{name}/")
+    """Remove unit test related directory."""
+    os.chdir('..')
+    shutil.rmtree(f'{name}/')
 
 
 def func_that_raises(exception: Any) -> Callable:
@@ -362,21 +363,21 @@ def gen_queue_dict() -> Dict[bytes, Queue]:
                     F_TO_FLASK_QUEUE,
                     SRC_TO_RELAY_QUEUE,
                     DST_COMMAND_QUEUE,
-                    CONTACT_KEY_QUEUE,
-                    C_REQ_MGR_QUEUE,
+                    CONTACT_MGMT_QUEUE,
+                    C_REQ_STATE_QUEUE,
                     URL_TOKEN_QUEUE,
                     GROUP_MSG_QUEUE,
                     CONTACT_REQ_QUEUE,
-                    F_REQ_MGMT_QUEUE,
+                    C_REQ_MGMT_QUEUE,
                     GROUP_MGMT_QUEUE,
                     ONION_CLOSE_QUEUE,
                     ONION_KEY_QUEUE,
                     TOR_DATA_QUEUE,
                     EXIT_QUEUE]
 
-    unittest_queue = [UNITTEST_QUEUE]
+    unit_test_queue = [UNIT_TEST_QUEUE]
 
-    queue_list = set(transmitter_queues + receiver_queues + relay_queues + unittest_queue)
+    queue_list = set(transmitter_queues + receiver_queues + relay_queues + unit_test_queue)
     queue_dict = dict()
 
     for q in queue_list:

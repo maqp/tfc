@@ -29,7 +29,7 @@ from src.common.misc     import ensure_dir
 from src.common.statics  import *
 
 from tests.mock_classes import create_keyset, MasterKey, nick_to_pub_key, Settings
-from tests.utils        import cd_unittest, cleanup, tamper_file
+from tests.utils        import cd_unit_test, cleanup, tamper_file
 
 
 class TestKeySet(unittest.TestCase):
@@ -86,7 +86,7 @@ class TestKeySet(unittest.TestCase):
 class TestKeyList(unittest.TestCase):
 
     def setUp(self):
-        self.unittest_dir      = cd_unittest()
+        self.unit_test_dir     = cd_unit_test()
         self.master_key        = MasterKey()
         self.settings          = Settings()
         self.file_name         = f'{DIR_USER_DATA}{self.settings.software_operation}_keys'
@@ -95,7 +95,7 @@ class TestKeyList(unittest.TestCase):
         self.keylist.keysets   = [create_keyset(n, store_f=self.keylist.store_keys) for n in self.full_contact_list]
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     def test_storing_and_loading_of_keysets(self):
         # Test store

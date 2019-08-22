@@ -38,7 +38,7 @@ from src.common.misc    import validate_group_name, validate_key_exchange, valid
 from src.common.statics import *
 
 from tests.mock_classes import ContactList, Gateway, GroupList, Settings
-from tests.utils        import cd_unittest, cleanup, gen_queue_dict, ignored, nick_to_onion_address
+from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, ignored, nick_to_onion_address
 from tests.utils        import nick_to_pub_key, tear_queues, TFCTestCase
 
 
@@ -145,11 +145,11 @@ class TestIgnored(unittest.TestCase):
 class TestMonitorProcesses(TFCTestCase):
 
     def setUp(self):
-        self.settings     = Settings()
-        self.unittest_dir = cd_unittest()
+        self.unit_test_dir = cd_unit_test()
+        self.settings      = Settings()
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     @staticmethod
     def mock_process():

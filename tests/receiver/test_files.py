@@ -33,19 +33,19 @@ from src.common.statics  import *
 from src.receiver.files import new_file, process_assembled_file, process_file, store_unique
 
 from tests.mock_classes import ContactList, Settings, WindowList
-from tests.utils        import cd_unittest, cleanup, nick_to_pub_key, TFCTestCase, UNDECODABLE_UNICODE
+from tests.utils        import cd_unit_test, cleanup, nick_to_pub_key, TFCTestCase, UNDECODABLE_UNICODE
 
 
 class TestStoreUnique(unittest.TestCase):
 
     def setUp(self):
-        self.unittest_dir = cd_unittest()
-        self.file_data    = os.urandom(100)
-        self.file_dir     = 'test_dir/'
-        self.file_name    = 'test_file'
+        self.unit_test_dir = cd_unit_test()
+        self.file_data     = os.urandom(100)
+        self.file_dir      = 'test_dir/'
+        self.file_name     = 'test_file'
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     def test_each_file_is_store_with_unique_name(self):
         self.assertEqual(store_unique(self.file_data, self.file_dir, self.file_name), 'test_file')
@@ -56,17 +56,17 @@ class TestStoreUnique(unittest.TestCase):
 class ProcessAssembledFile(TFCTestCase):
 
     def setUp(self):
-        self.unittest_dir  = cd_unittest()
-        self.ts            = datetime.now()
-        self.onion_pub_key = nick_to_pub_key('Alice')
-        self.nick          = 'Alice'
-        self.settings      = Settings()
-        self.window_list   = WindowList(nick=['Alice', 'Bob'])
-        self.key           = os.urandom(SYMMETRIC_KEY_LENGTH)
-        self.args          = self.onion_pub_key, self.nick, self.settings, self.window_list
+        self.unit_test_dir  = cd_unit_test()
+        self.ts             = datetime.now()
+        self.onion_pub_key  = nick_to_pub_key('Alice')
+        self.nick           = 'Alice'
+        self.settings       = Settings()
+        self.window_list    = WindowList(nick=['Alice', 'Bob'])
+        self.key            = os.urandom(SYMMETRIC_KEY_LENGTH)
+        self.args           = self.onion_pub_key, self.nick, self.settings, self.window_list
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     def test_invalid_structure_raises_fr(self):
         # Setup
@@ -81,7 +81,7 @@ class ProcessAssembledFile(TFCTestCase):
         payload = UNDECODABLE_UNICODE + US_BYTE + b'file_data'
 
         # Test
-        self.assert_fr("Error: Received file name had invalid encoding.",
+        self.assert_fr("Error: Received file name had an invalid encoding.",
                        process_assembled_file, self.ts, payload, *self.args)
 
     def test_invalid_name_raises_fr(self):
@@ -156,20 +156,20 @@ class ProcessAssembledFile(TFCTestCase):
 class TestNewFile(TFCTestCase):
 
     def setUp(self):
-        self.unittest_dir = cd_unittest()
-        self.ts           = datetime.now()
-        self.packet       = b''
-        self.file_keys    = dict()
-        self.file_buf     = dict()
-        self.contact_list = ContactList(nicks=['Alice'])
-        self.window_list  = WindowList()
-        self.file_key     = SYMMETRIC_KEY_LENGTH*b'a'
-        self.settings     = Settings()
-        self.compressed   = zlib.compress(str_to_bytes("test_file.txt") + b'file_data', level=COMPRESSION_LEVEL)
-        self.args         = self.file_keys, self.file_buf, self.contact_list, self.window_list, self.settings
+        self.unit_test_dir = cd_unit_test()
+        self.ts            = datetime.now()
+        self.packet        = b''
+        self.file_keys     = dict()
+        self.file_buf      = dict()
+        self.contact_list  = ContactList(nicks=['Alice'])
+        self.window_list   = WindowList()
+        self.file_key      = SYMMETRIC_KEY_LENGTH*b'a'
+        self.settings      = Settings()
+        self.compressed    = zlib.compress(str_to_bytes("test_file.txt") + b'file_data', level=COMPRESSION_LEVEL)
+        self.args          = self.file_keys, self.file_buf, self.contact_list, self.window_list, self.settings
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     def test_unknown_account_raises_fr(self):
         # Setup
@@ -215,18 +215,18 @@ class TestNewFile(TFCTestCase):
 class TestProcessFile(TFCTestCase):
 
     def setUp(self):
-        self.unittest_dir = cd_unittest()
-        self.ts           = datetime.now()
-        self.account      = nick_to_pub_key('Alice')
-        self.file_key     = SYMMETRIC_KEY_LENGTH*b'a'
-        self.file_ct      = encrypt_and_sign(50 * b'a', key=self.file_key)
-        self.contact_list = ContactList(nicks=['Alice'])
-        self.window_list  = WindowList()
-        self.settings     = Settings()
-        self.args         = self.file_key, self.contact_list, self.window_list, self.settings
+        self.unit_test_dir = cd_unit_test()
+        self.ts            = datetime.now()
+        self.account       = nick_to_pub_key('Alice')
+        self.file_key      = SYMMETRIC_KEY_LENGTH*b'a'
+        self.file_ct       = encrypt_and_sign(50 * b'a', key=self.file_key)
+        self.contact_list  = ContactList(nicks=['Alice'])
+        self.window_list   = WindowList()
+        self.settings      = Settings()
+        self.args          = self.file_key, self.contact_list, self.window_list, self.settings
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     def test_invalid_key_raises_fr(self):
         self.file_key = SYMMETRIC_KEY_LENGTH * b'f'
@@ -246,7 +246,7 @@ class TestProcessFile(TFCTestCase):
         compressed = zlib.compress(UNDECODABLE_UNICODE + b'file_data', level=COMPRESSION_LEVEL)
         file_data  = encrypt_and_sign(compressed, self.file_key)
 
-        self.assert_fr("Error: Name of file from Alice had invalid encoding.",
+        self.assert_fr("Error: Name of file from Alice had an invalid encoding.",
                        process_file, self.ts, self.account, file_data, *self.args)
 
     @mock.patch('time.sleep', return_value=None)

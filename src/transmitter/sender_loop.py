@@ -22,7 +22,7 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 import time
 import typing
 
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from src.common.misc    import ignored
 from src.common.statics import *
@@ -36,15 +36,15 @@ if typing.TYPE_CHECKING:
     from src.common.db_settings import Settings
     from src.common.gateway     import Gateway
     from src.common.db_settings import Settings
-    QueueDict      = Dict[bytes, Queue]
+    QueueDict      = Dict[bytes, Queue[Any]]
     Message_buffer = Dict[bytes, List[Tuple[bytes, bytes, bool, bool, bytes]]]
 
 
-def sender_loop(queues:   'QueueDict',
-                settings: 'Settings',
-                gateway:  'Gateway',
-                key_list: 'KeyList',
-                unittest: bool = False
+def sender_loop(queues:    'QueueDict',
+                settings:  'Settings',
+                gateway:   'Gateway',
+                key_list:  'KeyList',
+                unit_test: bool = False
                 ) -> None:
     """Output packets from queues based on queue priority.
 
@@ -58,7 +58,7 @@ def sender_loop(queues:   'QueueDict',
             settings = traffic_masking_loop(queues, settings, gateway, key_list)
         else:
             settings, m_buffer = standard_sender_loop(queues, gateway, key_list, m_buffer)
-        if unittest:
+        if unit_test:
             break
 
 

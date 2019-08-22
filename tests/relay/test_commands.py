@@ -58,7 +58,7 @@ class TestRelayCommand(unittest.TestCase):
             self.queues[SRC_TO_RELAY_QUEUE].put(UNENCRYPTED_SCREEN_CLEAR)
 
         threading.Thread(target=queue_delayer).start()
-        self.assertIsNone(relay_command(self.queues, self.gateway, stdin_fd=1, unittest=True))
+        self.assertIsNone(relay_command(self.queues, self.gateway, stdin_fd=1, unit_test=True))
 
 
 class TestProcessCommand(TFCTestCase):
@@ -178,10 +178,10 @@ class TestManageContactReq(unittest.TestCase):
 
     def test_setting_management(self):
         manage_contact_req(b'\x01', self.queues)
-        self.assertTrue(self.queues[C_REQ_MGR_QUEUE].get())
+        self.assertTrue(self.queues[C_REQ_STATE_QUEUE].get())
 
         manage_contact_req(b'\x00', self.queues)
-        self.assertFalse(self.queues[C_REQ_MGR_QUEUE].get())
+        self.assertFalse(self.queues[C_REQ_STATE_QUEUE].get())
 
 
 class TestAddContact(unittest.TestCase):
@@ -196,12 +196,12 @@ class TestAddContact(unittest.TestCase):
             command = b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')])
 
             self.assertIsNone(add_contact(command, True, self.queues))
-            self.assertEqual(self.queues[CONTACT_KEY_QUEUE].qsize(), 1)
-            for q in [GROUP_MGMT_QUEUE, F_REQ_MGMT_QUEUE]:
+            self.assertEqual(self.queues[CONTACT_MGMT_QUEUE].qsize(), 1)
+            for q in [GROUP_MGMT_QUEUE, C_REQ_MGMT_QUEUE]:
                 command = self.queues[q].get()
                 self.assertEqual(command,
                                  (RP_ADD_CONTACT_HEADER, b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')])))
-            self.assertEqual(self.queues[CONTACT_KEY_QUEUE].get(),
+            self.assertEqual(self.queues[CONTACT_MGMT_QUEUE].get(),
                              (RP_ADD_CONTACT_HEADER, b''.join(list(map(nick_to_pub_key, ['Alice', 'Bob']))), True))
 
 
@@ -217,14 +217,14 @@ class TestRemContact(unittest.TestCase):
             command = b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')])
 
             self.assertIsNone(remove_contact(command, self.queues))
-            self.assertEqual(self.queues[CONTACT_KEY_QUEUE].qsize(), 1)
-            self.assertEqual(self.queues[CONTACT_KEY_QUEUE].get(),
+            self.assertEqual(self.queues[CONTACT_MGMT_QUEUE].qsize(), 1)
+            self.assertEqual(self.queues[CONTACT_MGMT_QUEUE].get(),
                              (RP_REMOVE_CONTACT_HEADER,
                               b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')]),
                               False)
                              )
 
-            for q in [GROUP_MGMT_QUEUE, F_REQ_MGMT_QUEUE]:
+            for q in [GROUP_MGMT_QUEUE, C_REQ_MGMT_QUEUE]:
                 command = self.queues[q].get()
                 self.assertEqual(command, (RP_REMOVE_CONTACT_HEADER,
                                            b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')])))

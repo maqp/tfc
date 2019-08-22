@@ -20,11 +20,11 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
 """Program details"""
-TFC     = 'TFC'
-TXP     = 'Transmitter'
-RXP     = 'Receiver'
-RP      = 'Relay'
-VERSION = '1.19.04'
+TFC         = 'TFC'
+VERSION     = '1.19.08'
+TRANSMITTER = 'Transmitter'
+RECEIVER    = 'Receiver'
+RELAY       = 'Relay'
 
 
 """Identifiers
@@ -71,12 +71,16 @@ NOT_IN_GROUP     = 'not_in_group'
 UNKNOWN_ACCOUNTS = 'unknown_accounts'
 
 
+"""Base58 alphabet"""
+B58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+
+
 """Base58 key types"""
 B58_PUBLIC_KEY = 'b58_public_key'
 B58_LOCAL_KEY  = 'b58_local_key'
 
 
-"""Key input guides"""
+"""Base58 key input guides"""
 B58_PUBLIC_KEY_GUIDE = '   A       B       C       D       E       F       H       H       I       J       K       L   '
 B58_LOCAL_KEY_GUIDE  = ' A   B   C   D   E   F   G   H   I   J   K   L   M   N   O   P   Q '
 
@@ -113,6 +117,15 @@ NC_BYPASS_STOP  = 'nc_bypass_stop'
 DONE  = 'DONE'
 EVENT = '-!-'
 ME    = 'Me'
+
+
+"""Data diode simulator identifiers"""
+IDLE      = 'Idle'
+DATA_FLOW = 'Data flow'
+SCNCLR    = 'scnclr'
+SCNCRL    = 'scncrl'
+NCDCLR    = 'ncdclr'
+NCDCRL    = 'ncdcrl'
 
 
 """VT100 codes
@@ -256,17 +269,18 @@ Program, it could most likely also access any decryption keys used by
 the Relay Program.
 """
 UNENCRYPTED_COMMAND_HEADER_LENGTH = 2
-UNENCRYPTED_SCREEN_CLEAR          = b'UC'
-UNENCRYPTED_SCREEN_RESET          = b'UR'
-UNENCRYPTED_EXIT_COMMAND          = b'UX'
-UNENCRYPTED_EC_RATIO              = b'UE'
-UNENCRYPTED_BAUDRATE              = b'UB'
-UNENCRYPTED_WIPE_COMMAND          = b'UW'
-UNENCRYPTED_ADD_NEW_CONTACT       = b'UN'
-UNENCRYPTED_ADD_EXISTING_CONTACT  = b'UA'
-UNENCRYPTED_REM_CONTACT           = b'UD'
-UNENCRYPTED_ONION_SERVICE_DATA    = b'UO'
-UNENCRYPTED_MANAGE_CONTACT_REQ    = b'UM'
+
+UNENCRYPTED_SCREEN_CLEAR         = b'UC'
+UNENCRYPTED_SCREEN_RESET         = b'UR'
+UNENCRYPTED_EXIT_COMMAND         = b'UX'
+UNENCRYPTED_EC_RATIO             = b'UE'
+UNENCRYPTED_BAUDRATE             = b'UB'
+UNENCRYPTED_WIPE_COMMAND         = b'UW'
+UNENCRYPTED_ADD_NEW_CONTACT      = b'UN'
+UNENCRYPTED_ADD_EXISTING_CONTACT = b'UA'
+UNENCRYPTED_REM_CONTACT          = b'UD'
+UNENCRYPTED_ONION_SERVICE_DATA   = b'UO'
+UNENCRYPTED_MANAGE_CONTACT_REQ   = b'UM'
 
 
 """Encrypted command headers
@@ -278,31 +292,32 @@ command. These headers tell the Receiver Program to which function the
 provided parameters (if any) must be redirected.
 """
 ENCRYPTED_COMMAND_HEADER_LENGTH = 2
-LOCAL_KEY_RDY                   = b'LI'
-WIN_ACTIVITY                    = b'SA'
-WIN_SELECT                      = b'WS'
-CLEAR_SCREEN                    = b'SC'
-RESET_SCREEN                    = b'SR'
-EXIT_PROGRAM                    = b'EX'
-LOG_DISPLAY                     = b'LD'
-LOG_EXPORT                      = b'LE'
-LOG_REMOVE                      = b'LR'
-CH_MASTER_KEY                   = b'MK'
-CH_NICKNAME                     = b'NC'
-CH_SETTING                      = b'CS'
-CH_LOGGING                      = b'CL'
-CH_FILE_RECV                    = b'CF'
-CH_NOTIFY                       = b'CN'
-GROUP_CREATE                    = b'GC'
-GROUP_ADD                       = b'GA'
-GROUP_REMOVE                    = b'GR'
-GROUP_DELETE                    = b'GD'
-GROUP_RENAME                    = b'GN'
-KEY_EX_ECDHE                    = b'KE'
-KEY_EX_PSK_TX                   = b'KT'
-KEY_EX_PSK_RX                   = b'KR'
-CONTACT_REM                     = b'CR'
-WIPE_USR_DATA                   = b'WD'
+
+LOCAL_KEY_RDY = b'LI'
+WIN_ACTIVITY  = b'SA'
+WIN_SELECT    = b'WS'
+CLEAR_SCREEN  = b'SC'
+RESET_SCREEN  = b'SR'
+EXIT_PROGRAM  = b'EX'
+LOG_DISPLAY   = b'LD'
+LOG_EXPORT    = b'LE'
+LOG_REMOVE    = b'LR'
+CH_MASTER_KEY = b'MK'
+CH_NICKNAME   = b'NC'
+CH_SETTING    = b'CS'
+CH_LOGGING    = b'CL'
+CH_FILE_RECV  = b'CF'
+CH_NOTIFY     = b'CN'
+GROUP_CREATE  = b'GC'
+GROUP_ADD     = b'GA'
+GROUP_REMOVE  = b'GR'
+GROUP_DELETE  = b'GD'
+GROUP_RENAME  = b'GN'
+KEY_EX_ECDHE  = b'KE'
+KEY_EX_PSK_TX = b'KT'
+KEY_EX_PSK_RX = b'KR'
+CONTACT_REM   = b'CR'
+WIPE_USR_DATA = b'WD'
 
 
 """Origin headers
@@ -369,7 +384,7 @@ TRAFFIC_MASKING_QUEUE_CHECK_DELAY = 0.1
 TRAFFIC_MASKING_MIN_STATIC_DELAY  = 0.1
 TRAFFIC_MASKING_MIN_RANDOM_DELAY  = 0.1
 LOCAL_TESTING_PACKET_DELAY        = 0.1
-RELAY_CLIENT_MAX_DELAY            = 16
+RELAY_CLIENT_MAX_DELAY            = 8
 RELAY_CLIENT_MIN_DELAY            = 0.125
 CLIENT_OFFLINE_THRESHOLD          = 4.0
 
@@ -386,6 +401,7 @@ DIR_TFC        = 'tfc/'
 
 
 """Key exchange status states"""
+KEX_STATUS_LENGTH     = 1
 KEX_STATUS_NONE       = b'\xa0'
 KEX_STATUS_PENDING    = b'\xa1'
 KEX_STATUS_UNVERIFIED = b'\xa2'
@@ -397,9 +413,9 @@ KEX_STATUS_LOCAL_KEY  = b'\xa6'
 
 """Queue dictionary keys"""
 # Common
-EXIT_QUEUE     = b'exit'
-GATEWAY_QUEUE  = b'gateway'
-UNITTEST_QUEUE = b'unittest'
+EXIT_QUEUE      = b'exit'
+GATEWAY_QUEUE   = b'gateway'
+UNIT_TEST_QUEUE = b'unit_test'
 
 # Transmitter
 MESSAGE_PACKET_QUEUE    = b'message_packet'
@@ -428,9 +444,9 @@ URL_TOKEN_QUEUE    = b'url_token'
 GROUP_MGMT_QUEUE   = b'group_mgmt'
 GROUP_MSG_QUEUE    = b'group_msg'
 CONTACT_REQ_QUEUE  = b'contact_req'
-F_REQ_MGMT_QUEUE   = b'f_req_mgmt'
-CONTACT_KEY_QUEUE  = b'contact_key'
-C_REQ_MGR_QUEUE    = b'c_req_mgr'
+C_REQ_MGMT_QUEUE   = b'c_req_mgmt'
+CONTACT_MGMT_QUEUE = b'contact_mgmt'
+C_REQ_STATE_QUEUE  = b'c_req_state'
 ONION_KEY_QUEUE    = b'onion_key'
 ONION_CLOSE_QUEUE  = b'close_onion'
 TOR_DATA_QUEUE     = b'tor_data'
@@ -465,11 +481,13 @@ MAX_MESSAGE_SIZE  = 100_000  # bytes
 NOISE_PACKET_BUFFER = 100
 
 # Local testing
-LOCALHOST            = 'localhost'
-SRC_DD_LISTEN_SOCKET = 5005
-RP_LISTEN_SOCKET     = 5006
-DST_DD_LISTEN_SOCKET = 5007
-DST_LISTEN_SOCKET    = 5008
+LOCALHOST             = 'localhost'
+SRC_DD_LISTEN_SOCKET  = 5005
+RP_LISTEN_SOCKET      = 5006
+DST_DD_LISTEN_SOCKET  = 5007
+DST_LISTEN_SOCKET     = 5008
+DD_ANIMATION_LENGTH   = 16
+DD_OFFSET_FROM_CENTER = 4
 
 # Field lengths
 ENCODED_BOOLEAN_LENGTH  = 1
@@ -485,7 +503,7 @@ CONFIRM_CODE_LENGTH     = 1
 PACKET_CHECKSUM_LENGTH  = 16
 
 # Onion address format
-ONION_ADDRESS_CHECKSUM_ID     = b".onion checksum"
+ONION_ADDRESS_CHECKSUM_ID     = b'.onion checksum'
 ONION_SERVICE_VERSION         = b'\x03'
 ONION_SERVICE_VERSION_LENGTH  = 1
 ONION_ADDRESS_CHECKSUM_LENGTH = 2
@@ -498,10 +516,13 @@ B58_CHECKSUM_LENGTH  = 4
 TRUNC_ADDRESS_LENGTH = 5
 
 # Key derivation
-ARGON_2_MIN_MEMORY_COST = 8
+ARGON2_MIN_TIME_COST    = 1
+ARGON2_MIN_MEMORY_COST  = 8
+ARGON2_MIN_PARALLELISM  = 1
 ARGON2_SALT_LENGTH      = 32
 ARGON2_PSK_TIME_COST    = 25
 ARGON2_PSK_MEMORY_COST  = 512 * 1024  # kibibytes
+ARGON2_PSK_PARALLELISM  = 2
 MIN_KEY_DERIVATION_TIME = 3.0         # seconds
 MAX_KEY_DERIVATION_TIME = 4.0         # seconds
 
@@ -511,14 +532,23 @@ TFC_PUBLIC_KEY_LENGTH            = 56
 FINGERPRINT_LENGTH               = 32
 ONION_SERVICE_PRIVATE_KEY_LENGTH = 32
 ONION_SERVICE_PUBLIC_KEY_LENGTH  = 32
+URL_TOKEN_LENGTH                 = 32
 XCHACHA20_NONCE_LENGTH           = 24
 SYMMETRIC_KEY_LENGTH             = 32
 POLY1305_TAG_LENGTH              = 16
 BLAKE2_DIGEST_LENGTH             = 32
+BLAKE2_DIGEST_LENGTH_MIN         = 1
 BLAKE2_DIGEST_LENGTH_MAX         = 64
-ENTROPY_THRESHOLD                = 512
+BLAKE2_KEY_LENGTH_MAX            = 64
+BLAKE2_SALT_LENGTH_MAX           = 16
+BLAKE2_PERSON_LENGTH_MAX         = 16
 HARAC_LENGTH                     = 8
 PADDING_LENGTH                   = 255
+
+# Domain separation
+MESSAGE_KEY = b'message_key'
+HEADER_KEY  = b'header_key'
+FINGERPRINT = b'fingerprint'
 
 # Forward secrecy
 INITIAL_HARAC        = 0
@@ -579,5 +609,5 @@ MASTERKEY_DB_SIZE = (ARGON2_SALT_LENGTH
 SETTING_LENGTH = (XCHACHA20_NONCE_LENGTH
                   + 4 * ENCODED_INTEGER_LENGTH
                   + 3 * ENCODED_FLOAT_LENGTH
-                  + 11 * ENCODED_BOOLEAN_LENGTH
+                  + 12 * ENCODED_BOOLEAN_LENGTH
                   + POLY1305_TAG_LENGTH)

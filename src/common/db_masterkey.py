@@ -82,7 +82,7 @@ class MasterKey(object):
 
         The generated master key depends on a 256-bit salt and the
         password entered by the user. Additional computational strength
-        is added by the slow hash function (Argon2d). The more cores and
+        is added by the slow hash function (Argon2id). The more cores and
         the faster each core is, and the more memory the system has, the
         more secure TFC data is under the same password.
 
@@ -91,9 +91,10 @@ class MasterKey(object):
 
             https://tools.ietf.org/html/draft-irtf-cfrg-argon2-04#section-4
 
-        1) For Argon 2 type (y), Argon2d has is selected because the
-           adversary does not have side channel access to the
-           data-diode separated devices that run the algorithm.
+        1) For Argon2 type (y), Argon2id was selected because the
+           adversary might be able to run arbitrary code on Destination
+           Computer and thus perform a side-channel attack against the
+           function.
 
         2) The maximum number of threads (h) is determined by the number
            available in the system. However, during local testing this
@@ -102,17 +103,17 @@ class MasterKey(object):
 
         3) The maximum amount of memory (m) is what the system has to
            offer. For hard-drive encryption purposes, the recommendation
-           is 6GB. TFC will use that amount (or even more) if available.
+           is 6GiB. TFC will use that amount (or even more) if available.
            However, on less powerful systems, it will settle for less.
 
         4) For key derivation time (x), the value is set to at least 3
            seconds, with the maximum being 4 seconds. The minimum value
            is the same as the recommendation for hard-drive encryption.
 
-        5) The salt length is set to 256-bits which is double the recommended
-           length. The salt size ensures that even in a group of 4.8*10^29
-           users, the probability that two users share the same salt is just
-           10^(-18).*
+        5) The salt length is set to 256-bits which is double the
+           recommended length. The salt size ensures that even in a
+           group of 4.8*10^29 users, the probability that two users
+           share the same salt is just 10^(-18).*
             * https://en.wikipedia.org/wiki/Birthday_attack
 
            The salt does not need additional protection as the security it
@@ -126,20 +127,20 @@ class MasterKey(object):
            the master encryption key itself, which is set to 32 bytes for
            use in XChaCha20-Poly1305.
 
-        7) Memory wiping feature is not provided by argon2_cffi.
+        7) Memory wiping feature is not provided.
 
         To recognize the password is correct, the BLAKE2b hash of the master
         key is stored together with key derivation parameters into the
         login database.
             The preimage resistance of BLAKE2b prevents derivation of master
-        key from the stored hash, and Argon2d ensures brute force and
+        key from the stored hash, and Argon2id ensures brute force and
         dictionary attacks against the master password are painfully
         slow even with GPUs/ASICs/FPGAs, as long as the password is
         sufficiently strong.
         """
         password  = MasterKey.new_password()
         salt      = csprng(ARGON2_SALT_LENGTH)
-        time_cost = 1
+        time_cost = ARGON2_MIN_TIME_COST
 
         # Determine the amount of memory used from the amount of free RAM in the system.
         memory_cost = self.get_free_memory()
@@ -149,7 +150,7 @@ class MasterKey(object):
         # Determine the amount of threads to use
         parallelism = multiprocessing.cpu_count()
         if self.local_test:
-            parallelism = max(1, parallelism // 2)
+            parallelism = max(ARGON2_MIN_PARALLELISM, parallelism // 2)
 
         phase("Deriving master key", head=2)
 
@@ -167,9 +168,11 @@ class MasterKey(object):
 
         # If the key derivation time is too long, we do a binary search on the amount
         # of memory to use until we hit the desired key derivation time range.
+        middle = None
+
         if kd_time > MAX_KEY_DERIVATION_TIME:
 
-            lower_bound = ARGON_2_MIN_MEMORY_COST
+            lower_bound = ARGON2_MIN_MEMORY_COST
             upper_bound = memory_cost
 
             while kd_time < MIN_KEY_DERIVATION_TIME or kd_time > MAX_KEY_DERIVATION_TIME:
@@ -184,7 +187,7 @@ class MasterKey(object):
                 # memory_cost value faster. Increasing MAX_KEY_DERIVATION_TIME slightly affects security (positively)
                 # and user experience (negatively).
                 if middle == lower_bound or middle == upper_bound:
-                    lower_bound = ARGON_2_MIN_MEMORY_COST
+                    lower_bound = ARGON2_MIN_MEMORY_COST
                     upper_bound = memory_cost
                     continue
 
@@ -193,6 +196,8 @@ class MasterKey(object):
 
                 elif kd_time > MAX_KEY_DERIVATION_TIME:
                     upper_bound = middle
+
+        memory_cost = middle if middle is not None else memory_cost
 
         # Store values to database
         ensure_dir(DIR_USER_DATA)

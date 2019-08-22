@@ -30,18 +30,18 @@ from src.common.misc     import ensure_dir, validate_onion_addr
 from src.common.statics  import *
 
 from tests.mock_classes import MasterKey
-from tests.utils        import cd_unittest, cleanup, tamper_file
+from tests.utils        import cd_unit_test, cleanup, tamper_file
 
 
 class TestOnionService(unittest.TestCase):
 
     def setUp(self):
-        self.unittest_dir = cd_unittest()
-        self.master_key   = MasterKey()
-        self.file_name    = f"{DIR_USER_DATA}{TX}_onion_db"
+        self.unit_test_dir = cd_unit_test()
+        self.master_key    = MasterKey()
+        self.file_name     = f"{DIR_USER_DATA}{TX}_onion_db"
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     @mock.patch('time.sleep', return_value=None)
     def test_onion_service_key_generation_and_load(self, _):
@@ -90,8 +90,12 @@ class TestOnionService(unittest.TestCase):
         with self.assertRaises(SystemExit):
             OnionService(self.master_key)
 
+    @mock.patch('os.getrandom', side_effect=[ 1 * b'a',   # Initial confirmation code
+                                             32 * b'a',   # ed25519 key
+                                             24 * b'a',   # Nonce
+                                              1 * b'b'])  # New confirmation code (different)
     @mock.patch('time.sleep', return_value=None)
-    def test_confirmation_code_generation(self, _):
+    def test_confirmation_code_generation(self, *_):
         onion_service = OnionService(self.master_key)
         conf_code     = onion_service.conf_code
         onion_service.new_confirmation_code()

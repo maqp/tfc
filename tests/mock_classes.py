@@ -19,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
+import getpass
 import time
 
 from datetime import datetime
@@ -100,7 +101,7 @@ def create_rx_window(nick='Alice'):
 
 # Common
 class ContactList(OrigContactList, Iterable, Sized):
-    """Mock the object for unittesting."""
+    """Mock the object for unit testing."""
 
     def __init__(self, nicks=None, **kwargs):
         self.master_key = MasterKey()
@@ -127,7 +128,7 @@ class ContactList(OrigContactList, Iterable, Sized):
 
 
 class Gateway(OrigGateway):
-    """Mock the object for unittesting."""
+    """Mock the object for unit testing."""
 
     def __init__(self, **kwargs):
         self.packets  = []
@@ -140,7 +141,7 @@ class Gateway(OrigGateway):
 
 
 class GroupList(OrigGroupList, Iterable, Sized):
-    """Mock the object for unittesting."""
+    """Mock the object for unit testing."""
 
     def __init__(self, groups=None, **kwargs):
         self.master_key   = MasterKey()
@@ -174,7 +175,7 @@ class GroupList(OrigGroupList, Iterable, Sized):
 
 
 class KeyList(OrigKeyList):
-    """Mock the object for unittesting."""
+    """Mock the object for unit testing."""
 
     def __init__(self, nicks=None, **kwargs):
         self.master_key = MasterKey()
@@ -196,7 +197,7 @@ class KeyList(OrigKeyList):
 
 
 class MasterKey(OrigMasterKey):
-    """Mock the object for unittesting."""
+    """Mock the object for unit testing."""
 
     def __init__(self, **kwargs):
         """Create new MasterKey mock object."""
@@ -207,9 +208,14 @@ class MasterKey(OrigMasterKey):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
+    def load_master_key(self) -> bytes:
+        if getpass.getpass() == 'test_password':
+            return self.master_key
+        else:
+            return SYMMETRIC_KEY_LENGTH * b'f'
 
 class OnionService(OrigOnionService):
-    """Mock the object for unittesting."""
+    """Mock the object for unit testing."""
 
     def __init__(self, **kwargs):
         """Create new OnionService mock object."""
@@ -226,7 +232,7 @@ class OnionService(OrigOnionService):
 
 # Transmitter Program
 class Settings(OrigSettings):
-    """Mock the object for unittesting."""
+    """Mock the object for unit testing."""
 
     def __init__(self, **kwargs):
         """Create new Settings mock object."""
@@ -238,6 +244,7 @@ class Settings(OrigSettings):
         self.accept_files_by_default       = False
         self.show_notifications_by_default = True
         self.log_file_masking              = False
+        self.ask_password_for_log_access   = True
 
         # Transmitter settings
         self.nc_bypass_messages = False
@@ -283,7 +290,7 @@ class Settings(OrigSettings):
 
 # Transmitter Program
 class GatewaySettings(OrigGatewaySettings):
-    """Mock the object for unittesting."""
+    """Mock the object for unit testing."""
 
     def __init__(self, **kwargs):
         """Create new GatewaySettings mock object."""
@@ -324,7 +331,7 @@ class GatewaySettings(OrigGatewaySettings):
 
 
 class TxWindow(OrigTxWindow):
-    """Mock the object for unittesting."""
+    """Mock the object for unit testing."""
 
     def __init__(self, **kwargs):
         """Create new TxWindow mock object."""
@@ -343,7 +350,7 @@ class TxWindow(OrigTxWindow):
 
 
 class UserInput(object):
-    """Mock the object for unittesting."""
+    """Mock the object for unit testing."""
 
     def __init__(self, plaintext=None, **kwargs):
         """Create new UserInput mock object."""
@@ -355,7 +362,7 @@ class UserInput(object):
 
 # Receiver Program
 class Packet(object):
-    """Mock the object for unittesting."""
+    """Mock the object for unit testing."""
 
     def __init__(self, **kwargs):
         """Create new Pack mock object."""
@@ -393,7 +400,7 @@ class Packet(object):
 
 
 class PacketList(OrigPacketList):
-    """Mock the object for unittesting."""
+    """Mock the object for unit testing."""
 
     def __init__(self, **kwargs):
         self.settings     = Settings()
@@ -405,7 +412,7 @@ class PacketList(OrigPacketList):
 
 
 class RxWindow(OrigRxWindow):
-    """Mock the object for unittesting."""
+    """Mock the object for unit testing."""
 
     def __init__(self, **kwargs):
         self.uid          = None
@@ -433,7 +440,7 @@ class RxWindow(OrigRxWindow):
 
 
 class WindowList(object):
-    """Mock the object for unittesting."""
+    """Mock the object for unit testing."""
 
     def __init__(self, nicks=None, **kwargs):
         """Create new WindowList mock object."""

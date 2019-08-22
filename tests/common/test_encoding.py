@@ -107,7 +107,7 @@ class TestUnicodePadding(unittest.TestCase):
             self.assertEqual(string, padded[:-ord(padded[-1:])])
 
     def test_oversize_msg_raises_critical_error(self):
-        for s in range(PADDING_LENGTH, 500):
+        for s in range(PADDING_LENGTH, PADDING_LENGTH+1):
             with self.assertRaises(SystemExit):
                 unicode_padding(s * 'm')
 

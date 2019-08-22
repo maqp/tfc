@@ -147,14 +147,14 @@ class TestOutputLoop(unittest.TestCase):
 
             # Queue exit message to break the loop
             o_sleep(0.5)
-            queues[UNITTEST_QUEUE].put(EXIT)
+            queues[UNIT_TEST_QUEUE].put(EXIT)
             o_sleep(test_delay)
 
         threading.Thread(target=queue_delayer).start()
 
         # Test
         self.assertIsNone(output_loop(queues, Gateway(), Settings(), ContactList(), KeyList(),
-                                      GroupList(), MasterKey(), stdin_fd=1, unittest=True))
+                                      GroupList(), MasterKey(), stdin_fd=1, unit_test=True))
 
         # Teardown
         tear_queues(queues)

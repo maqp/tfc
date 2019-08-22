@@ -25,55 +25,56 @@ import sys
 import time
 
 from multiprocessing import Process, Queue
-from typing          import Tuple
+from typing          import Any, Dict, Tuple
 
 from src.common.misc    import get_terminal_height, get_terminal_width, ignored, monitor_processes
 from src.common.output  import clear_screen
-from src.common.statics import *
+from src.common.statics import DATA_FLOW, DD_ANIMATION_LENGTH, DD_OFFSET_FROM_CENTER, DST_DD_LISTEN_SOCKET
+from src.common.statics import DST_LISTEN_SOCKET, EXIT_QUEUE, IDLE, LOCALHOST, NC, NCDCLR, NCDCRL, RP_LISTEN_SOCKET
+from src.common.statics import SCNCLR, SCNCRL, SRC_DD_LISTEN_SOCKET
 
 
-def draw_frame(argv:    str,          # Arguments for simulator position/orientation
+def draw_frame(argv:    str,          # Arguments for the simulator position/orientation
                message: str,          # Status message to print
                high:    bool = False  # Determines the signal's state (high/low)
                ) -> None:
     """Draw a data diode animation frame."""
-    l, r, blink, arrow = dict(scnclr=('Tx', 'Rx', '>', '→'),
-                              scncrl=('Rx', 'Tx', '<', '←'),
-                              ncdclr=('Rx', 'Tx', '<', '←'),
-                              ncdcrl=('Tx', 'Rx', '>', '→'))[argv]
+    l, indicator, arrow, r = {NCDCLR: ('Rx', '<', '←', 'Tx'),
+                              SCNCLR: ('Tx', '>', '→', 'Rx'),
+                              NCDCRL: ('Tx', '>', '→', 'Rx'),
+                              SCNCRL: ('Rx', '<', '←', 'Tx')}[argv]
 
-    arrow = arrow if message != 'Idle' else ' '
-    blink = blink if high              else ' '
-
-    offset_from_center = 4
-    print(((get_terminal_height() // 2) - offset_from_center) * '\n')
+    indicator = indicator if high            else ' '
+    arrow     = arrow     if message != IDLE else ' '
 
     terminal_width = get_terminal_width()
 
-    def c_print(msg: str) -> None:
-        """Print string in the center of the screen."""
-        print(msg.center(terminal_width))
+    def c_print(string: str) -> None:
+        """Print string on the center of the screen."""
+        print(string.center(terminal_width))
+
+    print('\n' * ((get_terminal_height() // 2) - DD_OFFSET_FROM_CENTER))
 
     c_print(message)
     c_print(arrow)
-    c_print(  "────╮ " +  ' '  +  " ╭────" )
-    c_print(f" {l} │ " + blink + f" │ {r} ")
-    c_print(  "────╯ " +  ' '  +  " ╰────" )
+    c_print(  "────╮ " +    ' '    +  " ╭────" )
+    c_print(f" {l} │ " + indicator + f" │ {r} ")
+    c_print(  "────╯ " +    ' '    +  " ╰────" )
 
 
 def animate(argv: str) -> None:
     """Animate the data diode transmission indicator."""
-    animation_length = 16
-    for i in range(animation_length):
+    for i in range(DD_ANIMATION_LENGTH):
         clear_screen()
-        draw_frame(argv, 'Data flow', high=(i % 2 == 0))
+        draw_frame(argv, DATA_FLOW, high=(i % 2 == 0))
         time.sleep(0.04)
+
     clear_screen()
-    draw_frame(argv, 'Idle')
+    draw_frame(argv, IDLE)
 
 
-def rx_loop(io_queue:     'Queue',  # Queue through which to push datagrams through
-            input_socket: int       # Socket number for Transmitter/Relay Program
+def rx_loop(io_queue:     'Queue[Any]',  # Queue through which to push datagrams through
+            input_socket: int            # Socket number for Transmitter/Relay Program
             ) -> None:
     """Read datagrams from a transmitting program."""
     listener  = multiprocessing.connection.Listener((LOCALHOST, input_socket))
@@ -88,12 +89,13 @@ def rx_loop(io_queue:     'Queue',  # Queue through which to push datagrams thro
             sys.exit(0)
 
 
-def tx_loop(io_queue:      'Queue',  # Queue through which to push datagrams through
-            output_socket: int,      # Socket number for Relay/Receiver Program
-            argv:          str       # Arguments for simulator position/orientation
+def tx_loop(io_queue:      'Queue[Any]',  # Queue through which to push datagrams through
+            output_socket: int,           # Socket number for the Relay/Receiver Program
+            argv:          str,           # Arguments for the simulator position/orientation
+            unit_test:     bool = False   # Break out from the loop during unit testing
             ) -> None:
     """Send queued datagrams to a receiving program."""
-    draw_frame(argv, 'Idle')
+    draw_frame(argv, IDLE)
 
     while True:
         try:
@@ -104,38 +106,41 @@ def tx_loop(io_queue:      'Queue',  # Queue through which to push datagrams thr
 
     while True:
         with ignored(EOFError, KeyboardInterrupt):
-            while io_queue.empty():
+            while io_queue.qsize() == 0:
                 time.sleep(0.01)
             animate(argv)
             interface.send(io_queue.get())
 
+            if unit_test:
+                break
+
 
 def process_arguments() -> Tuple[str, int, int]:
-    """Load simulator settings from command line arguments."""
+    """Load simulator settings from the command line argument."""
     try:
         argv                        = str(sys.argv[1])
-        input_socket, output_socket = dict(scnclr=(SRC_DD_LISTEN_SOCKET, RP_LISTEN_SOCKET),
-                                           scncrl=(SRC_DD_LISTEN_SOCKET, RP_LISTEN_SOCKET),
-                                           ncdclr=(DST_DD_LISTEN_SOCKET, DST_LISTEN_SOCKET),
-                                           ncdcrl=(DST_DD_LISTEN_SOCKET, DST_LISTEN_SOCKET))[argv]
+        input_socket, output_socket = {SCNCLR: (SRC_DD_LISTEN_SOCKET, RP_LISTEN_SOCKET),
+                                       SCNCRL: (SRC_DD_LISTEN_SOCKET, RP_LISTEN_SOCKET),
+                                       NCDCLR: (DST_DD_LISTEN_SOCKET, DST_LISTEN_SOCKET),
+                                       NCDCRL: (DST_DD_LISTEN_SOCKET, DST_LISTEN_SOCKET)}[argv]
 
         return argv, input_socket, output_socket
 
     except (IndexError, KeyError):
         clear_screen()
-        print("\nUsage: python3.7 dd.py [OPTION]\n\n"
-              "\nMandatory arguments"
-              "\n Argument  Simulate data diodes between..."
-              "\n   scnclr    Source Computer    and Networked Computer   (left to right)"
-              "\n   scncrl    Source Computer    and Networked Computer   (right to left)"
-              "\n   ncdclr    Networked Computer and Destination Computer (left to right)"
-              "\n   ncdcrl    Networked Computer and Destination Computer (right to left)")
+        print(f"\nUsage: python3.7 dd.py [OPTION]\n\n"
+              f"\nMandatory arguments"
+              f"\n Argument  Simulate data diode between..."
+              f"\n   {SCNCLR}    Source Computer    and Networked Computer   (left to right)"
+              f"\n   {SCNCRL}    Source Computer    and Networked Computer   (right to left)"
+              f"\n   {NCDCLR}    Networked Computer and Destination Computer (left to right)"
+              f"\n   {NCDCRL}    Networked Computer and Destination Computer (right to left)")
         sys.exit(1)
 
 
-def main() -> None:
-    """
-    Read argument from the command line and launch the data diode simulator.
+def main(queues: Dict[bytes, 'Queue[Any]']) -> None:
+    """\
+    Read the argument from the command line and launch the data diode simulator.
 
     This application is the data diode simulator program used to
     visualize data transfer inside the data diode #1 between the Source
@@ -146,27 +151,27 @@ def main() -> None:
 
     The visualization is done with an indicator ('<' or '>') that blinks
     when data passes from one program to another. The data diode
-    simulator does not provide any of the security properties to the
-    endpoint that the hardware data diodes do.
+    simulator does not provide any of the endpoint security properties
+    that the hardware data diodes do.
 
     The visualization is designed to make data transfer between programs
     slower than is the case with actual serial interfaces. This allows
     the user to track the movement of data from one program to another
     with their eyes.
     """
-    time.sleep(0.5)  # Wait for terminal multiplexer size to stabilize
+    time.sleep(0.5)  # Wait for the terminal multiplexer size to stabilize
 
     argv, input_socket, output_socket = process_arguments()
 
-    io_queue     = Queue()  # type: Queue
+    io_queue     = Queue()  # type: Queue[Any]
     process_list = [Process(target=rx_loop, args=(io_queue, input_socket       )),
                     Process(target=tx_loop, args=(io_queue, output_socket, argv))]
 
     for p in process_list:
         p.start()
 
-    monitor_processes(process_list, NC, {EXIT_QUEUE: Queue()}, error_exit_code=0)
+    monitor_processes(process_list, NC, queues, error_exit_code=0)
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == '__main__':  # pragma: no cover
+    main({EXIT_QUEUE: Queue()})

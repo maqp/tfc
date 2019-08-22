@@ -34,7 +34,7 @@ from src.common.statics import *
 
 from src.relay.onion import get_available_port, onion_service, stem_compatible_ed25519_key_from_private_key, Tor
 
-from tests.utils import gen_queue_dict
+from tests.utils import gen_queue_dict, tear_queues
 
 
 class TestGetAvailablePort(unittest.TestCase):
@@ -95,15 +95,22 @@ class TestOnionService(unittest.TestCase):
     @mock.patch('stem.control.Controller.from_socket_file', return_value=MagicMock())
     @mock.patch('src.relay.onion.get_available_port',       side_effect=KeyboardInterrupt)
     def test_returns_with_keyboard_interrupt(self, *_):
+        # Setup
         queues = gen_queue_dict()
         queues[ONION_KEY_QUEUE].put((bytes(ONION_SERVICE_PRIVATE_KEY_LENGTH), b'\x01'))
+
+        # Test
         self.assertIsNone(onion_service(queues))
+
+        # Teardown
+        tear_queues(queues)
 
     @mock.patch('shlex.split',                              return_value=['NOTICE', 'BOOTSTRAP', 'PROGRESS=100',
                                                                           'TAG=done', 'SUMMARY=Done'])
     @mock.patch('stem.control.Controller.from_socket_file', return_value=MagicMock())
     @mock.patch('stem.process.launch_tor_with_config',      return_value=MagicMock())
     def test_onion_service(self, *_):
+        # Setup
         queues = gen_queue_dict()
 
         def queue_delayer():
@@ -116,6 +123,7 @@ class TestOnionService(unittest.TestCase):
 
         threading.Thread(target=queue_delayer).start()
 
+        # Test
         with mock.patch("time.sleep", return_value=None):
             self.assertIsNone(onion_service(queues))
 
@@ -124,6 +132,9 @@ class TestOnionService(unittest.TestCase):
         self.assertEqual(validate_onion_addr(address), '')
         self.assertEqual(queues[EXIT_QUEUE].get(), EXIT)
 
+        # Teardown
+        tear_queues(queues)
+
     @mock.patch('time.sleep',                               return_value=None)
     @mock.patch('shlex.split',                              return_value=['NOTICE', 'BOOTSTRAP', 'PROGRESS=100',
                                                                           'TAG=done', 'SUMMARY=Done'])
@@ -131,15 +142,22 @@ class TestOnionService(unittest.TestCase):
     @mock.patch('stem.control.Controller.from_socket_file', return_value=MagicMock())
     @mock.patch('stem.process.launch_tor_with_config',      return_value=MagicMock())
     def test_exception_during_onion_service_setup_returns(self, *_):
+        # Setup
         queues = gen_queue_dict()
         queues[ONION_KEY_QUEUE].put((bytes(ONION_SERVICE_PRIVATE_KEY_LENGTH), b'\x01'))
+
+        # Test
         self.assertIsNone(onion_service(queues))
+
+        # Teardown
+        tear_queues(queues)
 
     @mock.patch('time.sleep',  side_effect=[None, None, KeyboardInterrupt, stem.SocketClosed, None])
     @mock.patch('shlex.split', return_value=['NOTICE', 'BOOTSTRAP', 'PROGRESS=100', 'TAG=done', 'SUMMARY=Done'])
     @mock.patch('stem.control.Controller.from_socket_file', return_value=MagicMock())
     @mock.patch('stem.process.launch_tor_with_config',      return_value=MagicMock())
     def test_socket_closed_returns(self, *_):
+        # Setup
         queues = gen_queue_dict()
 
         controller = stem.control.Controller
@@ -147,7 +165,11 @@ class TestOnionService(unittest.TestCase):
 
         queues[ONION_KEY_QUEUE].put((bytes(ONION_SERVICE_PRIVATE_KEY_LENGTH), b'\x01'))
 
+        # Test
         self.assertIsNone(onion_service(queues))
+
+        # Teardown
+        tear_queues(queues)
 
 
 if __name__ == '__main__':

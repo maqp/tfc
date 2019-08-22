@@ -22,7 +22,7 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 import os
 import typing
 
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from src.common.db_logs    import remove_logs
 from src.common.encoding   import b58decode, int_to_bytes
@@ -42,7 +42,16 @@ if typing.TYPE_CHECKING:
     from src.common.db_masterkey import MasterKey
     from src.common.db_settings  import Settings
     from src.transmitter.windows import TxWindow
-    QueueDict = Dict[bytes, Queue]
+    QueueDict = Dict[bytes, Queue[Any]]
+    FuncDict  = (Dict[str, Callable[[str,
+                                     List[bytes],
+                                     ContactList,
+                                     GroupList,
+                                     Settings,
+                                     QueueDict,
+                                     MasterKey,
+                                     Optional[bytes]],
+                                    None]])
 
 
 def process_group_command(user_input:   'UserInput',
@@ -93,10 +102,12 @@ def process_group_command(user_input:   'UserInput',
     selectors = contact_list.contact_selectors()
     pub_keys  = [contact_list.get_contact_by_address_or_nick(m).onion_pub_key for m in purp_members if m in selectors]
 
-    func = dict(create=group_create,
-                join  =group_create,
-                add   =group_add_member,
-                rm    =group_rm_member)[command_type]  # type: Callable
+    func_d = dict(create=group_create,
+                  join  =group_create,
+                  add   =group_add_member,
+                  rm    =group_rm_member) # type: FuncDict
+
+    func = func_d[command_type]
 
     func(group_name, pub_keys, contact_list, group_list, settings, queues, master_key, group_id)
     print('')
@@ -265,7 +276,8 @@ def group_rm_group(group_name:   str,
                    group_list:   'GroupList',
                    settings:     'Settings',
                    queues:       'QueueDict',
-                   master_key:   'MasterKey'
+                   master_key:   'MasterKey',
+                   _:            Optional[bytes] = None
                    ) -> None:
     """Remove the group with its members."""
     if not yes(f"Remove group '{group_name}'?", abort=False):
@@ -302,7 +314,7 @@ def group_rm_group(group_name:   str,
     raise FunctionReturn(f"Removed group '{group_name}'.", head=0, delay=1, tail_clear=True, bold=True)
 
 
-def rename_group(new_name:     str,
+def group_rename(new_name:     str,
                  window:       'TxWindow',
                  contact_list: 'ContactList',
                  group_list:   'GroupList',

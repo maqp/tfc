@@ -34,12 +34,12 @@ from flask import Flask, send_file
 from src.common.statics import *
 
 if typing.TYPE_CHECKING:
-    QueueDict = Dict[bytes, Queue]
+    QueueDict = Dict[bytes, Queue[Any]]
 
 
 def flask_server(queues:               'QueueDict',
                  url_token_public_key: str,
-                 unittest:             bool = False
+                 unit_test:            bool = False
                  ) -> Optional[Flask]:
     """Run Flask web server for outgoing messages.
 
@@ -96,7 +96,8 @@ def flask_server(queues:               'QueueDict',
             while queues[URL_TOKEN_QUEUE].qsize() > 0:
                 onion_pub_key, url_token = queues[URL_TOKEN_QUEUE].get()
 
-                # Delete old URL token for contact when their URL token pub key changes.
+                # To keep dictionary compact, delete old key when new
+                # one with matching value (onion_pub_key) is received.
                 for ut in list(pub_key_dict.keys()):
                     if pub_key_dict[ut] == onion_pub_key:
                         del pub_key_dict[ut]
@@ -169,8 +170,8 @@ def flask_server(queues:               'QueueDict',
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
 
-    if unittest:
+    if unit_test:
         return app
-    else:  # not unittest
+    else:  # pragma: no cover
         app.run()
         return None

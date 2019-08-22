@@ -188,7 +188,7 @@ import math
 import shutil
 
 from array  import array
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
 
 class ReedSolomonError(Exception):
@@ -208,7 +208,7 @@ see paper:
 _bytearray   = bytearray  # type: Any
 gf_exp       = _bytearray([1] * 512)
 gf_log       = _bytearray(256)
-field_charac = int(2 ** 8 - 1)
+field_charac = int(2 ** 8 - 1)  # type: int
 
 
 # Galois Field elements maths
@@ -305,7 +305,7 @@ def find_prime_polys(generator:   int  = 2,
         prim_candidates = list(range(field_charac_ + 2, field_charac_next, root_charac))
 
     # Start of the main loop
-    correct_primes = []
+    correct_primes = []  # type: List[int]
 
     # try potential candidates primitive irreducible polys
     for prim in prim_candidates:
@@ -402,7 +402,7 @@ def init_tables(prim:      int = 0x11d,
     if c_exp <= 8:
         _bytearray = bytearray
     else:
-        def _bytearray(obj: Any = 0, encoding: str = "latin-1") -> array:
+        def _bytearray(obj: Union[str, bytes, int, List[int]] = 0, encoding: str = "latin-1") -> Any:
             """Fake bytearray replacement, supporting int values above 255"""
             # always use Latin-1 and not UTF8 because Latin-1 maps the
             # first 256 characters to their byte value equivalents. UTF8
@@ -464,40 +464,53 @@ def init_tables(prim:      int = 0x11d,
 
 
 def gf_add(x: int, y: int) -> int:
+    """Do addition in binary Galois Field."""
     return x ^ y
 
 
 def gf_sub(x: int, y: int) -> int:
-    # In binary Galois Field, subtraction is
-    # just the same as addition (since we mod 2)
+    """Do substraction in binary Galois Field.
+
+    In binary Galois Field, subtraction is just
+    the same as addition (since we mod 2)
+    """
     return x ^ y
 
 
 def gf_neg(x: int) -> int:
+    """Do negation in binary Galois Field."""
     return x
 
 
 def gf_inverse(x: int) -> int:
+    """Get the inverse of the value in binary Galois Field."""
     # gf_inverse(x) == gf_div(1, x)
-    return gf_exp[field_charac - gf_log[x]]
+    ret_val = gf_exp[field_charac - gf_log[x]]  # type: int
+    return ret_val
 
 
 def gf_mul(x: int, y: int) -> int:
+    """Multiply two numbers in the binary Galois Field."""
     if x == 0 or y == 0:
         return 0
-    return gf_exp[(gf_log[x] + gf_log[y]) % field_charac]
+    ret_val = gf_exp[(gf_log[x] + gf_log[y]) % field_charac]  # type: int
+    return ret_val
 
 
 def gf_div(x: int, y: int) -> int:
+    """Perform division in the binary Galois Field."""
     if y == 0:
         raise ZeroDivisionError()
     if x == 0:
         return 0
-    return gf_exp[(gf_log[x] + field_charac - gf_log[y]) % field_charac]
+    ret_val = gf_exp[(gf_log[x] + field_charac - gf_log[y]) % field_charac]  # type: int
+    return ret_val
 
 
 def gf_pow(x: int, power: int) -> int:
-    return gf_exp[(gf_log[x] * power) % field_charac]
+    """Raise x to some power in the binary Galois Field."""
+    ret_val = gf_exp[(gf_log[x] * power) % field_charac]  # type: int
+    return ret_val
 
 
 def gf_mult_nolut_slow(x: int, y: int, prim: int = 0) -> int:
@@ -602,16 +615,18 @@ def gf_mult_nolut(x:                 int,
 
 # Galois Field polynomials maths
 
-def gf_poly_scale(p: bytes, x: int) -> Any:
-    return _bytearray([gf_mul(p[i], x) for i in range(len(p))])
+def gf_poly_scale(p: bytes, x: int) -> bytearray:
+    """No docstring provided."""
+    ret_val = _bytearray([gf_mul(p[i], x) for i in range(len(p))])  # type: bytearray
+    return ret_val
 
 
-def gf_poly_add(p: bytes, q: Any) -> Any:
-    r = _bytearray(max(len(p), len(q)))
+def gf_poly_add(p: bytes, q: Union[bytearray, List[int]]) -> Any:
+    """No docstring provided."""
+    r = _bytearray(max(len(p), len(q)))  # type: bytearray
 
     r[len(r) - len(p):len(r)] = p
-    # for i in range(len(p)):
-    # r[i + len(r) - len(p)] = p[i]
+
     for i in range(len(q)):
         r[i + len(r) - len(q)] ^= q[i]
     return r
@@ -659,7 +674,7 @@ def gf_poly_mul_simple(p: List[int],
     without precomputation, but thus it's slower
     """
     # Pre-allocate the result array
-    r = _bytearray(len(p) + len(q) - 1)
+    r = _bytearray(len(p) + len(q) - 1)  # type: bytearray
 
     # Compute the polynomial multiplication (just like the outer product
     # of two vectors, we multiply each coefficients of p with all
@@ -681,9 +696,9 @@ def gf_poly_neg(poly: List[int]) -> List[int]:
     return poly
 
 
-def gf_poly_div(dividend: Any,
-                divisor:  Any
-                ) -> Tuple[Any, Any]:
+def gf_poly_div(dividend: bytearray,
+                divisor:  Union[bytearray, List[int]]
+                ) -> Tuple[bytearray, bytearray]:
     """Fast polynomial division by using Extended Synthetic Division and
     optimized for GF(2^p) computations (doesn't work with standard
     polynomials outside of this Galois Field).
@@ -737,7 +752,7 @@ def gf_poly_div(dividend: Any,
     return msg_out[:separator], msg_out[separator:]
 
 
-def gf_poly_eval(poly: Any, x: int) -> Any:
+def gf_poly_eval(poly: Union[bytearray, List[int]], x: int) -> int:
     """\
     Evaluates a polynomial in GF(2^p) given the value for x.
     This is based on Horner's scheme for maximum efficiency.
@@ -758,7 +773,7 @@ def rs_generator_poly(nsym:      int,
     Generate an irreducible generator polynomial
     (necessary to encode a message into Reed-Solomon)
     """
-    g = _bytearray([1])
+    g = _bytearray([1])  # type: bytearray
     for i in range(nsym):
         g = gf_poly_mul(g, [1, gf_pow(generator, i + fcr)])
     return g
@@ -767,7 +782,7 @@ def rs_generator_poly(nsym:      int,
 def rs_generator_poly_all(max_nsym:  int,
                           fcr:       int = 0,
                           generator: int = 2
-                          ) -> Dict[int, Any]:
+                          ) -> Dict[int, bytearray]:
     """\
     Generate all irreducible generator polynomials up to max_nsym
     (usually you can use n, the length of the message+ecc). Very useful
@@ -805,7 +820,7 @@ def rs_simple_encode_msg(msg_in:    bytearray,
     # The remainder is our RS code! Just append it to our original
     # message to get our full codeword (this represents a polynomial
     # of max 256 terms)
-    msg_out = msg_in + remainder
+    msg_out = msg_in + remainder  # type: bytearray
 
     # Return the codeword
     return msg_out
@@ -815,7 +830,7 @@ def rs_encode_msg(msg_in:    bytes,
                   nsym:      int,
                   fcr:       int = 0,
                   generator: int = 2,
-                  gen:       Any = None
+                  gen:       Optional[bytearray] = None
                   ) -> bytearray:
     """\
     Reed-Solomon main encoding function, using polynomial division
@@ -832,7 +847,7 @@ def rs_encode_msg(msg_in:    bytes,
 
     # init msg_out with the values inside msg_in and pad with
     # len(gen)-1 bytes (which is the number of ecc symbols).
-    msg_out = _bytearray(msg_in) + _bytearray(len(gen) - 1)
+    msg_out = _bytearray(msg_in) + _bytearray(len(gen) - 1)  # type: bytearray
 
     # Precompute the logarithm of every items in the generator
     lgen = _bytearray([gf_log[gen[j]] for j in range(len(gen))])
@@ -929,7 +944,7 @@ def rs_correct_errata(msg_in:    bytearray,
     err_pos is a list of the positions of the errors/erasures/errata
     """
     global field_charac
-    msg = _bytearray(msg_in)
+    msg = _bytearray(msg_in)  # type: bytearray
     # Calculate errata locator polynomial to correct both errors and
     # erasures (by combining the errors positions given by the error
     # locator polynomial found by BM with the erasures positions given
@@ -1047,7 +1062,7 @@ def rs_find_error_locator(synd:        List[int],
     # If the erasure locator polynomial is supplied, we init with its
     # value, so that we include erasures in the final locator polynomial
     if erase_loc:
-        err_loc = _bytearray(erase_loc)
+        err_loc = _bytearray(erase_loc)  # type: bytearray
         old_loc = _bytearray(erase_loc)
     else:
         # This is the main variable we want to fill, also called Sigma
@@ -1165,12 +1180,12 @@ def rs_find_error_locator(synd:        List[int],
 
     # Check if the result is correct, that there's not too many errors to
     # correct drop leading 0s, else errs will not be of the correct size
-    err_loc = list(itertools.dropwhile(lambda x: x == 0, err_loc))
-    errs    = len(err_loc) - 1
+    err_loc_ = list(itertools.dropwhile(lambda x: x == 0, err_loc))  # type: List[int]
+    errs     = len(err_loc_) - 1
     if (errs - erase_count) * 2 + erase_count > nsym:  # pragma: no cover
         raise ReedSolomonError("Too many errors to correct")
 
-    return err_loc
+    return err_loc_
 
 
 def rs_find_errata_locator(e_pos:     List[int],
@@ -1256,7 +1271,7 @@ def rs_find_error_evaluator(synd:    List[int],
     return remainder
 
 
-def rs_find_errors(err_loc:   Any,
+def rs_find_errors(err_loc:   Union[bytearray, List[int]],
                    nmess:     int,
                    generator: int = 2
                    ) -> List[int]:
@@ -1301,7 +1316,7 @@ def rs_forney_syndromes(synd:      List[int],
                         pos:       List[int],
                         nmess:     int,
                         generator: int = 2
-                        ) -> list:
+                        ) -> List[int]:
     """\
     Compute Forney syndromes, which computes a modified syndromes to
     compute only errors (erasures are trimmed out). Do not confuse this
@@ -1354,7 +1369,7 @@ def rs_correct_msg(msg_in:        bytearray,
                    generator:     int                 = 2,
                    erase_pos:     Optional[List[int]] = None,
                    only_erasures: bool                = False
-                   ) -> Tuple[Any, Any]:
+                   ) -> Tuple[bytearray, bytearray]:
     """Reed-Solomon main decoding function"""
     global field_charac
     if len(msg_in) > field_charac:  # pragma: no cover
@@ -1444,7 +1459,7 @@ def rs_correct_msg_nofsynd(msg_in:        bytearray,
                            generator:     int                 = 2,
                            erase_pos:     Optional[List[int]] = None,
                            only_erasures: bool                = False
-                           ) -> Tuple[Any, Any]:
+                           ) -> Tuple[bytearray, bytearray]:
     """\
     Reed-Solomon main decoding function, without using the modified
     Forney syndromes.
@@ -1635,7 +1650,7 @@ class RSCodec(object):
     @staticmethod
     def chunk(data:       bytes,
               chunk_size: int
-              ) -> Generator:
+              ) -> Iterator[Any]:
         """Split a long message into chunks"""
         for i in range(0, len(data), chunk_size):
             # Split the long message in a chunk.
@@ -1662,13 +1677,13 @@ class RSCodec(object):
             data = _bytearray(data_)
         else:
             data = data_
-        enc = _bytearray()
+        enc = _bytearray()  # type: bytearray
         for chunk in self.chunk(data, self.nsize - self.nsym):
             enc.extend(rs_encode_msg(chunk, self.nsym, fcr=self.fcr, generator=self.generator, gen=self.gen[nsym]))
         return enc
 
     def decode(self,
-               data:          Any,
+               data:          bytes,
                nsym:          Optional[int]       = None,
                erase_pos:     Optional[List[int]] = None,
                only_erasures: bool                = False

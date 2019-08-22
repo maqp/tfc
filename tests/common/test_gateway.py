@@ -36,24 +36,24 @@ from src.common.reed_solomon import RSCodec
 from src.common.statics      import *
 
 from tests.mock_classes import Settings
-from tests.utils        import cd_unittest, cleanup, gen_queue_dict, tear_queues, TFCTestCase
+from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, tear_queues, TFCTestCase
 
 
 class TestGatewayLoop(unittest.TestCase):
 
     def setUp(self):
-        self.unittest_dir = cd_unittest()
-        self.queues       = gen_queue_dict()
+        self.unit_test_dir = cd_unit_test()
+        self.queues        = gen_queue_dict()
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
         tear_queues(self.queues)
 
     @mock.patch('multiprocessing.connection.Listener',
                 return_value=MagicMock(accept=lambda: MagicMock(recv=MagicMock(return_value='message'))))
     def test_loop(self, _):
         gateway = Gateway(operation=RX, local_test=True, dd_sockets=False)
-        self.assertIsNone(gateway_loop(self.queues, gateway, unittest=True))
+        self.assertIsNone(gateway_loop(self.queues, gateway, unit_test=True))
 
         data = self.queues[GATEWAY_QUEUE].get()
         self.assertIsInstance(data[0], datetime)
@@ -63,11 +63,11 @@ class TestGatewayLoop(unittest.TestCase):
 class TestGatewaySerial(TFCTestCase):
 
     def setUp(self):
-        self.unittest_dir = cd_unittest()
-        self.settings     = Settings(session_usb_serial_adapter=True)
+        self.unit_test_dir = cd_unit_test()
+        self.settings      = Settings(session_usb_serial_adapter=True)
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     @mock.patch('time.sleep',     return_value=None)
     @mock.patch('serial.Serial',  return_value=MagicMock())
@@ -93,6 +93,20 @@ class TestGatewaySerial(TFCTestCase):
     def test_write_serial_(self, *_):
         gateway = Gateway(operation=RX, local_test=False, dd_sockets=False)
         self.assertIsNone(gateway.write(b"message"))
+
+    @mock.patch('time.sleep',     return_value=None)
+    @mock.patch('serial.Serial',  return_value=MagicMock(
+        read_all=MagicMock(side_effect=[KeyboardInterrupt, SerialException, b'', b'1', b'2', b''])))
+    @mock.patch('os.listdir',     side_effect=[['ttyUSB0'], ['ttyUSB0'], ['ttyUSB0']])
+    @mock.patch('builtins.input', side_effect=['Yes'])
+    def test_serial_uninitialized_serial_interface_for_read_raises_critical_error(self, *_):
+        # Setup
+        gateway           = Gateway(operation=RX, local_test=False, dd_sockets=False)
+        gateway.rx_serial = None
+
+        # Test
+        with self.assertRaises(SystemExit):
+            gateway.read()
 
     @mock.patch('time.monotonic', side_effect=[1, 2, 3])
     @mock.patch('time.sleep',     return_value=None)
@@ -225,7 +239,7 @@ class TestGatewaySerial(TFCTestCase):
 class TestGatewaySettings(TFCTestCase):
 
     def setUp(self):
-        self.unittest_dir       = cd_unittest()
+        self.unit_test_dir      = cd_unit_test()
         self.default_serialized = """\
 {
     "serial_baudrate": 19200,
@@ -235,7 +249,7 @@ class TestGatewaySettings(TFCTestCase):
 }"""
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     @mock.patch('os.listdir',     side_effect=[['ttyUSB0'], ['ttyS0'], ['ttyUSB0'], ['ttyS0']])
     @mock.patch('builtins.input', side_effect=['yes', 'yes', 'no', 'no'])

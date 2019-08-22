@@ -122,7 +122,7 @@ class TestClient(unittest.TestCase):
         tor_port      = '1337'
         settings      = Gateway()
         sk            = TestClient.url_token_private_key
-        self.assertIsNone(client(onion_pub_key, self.queues, sk, tor_port, settings, onion_address, unittest=True))
+        self.assertIsNone(client(onion_pub_key, self.queues, sk, tor_port, settings, onion_address, unit_test=True))
         self.assertEqual(self.queues[URL_TOKEN_QUEUE].get(), (onion_pub_key, TestClient.url_token))
 
 
@@ -307,7 +307,7 @@ class TestGroupManager(unittest.TestCase):
 
             # Exit test
             time.sleep(0.2)
-            queues[UNITTEST_QUEUE].put(EXIT)
+            queues[UNIT_TEST_QUEUE].put(EXIT)
             queues[GROUP_MSG_QUEUE].put(
                 (GROUP_MSG_EXIT_GROUP_HEADER,
                  bytes(GROUP_ID_LENGTH),
@@ -316,7 +316,7 @@ class TestGroupManager(unittest.TestCase):
 
         # Test
         threading.Thread(target=queue_delayer).start()
-        self.assertIsNone(g_msg_manager(queues, unittest=True))
+        self.assertIsNone(g_msg_manager(queues, unit_test=True))
         tear_queues(queues)
 
 
@@ -332,19 +332,19 @@ class TestClientScheduler(unittest.TestCase):
             time.sleep(0.1)
             queues[TOR_DATA_QUEUE].put(
                 ('1234', nick_to_onion_address('Alice')))
-            queues[CONTACT_KEY_QUEUE].put(
+            queues[CONTACT_MGMT_QUEUE].put(
                 (RP_ADD_CONTACT_HEADER, b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')]), True))
             time.sleep(0.1)
-            queues[CONTACT_KEY_QUEUE].put(
+            queues[CONTACT_MGMT_QUEUE].put(
                 (RP_REMOVE_CONTACT_HEADER, b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')]), True))
             time.sleep(0.1)
-            queues[UNITTEST_QUEUE].put(EXIT)
+            queues[UNIT_TEST_QUEUE].put(EXIT)
             time.sleep(0.1)
-            queues[CONTACT_KEY_QUEUE].put((EXIT, EXIT, EXIT))
+            queues[CONTACT_MGMT_QUEUE].put((EXIT, EXIT, EXIT))
 
         threading.Thread(target=queue_delayer).start()
 
-        self.assertIsNone(client_scheduler(queues, gateway, server_private_key, unittest=True))
+        self.assertIsNone(client_scheduler(queues, gateway, server_private_key, unit_test=True))
         tear_queues(queues)
 
 
@@ -357,7 +357,7 @@ class TestContactRequestManager(unittest.TestCase):
         def queue_delayer():
             """Place messages to queue one at a time."""
             time.sleep(0.1)
-            queues[F_REQ_MGMT_QUEUE].put(
+            queues[C_REQ_MGMT_QUEUE].put(
                 (RP_ADD_CONTACT_HEADER, b''.join(list(map(nick_to_pub_key, ['Alice', 'Bob'])))))
             time.sleep(0.1)
 
@@ -374,23 +374,23 @@ class TestContactRequestManager(unittest.TestCase):
             time.sleep(0.1)
 
             # Remove Alice
-            queues[F_REQ_MGMT_QUEUE].put((RP_REMOVE_CONTACT_HEADER, nick_to_pub_key('Alice')))
+            queues[C_REQ_MGMT_QUEUE].put((RP_REMOVE_CONTACT_HEADER, nick_to_pub_key('Alice')))
             time.sleep(0.1)
 
             # Load settings from queue
-            queues[C_REQ_MGR_QUEUE].put(False)
-            queues[C_REQ_MGR_QUEUE].put(True)
+            queues[C_REQ_STATE_QUEUE].put(False)
+            queues[C_REQ_STATE_QUEUE].put(True)
 
             # Test that request from Alice is accepted
             queues[CONTACT_REQ_QUEUE].put((nick_to_onion_address('Alice')))
             time.sleep(0.1)
 
             # Exit test
-            queues[UNITTEST_QUEUE].put(EXIT)
+            queues[UNIT_TEST_QUEUE].put(EXIT)
             queues[CONTACT_REQ_QUEUE].put(nick_to_pub_key('Charlie'))
 
         threading.Thread(target=queue_delayer).start()
-        self.assertIsNone(c_req_manager(queues, unittest=True))
+        self.assertIsNone(c_req_manager(queues, unit_test=True))
         tear_queues(queues)
 
 

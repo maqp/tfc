@@ -34,6 +34,9 @@ if typing.TYPE_CHECKING:
     from src.common.db_settings import Settings
 
 
+Validator = Callable[..., str]
+
+
 def ask_confirmation_code(source: str  # The system the confirmation code is displayed by
                           ) -> str:    # The confirmation code entered by the user
     """\
@@ -63,16 +66,16 @@ def ask_confirmation_code(source: str  # The system the confirmation code is dis
     return input(indent * ' ' + f'│ {title}')
 
 
-def box_input(message:        str,                         # Input prompt message
-              default:        str                = '',     # Default return value
-              head:           int                = 0,      # Number of new lines to print before the input
-              tail:           int                = 1,      # Number of new lines to print after input
-              expected_len:   int                = 0,      # Expected length of the input
-              key_type:       str                = '',     # When specified, sets input width
-              guide:          bool               = False,  # When True, prints the guide for key
-              validator:      Optional[Callable] = None,   # Input validator function
-              validator_args: Optional[Any]      = None    # Arguments required by the validator
-              ) -> str:                                    # Input from user
+def box_input(message:        str,                          # Input prompt message
+              default:        str                 = '',     # Default return value
+              head:           int                 = 0,      # Number of new lines to print before the input
+              tail:           int                 = 1,      # Number of new lines to print after input
+              expected_len:   int                 = 0,      # Expected length of the input
+              key_type:       str                 = '',     # When specified, sets input width
+              guide:          bool                = False,  # When True, prints the guide for key
+              validator:      Optional[Validator] = None,   # Input validator function
+              validator_args: Optional[Any]       = None    # Arguments required by the validator
+              ) -> str:                                     # Input from user
     """Display boxed input prompt with a message."""
     print_spacing(head)
 

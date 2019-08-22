@@ -149,14 +149,14 @@ def stem_compatible_ed25519_key_from_private_key(private_key: bytes) -> str:
         return encode_int(a) + k
 
     if len(private_key) != ONION_SERVICE_PRIVATE_KEY_LENGTH:
-        raise CriticalError("Onion Service private key had invalid length.")
+        raise CriticalError("Onion Service private key had an invalid length.")
 
     expanded_private_key = expand_private_key(private_key)
 
     return base64.b64encode(expanded_private_key).decode()
 
 
-def onion_service(queues: Dict[bytes, 'Queue']) -> None:
+def onion_service(queues: Dict[bytes, 'Queue[Any]']) -> None:
     """Manage the Tor Onion Service and control Tor via stem."""
     rp_print("Setup   0% - Waiting for Onion Service configuration...", bold=True)
     while queues[ONION_KEY_QUEUE].qsize() == 0:
@@ -206,9 +206,9 @@ def onion_service(queues: Dict[bytes, 'Queue']) -> None:
 
             if queues[ONION_CLOSE_QUEUE].qsize() > 0:
                 command = queues[ONION_CLOSE_QUEUE].get()
-                queues[EXIT_QUEUE].put(command)
                 tor.controller.remove_hidden_service(response.service_id)
                 tor.stop()
+                queues[EXIT_QUEUE].put(command)
                 break
 
         except (EOFError, KeyboardInterrupt):

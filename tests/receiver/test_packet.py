@@ -35,7 +35,7 @@ from src.transmitter.packet import split_to_assembly_packets
 from src.receiver.packet import decrypt_assembly_packet, Packet, PacketList
 
 from tests.mock_classes import ContactList, create_contact, KeyList, Settings, WindowList
-from tests.utils        import assembly_packet_creator, cd_unittest, cleanup, nick_to_pub_key, TFCTestCase
+from tests.utils        import assembly_packet_creator, cd_unit_test, cleanup, nick_to_pub_key, TFCTestCase
 from tests.utils        import UNDECODABLE_UNICODE
 
 
@@ -125,12 +125,12 @@ class TestPacket(TFCTestCase):
                     "que. In sem elit, fringilla id viverra commodo, sagittis varius purus. Pellentesque rutrum loborti"
                     "s neque a facilisis. Mauris id tortor placerat, aliquam dolor ac, venenatis arcu.")
 
-        self.unittest_dir  = cd_unittest()
-        self.ts            = datetime.now()
-        self.contact       = create_contact('Alice')
-        self.settings      = Settings(log_file_masking=True)
-        self.onion_pub_key = nick_to_pub_key('Alice')
-        self.window_list   = WindowList()
+        self.unit_test_dir  = cd_unit_test()
+        self.ts             = datetime.now()
+        self.contact        = create_contact('Alice')
+        self.settings       = Settings(log_file_masking=True)
+        self.onion_pub_key  = nick_to_pub_key('Alice')
+        self.window_list    = WindowList()
         self.whisper_header = b'\x00'
 
         compressed        = zlib.compress(b'file_data', level=COMPRESSION_LEVEL)
@@ -140,7 +140,7 @@ class TestPacket(TFCTestCase):
         self.short_f_data = (int_to_bytes(1) + int_to_bytes(2) + b'testfile.txt' + US_BYTE + encrypted)
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     def test_invalid_assembly_packet_header_raises_fr(self):
         # Setup

@@ -62,12 +62,12 @@ class TestNoiseLoop(unittest.TestCase):
         tear_queues(self.queues)
 
     def test_noise_commands(self):
-        self.assertIsNone(noise_loop(self.queues, unittest=True))
+        self.assertIsNone(noise_loop(self.queues, unit_test=True))
         packet = self.queues[TM_NOISE_COMMAND_QUEUE].get()
         self.assertEqual(packet, C_N_HEADER + bytes(PADDING_LENGTH))
 
     def test_noise_packets(self):
-        self.assertIsNone(noise_loop(self.queues, self.contact_list, unittest=True))
+        self.assertIsNone(noise_loop(self.queues, self.contact_list, unit_test=True))
         packet, log_messages, log_as_ph = self.queues[TM_NOISE_PACKET_QUEUE].get()
         self.assertEqual(packet, PLACEHOLDER_DATA)
         self.assertTrue(log_messages)

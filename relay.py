@@ -23,7 +23,7 @@ import os
 import sys
 
 from multiprocessing import Process, Queue
-from typing          import Dict
+from typing          import Any, Dict
 
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey
 from cryptography.hazmat.primitives.serialization   import Encoding, PublicFormat
@@ -31,7 +31,10 @@ from cryptography.hazmat.primitives.serialization   import Encoding, PublicForma
 from src.common.gateway import Gateway, gateway_loop
 from src.common.misc    import ensure_dir, monitor_processes, process_arguments
 from src.common.output  import print_title
-from src.common.statics import *
+from src.common.statics import C_REQ_MGMT_QUEUE, C_REQ_STATE_QUEUE, CONTACT_MGMT_QUEUE, CONTACT_REQ_QUEUE, DIR_TFC
+from src.common.statics import DST_COMMAND_QUEUE, DST_MESSAGE_QUEUE, EXIT_QUEUE, F_TO_FLASK_QUEUE, GATEWAY_QUEUE
+from src.common.statics import GROUP_MGMT_QUEUE, GROUP_MSG_QUEUE, M_TO_FLASK_QUEUE, NC, ONION_CLOSE_QUEUE
+from src.common.statics import ONION_KEY_QUEUE, SRC_TO_RELAY_QUEUE, TOR_DATA_QUEUE, URL_TOKEN_QUEUE
 
 from src.relay.client   import c_req_manager, client_scheduler, g_msg_manager
 from src.relay.commands import relay_command
@@ -89,7 +92,7 @@ def main() -> None:
       Source ───▶|─────(── gateway_loop ─> src_incoming ─> flask_server <─┐
     Computer        ┃  |                            |                     |                   ┃
                        |                            |                     |
-                    ┃  |    (Local keys, commands   |                     |                   ┃
+                    ┃  |    (Local keys, commands,  |                     |                   ┃
                        |    and copies of messages)┄|                     |
                     ┃  |             ┊              ↓                     |                   ┃
  Destination <──|◀─────(────────────────────── dst_outgoing               |
@@ -111,15 +114,15 @@ def main() -> None:
                     ┗━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━ ━━┛
 
 
-    The image above gives a rough overview of the structure of the Relay
-    Program. The Relay Program acts as a protocol converter that reads
-    datagrams from the Source Computer. Outgoing message/file/public key
-    datagrams are made available in the user's Tor v3 Onion Service.
-    Copies of sent message datagrams as well as datagrams from contacts'
-    Onion Services are forwarded to the Destination Computer.
-    The Relay-to-Relay encrypted datagrams from contacts such as contact
-    requests, public keys and group management messages are displayed by
-    the Relay Program.
+    The diagram above gives a rough overview of the structure of the
+    Relay Program. The Relay Program acts as a protocol converter that
+    reads datagrams from the Source Computer. Outgoing
+    message/file/public key datagrams are made available in the user's
+    Tor v3 Onion Service. Copies of sent message datagrams as well as
+    datagrams from contacts' Onion Services are forwarded to the
+    Destination Computer. The Relay-to-Relay encrypted datagrams from
+    contacts such as contact requests, public keys and group management
+    messages are displayed by the Relay Program.
 
     Outgoing message datagrams are loaded by contacts from the user's
     Flask web server. To request messages intended for them, each
@@ -134,13 +137,14 @@ def main() -> None:
     os.chdir(working_dir)
 
     _, local_test, data_diode_sockets = process_arguments()
+
     gateway = Gateway(NC, local_test, data_diode_sockets)
 
     print_title(NC)
 
     url_token_private_key = X448PrivateKey.generate()
     url_token_public_key  = url_token_private_key.public_key().public_bytes(encoding=Encoding.Raw,
-                                                                            format=PublicFormat.Raw).hex()
+                                                                            format=PublicFormat.Raw).hex()  # type: str
 
     queues = \
         {GATEWAY_QUEUE:      Queue(),  # All     datagrams           from `gateway_loop`          to `src_incoming`
@@ -149,18 +153,18 @@ def main() -> None:
          F_TO_FLASK_QUEUE:   Queue(),  # File datagrams              from `src_incoming`          to `flask_server`
          SRC_TO_RELAY_QUEUE: Queue(),  # Command datagrams           from `src_incoming`          to `relay_command`
          DST_COMMAND_QUEUE:  Queue(),  # Command datagrams           from `src_incoming`          to `dst_outgoing`
-         CONTACT_KEY_QUEUE:  Queue(),  # Contact management commands from `relay_command`         to `client_manager`
-         C_REQ_MGR_QUEUE:    Queue(),  # Contact requests management from `relay_command`         to `c_req_manager`
+         CONTACT_MGMT_QUEUE: Queue(),  # Contact management commands from `relay_command`         to `client_scheduler`
+         C_REQ_STATE_QUEUE:  Queue(),  # Contact req. notify setting from `relay_command`         to `c_req_manager`
          URL_TOKEN_QUEUE:    Queue(),  # URL tokens                  from `client`                to `flask_server`
          GROUP_MSG_QUEUE:    Queue(),  # Group management messages   from `client`                to `g_msg_manager`
          CONTACT_REQ_QUEUE:  Queue(),  # Contact requests            from `flask_server`          to `c_req_manager`
-         F_REQ_MGMT_QUEUE:   Queue(),  # Contact list management     from `relay_command`         to `c_req_manager`
+         C_REQ_MGMT_QUEUE:   Queue(),  # Contact list management     from `relay_command`         to `c_req_manager`
          GROUP_MGMT_QUEUE:   Queue(),  # Contact list management     from `relay_command`         to `g_msg_manager`
          ONION_CLOSE_QUEUE:  Queue(),  # Onion Service close command from `relay_command`         to `onion_service`
          ONION_KEY_QUEUE:    Queue(),  # Onion Service private key   from `relay_command`         to `onion_service`
-         TOR_DATA_QUEUE:     Queue(),  # Open port for Tor           from `onion_service`         to `client_manager`
+         TOR_DATA_QUEUE:     Queue(),  # Open port for Tor           from `onion_service`         to `client_scheduler`
          EXIT_QUEUE:         Queue()   # EXIT/WIPE signal            from `relay_command`         to `main`
-         }  # type: Dict[bytes, Queue]
+         }  # type: Dict[bytes, Queue[Any]]
 
     process_list = [Process(target=gateway_loop,     args=(queues, gateway                       )),
                     Process(target=src_incoming,     args=(queues, gateway                       )),
@@ -168,7 +172,7 @@ def main() -> None:
                     Process(target=client_scheduler, args=(queues, gateway, url_token_private_key)),
                     Process(target=g_msg_manager,    args=(queues,                               )),
                     Process(target=c_req_manager,    args=(queues,                               )),
-                    Process(target=flask_server,     args=(queues,           url_token_public_key)),
+                    Process(target=flask_server,     args=(queues,          url_token_public_key )),
                     Process(target=onion_service,    args=(queues,                               )),
                     Process(target=relay_command,    args=(queues, gateway, sys.stdin.fileno())  )]
 

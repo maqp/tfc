@@ -49,9 +49,9 @@ def ask_path_gui(prompt_msg: str,          # Directory selection prompt
         root.withdraw()
 
         if get_file:
-            file_path = filedialog.askopenfilename(title=prompt_msg)  # type: str
+            file_path = str(filedialog.askopenfilename(title=prompt_msg))  # type: ignore
         else:
-            file_path = filedialog.askdirectory(title=prompt_msg)
+            file_path = str(filedialog.askdirectory(title=prompt_msg))  # type: ignore
 
         root.destroy()
 

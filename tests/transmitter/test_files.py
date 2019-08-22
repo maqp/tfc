@@ -25,19 +25,19 @@ import unittest
 from src.transmitter.files import File
 
 from tests.mock_classes import create_contact, Settings, TxWindow
-from tests.utils        import cd_unittest, cleanup, TFCTestCase
+from tests.utils        import cd_unit_test, cleanup, TFCTestCase
 
 
 class TestFile(TFCTestCase):
 
     def setUp(self):
-        self.unittest_dir = cd_unittest()
-        self.window       = TxWindow()
-        self.settings     = Settings()
-        self.args         = self.window, self.settings
+        self.unit_test_dir = cd_unit_test()
+        self.window        = TxWindow()
+        self.settings      = Settings()
+        self.args          = self.window, self.settings
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     def test_missing_file_raises_fr(self):
         self.assert_fr("Error: File not found.", File, './testfile.txt', *self.args)

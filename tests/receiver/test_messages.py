@@ -35,14 +35,14 @@ from src.receiver.packet   import PacketList
 from src.receiver.windows  import WindowList
 
 from tests.mock_classes import ContactList, GroupList, KeyList, MasterKey, Settings
-from tests.utils        import assembly_packet_creator, cd_unittest, cleanup, group_name_to_group_id
+from tests.utils        import assembly_packet_creator, cd_unit_test, cleanup, group_name_to_group_id
 from tests.utils        import nick_to_pub_key, TFCTestCase
 
 
 class TestProcessMessage(TFCTestCase):
 
     def setUp(self):
-        self.unittest_dir = cd_unittest()
+        self.unit_test_dir = cd_unit_test()
 
         self.msg = ("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean condimentum consectetur purus quis"
                     " dapibus. Fusce venenatis lacus ut rhoncus faucibus. Cras sollicitudin commodo sapien, sed bibendu"
@@ -76,7 +76,7 @@ class TestProcessMessage(TFCTestCase):
         ensure_dir(DIR_USER_DATA)
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     # Invalid packets
     @mock.patch('time.sleep', return_value=None)

@@ -37,7 +37,7 @@ from src.transmitter.packet   import split_to_assembly_packets
 
 from tests.mock_classes import ContactList, create_contact, Gateway, GroupList, MasterKey, OnionService, Settings
 from tests.mock_classes import TxWindow, UserInput
-from tests.utils        import assembly_packet_creator, cd_unittest, cleanup, group_name_to_group_id
+from tests.utils        import assembly_packet_creator, cd_unit_test, cleanup, group_name_to_group_id
 from tests.utils        import gen_queue_dict, nick_to_onion_address, nick_to_pub_key, tear_queues, TFCTestCase
 
 
@@ -195,31 +195,43 @@ class TestExitTFC(unittest.TestCase):
 
 class TestLogCommand(TFCTestCase):
 
-    def setUp(self):
-        self.unittest_dir = cd_unittest()
-        self.window       = TxWindow(name='Alice',
-                                     uid=nick_to_pub_key('Alice'))
-        self.contact_list = ContactList()
-        self.group_list   = GroupList()
-        self.settings     = Settings()
-        self.queues       = gen_queue_dict()
-        self.master_key   = MasterKey()
-        self.args         = self.window, self.contact_list, self.group_list, self.settings, self.queues, self.master_key
+    @mock.patch("getpass.getpass", return_value='test_password')
+    def setUp(self, _):
+        self.unit_test_dir = cd_unit_test()
+        self.window        = TxWindow(name='Alice',
+                                      uid=nick_to_pub_key('Alice'))
+        self.contact_list  = ContactList()
+        self.group_list    = GroupList()
+        self.settings      = Settings()
+        self.queues        = gen_queue_dict()
+        self.master_key    = MasterKey()
+        self.args          = self.window, self.contact_list, self.group_list, self.settings, self.queues, self.master_key
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
         tear_queues(self.queues)
 
     def test_invalid_export(self):
         self.assert_fr("Error: Invalid number of messages.",
                        log_command, UserInput("history a"), *self.args)
 
-    def test_log_printing(self):
+    @mock.patch("getpass.getpass", return_value='test_password')
+    def test_log_printing(self, _):
         self.assert_fr(f"No log database available.",
                        log_command, UserInput("history 4"), *self.args)
         self.assertEqual(self.queues[COMMAND_PACKET_QUEUE].qsize(), 1)
 
-    def test_log_printing_all(self):
+    def test_log_printing_when_no_password_is_asked(self):
+        # Setup
+        self.settings.ask_password_for_log_access = False
+
+        # Test
+        self.assert_fr(f"No log database available.",
+                       log_command, UserInput("history 4"), *self.args)
+        self.assertEqual(self.queues[COMMAND_PACKET_QUEUE].qsize(), 1)
+
+    @mock.patch("getpass.getpass", return_value='test_password')
+    def test_log_printing_all(self, _):
         self.assert_fr(f"No log database available.",
                        log_command, UserInput("history"), *self.args)
         self.assertEqual(self.queues[COMMAND_PACKET_QUEUE].qsize(), 1)
@@ -238,10 +250,31 @@ class TestLogCommand(TFCTestCase):
         self.assert_fr("Log file export aborted.",
                        log_command, UserInput('export'), *self.args)
 
-    @mock.patch('time.sleep',     return_value=None)
-    @mock.patch('builtins.input', return_value='Yes')
+    @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.1)
+    @mock.patch('src.common.db_masterkey.MAX_KEY_DERIVATION_TIME', 1.0)
+    @mock.patch('os.popen',                  return_value=MagicMock(read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemFree 10240"])))))
+    @mock.patch("multiprocessing.cpu_count", return_value=1)
+    @mock.patch('time.sleep',                return_value=None)
+    @mock.patch('builtins.input',            return_value='Yes')
+    @mock.patch('getpass.getpass',           side_effect=['test_password', 'test_password', KeyboardInterrupt])
+    def test_keyboard_interrupt_raises_fr(self, *_):
+        from src.common.db_masterkey import MasterKey
+        self.master_key = MasterKey(operation=TX, local_test=True)
+        self.assert_fr("Log file export aborted.",
+                       log_command, UserInput('export'), *self.args)
+
+
+    @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.1)
+    @mock.patch('src.common.db_masterkey.MAX_KEY_DERIVATION_TIME', 1.0)
+    @mock.patch('os.popen',                  return_value=MagicMock(read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemFree 10240"])))))
+    @mock.patch("multiprocessing.cpu_count", return_value=1)
+    @mock.patch("getpass.getpass",           side_effect=3*['test_password'] + ['invalid_password'] + ['test_password'])
+    @mock.patch('time.sleep',                return_value=None)
+    @mock.patch('builtins.input',            return_value='Yes')
     def test_successful_export_command(self, *_):
         # Setup
+        from src.common.db_masterkey import MasterKey
+        self.master_key  = MasterKey(operation=TX, local_test=True)
         self.window.type = WIN_TYPE_CONTACT
         self.window.uid  = nick_to_pub_key('Alice')
         whisper_header   = bool_to_bytes(False)
@@ -444,19 +477,19 @@ class TestPrintRecipients(TFCTestCase):
 class TestChangeMasterKey(TFCTestCase):
 
     def setUp(self):
-        self.unittest_dir  = cd_unittest()
-        self.contact_list  = ContactList()
-        self.group_list    = GroupList()
-        self.settings      = Settings()
-        self.queues        = gen_queue_dict()
-        self.master_key    = MasterKey()
-        self.onion_service = OnionService(master_key=self.master_key,
-                                          file_name=f'{DIR_USER_DATA}/unittest')
-        self.args          = (self.contact_list, self.group_list, self.settings,
-                              self.queues, self.master_key, self.onion_service)
+        self.unit_test_dir  = cd_unit_test()
+        self.contact_list   = ContactList()
+        self.group_list     = GroupList()
+        self.settings       = Settings()
+        self.queues         = gen_queue_dict()
+        self.master_key     = MasterKey()
+        self.onion_service  = OnionService(master_key=self.master_key,
+                                           file_name=f'{DIR_USER_DATA}/unittest')
+        self.args           = (self.contact_list, self.group_list, self.settings,
+                               self.queues, self.master_key, self.onion_service)
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
         tear_queues(self.queues)
 
     def test_raises_fr_during_traffic_masking(self):
@@ -503,18 +536,18 @@ class TestChangeMasterKey(TFCTestCase):
 class TestRemoveLog(TFCTestCase):
 
     def setUp(self):
-        self.unittest_dir = cd_unittest()
-        self.contact_list = ContactList(nicks=['Alice'])
-        self.group_list   = GroupList(groups=['test_group'])
-        self.settings     = Settings()
-        self.queues       = gen_queue_dict()
-        self.master_key   = MasterKey()
-        self.file_name    = f'{DIR_USER_DATA}{self.settings.software_operation}_logs'
-        self.args         = self.contact_list, self.group_list, self.settings, self.queues, self.master_key
+        self.unit_test_dir = cd_unit_test()
+        self.contact_list  = ContactList(nicks=['Alice'])
+        self.group_list    = GroupList(groups=['test_group'])
+        self.settings      = Settings()
+        self.queues        = gen_queue_dict()
+        self.master_key    = MasterKey()
+        self.file_name     = f'{DIR_USER_DATA}{self.settings.software_operation}_logs'
+        self.args          = self.contact_list, self.group_list, self.settings, self.queues, self.master_key
 
     def tearDown(self):
         tear_queues(self.queues)
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     def test_missing_contact_raises_fr(self):
         self.assert_fr("Error: No contact/group specified.",
@@ -613,8 +646,10 @@ class TestChangeSetting(TFCTestCase):
         self.group_list   = GroupList()
         self.settings     = Settings()
         self.queues       = gen_queue_dict()
+        self.master_key   = MasterKey()
         self.gateway      = Gateway()
-        self.args         = self.window, self.contact_list, self.group_list, self.settings, self.queues, self.gateway
+        self.args         = self.window, self.contact_list, self.group_list, \
+                            self.settings, self.queues, self.master_key, self.gateway
 
     def tearDown(self):
         tear_queues(self.queues)
@@ -637,6 +672,18 @@ class TestChangeSetting(TFCTestCase):
 
         self.assert_fr("Error: Serial interface setting can only be changed manually.",
                        change_setting, UserInput("set built_in_serial_interface Truej"), *self.args)
+
+    @mock.patch('time.sleep',      return_value=None)
+    @mock.patch('getpass.getpass', side_effect=[KeyboardInterrupt])
+    def test_changing_ask_password_for_log_access_asks_for_password(self, *_):
+        self.assert_fr("Setting change aborted.",
+                       change_setting, UserInput("set ask_password_for_log_access False"), *self.args)
+
+    @mock.patch('time.sleep',      return_value=None)
+    @mock.patch('getpass.getpass', return_value='invalid_password')
+    def test_invalid_password_raises_function_return(self, *_):
+        self.assert_fr("Error: No permission to change setting.",
+                       change_setting, UserInput("set ask_password_for_log_access False"), *self.args)
 
     def test_relay_commands_raise_fr_when_traffic_masking_is_enabled(self):
         # Setup
@@ -718,6 +765,11 @@ log_file_masking                False           False           True hides real
                                                                 size of log file
                                                                 during traffic
                                                                 masking
+
+ask_password_for_log_access     True            True            False disables
+                                                                password prompt
+                                                                when viewing/exp
+                                                                orting logs
 
 nc_bypass_messages              False           False           False removes
                                                                 Networked

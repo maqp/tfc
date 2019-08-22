@@ -58,7 +58,7 @@ def process_command(ts:           'datetime',
                     settings:     'Settings',
                     master_key:   'MasterKey',
                     gateway:      'Gateway',
-                    exit_queue:   'Queue'
+                    exit_queue:   'Queue[Any]'
                     ) -> None:
     """Decrypt command assembly packet and process command."""
     assembly_packet = decrypt_assembly_packet(assembly_ct, LOCAL_PUBKEY, ORIGIN_USER_HEADER,
@@ -136,7 +136,7 @@ def reset_screen(win_uid: bytes, window_list: 'WindowList') -> None:
     os.system(RESET)
 
 
-def exit_tfc(exit_queue: 'Queue') -> None:
+def exit_tfc(exit_queue: 'Queue[Any]') -> None:
     """Exit TFC."""
     exit_queue.put(EXIT)
 
@@ -149,11 +149,22 @@ def log_command(cmd_data:     bytes,
                 settings:     'Settings',
                 master_key:   'MasterKey'
                 ) -> None:
-    """Display or export log file for the active window."""
+    """Display or export log file for the active window.
+
+    Having the capability to export the log file from the encrypted
+    database is a bad idea, but as it's required by the GDPR
+    (https://gdpr-info.eu/art-20-gdpr/), it should be done as securely
+    as possible.
+
+    Therefore, before allowing export, TFC will ask for the master
+    password to ensure no unauthorized user who gains momentary
+    access to the system can the export logs from the database.
+    """
     export          = ts is not None
     ser_no_msg, uid = separate_header(cmd_data, ENCODED_INTEGER_LENGTH)
     no_messages     = bytes_to_int(ser_no_msg)
     window          = window_list.get_window(uid)
+
     access_logs(window, contact_list, group_list, settings, master_key, msg_to_load=no_messages, export=export)
 
     if export:
@@ -375,7 +386,7 @@ def contact_rem(onion_pub_key: bytes,
     remove_logs(contact_list, group_list, settings, master_key, onion_pub_key)
 
 
-def wipe(exit_queue: 'Queue') -> None:
+def wipe(exit_queue: 'Queue[str]') -> None:
     """\
     Reset terminals, wipe all TFC user data on Destination Computer and
     power off the system.

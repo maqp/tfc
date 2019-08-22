@@ -69,7 +69,7 @@ class TestReceiverLoop(unittest.TestCase):
             threading.Thread(target=queue_delayer).start()
 
             # Test
-            self.assertIsNone(receiver_loop(all_q, gateway, unittest=True))
+            self.assertIsNone(receiver_loop(all_q, gateway, unit_test=True))
             time.sleep(0.01)
             self.assertEqual(queues[key].qsize(), 1)
 

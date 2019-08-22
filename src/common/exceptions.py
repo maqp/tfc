@@ -72,7 +72,7 @@ class FunctionReturn(Exception):
             window.add_new(datetime.now(), self.message, output=output)
 
 
-def graceful_exit(message:   str  ='',     # Exit message to print
+def graceful_exit(message:   str  = '',    # Exit message to print
                   clear:     bool = True,  # When False, does not clear screen before printing message
                   exit_code: int  = 0      # Value returned to parent process
                   ) -> None:

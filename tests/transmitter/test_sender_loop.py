@@ -49,12 +49,12 @@ class TestSenderLoop(unittest.TestCase):
         queues[WINDOW_SELECT_QUEUE].put(window.window_contacts)
         queues[SENDER_MODE_QUEUE].put(settings)
         queue_command(b'test', settings, queues)  # Output command
-        self.assertIsNone(sender_loop(queues, settings, gateway, key_list, unittest=True))
+        self.assertIsNone(sender_loop(queues, settings, gateway, key_list, unit_test=True))
         self.assertEqual(len(gateway.packets), 1)
 
         settings.traffic_masking = False
         queues[SENDER_MODE_QUEUE].put(settings)
-        self.assertIsNone(sender_loop(queues, settings, gateway, key_list, unittest=True))  # Output Alice and Bob again
+        self.assertIsNone(sender_loop(queues, settings, gateway, key_list, unit_test=True))  # Output Alice and Bob again
         self.assertEqual(len(gateway.packets), 1)
 
 
@@ -111,7 +111,7 @@ class TestStandardSenderLoop(unittest.TestCase):
         window.window_contacts = [contact_list.get_contact_by_address_or_nick('Alice')]
         user_input             = UserInput(plaintext='test')
 
-        delay = 0.01
+        delay = 0.015
 
         def queue_delayer():
             """Place datagrams into queue after delay."""

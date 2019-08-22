@@ -1,25 +1,25 @@
 [Desktop Entry]
-Version=1.19.04
-Name=TFC-LR
-Comment=Local testing
+Version=1.19.08
+Name=TFC-Local-Test-LR
+Comment=Local testing configuration
 Exec=terminator -m -u -g /opt/tfc/terminator-config-local-test -p tfc -l tfc-lr
 Icon=tfc.png
 Terminal=false
 Type=Application
 Categories=Network;Messaging;Security;
-Actions=TFC-RL;TFC-DD-LR;TFC-DD-RL
+Actions=TFC-Local-Test-RL;TFC-Local-Test-DD-LR;TFC-Local-Test-DD-RL
 
-[Desktop Action TFC-RL]
-Name=TFC-RL
+[Desktop Action TFC-Local-Test-RL]
+Name=TFC-Local-Test-RL
 Exec=terminator -m -u -g /opt/tfc/terminator-config-local-test -p tfc -l tfc-rl
 OnlyShowIn=Unity;
 
-[Desktop Action TFC-DD-LR]
-Name=TFC-DD-LR
+[Desktop Action TFC-Local-Test-DD-LR]
+Name=TFC-Local-Test-DD-LR
 Exec=terminator -m -u -g /opt/tfc/terminator-config-local-test -p tfc-dd -l tfc-dd-lr
 OnlyShowIn=Unity;
 
-[Desktop Action TFC-DD-RL]
-Name=TFC-DD-RL
+[Desktop Action TFC-Local-Test-DD-RL]
+Name=TFC-Local-Test-DD-RL
 Exec=terminator -m -u -g /opt/tfc/terminator-config-local-test -p tfc-dd -l tfc-dd-rl
 OnlyShowIn=Unity;

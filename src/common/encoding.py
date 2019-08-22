@@ -43,7 +43,6 @@ def b58encode(byte_string: bytes, public_key: bool = False) -> str:
     (WIF) for mainnet and testnet addresses.
         https://en.bitcoin.it/wiki/Wallet_import_format
     """
-    b58_alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
     mainnet_header = b'\x80'
     testnet_header = b'\xef'
@@ -64,26 +63,25 @@ def b58encode(byte_string: bytes, public_key: bool = False) -> str:
     encoded = ''
     while acc > 0:
         acc, mod = divmod(acc, 58)
-        encoded += b58_alphabet[mod]
+        encoded += B58_ALPHABET[mod]
 
-    return (encoded + (original_len - new_len) * b58_alphabet[0])[::-1]
+    return (encoded + (original_len - new_len) * B58_ALPHABET[0])[::-1]
 
 
 def b58decode(string: str, public_key: bool = False) -> bytes:
     """Decode a Base58-encoded string and verify the checksum."""
-    b58_alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
     mainnet_header = b'\x80'
     testnet_header = b'\xef'
     net_id         = testnet_header if public_key else mainnet_header
 
     orig_len = len(string)
-    string   = string.lstrip(b58_alphabet[0])
+    string   = string.lstrip(B58_ALPHABET[0])
     new_len  = len(string)
 
     p, acc = 1, 0
     for c in string[::-1]:
-        acc += p * b58_alphabet.index(c)
+        acc += p * B58_ALPHABET.index(c)
         p   *= 58
 
     decoded = []

@@ -23,9 +23,9 @@ import os
 import sys
 
 from multiprocessing import Process, Queue
-from typing          import Dict
+from typing          import Any, Dict
 
-from src.common.crypto       import check_kernel_entropy, check_kernel_version
+from src.common.crypto       import check_kernel_version
 from src.common.db_contacts  import ContactList
 from src.common.db_groups    import GroupList
 from src.common.db_keys      import KeyList
@@ -36,7 +36,13 @@ from src.common.db_settings  import Settings
 from src.common.gateway      import Gateway, gateway_loop
 from src.common.misc         import ensure_dir, monitor_processes, process_arguments
 from src.common.output       import print_title
-from src.common.statics      import *
+from src.common.statics      import COMMAND_DATAGRAM_HEADER, COMMAND_PACKET_QUEUE, DIR_TFC, EXIT_QUEUE
+from src.common.statics      import FILE_DATAGRAM_HEADER, GATEWAY_QUEUE, KEY_MANAGEMENT_QUEUE
+from src.common.statics      import LOCAL_KEY_DATAGRAM_HEADER, LOG_PACKET_QUEUE, LOG_SETTING_QUEUE
+from src.common.statics      import LOGFILE_MASKING_QUEUE, MESSAGE_DATAGRAM_HEADER, MESSAGE_PACKET_QUEUE
+from src.common.statics      import RELAY_PACKET_QUEUE, SENDER_MODE_QUEUE, TM_COMMAND_PACKET_QUEUE, TM_FILE_PACKET_QUEUE
+from src.common.statics      import TM_MESSAGE_PACKET_QUEUE, TM_NOISE_COMMAND_QUEUE, TM_NOISE_PACKET_QUEUE
+from src.common.statics      import TRAFFIC_MASKING_QUEUE, TX, WINDOW_SELECT_QUEUE
 
 from src.transmitter.input_loop      import input_loop
 from src.transmitter.sender_loop     import sender_loop
@@ -91,7 +97,6 @@ def main() -> None:
     operation, local_test, data_diode_sockets = process_arguments()
 
     check_kernel_version()
-    check_kernel_entropy()
 
     print_title(operation)
 
@@ -121,7 +126,7 @@ def main() -> None:
                   SENDER_MODE_QUEUE:       Queue(),  # `sender_loop` default/traffic masking mode switch commands
                   WINDOW_SELECT_QUEUE:     Queue(),  # `sender_loop` window selection commands during traffic masking
                   EXIT_QUEUE:              Queue()   # EXIT/WIPE signal from `input_loop` to `main`
-                  }  # type: Dict[bytes, Queue]
+                  }  # type: Dict[bytes, Queue[Any]]
 
         process_list = [Process(target=input_loop,      args=(queues, settings, gateway, contact_list, group_list,
                                                               master_key, onion_service, sys.stdin.fileno())),

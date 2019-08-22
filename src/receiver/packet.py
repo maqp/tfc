@@ -24,7 +24,7 @@ import typing
 import zlib
 
 from datetime import datetime, timedelta
-from typing   import Any, Callable, Dict, Generator, Iterable, List, Optional, Sized
+from typing   import Any, Callable, Dict, Iterable, Iterator, List, Optional, Sized
 
 import nacl.exceptions
 
@@ -122,9 +122,8 @@ def decrypt_assembly_packet(packet:        bytes,          # Assembly packet cip
         raise FunctionReturn(f"Warning! Received {p_type} {direction} {nick} had an invalid MAC.", window=local_window)
 
     # Update message key and harac
-    keyset.update_mk(key_dir,
-                     blake2b(message_key + int_to_bytes(stored_harac + offset), digest_size=SYMMETRIC_KEY_LENGTH),
-                     offset + 1)
+    new_key = blake2b(message_key + int_to_bytes(stored_harac + offset), digest_size=SYMMETRIC_KEY_LENGTH)
+    keyset.update_mk(key_dir, new_key, offset + 1)
 
     return assembly_packet
 
@@ -242,17 +241,17 @@ class Packet(object):
         if self.type == FILE:
             self.new_file_packet()
             try:
-                lh, no_p_bytes, time_bytes, size_bytes, _ \
+                lh, no_p_bytes, time_bytes, size_bytes, name_us_data \
                     = separate_headers(packet, [ASSEMBLY_PACKET_HEADER_LENGTH] + 3*[ENCODED_INTEGER_LENGTH])
 
                 self.packets = bytes_to_int(no_p_bytes)  # added by transmitter.packet.split_to_assembly_packets
                 self.time    = str(timedelta(seconds=bytes_to_int(time_bytes)))
                 self.size    = readable_size(bytes_to_int(size_bytes))
-                self.name    = packet.split(US_BYTE)[0].decode()
+                self.name    = name_us_data.split(US_BYTE, 1)[0].decode()
 
                 m_print([f'Receiving file from {self.contact.nick}:',
                          f'{self.name} ({self.size})',
-                         f'ETA {self.time} ({self.packets} packets)'], bold=True)
+                         f'ETA {self.time} ({self.packets} packets)'], bold=True, head=1, tail=1)
 
             except (struct.error, UnicodeError, ValueError):
                 self.add_masking_packet_to_log_file()
@@ -321,7 +320,7 @@ class Packet(object):
                       self.eh: self.process_end_header,
                       self.ch: self.process_cancel_header,
                       self.nh: self.process_noise_header
-                      }  # type: Dict[bytes, Callable]
+                      }  # type: Dict[bytes, Callable[[bytes, Optional[bytes]], None]]
             func = func_d[packet[:ASSEMBLY_PACKET_HEADER_LENGTH]]
         except KeyError:
             # Erroneous headers are ignored but stored as placeholder data.
@@ -376,7 +375,7 @@ class Packet(object):
             raise FunctionReturn("Error: Decompression of command failed.")
 
 
-class PacketList(Iterable, Sized):
+class PacketList(Iterable[Packet], Sized):
     """PacketList manages all file, message, and command packets."""
 
     def __init__(self,
@@ -388,7 +387,7 @@ class PacketList(Iterable, Sized):
         self.contact_list = contact_list
         self.packets      = []  # type: List[Packet]
 
-    def __iter__(self) -> Generator:
+    def __iter__(self) -> Iterator[Packet]:
         """Iterate over packet list."""
         yield from self.packets
 

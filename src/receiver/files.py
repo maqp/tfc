@@ -80,7 +80,7 @@ def process_assembled_file(ts:            'datetime',    # Timestamp last receiv
     try:
         file_name = file_name_b.decode()
     except UnicodeError:
-        raise FunctionReturn("Error: Received file name had invalid encoding.")
+        raise FunctionReturn("Error: Received file name had an invalid encoding.")
 
     if not file_name.isprintable() or not file_name or '/' in file_name:
         raise FunctionReturn("Error: Received file had an invalid name.")
@@ -166,7 +166,7 @@ def process_file(ts:            'datetime',     # Timestamp of received_packet
     try:
         file_name = bytes_to_str(file_dc[:PADDED_UTF32_STR_LENGTH])
     except UnicodeError:
-        raise FunctionReturn(f"Error: Name of file from {nick} had invalid encoding.")
+        raise FunctionReturn(f"Error: Name of file from {nick} had an invalid encoding.")
 
     if not file_name.isprintable() or not file_name or '/' in file_name:
         raise FunctionReturn(f"Error: Name of file from {nick} was invalid.")

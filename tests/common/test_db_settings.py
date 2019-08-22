@@ -28,13 +28,13 @@ from src.common.db_settings import Settings
 from src.common.statics     import *
 
 from tests.mock_classes import ContactList, create_group, GroupList, MasterKey
-from tests.utils        import cd_unittest, cleanup, tamper_file, TFCTestCase
+from tests.utils        import cd_unit_test, cleanup, tamper_file, TFCTestCase
 
 
 class TestSettings(TFCTestCase):
 
     def setUp(self):
-        self.unittest_dir         = cd_unittest()
+        self.unit_test_dir        = cd_unit_test()
         self.file_name            = f"{DIR_USER_DATA}{TX}_settings"
         self.master_key           = MasterKey()
         self.settings             = Settings(self.master_key, operation=TX, local_test=False)
@@ -44,7 +44,7 @@ class TestSettings(TFCTestCase):
         self.args                 = self.contact_list, self.group_list
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     def test_invalid_type_raises_critical_error_on_store(self):
         self.settings.tm_random_delay = b'bytestring'
@@ -186,6 +186,11 @@ log_file_masking                False           False           True hides real
                                                                 size of log file
                                                                 during traffic
                                                                 masking
+
+ask_password_for_log_access     True            True            False disables
+                                                                password prompt
+                                                                when viewing/exp
+                                                                orting logs
 
 nc_bypass_messages              False           False           False removes
                                                                 Networked

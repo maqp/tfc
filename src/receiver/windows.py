@@ -25,7 +25,7 @@ import textwrap
 import typing
 
 from datetime import datetime
-from typing   import Any, Dict, Generator, Iterable, List, Optional, Tuple
+from typing   import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
 from src.common.encoding   import pub_key_to_short_address
 from src.common.exceptions import FunctionReturn
@@ -37,12 +37,12 @@ if typing.TYPE_CHECKING:
     from src.common.db_contacts import Contact, ContactList
     from src.common.db_groups   import GroupList
     from src.common.db_settings import Settings
-    from src.receiver.packet    import PacketList
+    from src.receiver.packet    import Packet, PacketList
 
 MsgTuple = Tuple[datetime, str, bytes, bytes, bool, bool]
 
 
-class RxWindow(Iterable):
+class RxWindow(Iterable[MsgTuple]):
     """RxWindow is an ephemeral message log for contact or group.
 
     In addition, command history and file transfers have
@@ -75,8 +75,8 @@ class RxWindow(Iterable):
         self.unread_messages = 0
 
         if self.uid == WIN_UID_LOCAL:
-            self.type            = WIN_TYPE_COMMAND
-            self.name            = self.type
+            self.type            = WIN_TYPE_COMMAND  # type: str
+            self.name            = self.type         # type: str
             self.window_contacts = []
 
         elif self.uid == WIN_UID_FILE:
@@ -98,7 +98,7 @@ class RxWindow(Iterable):
         else:
             raise FunctionReturn(f"Invalid window '{uid}'.")
 
-    def __iter__(self) -> Generator:
+    def __iter__(self) -> Iterator[MsgTuple]:
         """Iterate over window's message log."""
         yield from self.message_log
 
@@ -273,12 +273,17 @@ class RxWindow(Iterable):
         c4 = ['Complete']
 
         # Populate columns with file transmission status data
-        for i, p in enumerate(self.packet_list):
+        for p in self.packet_list:  # type: Packet
+
             if p.type == FILE and len(p.assembly_pt_list) > 0:
-                c1.append(p.name)
-                c2.append(p.size)
-                c3.append(p.contact.nick)
-                c4.append(f"{len(p.assembly_pt_list) / p.packets * 100:.2f}%")
+
+                if (    p.name is not None and p.assembly_pt_list is not None
+                    and p.size is not None and p.packets          is not None):
+
+                    c1.append(p.name)
+                    c2.append(p.size)
+                    c3.append(p.contact.nick)
+                    c4.append(f"{len(p.assembly_pt_list) / p.packets * 100:.2f}%")
 
         if not len(c1) > 1:
             m_print("No file transmissions currently in progress.", bold=True, head=1, tail=1)
@@ -299,7 +304,7 @@ class RxWindow(Iterable):
         print_on_previous_line(reps=len(lines)+2, delay=0.1)
 
 
-class WindowList(Iterable):
+class WindowList(Iterable[RxWindow]):
     """WindowList manages a list of Window objects."""
 
     def __init__(self,
@@ -323,7 +328,7 @@ class WindowList(Iterable):
         if self.contact_list.has_local_contact():
             self.set_active_rx_window(WIN_UID_LOCAL)
 
-    def __iter__(self) -> Generator:
+    def __iter__(self) -> Iterator[RxWindow]:
         """Iterate over window list."""
         yield from self.windows
 

@@ -31,7 +31,7 @@ import time
 import typing
 
 from datetime import datetime
-from typing   import Dict, Optional, Tuple, Union
+from typing   import Any, Dict, Optional, Tuple, Union
 
 from serial.serialutil import SerialException
 
@@ -47,9 +47,9 @@ if typing.TYPE_CHECKING:
     from multiprocessing import Queue
 
 
-def gateway_loop(queues:   Dict[bytes, 'Queue'],
-                 gateway:  'Gateway',
-                 unittest: bool = False
+def gateway_loop(queues:    Dict[bytes, 'Queue[Any]'],
+                 gateway:   'Gateway',
+                 unit_test: bool = False
                  ) -> None:
     """Load data from serial interface or socket into a queue.
 
@@ -64,7 +64,7 @@ def gateway_loop(queues:   Dict[bytes, 'Queue'],
     while True:
         with ignored(EOFError, KeyboardInterrupt):
             queue.put((datetime.now(), gateway.read()))
-            if unittest:
+            if unit_test:
                 break
 
 
@@ -81,8 +81,8 @@ class Gateway(object):
                  ) -> None:
         """Create a new Gateway object."""
         self.settings  = GatewaySettings(operation, local_test, dd_sockets)
-        self.tx_serial = None  # type: serial.Serial
-        self.rx_serial = None  # type: serial.Serial
+        self.tx_serial = None  # type: Optional[serial.Serial]
+        self.rx_serial = None  # type: Optional[serial.Serial]
         self.rx_socket = None  # type: Optional[multiprocessing.connection.Connection]
         self.tx_socket = None  # type: Optional[multiprocessing.connection.Connection]
 
@@ -153,7 +153,7 @@ class Gateway(object):
                 time.sleep(LOCAL_TESTING_PACKET_DELAY)
             except BrokenPipeError:
                 raise CriticalError("Relay IPC server disconnected.", exit_code=0)
-        else:
+        elif self.tx_serial is not None:
             try:
                 self.tx_serial.write(packet)
                 self.tx_serial.flush()
@@ -180,6 +180,8 @@ class Gateway(object):
                 except EOFError:
                     raise CriticalError("Relay IPC client disconnected.", exit_code=0)
         else:
+            if self.rx_serial is None:
+                raise CriticalError("Serial interface has not been initialized.")
             while True:
                 try:
                     start_time  = 0.0
@@ -307,7 +309,7 @@ class Gateway(object):
     def client_establish_socket(self) -> None:
         """Initialize the transmitter (IPC client)."""
         try:
-            target = RXP if self.settings.software_operation == NC else RP
+            target = RECEIVER if self.settings.software_operation == NC else RELAY
             phase(f"Connecting to {target}")
             while True:
                 try:
@@ -403,7 +405,7 @@ class GatewaySettings(object):
         byte_travel_t = 1 / bytes_per_sec
 
         rx_receive_timeout    = max(2 * byte_travel_t, SERIAL_RX_MIN_TIMEOUT)
-        tx_inter_packet_delay =     2 * rx_receive_timeout
+        tx_inter_packet_delay = 2 * rx_receive_timeout
 
         return tx_inter_packet_delay, rx_receive_timeout
 
@@ -413,7 +415,7 @@ class GatewaySettings(object):
         Ensure that the serial interface is available before proceeding.
         """
         if not self.local_testing_mode:
-            name = {TX: TXP, NC: RP, RX: RXP}[self.software_operation]
+            name = {TX: TRANSMITTER, NC: RELAY, RX: RECEIVER}[self.software_operation]
 
             self.use_serial_usb_adapter = yes(f"Use USB-to-serial/TTL adapter for {name} Computer?", head=1, tail=1)
 

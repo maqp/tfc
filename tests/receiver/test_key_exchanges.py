@@ -37,7 +37,7 @@ from src.common.statics    import *
 from src.receiver.key_exchanges import key_ex_ecdhe, key_ex_psk_rx, key_ex_psk_tx, local_key_rdy, process_local_key
 
 from tests.mock_classes import Contact, ContactList, KeyList, KeySet, Settings, WindowList
-from tests.utils        import cd_unittest, cleanup, nick_to_short_address, nick_to_pub_key, tear_queue, TFCTestCase
+from tests.utils        import cd_unit_test, cleanup, nick_to_short_address, nick_to_pub_key, tear_queue, TFCTestCase
 from tests.utils        import UNDECODABLE_UNICODE
 
 
@@ -79,6 +79,7 @@ class TestProcessLocalKey(TFCTestCase):
     @mock.patch('tkinter.Tk',     return_value=MagicMock())
     @mock.patch('time.sleep',     return_value=None)
     @mock.patch('builtins.input', side_effect=['5KfgdgUvseWfNkoUPWSvxMPNStu5wBBxyjz1zpZtLEjk7ZvwEAT', b58encode(kek)])
+    @mock.patch('os.system',      return_value=None)
     def test_successful_local_key_processing_with_existing_local_key(self, *_):
         self.assert_fr("Error: Incorrect key decryption key.", process_local_key, self.ts, self.packet, *self.args)
         self.assertIsNone(process_local_key(self.ts, self.packet, *self.args))
@@ -86,6 +87,7 @@ class TestProcessLocalKey(TFCTestCase):
     @mock.patch('tkinter.Tk',     return_value=MagicMock())
     @mock.patch('time.sleep',     return_value=None)
     @mock.patch('builtins.input', return_value=b58encode(kek))
+    @mock.patch('os.system',      return_value=None)
     def test_successful_local_key_processing_existing_bootstrap(self, *_):
         # Setup
         self.key_list.keysets = []
@@ -280,18 +282,18 @@ class TestKeyExPSKRx(TFCTestCase):
     file_name = f"{nick_to_short_address('User')}.psk - give to {nick_to_short_address('Alice')}"
 
     def setUp(self):
-        self.unittest_dir = cd_unittest()
-        self.packet       = b'\x00' + nick_to_pub_key("Alice")
-        self.ts           = datetime.now()
-        self.window_list  = WindowList( nicks=['Alice', LOCAL_ID])
-        self.contact_list = ContactList(nicks=['Alice', LOCAL_ID])
-        self.key_list     = KeyList(    nicks=['Alice', LOCAL_ID])
-        self.settings     = Settings(disable_gui_dialog=True)
-        self.file_name    = self.file_name
-        self.args         = self.packet, self.ts, self.window_list, self.contact_list, self.key_list, self.settings
+        self.unit_test_dir = cd_unit_test()
+        self.packet        = b'\x00' + nick_to_pub_key("Alice")
+        self.ts            = datetime.now()
+        self.window_list   = WindowList( nicks=['Alice', LOCAL_ID])
+        self.contact_list  = ContactList(nicks=['Alice', LOCAL_ID])
+        self.key_list      = KeyList(    nicks=['Alice', LOCAL_ID])
+        self.settings      = Settings(disable_gui_dialog=True)
+        self.file_name     = self.file_name
+        self.args          = self.packet, self.ts, self.window_list, self.contact_list, self.key_list, self.settings
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     def test_unknown_account_raises_fr(self):
         self.assert_fr(f"Error: Unknown account '{nick_to_short_address('Bob')}'.",
@@ -315,15 +317,16 @@ class TestKeyExPSKRx(TFCTestCase):
             f.write(os.urandom(PSK_FILE_SIZE))
 
         # Test
-        e_raised = False
+        error_raised = False
         try:
             with mock.patch('builtins.open', side_effect=PermissionError):
                 key_ex_psk_rx(*self.args)
         except FunctionReturn as inst:
-            e_raised = True
+            error_raised = True
             self.assertEqual("Error: No read permission for the PSK file.", inst.message)
-        self.assertTrue(e_raised)
+        self.assertTrue(error_raised)
 
+    @mock.patch('src.receiver.key_exchanges.ARGON2_PSK_PARALLELISM', 1)
     @mock.patch('src.receiver.key_exchanges.ARGON2_PSK_TIME_COST',   1)
     @mock.patch('src.receiver.key_exchanges.ARGON2_PSK_MEMORY_COST', 100)
     @mock.patch('getpass.getpass', side_effect=['invalid', 'password'])
@@ -339,7 +342,7 @@ class TestKeyExPSKRx(TFCTestCase):
         salt   = bytes(ARGON2_SALT_LENGTH)
         rx_key = bytes(SYMMETRIC_KEY_LENGTH)
         rx_hek = bytes(SYMMETRIC_KEY_LENGTH)
-        kek    = argon2_kdf('password', salt, time_cost=1, memory_cost=100)
+        kek    = argon2_kdf('password', salt, time_cost=1, memory_cost=100, parallelism=1)
         ct_tag = encrypt_and_sign(rx_key + rx_hek, key=kek)
 
         with open(self.file_name, 'wb+') as f:
@@ -348,6 +351,7 @@ class TestKeyExPSKRx(TFCTestCase):
         # Test
         self.assert_fr("Error: Received invalid keys from contact.", key_ex_psk_rx, *self.args)
 
+    @mock.patch('src.receiver.key_exchanges.ARGON2_PSK_PARALLELISM', 1)
     @mock.patch('src.receiver.key_exchanges.ARGON2_PSK_TIME_COST',   1)
     @mock.patch('src.receiver.key_exchanges.ARGON2_PSK_MEMORY_COST', 100)
     @mock.patch('time.sleep',      return_value=None)
@@ -361,7 +365,7 @@ class TestKeyExPSKRx(TFCTestCase):
         salt          = os.urandom(ARGON2_SALT_LENGTH)
         rx_key        = os.urandom(SYMMETRIC_KEY_LENGTH)
         rx_hek        = os.urandom(SYMMETRIC_KEY_LENGTH)
-        kek           = argon2_kdf('test_password', salt, time_cost=1, memory_cost=100)
+        kek           = argon2_kdf('test_password', salt, time_cost=1, memory_cost=100, parallelism=1)
         ct_tag        = encrypt_and_sign(rx_key + rx_hek, key=kek)
 
         with open(self.file_name, 'wb+') as f:
@@ -374,6 +378,7 @@ class TestKeyExPSKRx(TFCTestCase):
         self.assertEqual(keyset.rx_mk, rx_key)
         self.assertEqual(keyset.rx_hk, rx_hek)
 
+    @mock.patch('src.receiver.key_exchanges.ARGON2_PSK_PARALLELISM', 1)
     @mock.patch('src.receiver.key_exchanges.ARGON2_PSK_TIME_COST',   1)
     @mock.patch('src.receiver.key_exchanges.ARGON2_PSK_MEMORY_COST', 100)
     @mock.patch('subprocess.Popen')
@@ -389,7 +394,7 @@ class TestKeyExPSKRx(TFCTestCase):
         salt   = os.urandom(ARGON2_SALT_LENGTH)
         rx_key = os.urandom(SYMMETRIC_KEY_LENGTH)
         rx_hek = os.urandom(SYMMETRIC_KEY_LENGTH)
-        kek    = argon2_kdf('test_password', salt, time_cost=1, memory_cost=100)
+        kek    = argon2_kdf('test_password', salt, time_cost=1, memory_cost=100, parallelism=1)
         ct_tag = encrypt_and_sign(rx_key + rx_hek, key=kek)
 
         with open(self.file_name, 'wb+') as f:

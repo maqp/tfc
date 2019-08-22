@@ -66,7 +66,7 @@ class TestReedSolomon(unittest.TestCase):
         enc2           = list(enc)
         enc2[177]      = 99
         enc2[2212]     = 88
-        dec2, dec_enc2 = rs.decode(enc2)
+        dec2, dec_enc2 = rs.decode(bytes(enc2))
         self.assertEqual(dec2, msg)
         self.assertEqual(dec_enc2, enc)
 

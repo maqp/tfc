@@ -23,7 +23,7 @@ import os
 import time
 import typing
 
-from typing import Dict
+from typing import Any, Dict
 
 from src.common.crypto       import argon2_kdf, blake2b, csprng, encrypt_and_sign, X448
 from src.common.db_masterkey import MasterKey
@@ -43,7 +43,7 @@ if typing.TYPE_CHECKING:
     from src.common.db_settings  import Settings
     from src.common.gateway      import Gateway
     from src.transmitter.windows import TxWindow
-    QueueDict = Dict[bytes, Queue]
+    QueueDict = Dict[bytes, Queue[Any]]
 
 
 def export_onion_service_data(contact_list:  'ContactList',
@@ -266,9 +266,9 @@ def start_key_exchange(onion_pub_key: bytes,          # Public key of contact's 
 
     This function first creates the X448 key pair. It then outputs the
     public key to Relay Program on Networked Computer, that passes the
-    public key to contact's Relay Program. When contact's public key
-    reaches the user's Relay Program, the user will manually copy the
-    key into their Transmitter Program.
+    public key to contact's Relay Program where it is displayed. When
+    the contact's public key reaches the user's Relay Program, the user
+    will manually type the key into their Transmitter Program.
 
     The X448 shared secret is used to create unidirectional message and
     header keys, that will be used in forward secret communication. This
@@ -342,15 +342,15 @@ def start_key_exchange(onion_pub_key: bytes,          # Public key of contact's 
                      "Aborting key exchange for your safety."], bold=True, tail=1)
             raise FunctionReturn("Error: Zero public key", output=False)
 
-        # Derive shared key
+        # Derive the shared key
         dh_shared_key = X448.shared_key(tfc_private_key_user, tfc_public_key_contact)
 
         # Domain separate unidirectional keys from shared key by using public
         # keys as message and the context variable as personalization string.
-        tx_mk = blake2b(tfc_public_key_contact, dh_shared_key, person=b'message_key', digest_size=SYMMETRIC_KEY_LENGTH)
-        rx_mk = blake2b(tfc_public_key_user,    dh_shared_key, person=b'message_key', digest_size=SYMMETRIC_KEY_LENGTH)
-        tx_hk = blake2b(tfc_public_key_contact, dh_shared_key, person=b'header_key',  digest_size=SYMMETRIC_KEY_LENGTH)
-        rx_hk = blake2b(tfc_public_key_user,    dh_shared_key, person=b'header_key',  digest_size=SYMMETRIC_KEY_LENGTH)
+        tx_mk = blake2b(tfc_public_key_contact, dh_shared_key, person=MESSAGE_KEY, digest_size=SYMMETRIC_KEY_LENGTH)
+        rx_mk = blake2b(tfc_public_key_user,    dh_shared_key, person=MESSAGE_KEY, digest_size=SYMMETRIC_KEY_LENGTH)
+        tx_hk = blake2b(tfc_public_key_contact, dh_shared_key, person=HEADER_KEY,  digest_size=SYMMETRIC_KEY_LENGTH)
+        rx_hk = blake2b(tfc_public_key_user,    dh_shared_key, person=HEADER_KEY,  digest_size=SYMMETRIC_KEY_LENGTH)
 
         # Domain separate fingerprints of public keys by using the
         # shared secret as key and the context variable as
@@ -360,10 +360,10 @@ def start_key_exchange(onion_pub_key: bytes,          # Public key of contact's 
         # screen of Networked Computer: Public keys can not be derived
         # from the fingerprints due to preimage resistance of BLAKE2b,
         # and fingerprints can not be derived from public key without
-        # the X448 shared secret. Using the context variable ensures
+        # the X448 shared key. Using the context variable ensures
         # fingerprints are distinct from derived message and header keys.
-        tx_fp = blake2b(tfc_public_key_user,    dh_shared_key, person=b'fingerprint', digest_size=FINGERPRINT_LENGTH)
-        rx_fp = blake2b(tfc_public_key_contact, dh_shared_key, person=b'fingerprint', digest_size=FINGERPRINT_LENGTH)
+        tx_fp = blake2b(tfc_public_key_user,    dh_shared_key, person=FINGERPRINT, digest_size=FINGERPRINT_LENGTH)
+        rx_fp = blake2b(tfc_public_key_contact, dh_shared_key, person=FINGERPRINT, digest_size=FINGERPRINT_LENGTH)
 
         # Verify fingerprints
         try:
@@ -381,7 +381,7 @@ def start_key_exchange(onion_pub_key: bytes,          # Public key of contact's 
                      "unless fingerprints are verified! To re-verify",
                      "the contact, use the command '/verify'.",
                      '', "Press <enter> to continue."],
-                    manual_proceed=True, box=True, head=2)
+                    manual_proceed=True, box=True, head=2, tail=1)
             kex_status = KEX_STATUS_UNVERIFIED
 
         # Send keys to the Receiver Program
@@ -445,7 +445,7 @@ def create_pre_shared_key(onion_pub_key: bytes,           # Public key of contac
 
     The generated keys are protected by a key encryption key, derived
     from a 256-bit salt and a password (that is to be shared with the
-    recipient) using Argon2d key derivation function.
+    recipient) using Argon2id key derivation function.
 
     The encrypted message and header keys are stored together with salt
     on a removable media. This media must be a never-before-used device
@@ -467,7 +467,7 @@ def create_pre_shared_key(onion_pub_key: bytes,           # Public key of contac
         password = MasterKey.new_password("password for PSK")
 
         phase("Deriving key encryption key", head=2)
-        kek = argon2_kdf(password, salt, time_cost=ARGON2_PSK_TIME_COST, memory_cost=ARGON2_PSK_MEMORY_COST)
+        kek = argon2_kdf(password, salt, ARGON2_PSK_TIME_COST, ARGON2_PSK_MEMORY_COST, ARGON2_PSK_PARALLELISM)
         phase(DONE)
 
         ct_tag = encrypt_and_sign(tx_mk + tx_hk, key=kek)

@@ -22,7 +22,7 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 import os
 import typing
 
-from typing import Generator, Iterable, List, Optional, Sized
+from typing import Iterable, Iterator, List, Optional, Sized
 
 from src.common.crypto     import auth_and_decrypt, encrypt_and_sign
 from src.common.encoding   import bool_to_bytes, pub_key_to_onion_address, str_to_bytes, pub_key_to_short_address
@@ -185,7 +185,7 @@ class Contact(object):
         return self.kex_status in [KEX_STATUS_NO_RX_PSK, KEX_STATUS_HAS_RX_PSK]
 
 
-class ContactList(Iterable, Sized):
+class ContactList(Iterable[Contact], Sized):
     """\
     ContactList object manages TFC's Contact objects and the storage of
     the objects in an encrypted database.
@@ -220,7 +220,7 @@ class ContactList(Iterable, Sized):
         else:
             self.store_contacts()
 
-    def __iter__(self) -> Generator:
+    def __iter__(self) -> Iterator[Contact]:
         """Iterate over Contact objects in `self.contacts`."""
         yield from self.contacts
 
@@ -282,7 +282,8 @@ class ContactList(Iterable, Sized):
              nick_bytes) = separate_headers(block,
                                             [ONION_SERVICE_PUBLIC_KEY_LENGTH]
                                             + 2*[FINGERPRINT_LENGTH]
-                                            + 4*[ENCODED_BOOLEAN_LENGTH])
+                                            + [KEX_STATUS_LENGTH]
+                                            + 3*[ENCODED_BOOLEAN_LENGTH])
 
             self.contacts.append(Contact(onion_pub_key =onion_pub_key,
                                          tx_fingerprint=tx_fingerprint,

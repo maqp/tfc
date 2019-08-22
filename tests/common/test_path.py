@@ -29,7 +29,7 @@ from unittest.mock import MagicMock
 from src.common.path import ask_path_cli, ask_path_gui, Completer
 
 from tests.mock_classes import Settings
-from tests.utils        import cd_unittest, cleanup, ignored, TFCTestCase
+from tests.utils        import cd_unit_test, cleanup, ignored, TFCTestCase
 
 
 class TestAskPathGui(TFCTestCase):
@@ -78,8 +78,8 @@ class TestAskPathGui(TFCTestCase):
 class TestCompleter(unittest.TestCase):
 
     def setUp(self):
-        self.cwd          = os.getcwd()
-        self.unittest_dir = cd_unittest()
+        self.cwd           = os.getcwd()
+        self.unit_test_dir = cd_unit_test()
 
         # Create test directory structure for the completer.
         os.mkdir('outer')
@@ -93,7 +93,7 @@ class TestCompleter(unittest.TestCase):
         os.chdir('..')
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
         os.chdir(self.cwd)
 
     def test_completer(self):

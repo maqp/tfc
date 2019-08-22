@@ -28,7 +28,7 @@ from src.common.misc        import ensure_dir
 from src.common.statics     import *
 
 from tests.mock_classes import create_contact, MasterKey, Settings
-from tests.utils        import cd_unittest, cleanup, nick_to_onion_address, nick_to_pub_key, tamper_file, TFCTestCase
+from tests.utils        import cd_unit_test, cleanup, nick_to_onion_address, nick_to_pub_key, tamper_file, TFCTestCase
 
 
 class TestContact(unittest.TestCase):
@@ -62,7 +62,7 @@ class TestContact(unittest.TestCase):
 class TestContactList(TFCTestCase):
 
     def setUp(self):
-        self.unittest_dir          = cd_unittest()
+        self.unit_test_dir         = cd_unit_test()
         self.master_key            = MasterKey()
         self.settings              = Settings()
         self.file_name             = f'{DIR_USER_DATA}{self.settings.software_operation}_contacts'
@@ -73,7 +73,7 @@ class TestContactList(TFCTestCase):
         self.real_contact_list.remove(LOCAL_ID)
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     def test_contact_list_iterates_over_contact_objects(self):
         for c in self.contact_list:
@@ -240,7 +240,7 @@ class TestContactList(TFCTestCase):
         self.assertIs(self.contact_list.get_contact_by_pub_key(nick_to_pub_key('Bob')),
                       self.contact_list.get_contact_by_address_or_nick('Bob'))
 
-    def test_get_contact_by_address_or_nick_returns_same_contact_with_address_and_nick(self):
+    def test_get_contact_by_address_or_nick_returns_the_same_contact_object_with_address_and_nick(self):
         for selector in [nick_to_onion_address('Bob'), 'Bob']:
             self.assertIsInstance(self.contact_list.get_contact_by_address_or_nick(selector), Contact)
 

@@ -30,27 +30,27 @@ from src.common.misc        import ensure_dir
 from src.common.statics     import *
 
 from tests.mock_classes import create_contact, group_name_to_group_id, MasterKey, nick_to_pub_key, Settings
-from tests.utils        import cd_unittest, cleanup, tamper_file, TFCTestCase
+from tests.utils        import cd_unit_test, cleanup, tamper_file, TFCTestCase
 
 
 class TestGroup(unittest.TestCase):
 
     def setUp(self):
-        self.unittest_dir = cd_unittest()
-        self.nicks        = ['Alice', 'Bob', 'Charlie']
-        members           = list(map(create_contact, self.nicks))
-        self.settings     = Settings()
-        self.group        = Group(name         ='test_group',
-                                  group_id     =group_name_to_group_id('test_group'),
-                                  log_messages =False,
-                                  notifications=False,
-                                  members      =members,
-                                  settings     =self.settings,
-                                  store_groups =lambda: None)
+        self.unit_test_dir = cd_unit_test()
+        self.nicks         = ['Alice', 'Bob', 'Charlie']
+        members            = list(map(create_contact, self.nicks))
+        self.settings      = Settings()
+        self.group         = Group(name         ='test_group',
+                                   group_id     =group_name_to_group_id('test_group'),
+                                   log_messages =False,
+                                   notifications=False,
+                                   members      =members,
+                                   settings     =self.settings,
+                                   store_groups =lambda: None)
         ensure_dir(DIR_USER_DATA)
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     def test_group_iterates_over_contact_objects(self):
         for c in self.group:
@@ -117,18 +117,18 @@ class TestGroup(unittest.TestCase):
 class TestGroupList(TFCTestCase):
 
     def setUp(self):
-        self.unittest_dir = cd_unittest()
-        self.master_key   = MasterKey()
-        self.settings     = Settings()
-        self.file_name    = f'{DIR_USER_DATA}{self.settings.software_operation}_groups'
-        self.contact_list = ContactList(self.master_key, self.settings)
-        self.group_list   = GroupList(self.master_key, self.settings, self.contact_list)
-        self.nicks        = ['Alice', 'Bob', 'Charlie', 'David', 'Eric',
-                             'Fido', 'Guido', 'Heidi', 'Ivan', 'Joana', 'Karol']
-        self.group_names  = ['test_group_1', 'test_group_2', 'test_group_3', 'test_group_4', 'test_group_5',
-                             'test_group_6', 'test_group_7', 'test_group_8', 'test_group_9', 'test_group_10',
-                             'test_group_11']
-        members           = list(map(create_contact, self.nicks))
+        self.unit_test_dir = cd_unit_test()
+        self.master_key    = MasterKey()
+        self.settings      = Settings()
+        self.file_name     = f'{DIR_USER_DATA}{self.settings.software_operation}_groups'
+        self.contact_list  = ContactList(self.master_key, self.settings)
+        self.group_list    = GroupList(self.master_key, self.settings, self.contact_list)
+        self.nicks         = ['Alice', 'Bob', 'Charlie', 'David', 'Eric',
+                              'Fido', 'Guido', 'Heidi', 'Ivan', 'Joana', 'Karol']
+        self.group_names   = ['test_group_1', 'test_group_2', 'test_group_3', 'test_group_4', 'test_group_5',
+                              'test_group_6', 'test_group_7', 'test_group_8', 'test_group_9', 'test_group_10',
+                              'test_group_11']
+        members            = list(map(create_contact, self.nicks))
 
         self.contact_list.contacts = members
 
@@ -146,7 +146,7 @@ class TestGroupList(TFCTestCase):
                                        + self.settings.max_number_of_group_members * ONION_SERVICE_PUBLIC_KEY_LENGTH)
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     def test_group_list_iterates_over_group_objects(self):
         for g in self.group_list:

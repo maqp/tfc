@@ -72,7 +72,7 @@ class KeySet(object):
                  rx_hk:         bytes,
                  tx_harac:      int,
                  rx_harac:      int,
-                 store_keys:    Callable
+                 store_keys:    Callable[..., None]
                  ) -> None:
         """Create a new KeySet object.
 

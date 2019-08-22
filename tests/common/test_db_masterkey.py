@@ -30,8 +30,9 @@ from src.common.db_masterkey import MasterKey
 from src.common.misc         import ensure_dir
 from src.common.statics      import *
 
-from tests.utils import cd_unittest, cleanup
+from tests.utils import cd_unit_test, cleanup
 
+KL = SYMMETRIC_KEY_LENGTH
 
 class TestMasterKey(unittest.TestCase):
     input_list = ['password', 'different_password',  # Invalid new password pair
@@ -40,12 +41,12 @@ class TestMasterKey(unittest.TestCase):
                   'password']                        # Valid   login password
 
     def setUp(self):
-        self.unittest_dir = cd_unittest()
-        self.operation    = TX
-        self.file_name    = f"{DIR_USER_DATA}{self.operation}_login_data"
+        self.unit_test_dir = cd_unit_test()
+        self.operation     = TX
+        self.file_name     = f"{DIR_USER_DATA}{self.operation}_login_data"
 
     def tearDown(self):
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     @mock.patch('time.sleep', return_value=None)
     def test_invalid_data_in_db_raises_critical_error(self, _):
@@ -57,10 +58,9 @@ class TestMasterKey(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 _ = MasterKey(self.operation, local_test=False)
 
-    @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.1)
-    @mock.patch('src.common.db_masterkey.MAX_KEY_DERIVATION_TIME', 1.1)
+    @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.01)
+    @mock.patch('src.common.db_masterkey.MAX_KEY_DERIVATION_TIME', 0.1)
     @mock.patch('os.path.isfile',  side_effect=[KeyboardInterrupt, False, True])
-    @mock.patch('os.popen',        return_value=MagicMock(read=MagicMock(return_value='foo\nMemFree 200')))
     @mock.patch('getpass.getpass', side_effect=input_list)
     @mock.patch('time.sleep',      return_value=None)
     def test_master_key_generation_and_load(self, *_):
@@ -75,12 +75,12 @@ class TestMasterKey(unittest.TestCase):
         self.assertIsInstance(master_key2.master_key, bytes)
         self.assertEqual(master_key.master_key, master_key2.master_key)
 
-    @mock.patch('src.common.db_masterkey.MasterKey.timed_key_derivation', MagicMock(side_effect=10 * [(32*b'b', 5.0)]
-                                                                                                   + [(32*b'a', 2.5),
-                                                                                                      (32*b'a', 2.5),
-                                                                                                      (32*b'a', 3.0)]))
+    @mock.patch('src.common.db_masterkey.MasterKey.timed_key_derivation',
+                MagicMock(side_effect=        [(KL*b'a',  0.01)]
+                                      + 100 * [(KL*b'b',  5.0)]
+                                      +   2 * [(KL*b'a',  2.5)]
+                                      +       [(KL*b'a',  3.0)]))
     @mock.patch('os.path.isfile',  side_effect=[False, True])
-    @mock.patch('os.popen',        return_value=MagicMock(read=MagicMock(return_value='foo\nMemFree 200')))
     @mock.patch('getpass.getpass', side_effect=input_list)
     @mock.patch('time.sleep',      return_value=None)
     def test_kd_binary_serach(self, *_):

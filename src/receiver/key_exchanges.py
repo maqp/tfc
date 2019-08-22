@@ -27,7 +27,7 @@ import subprocess
 import tkinter
 import typing
 
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 import nacl.exceptions
 
@@ -60,7 +60,7 @@ def process_local_key(ts:            'datetime',
                       settings:      'Settings',
                       kdk_hashes:     List[bytes],
                       packet_hashes:  List[bytes],
-                      l_queue:        'Queue'
+                      l_queue:        'Queue[Any]'
                       ) -> None:
     """Decrypt local key packet and add local contact/keyset."""
     bootstrap = not key_list.has_local_keyset()
@@ -145,8 +145,8 @@ def process_local_key(ts:            'datetime',
         root = tkinter.Tk()
         root.withdraw()
         try:
-            if root.clipboard_get() == b58encode(kdk):
-                root.clipboard_clear()
+            if root.clipboard_get() == b58encode(kdk):  # type: ignore
+                root.clipboard_clear()                  # type: ignore
         except tkinter.TclError:
             pass
         root.destroy()
@@ -298,7 +298,7 @@ def key_ex_psk_rx(packet:       bytes,
         try:
             password = MasterKey.get_password("PSK password")
             phase("Deriving the key decryption key", head=2)
-            kdk = argon2_kdf(password, salt, time_cost=ARGON2_PSK_TIME_COST, memory_cost=ARGON2_PSK_MEMORY_COST)
+            kdk = argon2_kdf(password, salt, ARGON2_PSK_TIME_COST, ARGON2_PSK_MEMORY_COST, ARGON2_PSK_PARALLELISM)
             psk = auth_and_decrypt(ct_tag, kdk)
             phase(DONE)
             break

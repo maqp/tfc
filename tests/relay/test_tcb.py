@@ -33,23 +33,23 @@ from src.common.statics      import *
 from src.relay.tcb import dst_outgoing, src_incoming
 
 from tests.mock_classes import Gateway, nick_to_pub_key, Settings
-from tests.utils        import cd_unittest, cleanup, gen_queue_dict, tear_queues
+from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, tear_queues
 
 
 class TestSRCIncoming(unittest.TestCase):
 
     def setUp(self):
-        self.settings     = Settings()
-        self.unittest_dir = cd_unittest()
-        self.gateway      = Gateway()
-        self.rs           = RSCodec(2 * self.gateway.settings.serial_error_correction)
-        self.ts           = datetime.now()
-        self.queues       = gen_queue_dict()
-        self.args         = self.queues, self.gateway
+        self.settings      = Settings()
+        self.unit_test_dir = cd_unit_test()
+        self.gateway       = Gateway()
+        self.rs            = RSCodec(2 * self.gateway.settings.serial_error_correction)
+        self.ts            = datetime.now()
+        self.queues        = gen_queue_dict()
+        self.args          = self.queues, self.gateway
 
     def tearDown(self):
         tear_queues(self.queues)
-        cleanup(self.unittest_dir)
+        cleanup(self.unit_test_dir)
 
     def create_packet(self, packet: bytes):
         """Create Reed-Solomon encoded packet"""
@@ -62,7 +62,7 @@ class TestSRCIncoming(unittest.TestCase):
         self.queues[GATEWAY_QUEUE].put((self.ts, packet))
 
         # Test
-        self.assertIsNone(src_incoming(*self.args, unittest=True))
+        self.assertIsNone(src_incoming(*self.args, unit_test=True))
         self.assertEqual(self.queues[SRC_TO_RELAY_QUEUE].qsize(), 1)
 
     def test_local_key_datagram(self):
@@ -77,7 +77,7 @@ class TestSRCIncoming(unittest.TestCase):
         threading.Thread(target=queue_delayer).start()
 
         # Test
-        self.assertIsNone(src_incoming(*self.args, unittest=True))
+        self.assertIsNone(src_incoming(*self.args, unit_test=True))
         self.assertEqual(self.queues[DST_COMMAND_QUEUE].qsize(), 1)
 
     def test_command_datagram(self):
@@ -86,7 +86,7 @@ class TestSRCIncoming(unittest.TestCase):
         self.queues[GATEWAY_QUEUE].put((self.ts, packet))
 
         # Test
-        self.assertIsNone(src_incoming(*self.args, unittest=True))
+        self.assertIsNone(src_incoming(*self.args, unit_test=True))
         self.assertEqual(self.queues[DST_COMMAND_QUEUE].qsize(), 1)
 
     def test_message_datagram(self):
@@ -95,7 +95,7 @@ class TestSRCIncoming(unittest.TestCase):
         self.queues[GATEWAY_QUEUE].put((self.ts, packet))
 
         # Test
-        self.assertIsNone(src_incoming(*self.args, unittest=True))
+        self.assertIsNone(src_incoming(*self.args, unit_test=True))
         self.assertEqual(self.queues[M_TO_FLASK_QUEUE].qsize(),  1)
         self.assertEqual(self.queues[DST_MESSAGE_QUEUE].qsize(), 1)
 
@@ -105,7 +105,7 @@ class TestSRCIncoming(unittest.TestCase):
         self.queues[GATEWAY_QUEUE].put((self.ts, packet))
 
         # Test
-        self.assertIsNone(src_incoming(*self.args, unittest=True))
+        self.assertIsNone(src_incoming(*self.args, unit_test=True))
         self.assertEqual(self.queues[M_TO_FLASK_QUEUE].qsize(), 1)
 
     def test_file_datagram(self):
@@ -118,7 +118,7 @@ class TestSRCIncoming(unittest.TestCase):
         self.queues[GATEWAY_QUEUE].put((self.ts, packet))
 
         # Test
-        self.assertIsNone(src_incoming(*self.args, unittest=True))
+        self.assertIsNone(src_incoming(*self.args, unit_test=True))
         self.assertEqual(self.queues[DST_MESSAGE_QUEUE].qsize(), 0)
         self.assertEqual(self.queues[F_TO_FLASK_QUEUE].qsize(),  2)
 
@@ -131,7 +131,7 @@ class TestSRCIncoming(unittest.TestCase):
         self.queues[GATEWAY_QUEUE].put((self.ts, packet))
 
         # Test
-        self.assertIsNone(src_incoming(*self.args, unittest=True))
+        self.assertIsNone(src_incoming(*self.args, unit_test=True))
         self.assertEqual(self.queues[DST_MESSAGE_QUEUE].qsize(), 0)
         self.assertEqual(self.queues[M_TO_FLASK_QUEUE].qsize(),  2)
 
@@ -144,7 +144,7 @@ class TestSRCIncoming(unittest.TestCase):
         self.queues[GATEWAY_QUEUE].put((self.ts, packet))
 
         # Test
-        self.assertIsNone(src_incoming(*self.args, unittest=True))
+        self.assertIsNone(src_incoming(*self.args, unit_test=True))
         self.assertEqual(self.queues[DST_MESSAGE_QUEUE].qsize(), 0)
         self.assertEqual(self.queues[M_TO_FLASK_QUEUE].qsize(),  2)
 
@@ -158,7 +158,7 @@ class TestSRCIncoming(unittest.TestCase):
         self.queues[GATEWAY_QUEUE].put((self.ts, packet))
 
         # Test
-        self.assertIsNone(src_incoming(*self.args, unittest=True))
+        self.assertIsNone(src_incoming(*self.args, unit_test=True))
         self.assertEqual(self.queues[DST_MESSAGE_QUEUE].qsize(), 0)
         self.assertEqual(self.queues[M_TO_FLASK_QUEUE].qsize(),  2)
 
@@ -172,7 +172,7 @@ class TestSRCIncoming(unittest.TestCase):
         self.queues[GATEWAY_QUEUE].put((self.ts, packet))
 
         # Test
-        self.assertIsNone(src_incoming(*self.args, unittest=True))
+        self.assertIsNone(src_incoming(*self.args, unit_test=True))
         self.assertEqual(self.queues[DST_MESSAGE_QUEUE].qsize(), 0)
         self.assertEqual(self.queues[M_TO_FLASK_QUEUE].qsize(),  2)
 
@@ -185,7 +185,7 @@ class TestSRCIncoming(unittest.TestCase):
         self.queues[GATEWAY_QUEUE].put((self.ts, packet))
 
         # Test
-        self.assertIsNone(src_incoming(*self.args, unittest=True))
+        self.assertIsNone(src_incoming(*self.args, unit_test=True))
         self.assertEqual(self.queues[DST_MESSAGE_QUEUE].qsize(), 0)
         self.assertEqual(self.queues[M_TO_FLASK_QUEUE].qsize(),  2)
 
@@ -204,14 +204,14 @@ class TestDSTOutGoing(unittest.TestCase):
             queues[DST_COMMAND_QUEUE].put(packet)
             queues[DST_MESSAGE_QUEUE].put(packet)
             time.sleep(0.01)
-            queues[UNITTEST_QUEUE].put(EXIT)
+            queues[UNIT_TEST_QUEUE].put(EXIT)
 
         threading.Thread(target=queue_delayer).start()
 
         # Test
         side_effects = [EOFError, KeyboardInterrupt, None] + [None] * 100_000
         with unittest.mock.patch('time.sleep', side_effect=side_effects):
-            self.assertIsNone(dst_outgoing(queues, gateway, unittest=True))
+            self.assertIsNone(dst_outgoing(queues, gateway, unit_test=True))
         self.assertEqual(packet, gateway.packets[0])
 
         # Teardown
