@@ -35,7 +35,8 @@ from src.common.misc    import get_tab_completer, get_terminal_height, get_termi
 from src.common.misc    import process_arguments, readable_size, round_up, separate_header, separate_headers
 from src.common.misc    import separate_trailer, split_string, split_byte_string, terminal_width_check
 from src.common.misc    import validate_group_name, validate_key_exchange, validate_onion_addr, validate_nick
-from src.common.statics import *
+from src.common.statics import (DIR_RECV_FILES, DIR_USER_DATA, DUMMY_GROUP, ECDHE, EXIT, EXIT_QUEUE, LOCAL_ID,
+                                PADDING_LENGTH, RX, TAILS, WIPE)
 
 from tests.mock_classes import ContactList, Gateway, GroupList, Settings
 from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, ignored, nick_to_onion_address
@@ -45,6 +46,7 @@ from tests.utils        import nick_to_pub_key, tear_queues, TFCTestCase
 class TestCalculateRaceConditionDelay(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.settings = Settings()
 
     def test_race_condition_delay_calculation(self):
@@ -54,6 +56,7 @@ class TestCalculateRaceConditionDelay(unittest.TestCase):
 class TestDecompress(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.settings                     = Settings()
         self.settings.max_decompress_size = 1000
 
@@ -78,6 +81,7 @@ class TestDecompress(TFCTestCase):
 class TestEnsureDir(unittest.TestCase):
 
     def tearDown(self):
+        """Post-test actions."""
         with ignored(OSError):
             os.rmdir('test_dir/')
 
@@ -90,6 +94,7 @@ class TestEnsureDir(unittest.TestCase):
 class TestTabCompleteList(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.contact_list = ContactList(nicks=['Alice', 'Bob'])
         self.group_list   = GroupList(groups=['test_group'])
         self.settings     = Settings(key_list=['key1', 'key2'])
@@ -145,10 +150,12 @@ class TestIgnored(unittest.TestCase):
 class TestMonitorProcesses(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
         self.settings      = Settings()
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     @staticmethod
@@ -218,13 +225,13 @@ class TestMonitorProcesses(TFCTestCase):
             monitor_processes(process_list, RX, queues)
         self.assertFalse(os.path.isdir(DIR_USER_DATA))
         self.assertFalse(os.path.isdir(DIR_RECV_FILES))
-        mock_os_system.assert_called_with('poweroff')
+        mock_os_system.assert_called_with('systemctl poweroff')
 
         tear_queues(queues)
 
     @mock.patch('time.sleep', return_value=None)
     @mock.patch('os.system', return_value=None)
-    @mock.patch('subprocess.check_output', lambda *popenargs, timeout=None, **kwargs: TAILS)
+    @mock.patch('builtins.open', mock.mock_open(read_data=TAILS))
     def test_wipe_tails(self, mock_os_system, *_):
         queues       = gen_queue_dict()
         process_list = [Process(target=self.mock_process)]
@@ -244,7 +251,7 @@ class TestMonitorProcesses(TFCTestCase):
         with self.assertRaises(SystemExit):
             monitor_processes(process_list, RX, queues)
 
-        mock_os_system.assert_called_with('poweroff')
+        mock_os_system.assert_called_with('systemctl poweroff')
 
         # Test that user data wasn't removed
         self.assertTrue(os.path.isdir(DIR_USER_DATA))
@@ -254,6 +261,8 @@ class TestMonitorProcesses(TFCTestCase):
 class TestProcessArguments(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
+
         class MockParser(object):
             """MockParse object."""
             def __init__(self, *_, **__):
@@ -280,6 +289,7 @@ class TestProcessArguments(unittest.TestCase):
         argparse.ArgumentParser = MockParser
 
     def tearDown(self):
+        """Post-test actions."""
         argparse.ArgumentParser = self.o_argparse
 
     def test_process_arguments(self):
@@ -429,6 +439,7 @@ class TestValidateOnionAddr(unittest.TestCase):
 class TestValidateGroupName(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.contact_list = ContactList(nicks=['Alice'])
         self.group_list   = GroupList(groups=['test_group'])
 
@@ -467,6 +478,7 @@ class TestValidateKeyExchange(unittest.TestCase):
 class TestValidateNick(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.contact_list = ContactList(nicks=['Alice', 'Bob'])
         self.group_list   = GroupList(groups=['test_group'])
 

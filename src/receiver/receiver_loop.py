@@ -30,7 +30,9 @@ from src.common.encoding   import bytes_to_int
 from src.common.exceptions import FunctionReturn
 from src.common.misc       import ignored, separate_headers
 from src.common.output     import m_print
-from src.common.statics    import *
+from src.common.statics    import (COMMAND_DATAGRAM_HEADER, DATAGRAM_HEADER_LENGTH, DATAGRAM_TIMESTAMP_LENGTH,
+                                   FILE_DATAGRAM_HEADER, GATEWAY_QUEUE, LOCAL_KEY_DATAGRAM_HEADER,
+                                   MESSAGE_DATAGRAM_HEADER)
 
 if typing.TYPE_CHECKING:
     from multiprocessing    import Queue

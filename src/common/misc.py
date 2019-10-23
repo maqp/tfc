@@ -34,12 +34,17 @@ import zlib
 
 from contextlib      import contextmanager
 from typing          import Any, Callable, Dict, Iterator, List, Optional, Tuple, Type, Union
-from multiprocessing import Process, Queue
+from multiprocessing import Process
 
 from src.common.reed_solomon import RSCodec
-from src.common.statics      import *
+from src.common.statics      import (BAUDS_PER_BYTE, COMMAND_LENGTH, CURSOR_UP_ONE_LINE, DIR_RECV_FILES, DIR_USER_DATA,
+                                     DUMMY_CONTACT, DUMMY_GROUP, DUMMY_MEMBER, ECDHE, EVENT, EXIT, EXIT_QUEUE, LOCAL_ID,
+                                     LOCAL_PUBKEY, ME, ONION_ADDRESS_CHECKSUM_ID, ONION_ADDRESS_CHECKSUM_LENGTH,
+                                     ONION_ADDRESS_LENGTH, ONION_SERVICE_PUBLIC_KEY_LENGTH, PACKET_LENGTH,
+                                     PADDING_LENGTH, POWEROFF, PSK, RX, TAILS, TX, WIPE)
 
 if typing.TYPE_CHECKING:
+    from multiprocessing        import Queue
     from src.common.db_contacts import ContactList
     from src.common.db_groups   import GroupList
     from src.common.db_settings import Settings
@@ -164,7 +169,7 @@ def ignored(*exceptions: Type[BaseException]) -> Iterator[Any]:
 
 def monitor_processes(process_list:       List[Process],
                       software_operation: str,
-                      queues:             Dict[bytes, 'Queue[Any]'],
+                      queues:             Dict[bytes, 'Queue[bytes]'],
                       error_exit_code:    int = 1
                       ) -> None:
     """Monitor the status of `process_list` and EXIT_QUEUE.
@@ -195,7 +200,9 @@ def monitor_processes(process_list:       List[Process],
                     sys.exit(0)
 
                 if command == WIPE:
-                    if TAILS not in subprocess.check_output('lsb_release -a', shell=True):
+                    with open('/etc/os-release') as f:
+                        data = f.read()
+                    if TAILS not in data:
                         if software_operation == RX:
                             subprocess.Popen("find {} -type f -exec shred -n 3 -z -u {{}} \\;"
                                              .format(DIR_RECV_FILES), shell=True).wait()

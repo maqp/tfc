@@ -28,9 +28,10 @@ from multiprocessing import Queue
 from unittest        import mock
 from unittest.mock   import MagicMock
 
-from src.common.statics import DATA_FLOW, DST_LISTEN_SOCKET, EXIT, EXIT_QUEUE, IDLE, NCDCLR, NCDCRL, RP_LISTEN_SOCKET
-from src.common.statics import SCNCLR, SCNCRL
-from dd                 import animate, draw_frame, main, process_arguments, rx_loop, tx_loop
+from src.common.statics import (DATA_FLOW, DST_LISTEN_SOCKET, EXIT, EXIT_QUEUE, IDLE,
+                                NCDCLR, NCDCRL, RP_LISTEN_SOCKET, SCNCLR, SCNCRL)
+
+from dd import animate, draw_frame, main, process_arguments, rx_loop, tx_loop
 
 from tests.utils import tear_queue, TFCTestCase
 
@@ -111,9 +112,11 @@ class TestAnimate(unittest.TestCase):
 class TestRxLoop(unittest.TestCase):
 
     def setUp(self) -> None:
+        """Pre-test actions."""
         self.queue = Queue()
 
     def tearDown(self) -> None:
+        """Post-test actions."""
         tear_queue(self.queue)
 
     @mock.patch('multiprocessing.connection.Listener', return_value=MagicMock(
@@ -132,9 +135,11 @@ class TestRxLoop(unittest.TestCase):
 class TestTxLoop(unittest.TestCase):
 
     def setUp(self) -> None:
+        """Pre-test actions."""
         self.o_sleep = time.sleep
 
     def tearDown(self) -> None:
+        """Post-test actions."""
         time.sleep = self.o_sleep
 
     @mock.patch('time.sleep',                        lambda _: None)
@@ -144,6 +149,7 @@ class TestTxLoop(unittest.TestCase):
         queue = Queue()
 
         def queue_delayer():
+            """Place packet to queue after timer runs out."""
             self.o_sleep(0.1)
             queue.put(b'test_packet')
         threading.Thread(target=queue_delayer).start()
@@ -175,9 +181,11 @@ class TestProcessArguments(unittest.TestCase):
 class TestMain(unittest.TestCase):
 
     def setUp(self) -> None:
+        """Pre-test actions."""
         self.queue = Queue()
 
     def tearDown(self) -> None:
+        """Post-test actions."""
         tear_queue(self.queue)
 
     @mock.patch('time.sleep', lambda _: None)
@@ -187,6 +195,7 @@ class TestMain(unittest.TestCase):
         queues = {EXIT_QUEUE: self.queue}
 
         def queue_delayer():
+            """Place packet to queue after timer runs out."""
             time.sleep(0.1)
             queues[EXIT_QUEUE].put(EXIT)
         threading.Thread(target=queue_delayer).start()

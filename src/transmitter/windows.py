@@ -27,7 +27,7 @@ from src.common.db_contacts import Contact
 from src.common.exceptions  import FunctionReturn
 from src.common.input       import yes
 from src.common.output      import clear_screen
-from src.common.statics     import *
+from src.common.statics     import KEX_STATUS_PENDING, WINDOW_SELECT_QUEUE, WIN_SELECT, WIN_TYPE_CONTACT, WIN_TYPE_GROUP
 
 from src.transmitter.contact       import add_new_contact
 from src.transmitter.key_exchanges import export_onion_service_data, start_key_exchange

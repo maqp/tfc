@@ -36,13 +36,13 @@ from src.common.db_settings  import Settings
 from src.common.gateway      import Gateway, gateway_loop
 from src.common.misc         import ensure_dir, monitor_processes, process_arguments
 from src.common.output       import print_title
-from src.common.statics      import COMMAND_DATAGRAM_HEADER, COMMAND_PACKET_QUEUE, DIR_TFC, EXIT_QUEUE
-from src.common.statics      import FILE_DATAGRAM_HEADER, GATEWAY_QUEUE, KEY_MANAGEMENT_QUEUE
-from src.common.statics      import LOCAL_KEY_DATAGRAM_HEADER, LOG_PACKET_QUEUE, LOG_SETTING_QUEUE
-from src.common.statics      import LOGFILE_MASKING_QUEUE, MESSAGE_DATAGRAM_HEADER, MESSAGE_PACKET_QUEUE
-from src.common.statics      import RELAY_PACKET_QUEUE, SENDER_MODE_QUEUE, TM_COMMAND_PACKET_QUEUE, TM_FILE_PACKET_QUEUE
-from src.common.statics      import TM_MESSAGE_PACKET_QUEUE, TM_NOISE_COMMAND_QUEUE, TM_NOISE_PACKET_QUEUE
-from src.common.statics      import TRAFFIC_MASKING_QUEUE, TX, WINDOW_SELECT_QUEUE
+from src.common.statics      import (COMMAND_DATAGRAM_HEADER, COMMAND_PACKET_QUEUE, DIR_TFC, EXIT_QUEUE,
+                                     FILE_DATAGRAM_HEADER, GATEWAY_QUEUE, KEY_MANAGEMENT_QUEUE,
+                                     LOCAL_KEY_DATAGRAM_HEADER, LOGFILE_MASKING_QUEUE, LOG_PACKET_QUEUE,
+                                     LOG_SETTING_QUEUE, MESSAGE_DATAGRAM_HEADER, MESSAGE_PACKET_QUEUE,
+                                     RELAY_PACKET_QUEUE, SENDER_MODE_QUEUE, TM_COMMAND_PACKET_QUEUE,
+                                     TM_FILE_PACKET_QUEUE, TM_MESSAGE_PACKET_QUEUE, TM_NOISE_COMMAND_QUEUE,
+                                     TM_NOISE_PACKET_QUEUE, TRAFFIC_MASKING_QUEUE, TX, WINDOW_SELECT_QUEUE)
 
 from src.transmitter.input_loop      import input_loop
 from src.transmitter.sender_loop     import sender_loop

@@ -16,7 +16,10 @@ import unittest
 
 from random import sample
 
-from src.common.reed_solomon import *
+from src.common.reed_solomon import (RSCodec, ReedSolomonError, find_prime_polys, gf_add, gf_div, gf_mul, gf_mult_nolut,
+                                     gf_mult_nolut_slow, gf_neg, gf_poly_mul, gf_poly_mul_simple, gf_poly_neg, gf_sub,
+                                     init_tables, itertools, rs_check, rs_correct_msg, rs_correct_msg_nofsynd,
+                                     rs_encode_msg, rs_generator_poly, rs_generator_poly_all, rs_simple_encode_msg)
 
 
 class TestReedSolomon(unittest.TestCase):
@@ -75,8 +78,8 @@ class TestReedSolomon(unittest.TestCase):
         kk        = 18
         tt        = nn - kk
         rs        = RSCodec(tt, fcr=120, prim=0x187)
-        hexencmsg = '00faa123555555c000000354064432' \
-                    'c02800fe97c434e1ff5365cf8fafe4'
+        hexencmsg = ('00faa123555555c000000354064432'
+                     'c02800fe97c434e1ff5365cf8fafe4')
         strf      = str
         encmsg    = bytearray.fromhex(strf(hexencmsg))
         decmsg    = encmsg[:kk]
@@ -108,8 +111,8 @@ class TestReedSolomon(unittest.TestCase):
         kk        = 34
         tt        = nn - kk
         rs        = RSCodec(tt, fcr=120, prim=0x187)
-        hexencmsg = '08faa123555555c000000354064432c0280e1b4d090cfc04' \
-                    '887400000003500000000e1985ff9c6b33066ca9f43d12e8'
+        hexencmsg = ('08faa123555555c000000354064432c0280e1b4d090cfc04'
+                     '887400000003500000000e1985ff9c6b33066ca9f43d12e8')
         strf      = str
         encmsg    = bytearray.fromhex(strf(hexencmsg))
         decmsg    = encmsg[:kk]

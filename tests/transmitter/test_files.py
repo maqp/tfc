@@ -31,12 +31,14 @@ from tests.utils        import cd_unit_test, cleanup, TFCTestCase
 class TestFile(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
         self.window        = TxWindow()
         self.settings      = Settings()
         self.args          = self.window, self.settings
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_missing_file_raises_fr(self):

@@ -1,4 +1,4 @@
-<img align="right" src="https://cs.helsinki.fi/u/oottela/tfclogo.png" style="position: relative; top: 0; left: 0;">
+<img align="right" src="https://cs.helsinki.fi/u/oottela/tfc_logo.png" style="position: relative; top: 0; left: 0;">
 
 ### Tinfoil Chat
 
@@ -67,8 +67,8 @@ and schedule of communication, even if the Networked Computer is compromised.
 
 ### How it works
 
-![](https://www.cs.helsinki.fi/u/oottela/wiki/readme/how_it_works.png)
-[System overview](https://www.cs.helsinki.fi/u/oottela/wiki/readme/how_it_works.png)
+![](https://www.cs.helsinki.fi/u/oottela/wiki/readme/how_it_works2.png)
+[System overview](https://www.cs.helsinki.fi/u/oottela/wiki/readme/how_it_works2.png)
 
 TFC uses three computers per endpoint: Source Computer, Networked Computer, and 
 Destination Computer.
@@ -114,8 +114,8 @@ the user.
 3. The Networked Computer is assumed to be compromised. All sensitive data that 
 passes through it is encrypted and signed with no exceptions.
 
-![](https://www.cs.helsinki.fi/u/oottela/wiki/readme/attacks.png)
-[Exfiltration security](https://www.cs.helsinki.fi/u/oottela/wiki/readme/attacks.png)
+![](https://www.cs.helsinki.fi/u/oottela/wiki/readme/attacks2.png)
+[Exfiltration security](https://www.cs.helsinki.fi/u/oottela/wiki/readme/attacks2.png)
 
 #### Data diode
 Optical repeater inside the
@@ -131,12 +131,14 @@ fundamental laws of physics.
 
 #### Source/Destination Computer
 - Debian 10
-- *buntu 19.04 (or newer)
+- PureOS 9.0
+- *buntu 19.10
 
 #### Networked Computer
-- Tails (Debian Buster or newer)
+- Tails 4.0
 - Debian 10
-- *buntu 19.04 (or newer)
+- PureOS 9.0
+- *buntu 19.10
 
 
 ### More information

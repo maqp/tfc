@@ -27,7 +27,8 @@ from unittest import mock
 from src.common.crypto   import encrypt_and_sign
 from src.common.db_onion import OnionService
 from src.common.misc     import ensure_dir, validate_onion_addr
-from src.common.statics  import *
+from src.common.statics  import (DIR_USER_DATA, ONION_SERVICE_PRIVATE_KEY_LENGTH,
+                                 POLY1305_TAG_LENGTH, TX, XCHACHA20_NONCE_LENGTH)
 
 from tests.mock_classes import MasterKey
 from tests.utils        import cd_unit_test, cleanup, tamper_file
@@ -36,11 +37,13 @@ from tests.utils        import cd_unit_test, cleanup, tamper_file
 class TestOnionService(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
         self.master_key    = MasterKey()
         self.file_name     = f"{DIR_USER_DATA}{TX}_onion_db"
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     @mock.patch('time.sleep', return_value=None)
@@ -67,7 +70,7 @@ class TestOnionService(unittest.TestCase):
     @mock.patch('time.sleep', return_value=None)
     def test_loading_invalid_onion_key_raises_critical_error(self, _):
         # Setup
-        ct_bytes = encrypt_and_sign((ONION_SERVICE_PRIVATE_KEY_LENGTH +1) * b'a', self.master_key.master_key)
+        ct_bytes = encrypt_and_sign((ONION_SERVICE_PRIVATE_KEY_LENGTH + 1) * b'a', self.master_key.master_key)
 
         ensure_dir(DIR_USER_DATA)
         with open(f'{DIR_USER_DATA}{TX}_onion_db', 'wb+') as f:

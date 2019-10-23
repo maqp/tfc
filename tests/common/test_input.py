@@ -24,7 +24,8 @@ import unittest
 from unittest import mock
 
 from src.common.input   import ask_confirmation_code, box_input, get_b58_key, nc_bypass_msg, pwd_prompt, yes
-from src.common.statics import *
+from src.common.statics import (B58_LOCAL_KEY, B58_PUBLIC_KEY, NC_BYPASS_START, NC_BYPASS_STOP, SYMMETRIC_KEY_LENGTH,
+                                TFC_PUBLIC_KEY_LENGTH)
 
 from tests.mock_classes import Settings
 from tests.utils        import nick_to_short_address, VALID_ECDHE_PUB_KEY, VALID_LOCAL_KEY_KDK
@@ -53,6 +54,7 @@ class TestBoxInput(unittest.TestCase):
 class TestGetB58Key(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.settings = Settings()
 
     @mock.patch('time.sleep',               return_value=None)

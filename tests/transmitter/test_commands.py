@@ -27,7 +27,13 @@ from unittest.mock import MagicMock
 
 from src.common.db_logs  import write_log_entry
 from src.common.encoding import bool_to_bytes
-from src.common.statics  import *
+from src.common.statics  import (BOLD_ON, CLEAR_ENTIRE_SCREEN, COMMAND_PACKET_QUEUE, CURSOR_LEFT_UP_CORNER,
+                                 DIR_USER_DATA, KEX_STATUS_NO_RX_PSK, KEX_STATUS_UNVERIFIED, KEX_STATUS_VERIFIED,
+                                 KEY_MANAGEMENT_QUEUE, LOGFILE_MASKING_QUEUE, LOG_ENTRY_LENGTH, MESSAGE,
+                                 MESSAGE_PACKET_QUEUE, M_S_HEADER, NORMAL_TEXT, PADDING_LENGTH, PRIVATE_MESSAGE_HEADER,
+                                 RELAY_PACKET_QUEUE, RESET, SENDER_MODE_QUEUE, TM_COMMAND_PACKET_QUEUE,
+                                 TRAFFIC_MASKING_QUEUE, TX, UNENCRYPTED_DATAGRAM_HEADER, UNENCRYPTED_WIPE_COMMAND,
+                                 VERSION, WIN_TYPE_CONTACT, WIN_TYPE_GROUP)
 
 from src.transmitter.commands import change_master_key, change_setting, clear_screens, exit_tfc, log_command
 from src.transmitter.commands import print_about, print_help, print_recipients, print_settings, process_command
@@ -44,6 +50,7 @@ from tests.utils        import gen_queue_dict, nick_to_onion_address, nick_to_pu
 class TestProcessCommand(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.window        = TxWindow()
         self.contact_list  = ContactList()
         self.group_list    = GroupList()
@@ -56,6 +63,7 @@ class TestProcessCommand(TFCTestCase):
                               self.queues, self.master_key, self.onion_service, self.gateway)
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queues(self.queues)
 
     def test_valid_command(self):
@@ -84,12 +92,14 @@ class TestPrintAbout(TFCTestCase):
 class TestClearScreens(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.window   = TxWindow(uid=nick_to_pub_key('Alice'))
         self.settings = Settings()
         self.queues   = gen_queue_dict()
         self.args     = self.window, self.settings, self.queues
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queues(self.queues)
 
     @mock.patch('os.system', return_value=None)
@@ -130,6 +140,7 @@ class TestClearScreens(unittest.TestCase):
 class TestRXPShowSysWin(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.window   = TxWindow(name='Alice',
                                  uid=nick_to_pub_key('Alice'))
         self.settings = Settings()
@@ -137,6 +148,7 @@ class TestRXPShowSysWin(unittest.TestCase):
         self.args     = self.window, self.settings, self.queues
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queues(self.queues)
 
     @mock.patch('builtins.input', side_effect=['', EOFError, KeyboardInterrupt])
@@ -161,12 +173,14 @@ class TestRXPShowSysWin(unittest.TestCase):
 class TestExitTFC(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.settings = Settings(local_testing_mode=True)
         self.queues   = gen_queue_dict()
         self.gateway  = Gateway(data_diode_sockets=True)
         self.args     = self.settings, self.queues, self.gateway
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queues(self.queues)
 
     @mock.patch('time.sleep', return_value=None)
@@ -197,17 +211,19 @@ class TestLogCommand(TFCTestCase):
 
     @mock.patch("getpass.getpass", return_value='test_password')
     def setUp(self, _):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
-        self.window        = TxWindow(name='Alice',
-                                      uid=nick_to_pub_key('Alice'))
+        self.window        = TxWindow(name='Alice', uid=nick_to_pub_key('Alice'))
         self.contact_list  = ContactList()
         self.group_list    = GroupList()
         self.settings      = Settings()
         self.queues        = gen_queue_dict()
         self.master_key    = MasterKey()
-        self.args          = self.window, self.contact_list, self.group_list, self.settings, self.queues, self.master_key
+        self.args          = (self.window, self.contact_list, self.group_list,
+                              self.settings, self.queues, self.master_key)
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
         tear_queues(self.queues)
 
@@ -252,7 +268,8 @@ class TestLogCommand(TFCTestCase):
 
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.1)
     @mock.patch('src.common.db_masterkey.MAX_KEY_DERIVATION_TIME', 1.0)
-    @mock.patch('os.popen',                  return_value=MagicMock(read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemFree 10240"])))))
+    @mock.patch('os.popen',                  return_value=MagicMock(
+        read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemAvailable 10240"])))))
     @mock.patch("multiprocessing.cpu_count", return_value=1)
     @mock.patch('time.sleep',                return_value=None)
     @mock.patch('builtins.input',            return_value='Yes')
@@ -263,10 +280,10 @@ class TestLogCommand(TFCTestCase):
         self.assert_fr("Log file export aborted.",
                        log_command, UserInput('export'), *self.args)
 
-
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.1)
     @mock.patch('src.common.db_masterkey.MAX_KEY_DERIVATION_TIME', 1.0)
-    @mock.patch('os.popen',                  return_value=MagicMock(read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemFree 10240"])))))
+    @mock.patch('os.popen',                  return_value=MagicMock(
+        read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemAvailable 10240"])))))
     @mock.patch("multiprocessing.cpu_count", return_value=1)
     @mock.patch("getpass.getpass",           side_effect=3*['test_password'] + ['invalid_password'] + ['test_password'])
     @mock.patch('time.sleep',                return_value=None)
@@ -293,6 +310,7 @@ class TestSendOnionServiceKey(TFCTestCase):
     confirmation_code = b'a'
 
     def setUp(self):
+        """Pre-test actions."""
         self.contact_list  = ContactList()
         self.settings      = Settings()
         self.onion_service = OnionService()
@@ -334,6 +352,7 @@ class TestSendOnionServiceKey(TFCTestCase):
 class TestPrintHelp(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.settings                 = Settings()
         self.settings.traffic_masking = False
 
@@ -466,6 +485,7 @@ Shift + PgUp/PgDn         Scroll terminal up/down
 class TestPrintRecipients(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.contact_list = ContactList(nicks=['Alice', 'Bob'])
         self.group_list   = GroupList(groups=['test_group', 'test_group_2'])
         self.args         = self.contact_list, self.group_list
@@ -477,6 +497,7 @@ class TestPrintRecipients(TFCTestCase):
 class TestChangeMasterKey(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir  = cd_unit_test()
         self.contact_list   = ContactList()
         self.group_list     = GroupList()
@@ -489,6 +510,7 @@ class TestChangeMasterKey(TFCTestCase):
                                self.queues, self.master_key, self.onion_service)
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
         tear_queues(self.queues)
 
@@ -508,7 +530,7 @@ class TestChangeMasterKey(TFCTestCase):
         self.assert_fr("Error: Invalid target system 't'.",
                        change_master_key, UserInput("passwd t"), *self.args)
 
-    @mock.patch('os.popen',        return_value=MagicMock(read=MagicMock(return_value='foo\nMemFree 200')))
+    @mock.patch('os.popen',        return_value=MagicMock(read=MagicMock(return_value='foo\nMemAvailable 200')))
     @mock.patch('getpass.getpass', return_value='a')
     @mock.patch('time.sleep',      return_value=None)
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.01)
@@ -536,6 +558,7 @@ class TestChangeMasterKey(TFCTestCase):
 class TestRemoveLog(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
         self.contact_list  = ContactList(nicks=['Alice'])
         self.group_list    = GroupList(groups=['test_group'])
@@ -546,6 +569,7 @@ class TestRemoveLog(TFCTestCase):
         self.args          = self.contact_list, self.group_list, self.settings, self.queues, self.master_key
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queues(self.queues)
         cleanup(self.unit_test_dir)
 
@@ -641,6 +665,7 @@ class TestRemoveLog(TFCTestCase):
 class TestChangeSetting(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.window       = TxWindow()
         self.contact_list = ContactList()
         self.group_list   = GroupList()
@@ -648,10 +673,11 @@ class TestChangeSetting(TFCTestCase):
         self.queues       = gen_queue_dict()
         self.master_key   = MasterKey()
         self.gateway      = Gateway()
-        self.args         = self.window, self.contact_list, self.group_list, \
-                            self.settings, self.queues, self.master_key, self.gateway
+        self.args         = (self.window, self.contact_list, self.group_list,
+                             self.settings, self.queues, self.master_key, self.gateway)
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queues(self.queues)
 
     def test_missing_setting_raises_fr(self):
@@ -841,9 +867,11 @@ serial_error_correction         5               5               Number of byte
 class TestRxPDisplayUnread(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.queues = gen_queue_dict()
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queues(self.queues)
 
     def test_command(self):
@@ -854,6 +882,7 @@ class TestRxPDisplayUnread(unittest.TestCase):
 class TestVerify(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.window         = TxWindow(uid=nick_to_pub_key("Alice"),
                                        name='Alice',
                                        window_contacts=[create_contact('test_group')],
@@ -894,6 +923,7 @@ class TestVerify(TFCTestCase):
 class TestWhisper(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.window   = TxWindow(uid=nick_to_pub_key("Alice"),
                                  name='Alice',
                                  window_contacts=[create_contact('Alice')],
@@ -918,6 +948,7 @@ class TestWhisper(TFCTestCase):
 class TestWhois(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.contact_list = ContactList(nicks=['Alice'])
         self.group_list   = GroupList(groups=['test_group'])
         self.args         = self.contact_list, self.group_list
@@ -960,6 +991,7 @@ class TestWhois(TFCTestCase):
 class TestWipe(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.settings = Settings()
         self.queues   = gen_queue_dict()
         self.gateway  = Gateway()

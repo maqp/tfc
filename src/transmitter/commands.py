@@ -35,7 +35,16 @@ from src.common.exceptions import FunctionReturn
 from src.common.input      import yes
 from src.common.misc       import ensure_dir, get_terminal_width, validate_onion_addr
 from src.common.output     import clear_screen, m_print, phase, print_on_previous_line
-from src.common.statics    import *
+from src.common.statics    import (CH_MASTER_KEY, CH_SETTING, CLEAR, CLEAR_SCREEN, COMMAND_PACKET_QUEUE, DIR_USER_DATA,
+                                   DONE, EXIT_PROGRAM, GROUP_ID_ENC_LENGTH, KDB_CHANGE_MASTER_KEY_HEADER,
+                                   KDB_UPDATE_SIZE_HEADER, KEX_STATUS_UNVERIFIED, KEX_STATUS_VERIFIED,
+                                   KEY_MANAGEMENT_QUEUE, LOCAL_TESTING_PACKET_DELAY, LOGFILE_MASKING_QUEUE, LOG_DISPLAY,
+                                   LOG_EXPORT, LOG_REMOVE, MESSAGE, ONION_ADDRESS_LENGTH, RELAY_PACKET_QUEUE, RESET,
+                                   RESET_SCREEN, RX, SENDER_MODE_QUEUE, TRAFFIC_MASKING_QUEUE, TX, UNENCRYPTED_BAUDRATE,
+                                   UNENCRYPTED_DATAGRAM_HEADER, UNENCRYPTED_EC_RATIO, UNENCRYPTED_EXIT_COMMAND,
+                                   UNENCRYPTED_MANAGE_CONTACT_REQ, UNENCRYPTED_SCREEN_CLEAR, UNENCRYPTED_SCREEN_RESET,
+                                   UNENCRYPTED_WIPE_COMMAND, US_BYTE, VERSION, WIN_ACTIVITY, WIN_SELECT, WIN_TYPE_GROUP,
+                                   WIN_UID_FILE, WIN_UID_LOCAL, WIPE_USR_DATA)
 
 from src.transmitter.commands_g    import process_group_command
 from src.transmitter.contact       import add_new_contact, change_nick, contact_setting, remove_contact

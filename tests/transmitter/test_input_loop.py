@@ -25,7 +25,7 @@ from unittest      import mock
 from unittest.mock import MagicMock
 
 from src.common.crypto  import blake2b
-from src.common.statics import *
+from src.common.statics import CONFIRM_CODE_LENGTH
 
 from src.transmitter.input_loop import input_loop
 
@@ -51,6 +51,7 @@ class TestInputLoop(unittest.TestCase):
                   '/exit']                         # Enter exit command
 
     def setUp(self):
+        """Pre-test actions."""
         self.settings      = Settings(disable_gui_dialog=True)
         self.gateway       = Gateway()
         self.contact_list  = ContactList()
@@ -60,6 +61,7 @@ class TestInputLoop(unittest.TestCase):
         self.queues        = gen_queue_dict()
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queues(self.queues)
 
     @mock.patch('builtins.input',                    side_effect=input_list)

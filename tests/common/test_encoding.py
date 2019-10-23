@@ -29,12 +29,15 @@ from src.common.encoding import b58encode, bool_to_bytes, double_to_bytes, str_t
 from src.common.encoding import b58decode, bytes_to_bool, bytes_to_double, bytes_to_str, bytes_to_int
 from src.common.encoding import onion_address_to_pub_key, unicode_padding, pub_key_to_short_address, b85encode
 from src.common.encoding import pub_key_to_onion_address, rm_padding_str, bytes_to_timestamp, b10encode
-from src.common.statics  import *
+from src.common.statics  import (ENCODED_BOOLEAN_LENGTH, ENCODED_FLOAT_LENGTH, ENCODED_INTEGER_LENGTH,
+                                 FINGERPRINT_LENGTH, ONION_SERVICE_PUBLIC_KEY_LENGTH, PADDED_UTF32_STR_LENGTH,
+                                 PADDING_LENGTH, SYMMETRIC_KEY_LENGTH, TFC_PUBLIC_KEY_LENGTH, TRUNC_ADDRESS_LENGTH)
 
 
 class TestBase58EncodeAndDecode(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.key = SYMMETRIC_KEY_LENGTH * b'\x01'
 
     def test_encoding_and_decoding_of_random_local_keys(self):
@@ -74,7 +77,7 @@ class TestBase58EncodeAndDecode(unittest.TestCase):
         byte_key = bytes.fromhex("0C28FCA386C7A227600B2FE50B7CAE11"
                                  "EC86D3BF1FBE471BE89827E19D72AA1D")
 
-        b58_key  = "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ"
+        b58_key = "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ"
 
         self.assertEqual(b58encode(byte_key), b58_key)
         self.assertEqual(b58decode(b58_key), byte_key)

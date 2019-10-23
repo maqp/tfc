@@ -31,7 +31,11 @@ from unittest.mock import MagicMock
 
 from src.common.crypto   import blake2b, encrypt_and_sign
 from src.common.encoding import b58encode, bool_to_bytes, int_to_bytes, str_to_bytes
-from src.common.statics  import *
+from src.common.statics  import (CH_FILE_RECV, COMMAND, COMMAND_DATAGRAM_HEADER, CONFIRM_CODE_LENGTH, ENABLE, EXIT,
+                                 FILE_DATAGRAM_HEADER, FILE_KEY_HEADER, INITIAL_HARAC, KEY_EX_ECDHE,
+                                 LOCAL_KEY_DATAGRAM_HEADER, MESSAGE, MESSAGE_DATAGRAM_HEADER, ORIGIN_CONTACT_HEADER,
+                                 PRIVATE_MESSAGE_HEADER, SYMMETRIC_KEY_LENGTH, UNIT_TEST_QUEUE, US_BYTE, WIN_SELECT,
+                                 WIN_UID_FILE, WIN_UID_LOCAL)
 
 from src.transmitter.packet import split_to_assembly_packets
 
@@ -49,10 +53,12 @@ def rotate_key(key: bytes, harac: int) -> Tuple[bytes, int]:
 class TestOutputLoop(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.o_sleep = time.sleep
         time.sleep   = lambda _: None
 
     def tearDown(self):
+        """Post-test actions."""
         time.sleep = self.o_sleep
 
     @mock.patch('tkinter.Tk',     return_value=MagicMock())

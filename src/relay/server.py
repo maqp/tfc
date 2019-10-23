@@ -31,7 +31,7 @@ from typing          import Any, Dict, List, Optional
 
 from flask import Flask, send_file
 
-from src.common.statics import *
+from src.common.statics import CONTACT_REQ_QUEUE, F_TO_FLASK_QUEUE, M_TO_FLASK_QUEUE, URL_TOKEN_QUEUE
 
 if typing.TYPE_CHECKING:
     QueueDict = Dict[bytes, Queue[Any]]

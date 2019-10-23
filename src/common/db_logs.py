@@ -34,7 +34,12 @@ from src.common.encoding   import b58encode, bytes_to_bool, bytes_to_timestamp, 
 from src.common.exceptions import CriticalError, FunctionReturn
 from src.common.misc       import ensure_dir, get_terminal_width, ignored, separate_header, separate_headers
 from src.common.output     import clear_screen
-from src.common.statics    import *
+from src.common.statics    import (ASSEMBLY_PACKET_HEADER_LENGTH, DIR_USER_DATA, GROUP_ID_LENGTH, GROUP_MESSAGE_HEADER,
+                                   GROUP_MSG_ID_LENGTH, LOGFILE_MASKING_QUEUE, LOG_ENTRY_LENGTH, LOG_PACKET_QUEUE,
+                                   LOG_SETTING_QUEUE, MESSAGE, MESSAGE_HEADER_LENGTH, ONION_SERVICE_PUBLIC_KEY_LENGTH,
+                                   ORIGIN_HEADER_LENGTH, ORIGIN_USER_HEADER, PLACEHOLDER_DATA, PRIVATE_MESSAGE_HEADER,
+                                   P_N_HEADER, RX, TIMESTAMP_LENGTH, TRAFFIC_MASKING_QUEUE, TX, UNIT_TEST_QUEUE,
+                                   WHISPER_FIELD_LENGTH, WIN_TYPE_CONTACT, WIN_TYPE_GROUP)
 
 from src.receiver.packet  import PacketList
 from src.receiver.windows import RxWindow
@@ -52,7 +57,7 @@ MsgTuple = Tuple[datetime, str, bytes, bytes, bool, bool]
 
 def log_writer_loop(queues:    Dict[bytes, 'Queue[Any]'],  # Dictionary of queues
                     settings:  'Settings',                 # Settings object
-                    unit_test: bool = False                # When True, exits the loop when UNIT_TEST_QUEUE is no longer empty.
+                    unit_test: bool = False                # True, exits loop when UNIT_TEST_QUEUE is no longer empty.
                     ) -> None:
     """Write assembly packets to log database.
 
@@ -299,7 +304,7 @@ def change_log_db_key(previous_key: bytes,
     temp_name = f'{file_name}_temp'
 
     if not os.path.isfile(file_name):
-        raise FunctionReturn("Error: Could not find log database.")
+        raise FunctionReturn("No log database available.")
 
     if os.path.isfile(temp_name):
         os.remove(temp_name)

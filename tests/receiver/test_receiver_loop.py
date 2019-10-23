@@ -28,7 +28,9 @@ from multiprocessing import Queue
 
 from src.common.encoding     import int_to_bytes
 from src.common.reed_solomon import RSCodec
-from src.common.statics      import *
+from src.common.statics      import (COMMAND_DATAGRAM_HEADER, FILE_DATAGRAM_HEADER, GATEWAY_QUEUE,
+                                     LOCAL_KEY_DATAGRAM_HEADER, MESSAGE_DATAGRAM_HEADER,
+                                     ONION_SERVICE_PUBLIC_KEY_LENGTH)
 
 from src.receiver.receiver_loop import receiver_loop
 
@@ -54,9 +56,9 @@ class TestReceiverLoop(unittest.TestCase):
         ts_bytes = int_to_bytes(int(ts.strftime('%Y%m%d%H%M%S%f')[:-4]))
 
         for key in queues:
-            packet   = key + ts_bytes + bytes(ONION_SERVICE_PUBLIC_KEY_LENGTH)
-            encoded  = rs.encode(packet)
-            broken_p = key + bytes.fromhex('df9005313af4136d') + bytes(ONION_SERVICE_PUBLIC_KEY_LENGTH)
+            packet    = key + ts_bytes + bytes(ONION_SERVICE_PUBLIC_KEY_LENGTH)
+            encoded   = rs.encode(packet)
+            broken_p  = key + bytes.fromhex('df9005313af4136d') + bytes(ONION_SERVICE_PUBLIC_KEY_LENGTH)
             broken_p += rs.encode(b'a')
 
             def queue_delayer():

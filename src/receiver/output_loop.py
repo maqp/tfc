@@ -28,7 +28,9 @@ from typing import Any, Dict, List, Tuple
 
 from src.common.exceptions import FunctionReturn
 from src.common.output     import clear_screen
-from src.common.statics    import *
+from src.common.statics    import (COMMAND_DATAGRAM_HEADER, EXIT_QUEUE, FILE_DATAGRAM_HEADER, LOCAL_KEY_DATAGRAM_HEADER,
+                                   MESSAGE_DATAGRAM_HEADER, ONION_SERVICE_PUBLIC_KEY_LENGTH, UNIT_TEST_QUEUE,
+                                   WIN_UID_FILE)
 
 from src.receiver.commands      import process_command
 from src.receiver.files         import new_file, process_file
@@ -59,16 +61,16 @@ def output_loop(queues:       Dict[bytes, 'Queue[Any]'],
                 unit_test:    bool = False
                 ) -> None:
     """Process packets in message queues according to their priority."""
-    l_queue = queues[LOCAL_KEY_DATAGRAM_HEADER]
-    m_queue = queues[MESSAGE_DATAGRAM_HEADER]
-    f_queue = queues[FILE_DATAGRAM_HEADER]
-    c_queue = queues[COMMAND_DATAGRAM_HEADER]
-    e_queue = queues[EXIT_QUEUE]
+    local_key_queue = queues[LOCAL_KEY_DATAGRAM_HEADER]
+    message_queue   = queues[MESSAGE_DATAGRAM_HEADER]
+    file_queue      = queues[FILE_DATAGRAM_HEADER]
+    command_queue   = queues[COMMAND_DATAGRAM_HEADER]
+    exit_queue      = queues[EXIT_QUEUE]
 
-    sys.stdin  = os.fdopen(stdin_fd)
-    packet_buf = dict()  # type: Dict[bytes, List[Tuple[datetime, bytes]]]
-    file_buf   = dict()  # type: Dict[bytes, Tuple[datetime, bytes]]
-    file_keys  = dict()  # type: Dict[bytes, bytes]
+    sys.stdin     = os.fdopen(stdin_fd)
+    packet_buffer = dict()  # type: Dict[bytes, List[Tuple[datetime, bytes]]]
+    file_buffer   = dict()  # type: Dict[bytes, Tuple[datetime, bytes]]
+    file_keys     = dict()  # type: Dict[bytes, bytes]
 
     kdk_hashes    = []  # type: List[bytes]
     packet_hashes = []  # type: List[bytes]
@@ -79,10 +81,10 @@ def output_loop(queues:       Dict[bytes, 'Queue[Any]'],
     clear_screen()
     while True:
         try:
-            if l_queue.qsize() != 0:
-                ts, packet = l_queue.get()
+            if local_key_queue.qsize() != 0:
+                ts, packet = local_key_queue.get()
                 process_local_key(ts, packet, window_list, contact_list, key_list,
-                                  settings, kdk_hashes, packet_hashes, l_queue)
+                                  settings, kdk_hashes, packet_hashes, local_key_queue)
                 continue
 
             if not contact_list.has_local_contact():
@@ -90,10 +92,10 @@ def output_loop(queues:       Dict[bytes, 'Queue[Any]'],
                 continue
 
             # Commands
-            if c_queue.qsize() != 0:
-                ts, packet = c_queue.get()
+            if command_queue.qsize() != 0:
+                ts, packet = command_queue.get()
                 process_command(ts, packet, window_list, packet_list, contact_list, key_list,
-                                group_list, settings, master_key, gateway, e_queue)
+                                group_list, settings, master_key, gateway, exit_queue)
                 continue
 
             # File window refresh
@@ -101,48 +103,48 @@ def output_loop(queues:       Dict[bytes, 'Queue[Any]'],
                 window_list.active_win.redraw_file_win()
 
             # Cached message packets
-            for onion_pub_key in packet_buf:
+            for onion_pub_key in packet_buffer:
                 if (contact_list.has_pub_key(onion_pub_key)
                         and key_list.has_rx_mk(onion_pub_key)
-                        and packet_buf[onion_pub_key]):
-                    ts, packet = packet_buf[onion_pub_key].pop(0)
+                        and packet_buffer[onion_pub_key]):
+                    ts, packet = packet_buffer[onion_pub_key].pop(0)
                     process_message(ts, packet, window_list, packet_list, contact_list, key_list,
                                     group_list, settings, master_key, file_keys)
                     continue
 
             # New messages
-            if m_queue.qsize() != 0:
-                ts, packet    = m_queue.get()
+            if message_queue.qsize() != 0:
+                ts, packet    = message_queue.get()
                 onion_pub_key = packet[:ONION_SERVICE_PUBLIC_KEY_LENGTH]
 
                 if contact_list.has_pub_key(onion_pub_key) and key_list.has_rx_mk(onion_pub_key):
                     process_message(ts, packet, window_list, packet_list, contact_list, key_list,
                                     group_list, settings, master_key, file_keys)
                 else:
-                    packet_buf.setdefault(onion_pub_key, []).append((ts, packet))
+                    packet_buffer.setdefault(onion_pub_key, []).append((ts, packet))
                 continue
 
             # Cached files
-            if file_buf:
-                for k in file_buf:
+            if file_buffer:
+                for k in file_buffer:
                     key_to_remove = b''
                     try:
                         if k in file_keys:
                             key_to_remove = k
-                            ts_, file_ct  = file_buf[k]
+                            ts_, file_ct  = file_buffer[k]
                             dec_key       = file_keys[k]
                             onion_pub_key = k[:ONION_SERVICE_PUBLIC_KEY_LENGTH]
                             process_file(ts_, onion_pub_key, file_ct, dec_key, contact_list, window_list, settings)
                     finally:
                         if key_to_remove:
-                            file_buf.pop(k)
+                            file_buffer.pop(k)
                             file_keys.pop(k)
                             break
 
             # New files
-            if f_queue.qsize() != 0:
-                ts, packet = f_queue.get()
-                new_file(ts, packet, file_keys, file_buf, contact_list, window_list, settings)
+            if file_queue.qsize() != 0:
+                ts, packet = file_queue.get()
+                new_file(ts, packet, file_keys, file_buffer, contact_list, window_list, settings)
 
             time.sleep(0.01)
 

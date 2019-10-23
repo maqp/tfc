@@ -29,7 +29,7 @@ from src.common.encoding   import pub_key_to_onion_address, pub_key_to_short_add
 from src.common.exceptions import CriticalError
 from src.common.misc       import ensure_dir
 from src.common.output     import phase
-from src.common.statics    import *
+from src.common.statics    import CONFIRM_CODE_LENGTH, DIR_USER_DATA, DONE, ONION_SERVICE_PRIVATE_KEY_LENGTH, TX
 
 if typing.TYPE_CHECKING:
     from src.common.db_masterkey import MasterKey

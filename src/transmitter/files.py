@@ -30,7 +30,8 @@ from src.common.crypto     import byte_padding, csprng, encrypt_and_sign
 from src.common.encoding   import int_to_bytes
 from src.common.exceptions import FunctionReturn
 from src.common.misc       import readable_size, split_byte_string
-from src.common.statics    import *
+from src.common.statics    import (COMPRESSION_LEVEL, FILE_ETA_FIELD_LENGTH, FILE_PACKET_CTR_LENGTH,
+                                   FILE_SIZE_FIELD_LENGTH, PADDING_LENGTH, TRAFFIC_MASKING_QUEUE_CHECK_DELAY, US_BYTE)
 
 if typing.TYPE_CHECKING:
     from src.common.db_settings  import Settings

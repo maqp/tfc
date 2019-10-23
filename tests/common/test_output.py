@@ -26,7 +26,10 @@ from unittest import mock
 
 from src.common.output  import clear_screen, group_management_print, m_print, phase, print_fingerprint, print_key
 from src.common.output  import print_title, print_on_previous_line, print_spacing, rp_print
-from src.common.statics import *
+from src.common.statics import (ADDED_MEMBERS, ALREADY_MEMBER, BOLD_ON, CLEAR_ENTIRE_LINE, CLEAR_ENTIRE_SCREEN,
+                                CURSOR_LEFT_UP_CORNER, CURSOR_UP_ONE_LINE, DONE, FINGERPRINT_LENGTH, NEW_GROUP,
+                                NORMAL_TEXT, NOT_IN_GROUP, REMOVED_MEMBERS, RX, SYMMETRIC_KEY_LENGTH, TX,
+                                UNKNOWN_ACCOUNTS, VERSION)
 
 from tests.mock_classes import ContactList, nick_to_pub_key, Settings
 from tests.utils        import TFCTestCase
@@ -41,6 +44,7 @@ class TestClearScreen(TFCTestCase):
 class TestGroupManagementPrint(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.contact_list = ContactList(nicks=['Alice'])
         self.lines        = [nick_to_pub_key('Alice'), nick_to_pub_key('Bob')]
         self.group_name   = 'test_group'
@@ -238,6 +242,7 @@ class TestPrintFingerprint(TFCTestCase):
 class TestPrintKey(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.settings = Settings()
 
     def test_print_kdk(self):
@@ -294,6 +299,7 @@ class TestPrintSpacing(TFCTestCase):
 class TestRPPrint(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.ts        = datetime.now()
         self.timestamp = self.ts.strftime("%b %d - %H:%M:%S.%f")[:-4]
 

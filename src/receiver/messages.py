@@ -28,7 +28,11 @@ from src.common.db_logs    import write_log_entry
 from src.common.encoding   import bytes_to_bool
 from src.common.exceptions import FunctionReturn
 from src.common.misc       import separate_header, separate_headers
-from src.common.statics    import *
+from src.common.statics    import (ASSEMBLY_PACKET_HEADER_LENGTH, BLAKE2_DIGEST_LENGTH, FILE, FILE_KEY_HEADER,
+                                   GROUP_ID_LENGTH, GROUP_MESSAGE_HEADER, GROUP_MSG_ID_LENGTH, LOCAL_PUBKEY, MESSAGE,
+                                   MESSAGE_HEADER_LENGTH, ONION_SERVICE_PUBLIC_KEY_LENGTH, ORIGIN_CONTACT_HEADER,
+                                   ORIGIN_HEADER_LENGTH, ORIGIN_USER_HEADER, PLACEHOLDER_DATA, PRIVATE_MESSAGE_HEADER,
+                                   SYMMETRIC_KEY_LENGTH, WHISPER_FIELD_LENGTH)
 
 from src.receiver.packet import decrypt_assembly_packet
 
@@ -57,8 +61,8 @@ def process_message(ts:                 'datetime',
     """Process received private / group message."""
     local_window = window_list.get_local_window()
 
-    onion_pub_key, origin, assembly_packet_ct \
-        = separate_headers(assembly_packet_ct, [ONION_SERVICE_PUBLIC_KEY_LENGTH, ORIGIN_HEADER_LENGTH])
+    onion_pub_key, origin, assembly_packet_ct = separate_headers(assembly_packet_ct, [ONION_SERVICE_PUBLIC_KEY_LENGTH,
+                                                                                      ORIGIN_HEADER_LENGTH])
 
     if onion_pub_key == LOCAL_PUBKEY:
         raise FunctionReturn("Warning! Received packet masqueraded as a command.",   window=local_window)
@@ -123,6 +127,7 @@ def process_message(ts:                 'datetime',
             else:
                 raise FunctionReturn("Error: Message from contact had an invalid header.")
 
+            # Logging
             if whisper:
                 raise FunctionReturn("Whisper message complete.", output=False)
 

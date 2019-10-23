@@ -28,7 +28,9 @@ from unittest import mock
 
 from src.common.crypto   import byte_padding, encrypt_and_sign
 from src.common.encoding import int_to_bytes
-from src.common.statics  import *
+from src.common.statics  import (COMMAND, COMPRESSION_LEVEL, DIR_RECV_FILES, FILE, F_C_HEADER, LOCAL_ID, MESSAGE,
+                                 M_A_HEADER, M_E_HEADER, ORIGIN_CONTACT_HEADER, ORIGIN_USER_HEADER, PADDING_LENGTH,
+                                 PRIVATE_MESSAGE_HEADER, P_N_HEADER, SYMMETRIC_KEY_LENGTH, US_BYTE)
 
 from src.transmitter.packet import split_to_assembly_packets
 
@@ -42,6 +44,7 @@ from tests.utils        import UNDECODABLE_UNICODE
 class TestDecryptAssemblyPacket(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.onion_pub_key = nick_to_pub_key("Alice")
         self.origin        = ORIGIN_CONTACT_HEADER
         self.window_list   = WindowList(nicks=['Alice', LOCAL_ID])
@@ -113,6 +116,7 @@ class TestDecryptAssemblyPacket(TFCTestCase):
 class TestPacket(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.short_msg = "Lorem ipsum dolor sit amet, consectetur adipiscing elit"
         self.msg = ("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean condimentum consectetur purus quis"
                     " dapibus. Fusce venenatis lacus ut rhoncus faucibus. Cras sollicitudin commodo sapien, sed bibendu"
@@ -140,6 +144,7 @@ class TestPacket(TFCTestCase):
         self.short_f_data = (int_to_bytes(1) + int_to_bytes(2) + b'testfile.txt' + US_BYTE + encrypted)
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_invalid_assembly_packet_header_raises_fr(self):
@@ -412,6 +417,7 @@ class TestPacket(TFCTestCase):
 class TestPacketList(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.contact_list  = ContactList(nicks=['Alice', 'Bob'])
         self.settings      = Settings()
         self.onion_pub_key = nick_to_pub_key('Alice')

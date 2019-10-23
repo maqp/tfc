@@ -32,7 +32,9 @@ from src.common.exceptions import CriticalError, FunctionReturn
 from src.common.input      import yes
 from src.common.misc       import ensure_dir, get_terminal_width, round_up
 from src.common.output     import clear_screen, m_print
-from src.common.statics    import *
+from src.common.statics    import (DIR_USER_DATA, ENCODED_BOOLEAN_LENGTH, ENCODED_FLOAT_LENGTH, ENCODED_INTEGER_LENGTH,
+                                   MAX_INT, SETTINGS_INDENT, TRAFFIC_MASKING_MIN_RANDOM_DELAY,
+                                   TRAFFIC_MASKING_MIN_STATIC_DELAY, TX)
 
 if typing.TYPE_CHECKING:
     from src.common.db_contacts  import ContactList
@@ -183,7 +185,7 @@ class Settings(object):
                 raise CriticalError("Invalid attribute type in settings.")
 
         except (KeyError, ValueError):
-            raise FunctionReturn(f"Error: Invalid value '{value_str}'.", head_clear=True)
+            raise FunctionReturn(f"Error: Invalid setting value '{value_str}'.", head_clear=True)
 
         self.validate_key_value_pair(key, value, contact_list, group_list)
 

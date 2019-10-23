@@ -27,7 +27,8 @@ from src.common.db_contacts import Contact, ContactList
 from src.common.db_groups   import Group, GroupList
 from src.common.encoding    import b58encode
 from src.common.misc        import ensure_dir
-from src.common.statics     import *
+from src.common.statics     import (DIR_USER_DATA, GROUP_DB_HEADER_LENGTH, GROUP_ID_LENGTH, GROUP_STATIC_LENGTH,
+                                    ONION_SERVICE_PUBLIC_KEY_LENGTH, POLY1305_TAG_LENGTH, XCHACHA20_NONCE_LENGTH)
 
 from tests.mock_classes import create_contact, group_name_to_group_id, MasterKey, nick_to_pub_key, Settings
 from tests.utils        import cd_unit_test, cleanup, tamper_file, TFCTestCase
@@ -36,6 +37,7 @@ from tests.utils        import cd_unit_test, cleanup, tamper_file, TFCTestCase
 class TestGroup(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
         self.nicks         = ['Alice', 'Bob', 'Charlie']
         members            = list(map(create_contact, self.nicks))
@@ -50,6 +52,7 @@ class TestGroup(unittest.TestCase):
         ensure_dir(DIR_USER_DATA)
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_group_iterates_over_contact_objects(self):
@@ -117,6 +120,7 @@ class TestGroup(unittest.TestCase):
 class TestGroupList(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
         self.master_key    = MasterKey()
         self.settings      = Settings()
@@ -146,6 +150,7 @@ class TestGroupList(TFCTestCase):
                                        + self.settings.max_number_of_group_members * ONION_SERVICE_PUBLIC_KEY_LENGTH)
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_group_list_iterates_over_group_objects(self):

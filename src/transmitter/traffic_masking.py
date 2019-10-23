@@ -27,7 +27,8 @@ import typing
 from typing import Any, Dict, Optional, Tuple, Union
 
 from src.common.misc    import ignored
-from src.common.statics import *
+from src.common.statics import (C_N_HEADER, NOISE_PACKET_BUFFER, PADDING_LENGTH, P_N_HEADER, STATIC,
+                                TM_NOISE_COMMAND_QUEUE, TM_NOISE_PACKET_QUEUE, TRAFFIC_MASKING)
 
 if typing.TYPE_CHECKING:
     from multiprocessing        import Queue

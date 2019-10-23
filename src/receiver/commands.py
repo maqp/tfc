@@ -29,7 +29,14 @@ from src.common.encoding   import bytes_to_int, pub_key_to_short_address
 from src.common.exceptions import FunctionReturn
 from src.common.misc       import ensure_dir, separate_header
 from src.common.output     import clear_screen, m_print, phase, print_on_previous_line
-from src.common.statics    import *
+from src.common.statics    import (CH_FILE_RECV, CH_LOGGING, CH_MASTER_KEY, CH_NICKNAME, CH_NOTIFY, CH_SETTING,
+                                   CLEAR_SCREEN, COMMAND, CONTACT_REM, CONTACT_SETTING_HEADER_LENGTH, DIR_USER_DATA,
+                                   DISABLE, DONE, ENABLE, ENCODED_INTEGER_LENGTH, ENCRYPTED_COMMAND_HEADER_LENGTH, EXIT,
+                                   EXIT_PROGRAM, GROUP_ADD, GROUP_CREATE, GROUP_DELETE, GROUP_REMOVE, GROUP_RENAME,
+                                   KEY_EX_ECDHE, KEY_EX_PSK_RX, KEY_EX_PSK_TX, LOCAL_KEY_RDY, LOCAL_PUBKEY, LOG_DISPLAY,
+                                   LOG_EXPORT, LOG_REMOVE, ONION_SERVICE_PUBLIC_KEY_LENGTH, ORIGIN_USER_HEADER, RESET,
+                                   RESET_SCREEN, US_BYTE, WIN_ACTIVITY, WIN_SELECT, WIN_TYPE_CONTACT, WIN_TYPE_GROUP,
+                                   WIN_UID_FILE, WIN_UID_LOCAL, WIPE, WIPE_USR_DATA)
 
 from src.receiver.commands_g    import group_add, group_create, group_delete, group_remove, group_rename
 from src.receiver.key_exchanges import key_ex_ecdhe, key_ex_psk_rx, key_ex_psk_tx, local_key_rdy
@@ -58,7 +65,7 @@ def process_command(ts:           'datetime',
                     settings:     'Settings',
                     master_key:   'MasterKey',
                     gateway:      'Gateway',
-                    exit_queue:   'Queue[Any]'
+                    exit_queue:   'Queue[bytes]'
                     ) -> None:
     """Decrypt command assembly packet and process command."""
     assembly_packet = decrypt_assembly_packet(assembly_ct, LOCAL_PUBKEY, ORIGIN_USER_HEADER,
@@ -73,7 +80,7 @@ def process_command(ts:           'datetime',
     header, cmd = separate_header(cmd_packet.assemble_command_packet(), ENCRYPTED_COMMAND_HEADER_LENGTH)
     no          = None
 
-    #    Keyword         Function to run      (                              Parameters                               )
+    #    Keyword        Function to run (                                 Parameters                                  )
     #    --------------------------------------------------------------------------------------------------------------
     d = {LOCAL_KEY_RDY: (local_key_rdy,      ts, window_list, contact_list                                            ),
          WIN_ACTIVITY:  (win_activity,           window_list                                                          ),
@@ -136,7 +143,7 @@ def reset_screen(win_uid: bytes, window_list: 'WindowList') -> None:
     os.system(RESET)
 
 
-def exit_tfc(exit_queue: 'Queue[Any]') -> None:
+def exit_tfc(exit_queue: 'Queue[str]') -> None:
     """Exit TFC."""
     exit_queue.put(EXIT)
 

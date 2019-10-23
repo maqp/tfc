@@ -29,7 +29,10 @@ from src.common.encoding   import int_to_bytes, onion_address_to_pub_key
 from src.common.encoding   import bytes_to_int
 from src.common.exceptions import CriticalError
 from src.common.misc       import ensure_dir, separate_headers, split_byte_string
-from src.common.statics    import *
+from src.common.statics    import (DIR_USER_DATA, DUMMY_CONTACT, HARAC_LENGTH, INITIAL_HARAC, KDB_ADD_ENTRY_HEADER,
+                                   KDB_CHANGE_MASTER_KEY_HEADER, KDB_REMOVE_ENTRY_HEADER, KDB_UPDATE_SIZE_HEADER,
+                                   KEYSET_LENGTH, LOCAL_PUBKEY, ONION_SERVICE_PUBLIC_KEY_LENGTH, RX,
+                                   SYMMETRIC_KEY_LENGTH, TX)
 
 if typing.TYPE_CHECKING:
     from src.common.db_masterkey import MasterKey

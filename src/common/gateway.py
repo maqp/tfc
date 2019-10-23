@@ -31,7 +31,7 @@ import time
 import typing
 
 from datetime import datetime
-from typing   import Any, Dict, Optional, Tuple, Union
+from typing   import Dict, Optional, Tuple, Union
 
 from serial.serialutil import SerialException
 
@@ -41,13 +41,16 @@ from src.common.misc         import calculate_race_condition_delay, ensure_dir, 
 from src.common.misc         import separate_trailer
 from src.common.output       import m_print, phase, print_on_previous_line
 from src.common.reed_solomon import ReedSolomonError, RSCodec
-from src.common.statics      import *
+from src.common.statics      import (BAUDS_PER_BYTE, DIR_USER_DATA, DONE, DST_DD_LISTEN_SOCKET, DST_LISTEN_SOCKET,
+                                     GATEWAY_QUEUE, LOCALHOST, LOCAL_TESTING_PACKET_DELAY, MAX_INT, NC,
+                                     PACKET_CHECKSUM_LENGTH, RECEIVER, RELAY, RP_LISTEN_SOCKET, RX,
+                                     SERIAL_RX_MIN_TIMEOUT, SETTINGS_INDENT, SRC_DD_LISTEN_SOCKET, TRANSMITTER, TX)
 
 if typing.TYPE_CHECKING:
     from multiprocessing import Queue
 
 
-def gateway_loop(queues:    Dict[bytes, 'Queue[Any]'],
+def gateway_loop(queues:    Dict[bytes, 'Queue[Tuple[datetime, bytes]]'],
                  gateway:   'Gateway',
                  unit_test: bool = False
                  ) -> None:
@@ -131,9 +134,9 @@ class Gateway(object):
         the time it takes to send one byte with given baud rate.
         """
         try:
-            serial_interface                = self.search_serial_interface()
-            baudrate                        = self.settings.session_serial_baudrate
-            self.tx_serial = self.rx_serial = serial.Serial(serial_interface, baudrate, timeout=0)
+            self.tx_serial = self.rx_serial = serial.Serial(self.search_serial_interface(),
+                                                            self.settings.session_serial_baudrate,
+                                                            timeout=0)
         except SerialException:
             raise CriticalError("SerialException. Ensure $USER is in the dialout group by restarting this computer.")
 
@@ -509,7 +512,7 @@ class GatewaySettings(object):
                 raise CriticalError("Invalid attribute type in settings.")
 
         except (KeyError, ValueError):
-            raise FunctionReturn(f"Error: Invalid value '{value_str}'.", delay=1, tail_clear=True)
+            raise FunctionReturn(f"Error: Invalid setting value '{value_str}'.", delay=1, tail_clear=True)
 
         self.validate_key_value_pair(key, value)
 

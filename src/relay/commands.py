@@ -31,7 +31,16 @@ from src.common.encoding   import bytes_to_bool, bytes_to_int
 from src.common.exceptions import FunctionReturn
 from src.common.misc       import ignored, separate_header, separate_headers, split_byte_string
 from src.common.output     import clear_screen, m_print
-from src.common.statics    import *
+from src.common.statics    import (CONFIRM_CODE_LENGTH, CONTACT_MGMT_QUEUE, C_REQ_MGMT_QUEUE, C_REQ_STATE_QUEUE,
+                                   ENCODED_BOOLEAN_LENGTH, ENCODED_INTEGER_LENGTH, EXIT, GROUP_MGMT_QUEUE,
+                                   LOCAL_TESTING_PACKET_DELAY, MAX_INT, ONION_CLOSE_QUEUE, ONION_KEY_QUEUE,
+                                   ONION_SERVICE_PRIVATE_KEY_LENGTH, ONION_SERVICE_PUBLIC_KEY_LENGTH, RESET,
+                                   RP_ADD_CONTACT_HEADER, RP_REMOVE_CONTACT_HEADER, SRC_TO_RELAY_QUEUE,
+                                   UNENCRYPTED_ADD_EXISTING_CONTACT, UNENCRYPTED_ADD_NEW_CONTACT, UNENCRYPTED_BAUDRATE,
+                                   UNENCRYPTED_COMMAND_HEADER_LENGTH, UNENCRYPTED_EC_RATIO, UNENCRYPTED_EXIT_COMMAND,
+                                   UNENCRYPTED_MANAGE_CONTACT_REQ, UNENCRYPTED_ONION_SERVICE_DATA,
+                                   UNENCRYPTED_REM_CONTACT, UNENCRYPTED_SCREEN_CLEAR, UNENCRYPTED_SCREEN_RESET,
+                                   UNENCRYPTED_WIPE_COMMAND, WIPE)
 
 if typing.TYPE_CHECKING:
     from multiprocessing    import Queue

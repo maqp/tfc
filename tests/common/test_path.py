@@ -38,6 +38,7 @@ class TestAskPathGui(TFCTestCase):
     path      = '/home/user/'
 
     def setUp(self):
+        """Pre-test actions."""
         self.settings = Settings()
 
     @mock.patch('os.path.isfile', return_value=True)
@@ -78,6 +79,7 @@ class TestAskPathGui(TFCTestCase):
 class TestCompleter(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.cwd           = os.getcwd()
         self.unit_test_dir = cd_unit_test()
 
@@ -93,6 +95,7 @@ class TestCompleter(unittest.TestCase):
         os.chdir('..')
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
         os.chdir(self.cwd)
 
@@ -116,10 +119,12 @@ class TestCompleter(unittest.TestCase):
 class TestPath(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         with ignored(FileExistsError):
             os.mkdir('test_dir/')
 
     def tearDown(self):
+        """Post-test actions."""
         with ignored(OSError):
             os.remove('testfile')
         with ignored(OSError):

@@ -29,7 +29,11 @@ from src.common.exceptions import FunctionReturn
 from src.common.input      import box_input, yes
 from src.common.misc       import ignored, validate_key_exchange, validate_nick, validate_onion_addr
 from src.common.output     import m_print
-from src.common.statics    import *
+from src.common.statics    import (ALL, CH_FILE_RECV, CH_LOGGING, CH_NICKNAME, CH_NOTIFY, CONTACT_REM, DISABLE, ECDHE,
+                                   ENABLE, KDB_REMOVE_ENTRY_HEADER, KEY_MANAGEMENT_QUEUE, LOGGING, LOG_SETTING_QUEUE,
+                                   NOTIFY, ONION_ADDRESS_LENGTH, PSK, RELAY_PACKET_QUEUE, STORE, TRUNC_ADDRESS_LENGTH,
+                                   UNENCRYPTED_ADD_NEW_CONTACT, UNENCRYPTED_DATAGRAM_HEADER, UNENCRYPTED_REM_CONTACT,
+                                   WIN_TYPE_CONTACT, WIN_TYPE_GROUP)
 
 from src.transmitter.commands_g    import group_rename
 from src.transmitter.key_exchanges import create_pre_shared_key, start_key_exchange
@@ -176,7 +180,7 @@ def remove_contact(user_input:   'UserInput',
 
                 # If the last member of the group is removed, deselect
                 # the group. Deselection is not done in
-                # update_group_win_members because it would prevent
+                # `TxWindow.update_window()` because it would prevent
                 # selecting the empty group for group related commands
                 # such as notifications.
                 if not window.window_contacts:

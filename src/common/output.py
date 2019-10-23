@@ -29,7 +29,10 @@ from typing   import List, Optional, Union
 
 from src.common.encoding import b10encode, b58encode, pub_key_to_onion_address
 from src.common.misc     import get_terminal_width, split_string
-from src.common.statics  import *
+from src.common.statics  import (ADDED_MEMBERS, ALREADY_MEMBER, B58_LOCAL_KEY_GUIDE, B58_PUBLIC_KEY_GUIDE, BOLD_ON,
+                                 CLEAR_ENTIRE_LINE, CLEAR_ENTIRE_SCREEN, CURSOR_LEFT_UP_CORNER, CURSOR_UP_ONE_LINE,
+                                 DONE, NC, NEW_GROUP, NORMAL_TEXT, NOT_IN_GROUP, RECEIVER, RELAY, REMOVED_MEMBERS, RX,
+                                 TFC, TRANSMITTER, TX, UNKNOWN_ACCOUNTS, VERSION)
 
 if typing.TYPE_CHECKING:
     from src.common.db_contacts import ContactList
@@ -205,9 +208,9 @@ def print_key(message:    str,                              # Instructive messag
     if settings.local_testing_mode:
         m_print([message, b58key], box=True)
     else:
-        guide, chunk_len = (B58_PUBLIC_KEY_GUIDE, 7) if public_key else (B58_LOCAL_KEY_GUIDE, 3)
+        guide, chunk_length = (B58_PUBLIC_KEY_GUIDE, 7) if public_key else (B58_LOCAL_KEY_GUIDE, 3)
 
-        key = ' '.join(split_string(b58key, item_len=chunk_len))
+        key = ' '.join(split_string(b58key, item_len=chunk_length))
         m_print([message, guide, key], box=True)
 
 

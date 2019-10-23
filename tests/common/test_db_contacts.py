@@ -25,7 +25,10 @@ import unittest
 from src.common.crypto      import encrypt_and_sign
 from src.common.db_contacts import Contact, ContactList
 from src.common.misc        import ensure_dir
-from src.common.statics     import *
+from src.common.statics     import (CLEAR_ENTIRE_SCREEN, CONTACT_LENGTH, CURSOR_LEFT_UP_CORNER, DIR_USER_DATA, ECDHE,
+                                    FINGERPRINT_LENGTH, KEX_STATUS_HAS_RX_PSK, KEX_STATUS_LOCAL_KEY, KEX_STATUS_NONE,
+                                    KEX_STATUS_NO_RX_PSK, KEX_STATUS_PENDING, KEX_STATUS_UNVERIFIED,
+                                    KEX_STATUS_VERIFIED, LOCAL_ID, POLY1305_TAG_LENGTH, PSK, XCHACHA20_NONCE_LENGTH)
 
 from tests.mock_classes import create_contact, MasterKey, Settings
 from tests.utils        import cd_unit_test, cleanup, nick_to_onion_address, nick_to_pub_key, tamper_file, TFCTestCase
@@ -34,6 +37,7 @@ from tests.utils        import cd_unit_test, cleanup, nick_to_onion_address, nic
 class TestContact(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.contact = Contact(nick_to_pub_key('Bob'),
                                'Bob',
                                FINGERPRINT_LENGTH * b'\x01',
@@ -62,6 +66,7 @@ class TestContact(unittest.TestCase):
 class TestContactList(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir         = cd_unit_test()
         self.master_key            = MasterKey()
         self.settings              = Settings()
@@ -73,6 +78,7 @@ class TestContactList(TFCTestCase):
         self.real_contact_list.remove(LOCAL_ID)
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_contact_list_iterates_over_contact_objects(self):
@@ -101,7 +107,8 @@ class TestContactList(TFCTestCase):
     def test_invalid_content_raises_critical_error(self):
         # Setup
         invalid_data = b'a'
-        pt_bytes     = b''.join([c.serialize_c() for c in self.contact_list.contacts + self.contact_list._dummy_contacts()])
+        pt_bytes     = b''.join([c.serialize_c() for c in self.contact_list.contacts
+                                                        + self.contact_list._dummy_contacts()])
         ct_bytes     = encrypt_and_sign(pt_bytes + invalid_data, self.master_key.master_key)
 
         ensure_dir(DIR_USER_DATA)

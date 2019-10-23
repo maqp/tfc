@@ -28,7 +28,11 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 from src.common.encoding import int_to_bytes
-from src.common.statics  import *
+from src.common.statics  import (CLEAR_ENTIRE_SCREEN, CONTACT_MGMT_QUEUE, CURSOR_LEFT_UP_CORNER, C_REQ_MGMT_QUEUE,
+                                 C_REQ_STATE_QUEUE, EXIT, GROUP_MGMT_QUEUE, LOCAL_TESTING_PACKET_DELAY,
+                                 ONION_CLOSE_QUEUE, ONION_KEY_QUEUE, ONION_SERVICE_PRIVATE_KEY_LENGTH,
+                                 RP_ADD_CONTACT_HEADER, RP_REMOVE_CONTACT_HEADER, SRC_TO_RELAY_QUEUE,
+                                 UNENCRYPTED_SCREEN_CLEAR, WIPE)
 
 from src.relay.commands import add_contact, add_onion_data, change_baudrate, change_ec_ratio, clear_windows, exit_tfc
 from src.relay.commands import manage_contact_req, process_command, race_condition_delay, relay_command, remove_contact
@@ -41,11 +45,13 @@ from tests.utils        import gen_queue_dict, tear_queues, TFCTestCase
 class TestRelayCommand(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.gateway = Gateway()
         self.queues  = gen_queue_dict()
         self.gateway.settings.race_condition_delay = 0.0
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queues(self.queues)
 
     @mock.patch('sys.stdin', MagicMock())
@@ -64,10 +70,12 @@ class TestRelayCommand(unittest.TestCase):
 class TestProcessCommand(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.gateway = Gateway()
         self.queues  = gen_queue_dict()
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queues(self.queues)
 
     def test_invalid_key(self):
@@ -77,6 +85,7 @@ class TestProcessCommand(TFCTestCase):
 class TestRaceConditionDelay(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.gateway = Gateway(local_testing_mode=True,
                                data_diode_sockets=True)
 
@@ -89,6 +98,7 @@ class TestRaceConditionDelay(unittest.TestCase):
 class TestClearWindows(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.gateway = Gateway(race_condition_delay=0.0)
 
     def test_clear_display(self):
@@ -106,10 +116,12 @@ class TestResetWindows(TFCTestCase):
 class TestExitTFC(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.gateway = Gateway(race_condition_delay=0.0)
         self.queues  = gen_queue_dict()
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queues(self.queues)
 
     def test_exit_tfc(self):
@@ -120,6 +132,7 @@ class TestExitTFC(unittest.TestCase):
 class TestChangeECRatio(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.gateway = Gateway()
 
     def test_non_digit_value_raises_fr(self):
@@ -138,6 +151,7 @@ class TestChangeECRatio(TFCTestCase):
 class TestChangeBaudrate(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.gateway = Gateway()
 
     def test_non_digit_value_raises_fr(self):
@@ -156,10 +170,12 @@ class TestChangeBaudrate(TFCTestCase):
 class TestWipe(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.gateway = Gateway(race_condition_delay=0.0)
         self.queues  = gen_queue_dict()
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queues(self.queues)
 
     @mock.patch('os.system', return_value=None)
@@ -171,9 +187,11 @@ class TestWipe(unittest.TestCase):
 class TestManageContactReq(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.queues = gen_queue_dict()
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queues(self.queues)
 
     def test_setting_management(self):
@@ -186,68 +204,74 @@ class TestManageContactReq(unittest.TestCase):
 
 class TestAddContact(unittest.TestCase):
 
-        def setUp(self):
-            self.queues = gen_queue_dict()
+    def setUp(self):
+        """Pre-test actions."""
+        self.queues = gen_queue_dict()
 
-        def tearDown(self):
-            tear_queues(self.queues)
+    def tearDown(self):
+        """Post-test actions."""
+        tear_queues(self.queues)
 
-        def test_add_contact(self):
-            command = b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')])
+    def test_add_contact(self):
+        command = b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')])
 
-            self.assertIsNone(add_contact(command, True, self.queues))
-            self.assertEqual(self.queues[CONTACT_MGMT_QUEUE].qsize(), 1)
-            for q in [GROUP_MGMT_QUEUE, C_REQ_MGMT_QUEUE]:
-                command = self.queues[q].get()
-                self.assertEqual(command,
-                                 (RP_ADD_CONTACT_HEADER, b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')])))
-            self.assertEqual(self.queues[CONTACT_MGMT_QUEUE].get(),
-                             (RP_ADD_CONTACT_HEADER, b''.join(list(map(nick_to_pub_key, ['Alice', 'Bob']))), True))
+        self.assertIsNone(add_contact(command, True, self.queues))
+        self.assertEqual(self.queues[CONTACT_MGMT_QUEUE].qsize(), 1)
+        for q in [GROUP_MGMT_QUEUE, C_REQ_MGMT_QUEUE]:
+            command = self.queues[q].get()
+            self.assertEqual(command,
+                             (RP_ADD_CONTACT_HEADER, b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')])))
+        self.assertEqual(self.queues[CONTACT_MGMT_QUEUE].get(),
+                         (RP_ADD_CONTACT_HEADER, b''.join(list(map(nick_to_pub_key, ['Alice', 'Bob']))), True))
 
 
 class TestRemContact(unittest.TestCase):
 
-        def setUp(self):
-            self.queues = gen_queue_dict()
+    def setUp(self):
+        """Pre-test actions."""
+        self.queues = gen_queue_dict()
 
-        def tearDown(self):
-            tear_queues(self.queues)
+    def tearDown(self):
+        """Post-test actions."""
+        tear_queues(self.queues)
 
-        def test_add_contact(self):
-            command = b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')])
+    def test_add_contact(self):
+        command = b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')])
 
-            self.assertIsNone(remove_contact(command, self.queues))
-            self.assertEqual(self.queues[CONTACT_MGMT_QUEUE].qsize(), 1)
-            self.assertEqual(self.queues[CONTACT_MGMT_QUEUE].get(),
-                             (RP_REMOVE_CONTACT_HEADER,
-                              b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')]),
-                              False)
-                             )
+        self.assertIsNone(remove_contact(command, self.queues))
+        self.assertEqual(self.queues[CONTACT_MGMT_QUEUE].qsize(), 1)
+        self.assertEqual(self.queues[CONTACT_MGMT_QUEUE].get(),
+                         (RP_REMOVE_CONTACT_HEADER,
+                          b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')]),
+                          False)
+                         )
 
-            for q in [GROUP_MGMT_QUEUE, C_REQ_MGMT_QUEUE]:
-                command = self.queues[q].get()
-                self.assertEqual(command, (RP_REMOVE_CONTACT_HEADER,
-                                           b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')])))
+        for q in [GROUP_MGMT_QUEUE, C_REQ_MGMT_QUEUE]:
+            command = self.queues[q].get()
+            self.assertEqual(command, (RP_REMOVE_CONTACT_HEADER,
+                                       b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')])))
 
 
 class TestAddOnionKey(unittest.TestCase):
 
-        def setUp(self):
-            self.queues = gen_queue_dict()
+    def setUp(self):
+        """Pre-test actions."""
+        self.queues = gen_queue_dict()
 
-        def tearDown(self):
-            tear_queues(self.queues)
+    def tearDown(self):
+        """Post-test actions."""
+        tear_queues(self.queues)
 
-        def test_add_contact(self):
-            command = (ONION_SERVICE_PRIVATE_KEY_LENGTH * b'a'
-                       + b'b'
-                       + b'\x01'
-                       + int_to_bytes(1)
-                       + nick_to_pub_key('Alice')
-                       + nick_to_pub_key('Bob'))
-            self.assertIsNone(add_onion_data(command, self.queues))
-            self.assertEqual(self.queues[ONION_KEY_QUEUE].qsize(), 1)
-            self.assertEqual(self.queues[ONION_KEY_QUEUE].get(), (ONION_SERVICE_PRIVATE_KEY_LENGTH * b'a', b'b'))
+    def test_add_contact(self):
+        command = (ONION_SERVICE_PRIVATE_KEY_LENGTH * b'a'
+                   + b'b'
+                   + b'\x01'
+                   + int_to_bytes(1)
+                   + nick_to_pub_key('Alice')
+                   + nick_to_pub_key('Bob'))
+        self.assertIsNone(add_onion_data(command, self.queues))
+        self.assertEqual(self.queues[ONION_KEY_QUEUE].qsize(), 1)
+        self.assertEqual(self.queues[ONION_KEY_QUEUE].get(), (ONION_SERVICE_PRIVATE_KEY_LENGTH * b'a', b'b'))
 
 
 if __name__ == '__main__':

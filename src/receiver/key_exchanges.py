@@ -27,7 +27,7 @@ import subprocess
 import tkinter
 import typing
 
-from typing import Any, List, Tuple
+from typing import List, Tuple
 
 import nacl.exceptions
 
@@ -39,7 +39,11 @@ from src.common.input        import get_b58_key
 from src.common.misc         import separate_header, separate_headers
 from src.common.output       import m_print, phase, print_on_previous_line
 from src.common.path         import ask_path_gui
-from src.common.statics      import *
+from src.common.statics      import (ARGON2_PSK_MEMORY_COST, ARGON2_PSK_PARALLELISM, ARGON2_PSK_TIME_COST,
+                                     ARGON2_SALT_LENGTH, B58_LOCAL_KEY, CONFIRM_CODE_LENGTH, DONE, FINGERPRINT_LENGTH,
+                                     KEX_STATUS_HAS_RX_PSK, KEX_STATUS_LOCAL_KEY, KEX_STATUS_NONE, KEX_STATUS_NO_RX_PSK,
+                                     LOCAL_NICK, LOCAL_PUBKEY, ONION_SERVICE_PUBLIC_KEY_LENGTH, PSK_FILE_SIZE, RESET,
+                                     SYMMETRIC_KEY_LENGTH, WIN_TYPE_CONTACT, WIN_TYPE_GROUP)
 
 if typing.TYPE_CHECKING:
     from datetime               import datetime
@@ -60,7 +64,7 @@ def process_local_key(ts:            'datetime',
                       settings:      'Settings',
                       kdk_hashes:     List[bytes],
                       packet_hashes:  List[bytes],
-                      l_queue:        'Queue[Any]'
+                      l_queue:        'Queue[Tuple[datetime, bytes]]'
                       ) -> None:
     """Decrypt local key packet and add local contact/keyset."""
     bootstrap = not key_list.has_local_keyset()
@@ -259,11 +263,12 @@ def key_ex_psk_tx(packet:       bytes,
                         tx_hk=tx_hk,
                         rx_hk=bytes(SYMMETRIC_KEY_LENGTH))
 
+    c_code    = blake2b(onion_pub_key, digest_size=CONFIRM_CODE_LENGTH)
     message   = f"Added Tx-side PSK for {nick} ({pub_key_to_short_address(onion_pub_key)})."
     local_win = window_list.get_local_window()
     local_win.add_new(ts, message)
 
-    m_print(message, bold=True, tail_clear=True, delay=1)
+    m_print([message, f"Confirmation code (to Transmitter): {c_code.hex()}"], box=True)
 
 
 def key_ex_psk_rx(packet:       bytes,

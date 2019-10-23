@@ -24,7 +24,7 @@ import os
 import typing
 import zlib
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from src.common.crypto     import blake2b, byte_padding, csprng, encrypt_and_sign
 from src.common.encoding   import bool_to_bytes, int_to_bytes, str_to_bytes
@@ -33,7 +33,14 @@ from src.common.input      import yes
 from src.common.misc       import split_byte_string
 from src.common.output     import m_print, phase, print_on_previous_line
 from src.common.path       import ask_path_gui
-from src.common.statics    import *
+from src.common.statics    import (ASSEMBLY_PACKET_LENGTH, COMMAND, COMMAND_DATAGRAM_HEADER, COMMAND_PACKET_QUEUE,
+                                   COMPRESSION_LEVEL, C_A_HEADER, C_E_HEADER, C_L_HEADER, C_S_HEADER, DONE, FILE,
+                                   FILE_DATAGRAM_HEADER, FILE_KEY_HEADER, FILE_PACKET_CTR_LENGTH, F_A_HEADER,
+                                   F_C_HEADER, F_E_HEADER, F_L_HEADER, F_S_HEADER, GROUP_MESSAGE_HEADER,
+                                   GROUP_MSG_ID_LENGTH, LOCAL_PUBKEY, MESSAGE, MESSAGE_DATAGRAM_HEADER,
+                                   MESSAGE_PACKET_QUEUE, M_A_HEADER, M_C_HEADER, M_E_HEADER, M_L_HEADER, M_S_HEADER,
+                                   PADDING_LENGTH, PRIVATE_MESSAGE_HEADER, RELAY_PACKET_QUEUE, TM_COMMAND_PACKET_QUEUE,
+                                   TM_FILE_PACKET_QUEUE, TM_MESSAGE_PACKET_QUEUE, WIN_TYPE_GROUP)
 
 from src.transmitter.files      import File
 from src.transmitter.user_input import UserInput
@@ -41,14 +48,16 @@ from src.transmitter.user_input import UserInput
 if typing.TYPE_CHECKING:
     from multiprocessing         import Queue
     from src.common.db_keys      import KeyList
+    from src.common.db_masterkey import MasterKey
     from src.common.db_settings  import Settings
     from src.common.gateway      import Gateway
     from src.transmitter.windows import TxWindow, MockWindow
-    QueueDict = Dict[bytes, Queue[Any]]
+    QueueDict      = Dict[bytes, Queue[Any]]
+    log_queue_data = Tuple[Optional[bytes], bytes, Optional[bool], Optional[bool], MasterKey]
 
 
 def queue_to_nc(packet:   bytes,
-                nc_queue: 'Queue[Any]',
+                nc_queue: 'Queue[bytes]',
                 ) -> None:
     """Queue unencrypted command/exported file to Networked Computer.
 
@@ -360,7 +369,7 @@ def queue_assembly_packets(assembly_packet_list: List[bytes],
                            settings:             'Settings',
                            queues:               'QueueDict',
                            window:               Optional[Union['TxWindow', 'MockWindow']] = None,
-                           log_as_ph:            bool                                      = False
+                           log_as_ph:            bool = False
                            ) -> None:
     """Queue assembly packets for sender_loop().
 
@@ -388,13 +397,13 @@ def queue_assembly_packets(assembly_packet_list: List[bytes],
             queue.put(assembly_packet)
 
 
-def send_packet(key_list:        'KeyList',               # Key list object
-                gateway:         'Gateway',               # Gateway object
-                log_queue:       'Queue[Any]',            # Multiprocessing queue for logged messages
-                assembly_packet: bytes,                   # Padded plaintext assembly packet
-                onion_pub_key:   Optional[bytes] = None,  # Recipient v3 Onion Service address
-                log_messages:    Optional[bool]  = None,  # When True, log the message assembly packet
-                log_as_ph:       Optional[bool]  = None   # When True, log assembly packet as placeholder data
+def send_packet(key_list:        'KeyList',                # Key list object
+                gateway:         'Gateway',                # Gateway object
+                log_queue:       'Queue[log_queue_data]',  # Multiprocessing queue for logged messages
+                assembly_packet: bytes,                    # Padded plaintext assembly packet
+                onion_pub_key:   Optional[bytes] = None,   # Recipient v3 Onion Service address
+                log_messages:    Optional[bool]  = None,   # When True, log the message assembly packet
+                log_as_ph:       Optional[bool]  = None    # When True, log assembly packet as placeholder data
                 ) -> None:
     """Encrypt and send assembly packet.
 

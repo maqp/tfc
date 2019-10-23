@@ -22,7 +22,7 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 import typing
 
 from src.common.output  import print_on_previous_line
-from src.common.statics import *
+from src.common.statics import COMMAND, FILE, MESSAGE, WIN_TYPE_GROUP
 
 if typing.TYPE_CHECKING:
     from src.common.db_settings  import Settings

@@ -48,9 +48,9 @@ from cryptography.hazmat.primitives.serialization   import Encoding, PublicForma
 
 from src.common.exceptions import CriticalError
 from src.common.misc       import separate_header
-from src.common.statics    import ARGON2_SALT_LENGTH, BITS_PER_BYTE, BLAKE2_DIGEST_LENGTH, BLAKE2_DIGEST_LENGTH_MAX
-from src.common.statics    import BLAKE2_DIGEST_LENGTH_MIN, PADDING_LENGTH, SYMMETRIC_KEY_LENGTH, TFC_PUBLIC_KEY_LENGTH
-from src.common.statics    import XCHACHA20_NONCE_LENGTH
+from src.common.statics    import (ARGON2_SALT_LENGTH, BITS_PER_BYTE, BLAKE2_DIGEST_LENGTH, BLAKE2_DIGEST_LENGTH_MAX,
+                                   BLAKE2_DIGEST_LENGTH_MIN, PADDING_LENGTH, SYMMETRIC_KEY_LENGTH,
+                                   TFC_PUBLIC_KEY_LENGTH, X448_SHARED_SECRET_LENGTH, XCHACHA20_NONCE_LENGTH)
 
 
 def blake2b(message:     bytes,                        # Message to hash
@@ -118,13 +118,19 @@ def blake2b(message:     bytes,                        # Message to hash
          https://github.com/python/cpython/blob/3.7/Lib/hashlib.py
     """
     try:
-        digest = hashlib.blake2b(message, digest_size=digest_size, key=key, salt=salt, person=person).digest()  # type: bytes
-
-        if len(digest) != digest_size:
-            raise CriticalError(f"BLAKE2b digest had invalid length ({len(digest)} bytes).")
-
+        digest = hashlib.blake2b(message,
+                                 digest_size=digest_size,
+                                 key=key,
+                                 salt=salt,
+                                 person=person).digest()  # type: bytes
     except ValueError as e:
         raise CriticalError(str(e))
+
+    if not isinstance(digest, bytes):
+        raise CriticalError(f"BLAKE2b returned an invalid type ({type(digest)}) digest.")
+
+    if len(digest) != digest_size:
+        raise CriticalError(f"BLAKE2b digest had invalid length ({len(digest)} bytes).")
 
     return digest
 
@@ -219,6 +225,12 @@ def argon2_kdf(password:    str,    # Password to derive the key from
 
     except argon2.exceptions.Argon2Error as e:
         raise CriticalError(str(e))
+
+    if not isinstance(key, bytes):
+        raise CriticalError(f"Argon2 returned an invalid type ({type(key)}) key.")
+
+    if len(key) != SYMMETRIC_KEY_LENGTH:
+        raise CriticalError(f"Derived an invalid length key from password ({len(key)} bytes).")
 
     return key
 
@@ -357,8 +369,11 @@ class X448(object):
         public_key = private_key.public_key().public_bytes(encoding=Encoding.Raw,
                                                            format=PublicFormat.Raw)  # type: bytes
 
+        if not isinstance(public_key, bytes):
+            raise CriticalError(f"Generated an invalid type ({type(public_key)}) public key.")
+
         if len(public_key) != TFC_PUBLIC_KEY_LENGTH:
-            raise CriticalError(f"Generated invalid size public key from private key ({len(public_key)} bytes).")
+            raise CriticalError(f"Generated an invalid size public key from private key ({len(public_key)} bytes).")
 
         return public_key
 
@@ -391,6 +406,12 @@ class X448(object):
             shared_secret = private_key.exchange(X448PublicKey.from_public_bytes(public_key))  # type: bytes
         except ValueError as e:
             raise CriticalError(str(e))
+
+        if not isinstance(shared_secret, bytes):  # pragma: no cover
+            raise CriticalError(f"Derived an invalid type ({type(shared_secret)}) shared secret.")
+
+        if len(shared_secret) != X448_SHARED_SECRET_LENGTH:  # pragma: no cover
+            raise CriticalError(f"Generated an invalid size shared secret ({len(shared_secret)} bytes).")
 
         return blake2b(shared_secret, digest_size=SYMMETRIC_KEY_LENGTH)
 
@@ -548,6 +569,9 @@ def byte_padding(bytestring: bytes  # Bytestring to be padded
     padded  = padder.update(bytestring)  # type: bytes
     padded += padder.finalize()
 
+    if not isinstance(padded, bytes):
+        raise CriticalError(f"Padded message had invalid type ({type(padded)}).")
+
     if len(padded) % PADDING_LENGTH != 0:
         raise CriticalError(f"Padded message had an invalid length ({len(padded)}).")
 
@@ -623,7 +647,7 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
     ┃add_device ┃┃add_hwgenerator┃┃ add_input ┃┃ add_disk  ┃┃add_interrupt┃
     ┃_randomness┃┃  _randomness  ┃┃_randomness┃┃_randomness┃┃ _randomness ┃
     ┗━━━━━━━━━━━┛┗━━━━━━━━━━━━━━━┛┗━━━━━━━━━━━┛┗━━━━━━━━━━━┛┗━━━━━━━━━━━━━┛
-    
+
      [1] https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/LinuxRNG/LinuxRNG_EN.pdf?__blob=publicationFile&v=16
 
 
@@ -642,15 +666,15 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
         o add_hwgenerator_randomness: HWRNGs supported by the Linux
           kernel, if available. The output of the HWRNG device is used
           to seed the ChaCha20 DRNG if needed, and then to seed the
-          input_pool directly when the entropy estimator's value falls 
+          input_pool directly when the entropy estimator's value falls
           below the set threshold. (CPU HWRNG is not processed by the
           add_hwgenerator_randomness service function).[1; pp.52-54]
 
         o add_input_randomness: Key presses, mouse movements, mouse
-          button presses etc. Repeated event values (e.g. key presses or 
+          button presses etc. Repeated event values (e.g. key presses or
           same direction mouse movements) are ignored by the service
           function.[1; p.44]
-              The event data consists of four LSBs of the event type, 
+              The event data consists of four LSBs of the event type,
           four MSBs of the event code, the event code itself, and the
           event value, all XORed together.[1; p.45]
               The resulting event data is fed into the input_pool via
@@ -673,7 +697,7 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
 
         o add_interrupt_randomness: Interrupts (i.e. signals from SW/HW
           to processor that an event needs immediate attention) occur
-          hundreds of thousands of times per second under average load. 
+          hundreds of thousands of times per second under average load.
               The interrupt timestamps and event data are mixed into
           128-bit, per-CPU pool called fast_pool. When an interrupt
           occurs
@@ -684,14 +708,14 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
               high-resolution timestamp are XORed with the second word
               of the fast_pool.
             * The 32 MSBs and LSBs of the 64-bit CPU instruction pointer
-              value are XORed with the third and fourth word of the 
+              value are XORed with the third and fourth word of the
               fast_pool. If no pointer is available, the XORed value is
               instead the return address of the add_interrupt_randomness
               function.
-          The raw entropy mixed into the fast_pool is then distributed 
+          The raw entropy mixed into the fast_pool is then distributed
           more evenly with a function called fast_mix.
-              The content of the fast_pool is mixed into the input_pool 
-          once it has data about at least 64 interrupt events, and 
+              The content of the fast_pool is mixed into the input_pool
+          once it has data about at least 64 interrupt events, and
           (unless the ChaCha20 DRNG is being seeded) at least one second
           has passed since the fast_pool was last mixed in. The counter
           keeping track of the interrupt events is then zeroed.
@@ -721,16 +745,16 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
 
             - AMD:   A set of 16 ring oscillator chains feeds 512 bits
                      of raw entropy to AES256-CBC-MAC based conditioner
-                     again available via RDSEED instruction. The 
+                     again available via RDSEED instruction. The
                      conditioner is used to produce 128-bit seeds --
-                     a process that is repeated thrice to create a 
-                     384-bit seed for the AES256-CTR based DRBG 
-                     available via the RDRAND instruction. The DRBG is 
+                     a process that is repeated thrice to create a
+                     384-bit seed for the AES256-CTR based DRBG
+                     available via the RDRAND instruction. The DRBG is
                      reseeded at least every 2048 queries of 32-bits
                      (8kB).[4; pp.2-3]
 
           While the RDSEED/RDRAND instructions are used extensively,
-          because the CPU HWRNG is not an auditable source, it is 
+          because the CPU HWRNG is not an auditable source, it is
           assumed to provide only a very small amount of entropy.
           [1; p.83]
 
@@ -765,7 +789,7 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
 
     Initialization of the input_pool
     --------------------------------
-    The input_pool is initialized during boot time of the kernel by 
+    The input_pool is initialized during boot time of the kernel by
     mixing following data into the entropy pool:
         1. The current time with nanosecond precision (64-bit CPUs).
         2. Entropy obtained from CPU HWRNG via RDRAND instruction, if
@@ -776,7 +800,7 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
     Initial seeding and seeding levels of the input_pool
     ----------------------------------------------------
     After a hardware event has occurred, the entropy of the event value
-    is estimated, and both values are mixed into the input_pool using a 
+    is estimated, and both values are mixed into the input_pool using a
     function based on a linear feedback shift register (LFSR), one byte
     at a time.[1; p.23]
 
@@ -805,7 +829,7 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
         The "SHA-1" digest is mixed back into the input_pool using the
     LFSR-based state transition function to provide backtracking
     resistance.[1; p.18]
-        If more than 80-bits of entropy is requested, the 
+        If more than 80-bits of entropy is requested, the
     hash-fold-yield-mix-back operation is repeated until the requested
     number of bytes are generated. (Reseeding the ChaCha20 DRNG requires
     four consecutive requests.)[1; p.18]
@@ -839,7 +863,7 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
         -  4-byte counter (the counter is actually 64-bits[2])
         - 12-byte nonce
 
-    In addition, the DRNG state contains a 4-byte timestamp called 
+    In addition, the DRNG state contains a 4-byte timestamp called
     init_time, that keeps track of when the DRNG was last seeded.
     [1; pp.32-33]
 
@@ -866,9 +890,9 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
     input_pool the next time it is called.[1; p.35]
 
     **Initially seeded state**
-    During initialization time of the kernel, the kernel injects four 
-    sets of data from fast_pool into the DRNG (instead of the 
-    input_pool). Each set contains event data and timestamps of 64 
+    During initialization time of the kernel, the kernel injects four
+    sets of data from fast_pool into the DRNG (instead of the
+    input_pool). Each set contains event data and timestamps of 64
     interrupt events from add_interrupt_randomness.[1; p.35]
         In addition, all content from the add_device_randomness source
     is mixed into the DRNG key state using an LFSR with a period of 255.
@@ -920,7 +944,7 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
     The ChaCha20 DRNG is reseeded automatically every 300 seconds
     irrespective of the amount of data produced by the DRNG[1; p.32].
         The DRNG is reseeded by obtaining 128..256 bits of entropy
-    from the input_pool. In the order of preference, the entropy from 
+    from the input_pool. In the order of preference, the entropy from
     the input_pool is XORed with the output of
         1. 32-byte value obtained via RDSEED CPU instruction, or
         2. 32-byte value obtained via RDRAND CPU instruction, or
@@ -939,7 +963,7 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
     GETRANDOM and Python
     ====================
 
-    Since Python 3.6.0, `os.urandom` has been a wrapper for the best 
+    Since Python 3.6.0, `os.urandom` has been a wrapper for the best
     available CSPRNG. The 3.17 and earlier versions of the Linux kernel
     do not support the GETRANDOM call, and Python 3.7's `os.urandom`
     will in those cases fall back to non-blocking `/dev/urandom` that is
@@ -952,7 +976,7 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
     the kernel version required by TFC is bumped to 4.8, and to make
     sure the ChaCha20 DRNG is always seeded from input_pool before its
     considered fully seeded, the final minimum requirement is 4.17).
-        The flag 0 means GETRANDOM will block if the DRNG is not fully 
+        The flag 0 means GETRANDOM will block if the DRNG is not fully
     seeded.[1]
 
     Quoting PEP 524 [2]:
@@ -999,6 +1023,9 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
         raise CriticalError(f"Invalid key size ({key_length} bytes).")
 
     entropy = os.getrandom(key_length, flags=0)  # type: bytes
+
+    if not isinstance(entropy, bytes):
+        raise CriticalError(f"GETRANDOM returned invalid type data ({type(entropy)}).")
 
     if len(entropy) != key_length:
         raise CriticalError(f"GETRANDOM returned invalid amount of entropy ({len(entropy)} bytes).")

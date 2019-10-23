@@ -29,9 +29,9 @@ from typing          import Any, Dict, Tuple
 
 from src.common.misc    import get_terminal_height, get_terminal_width, ignored, monitor_processes
 from src.common.output  import clear_screen
-from src.common.statics import DATA_FLOW, DD_ANIMATION_LENGTH, DD_OFFSET_FROM_CENTER, DST_DD_LISTEN_SOCKET
-from src.common.statics import DST_LISTEN_SOCKET, EXIT_QUEUE, IDLE, LOCALHOST, NC, NCDCLR, NCDCRL, RP_LISTEN_SOCKET
-from src.common.statics import SCNCLR, SCNCRL, SRC_DD_LISTEN_SOCKET
+from src.common.statics import (DATA_FLOW, DD_ANIMATION_LENGTH, DD_OFFSET_FROM_CENTER, DST_DD_LISTEN_SOCKET,
+                                DST_LISTEN_SOCKET, EXIT_QUEUE, IDLE, LOCALHOST, NC, NCDCLR, NCDCRL, RP_LISTEN_SOCKET,
+                                SCNCLR, SCNCRL, SRC_DD_LISTEN_SOCKET)
 
 
 def draw_frame(argv:    str,          # Arguments for the simulator position/orientation

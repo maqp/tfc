@@ -36,7 +36,15 @@ from src.common.encoding import b58encode, int_to_bytes, onion_address_to_pub_ke
 from src.common.encoding import pub_key_to_short_address
 from src.common.misc     import ignored, separate_header, split_byte_string, validate_onion_addr
 from src.common.output   import m_print, print_key, rp_print
-from src.common.statics  import *
+from src.common.statics  import (CLIENT_OFFLINE_THRESHOLD, CONTACT_MGMT_QUEUE, CONTACT_REQ_QUEUE, C_REQ_MGMT_QUEUE,
+                                 C_REQ_STATE_QUEUE, DATAGRAM_HEADER_LENGTH, DST_MESSAGE_QUEUE, FILE_DATAGRAM_HEADER,
+                                 GROUP_ID_LENGTH, GROUP_MGMT_QUEUE, GROUP_MSG_EXIT_GROUP_HEADER,
+                                 GROUP_MSG_INVITE_HEADER, GROUP_MSG_JOIN_HEADER, GROUP_MSG_MEMBER_ADD_HEADER,
+                                 GROUP_MSG_MEMBER_REM_HEADER, GROUP_MSG_QUEUE, MESSAGE_DATAGRAM_HEADER,
+                                 ONION_SERVICE_PUBLIC_KEY_LENGTH, ORIGIN_CONTACT_HEADER, PUBLIC_KEY_DATAGRAM_HEADER,
+                                 RELAY_CLIENT_MAX_DELAY, RELAY_CLIENT_MIN_DELAY, RP_ADD_CONTACT_HEADER,
+                                 RP_REMOVE_CONTACT_HEADER, TFC_PUBLIC_KEY_LENGTH, TOR_DATA_QUEUE, UNIT_TEST_QUEUE,
+                                 URL_TOKEN_LENGTH, URL_TOKEN_QUEUE)
 
 if typing.TYPE_CHECKING:
     from src.common.gateway import Gateway
@@ -205,7 +213,7 @@ def get_data_loop(onion_addr:    str,
             except requests.exceptions.RequestException:
                 return None
 
-            for line in r.iter_lines():  # Iterates over newline-separated datagrams
+            for line in r.iter_lines():  # Iterate over newline-separated datagrams
 
                 if not line:
                     continue
@@ -219,14 +227,16 @@ def get_data_loop(onion_addr:    str,
                 ts       = datetime.now()
                 ts_bytes = int_to_bytes(int(ts.strftime('%Y%m%d%H%M%S%f')[:-4]))
 
+                # Packet type specific handling
+
                 if header == PUBLIC_KEY_DATAGRAM_HEADER:
                     if len(payload_bytes) == TFC_PUBLIC_KEY_LENGTH:
                         msg = f"Received public key from {short_addr} at {ts.strftime('%b %d - %H:%M:%S.%f')[:-4]}:"
                         print_key(msg, payload_bytes, gateway.settings, public_key=True)
 
                 elif header == MESSAGE_DATAGRAM_HEADER:
-                    queues[DST_MESSAGE_QUEUE].put(header + ts_bytes + onion_pub_key
-                                                  + ORIGIN_CONTACT_HEADER + payload_bytes)
+                    queues[DST_MESSAGE_QUEUE].put(header + ts_bytes
+                                                  + onion_pub_key + ORIGIN_CONTACT_HEADER + payload_bytes)
                     rp_print(f"Message   from contact {short_addr}", ts)
 
                 elif header in [GROUP_MSG_INVITE_HEADER,     GROUP_MSG_JOIN_HEADER,
@@ -282,13 +292,13 @@ def g_msg_manager(queues:    'QueueDict',
                 pub_keys       = split_byte_string(data, ONION_SERVICE_PUBLIC_KEY_LENGTH)
                 pub_key_length = ONION_SERVICE_PUBLIC_KEY_LENGTH
 
-                members  = [k                                    for k in pub_keys if len(k) == pub_key_length  ]
-                known    = [f"  * {pub_key_to_onion_address(m)}" for m in members  if m in     existing_contacts]
-                unknown  = [f"  * {pub_key_to_onion_address(m)}" for m in members  if m not in existing_contacts]
+                members = [k                                    for k in pub_keys if len(k) == pub_key_length  ]
+                known   = [f"  * {pub_key_to_onion_address(m)}" for m in members  if m in     existing_contacts]
+                unknown = [f"  * {pub_key_to_onion_address(m)}" for m in members  if m not in existing_contacts]
 
                 line_list = []
                 if known:
-                    line_list.extend(["Known contacts"]   + known)
+                    line_list.extend(["Known contacts"] + known)
                 if unknown:
                     line_list.extend(["Unknown contacts"] + unknown)
 
@@ -353,7 +363,8 @@ def c_req_manager(queues:    'QueueDict',
 
                 if show_requests:
                     ts_fmt = datetime.now().strftime('%b %d - %H:%M:%S.%f')[:-4]
-                    m_print([f"{ts_fmt} - New contact request from an unknown TFC account:", purp_onion_address], box=True)
+                    m_print([f"{ts_fmt} - New contact request from an unknown TFC account:", purp_onion_address],
+                            box=True)
                 contact_requests.append(onion_pub_key)
 
             if unit_test and queues[UNIT_TEST_QUEUE].qsize() != 0:

@@ -22,7 +22,8 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 import time
 import unittest
 
-from src.common.statics import *
+from src.common.statics import (C_N_HEADER, PADDING_LENGTH, PLACEHOLDER_DATA, TM_NOISE_COMMAND_QUEUE,
+                                TM_NOISE_PACKET_QUEUE, TRAFFIC_MASKING)
 
 from src.transmitter.traffic_masking import HideRunTime, noise_loop
 
@@ -33,6 +34,7 @@ from tests.utils        import gen_queue_dict, tear_queues
 class TestHideRunTime(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.settings = Settings()
         self.settings.tm_random_delay = 1
         self.settings.tm_static_delay = 1
@@ -55,10 +57,12 @@ class TestHideRunTime(unittest.TestCase):
 class TestNoiseLoop(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.queues       = gen_queue_dict()
         self.contact_list = ContactList(nicks=['Alice'])
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queues(self.queues)
 
     def test_noise_commands(self):

@@ -30,7 +30,12 @@ from unittest import mock
 from src.common.db_contacts import ContactList
 from src.common.db_logs     import access_logs, change_log_db_key, log_writer_loop, remove_logs, write_log_entry
 from src.common.encoding    import bytes_to_timestamp
-from src.common.statics     import *
+from src.common.statics     import (CLEAR_ENTIRE_SCREEN, CURSOR_LEFT_UP_CORNER, C_S_HEADER, DIR_USER_DATA, EXIT,
+                                    F_S_HEADER, GROUP_ID_LENGTH, LOGFILE_MASKING_QUEUE, LOG_ENTRY_LENGTH,
+                                    LOG_PACKET_QUEUE, LOG_SETTING_QUEUE, MESSAGE, M_A_HEADER, M_C_HEADER, M_S_HEADER,
+                                    ORIGIN_CONTACT_HEADER, PADDING_LENGTH, P_N_HEADER, RX, SYMMETRIC_KEY_LENGTH,
+                                    TIMESTAMP_LENGTH, TRAFFIC_MASKING_QUEUE, UNIT_TEST_QUEUE, WIN_TYPE_CONTACT,
+                                    WIN_TYPE_GROUP)
 
 from tests.mock_classes import create_contact, GroupList, MasterKey, RxWindow, Settings
 from tests.utils        import assembly_packet_creator, cd_unit_test, cleanup, group_name_to_group_id, nick_to_pub_key
@@ -40,12 +45,15 @@ TIMESTAMP_BYTES  = bytes.fromhex('08ceae02')
 STATIC_TIMESTAMP = bytes_to_timestamp(TIMESTAMP_BYTES).strftime('%H:%M:%S.%f')[:-TIMESTAMP_LENGTH]
 SLEEP_DELAY      = 0.02
 
+
 class TestLogWriterLoop(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_function_logs_normal_data(self):
@@ -56,10 +64,10 @@ class TestLogWriterLoop(unittest.TestCase):
 
         def queue_delayer():
             """Place messages to queue one at a time."""
-            for p in [(nick_to_pub_key('Alice'), M_S_HEADER + bytes(PADDING_LENGTH), False, False, master_key), 
-                      (None,                     C_S_HEADER + bytes(PADDING_LENGTH), True,  False, master_key), 
-                      (nick_to_pub_key('Alice'), P_N_HEADER + bytes(PADDING_LENGTH), True,  True,  master_key), 
-                      (nick_to_pub_key('Alice'), F_S_HEADER + bytes(PADDING_LENGTH), True,  True,  master_key), 
+            for p in [(nick_to_pub_key('Alice'), M_S_HEADER + bytes(PADDING_LENGTH), False, False, master_key),
+                      (None,                     C_S_HEADER + bytes(PADDING_LENGTH), True,  False, master_key),
+                      (nick_to_pub_key('Alice'), P_N_HEADER + bytes(PADDING_LENGTH), True,  True,  master_key),
+                      (nick_to_pub_key('Alice'), F_S_HEADER + bytes(PADDING_LENGTH), True,  True,  master_key),
                       (nick_to_pub_key('Alice'), M_S_HEADER + bytes(PADDING_LENGTH), True,  False, master_key)]:
                 queues[LOG_PACKET_QUEUE].put(p)
                 time.sleep(SLEEP_DELAY)
@@ -90,9 +98,9 @@ class TestLogWriterLoop(unittest.TestCase):
 
         def queue_delayer():
             """Place messages to queue one at a time."""
-            for p in [(nick_to_pub_key('Alice'), M_S_HEADER + bytes(PADDING_LENGTH), False, False, master_key), 
-                      (None,                     C_S_HEADER + bytes(PADDING_LENGTH), True,  False, master_key), 
-                      (nick_to_pub_key('Alice'), F_S_HEADER + bytes(PADDING_LENGTH), True,  True,  master_key), 
+            for p in [(nick_to_pub_key('Alice'), M_S_HEADER + bytes(PADDING_LENGTH), False, False, master_key),
+                      (None,                     C_S_HEADER + bytes(PADDING_LENGTH), True,  False, master_key),
+                      (nick_to_pub_key('Alice'), F_S_HEADER + bytes(PADDING_LENGTH), True,  True,  master_key),
                       (nick_to_pub_key('Alice'), M_S_HEADER + bytes(PADDING_LENGTH), True,  False, master_key)]:
                 queues[LOG_PACKET_QUEUE].put(p)
                 time.sleep(SLEEP_DELAY)
@@ -194,12 +202,14 @@ class TestLogWriterLoop(unittest.TestCase):
 class TestWriteLogEntry(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
         self.master_key    = MasterKey()
         self.settings      = Settings()
         self.log_file      = f'{DIR_USER_DATA}{self.settings.software_operation}_logs'
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_oversize_packet_raises_critical_error(self):
@@ -220,6 +230,7 @@ class TestWriteLogEntry(unittest.TestCase):
 class TestAccessHistoryAndPrintLogs(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
         self.master_key    = MasterKey()
         self.settings      = Settings()
@@ -250,6 +261,7 @@ class TestAccessHistoryAndPrintLogs(TFCTestCase):
                     "s neque a facilisis. Mauris id tortor placerat, aliquam dolor ac, venenatis arcu.")
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_missing_log_file_raises_fr(self):
@@ -509,6 +521,7 @@ Log file of message(s) to/from group test_group
 class TestReEncrypt(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
         self.old_key       = MasterKey()
         self.new_key       = MasterKey(master_key=os.urandom(SYMMETRIC_KEY_LENGTH))
@@ -517,10 +530,11 @@ class TestReEncrypt(TFCTestCase):
         self.time          = STATIC_TIMESTAMP
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_missing_log_database_raises_fr(self):
-        self.assert_fr(f"Error: Could not find log database.",
+        self.assert_fr(f"No log database available.",
                        change_log_db_key, self.old_key.master_key, self.new_key.master_key, self.settings)
 
     @mock.patch('struct.pack', return_value=TIMESTAMP_BYTES)
@@ -569,6 +583,7 @@ Log file of message(s) sent to contact Alice
 class TestRemoveLog(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
         self.master_key    = MasterKey()
         self.settings      = Settings()
@@ -591,6 +606,7 @@ class TestRemoveLog(TFCTestCase):
                     "s neque a facilisis. Mauris id tortor placerat, aliquam dolor ac, venenatis arcu.")
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_missing_log_file_raises_fr(self):

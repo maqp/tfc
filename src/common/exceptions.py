@@ -27,7 +27,7 @@ from datetime import datetime
 from typing   import Optional
 
 from src.common.output  import clear_screen, m_print
-from src.common.statics import *
+from src.common.statics import TFC
 
 if typing.TYPE_CHECKING:
     from src.receiver.windows import RxWindow

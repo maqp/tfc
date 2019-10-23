@@ -16,8 +16,7 @@ before_install:
 
 install:
   - pip install pytest pytest-cov pyyaml coveralls
-  - pip install -r requirements.txt       --require-hashes
-  - pip install -r requirements-relay.txt --require-hashes
+  - pip install -r requirements-dev.txt
 
 script:
   - py.test --cov=src tests/

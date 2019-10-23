@@ -1,2 +1,2 @@
 # Virtual environment (Used to create an isolated Python environment for TFC dependencies)
-virtualenv==16.7.3 --hash=sha512:760587ac587609607526d20d62c5ef2d768d4bc2dc1f7d5ce338d3525ec49cdb60782311dfd4b814defc486292e181a802f561508980f4eb332366355c5e8cb1
+virtualenv==16.7.7 --hash=sha512:e80eb04615d1dcd2546bd5ceef5408bbb577fa0dd725bc69f20dd7840518af575f0b41e629e8164fdaea398628813720a6f70a42e7748336601391605b79f542

@@ -26,7 +26,9 @@ import struct
 from datetime import datetime
 from typing   import List, Union
 
-from src.common.statics import *
+from src.common.statics import (B58_ALPHABET, B58_CHECKSUM_LENGTH, MAINNET_HEADER, ONION_ADDRESS_CHECKSUM_ID,
+                                ONION_ADDRESS_CHECKSUM_LENGTH, ONION_SERVICE_VERSION, ONION_SERVICE_VERSION_LENGTH,
+                                PADDING_LENGTH, TESTNET_HEADER, TRUNC_ADDRESS_LENGTH)
 
 
 def sha256d(message: bytes) -> bytes:
@@ -43,11 +45,7 @@ def b58encode(byte_string: bytes, public_key: bool = False) -> str:
     (WIF) for mainnet and testnet addresses.
         https://en.bitcoin.it/wiki/Wallet_import_format
     """
-
-    mainnet_header = b'\x80'
-    testnet_header = b'\xef'
-    net_id         = testnet_header if public_key else mainnet_header
-
+    net_id       = TESTNET_HEADER if public_key else MAINNET_HEADER
     byte_string  = net_id + byte_string
     byte_string += sha256d(byte_string)[:B58_CHECKSUM_LENGTH]
 
@@ -70,11 +68,7 @@ def b58encode(byte_string: bytes, public_key: bool = False) -> str:
 
 def b58decode(string: str, public_key: bool = False) -> bytes:
     """Decode a Base58-encoded string and verify the checksum."""
-
-    mainnet_header = b'\x80'
-    testnet_header = b'\xef'
-    net_id         = testnet_header if public_key else mainnet_header
-
+    net_id   = TESTNET_HEADER if public_key else MAINNET_HEADER
     orig_len = len(string)
     string   = string.lstrip(B58_ALPHABET[0])
     new_len  = len(string)
@@ -129,10 +123,10 @@ def b10encode(fingerprint: bytes) -> str:
            (fingerprints are usually read aloud over off band call).
 
     Base10 has 41% efficiency but natural languages have evolved in a
-    way that makes a clear distinction between the way different numbers
-    are pronounced: reading them is faster and less error-prone.
-    Compliments to Signal/WA developers for discovering this.
-        https://signal.org/blog/safety-number-updates/
+           way that makes a clear distinction between the way different
+           numbers are pronounced: reading them is faster and less
+           error-prone. Compliments to Signal/WA developers for
+           discovering this: https://signal.org/blog/safety-number-updates/
     """
     return str(int(fingerprint.hex(), base=16))
 

@@ -34,7 +34,21 @@ from src.common.crypto     import blake2b, byte_padding, csprng, encrypt_and_sig
 from src.common.encoding   import int_to_bytes, pub_key_to_onion_address
 from src.common.misc       import split_byte_string
 from src.common.exceptions import FunctionReturn
-from src.common.statics    import *
+from src.common.statics    import (COMMAND, COMMAND_DATAGRAM_HEADER, COMMAND_PACKET_QUEUE, COMPRESSION_LEVEL,
+                                   CONTACT_MGMT_QUEUE, CONTACT_REQ_QUEUE, C_A_HEADER, C_E_HEADER, C_L_HEADER,
+                                   C_REQ_MGMT_QUEUE, C_REQ_STATE_QUEUE, C_S_HEADER, DST_COMMAND_QUEUE,
+                                   DST_MESSAGE_QUEUE, EXIT_QUEUE, FILE, FILE_DATAGRAM_HEADER, FILE_PACKET_CTR_LENGTH,
+                                   F_A_HEADER, F_E_HEADER, F_L_HEADER, F_S_HEADER, F_TO_FLASK_QUEUE, GATEWAY_QUEUE,
+                                   GROUP_ID_LENGTH, GROUP_MESSAGE_HEADER, GROUP_MGMT_QUEUE, GROUP_MSG_ID_LENGTH,
+                                   GROUP_MSG_QUEUE, INITIAL_HARAC, KEY_MANAGEMENT_QUEUE, LOCAL_KEY_DATAGRAM_HEADER,
+                                   LOGFILE_MASKING_QUEUE, LOG_PACKET_QUEUE, LOG_SETTING_QUEUE, MESSAGE,
+                                   MESSAGE_DATAGRAM_HEADER, MESSAGE_PACKET_QUEUE, M_A_HEADER, M_E_HEADER, M_L_HEADER,
+                                   M_S_HEADER, M_TO_FLASK_QUEUE, ONION_CLOSE_QUEUE, ONION_KEY_QUEUE, PADDING_LENGTH,
+                                   PRIVATE_MESSAGE_HEADER, RELAY_PACKET_QUEUE, SENDER_MODE_QUEUE, SRC_TO_RELAY_QUEUE,
+                                   SYMMETRIC_KEY_LENGTH, TM_COMMAND_PACKET_QUEUE, TM_FILE_PACKET_QUEUE,
+                                   TM_MESSAGE_PACKET_QUEUE, TM_NOISE_COMMAND_QUEUE, TM_NOISE_PACKET_QUEUE,
+                                   TOR_DATA_QUEUE, TRAFFIC_MASKING_QUEUE, TRUNC_ADDRESS_LENGTH, UNIT_TEST_QUEUE,
+                                   URL_TOKEN_QUEUE, US_BYTE, WINDOW_SELECT_QUEUE)
 
 
 UNDECODABLE_UNICODE = bytes.fromhex('3f264d4189d7a091')
@@ -195,7 +209,7 @@ def assembly_packet_creator(
                             message_key:     bytes    = None,               # Allows choosing the message key to encrypt message with
                             header_key:      bytes    = None,               # Allows choosing the header key for hash ratchet encryption
                             tamper_harac:    bool     = False,              # When True, tampers with the MAC of encrypted harac
-                            tamper_message:  bool     = False,              # When True, tampers with the MAC of encrypted messagae
+                            tamper_message:  bool     = False,              # When True, tampers with the MAC of encrypted message
                             onion_pub_key:   bytes    = b'',                # Defines the contact public key to use with datagram creation
                             origin_header:   bytes    = b'',                # Allows editing the origin header
                             ) -> List[bytes]:
@@ -242,7 +256,7 @@ def assembly_packet_creator(
         file_name_bytes = b'test_file.txt'             if file_name   is None   else file_name
         delimiter       = US_BYTE                      if not omit_header_delim else b''
 
-        payload   = time_bytes + size_bytes + file_name_bytes + delimiter + ct_with_key
+        payload = time_bytes + size_bytes + file_name_bytes + delimiter + ct_with_key
 
     elif packet_type == COMMAND:
         payload = payload
@@ -283,9 +297,9 @@ def assembly_packet_creator(
             payload = bytes(FILE_PACKET_CTR_LENGTH) + payload
 
         elif packet_type == COMMAND:
-            command_hash  = blake2b(payload)
-            command_hash  = command_hash if not tamper_cmd_hash else command_hash[::-1]
-            payload      += command_hash
+            command_hash = blake2b(payload)
+            command_hash = command_hash if not tamper_cmd_hash else command_hash[::-1]
+            payload     += command_hash
 
         padded = payload if no_padding else byte_padding(payload)
         p_list = split_byte_string(padded, item_len=split_length)

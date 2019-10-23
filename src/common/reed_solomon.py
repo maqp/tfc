@@ -197,11 +197,11 @@ class ReedSolomonError(Exception):
 
 
 """
-For efficiency, gf_exp[] has size 2*GF_SIZE, so that a simple 
-multiplication of two numbers can be resolved without calling % 255. 
-For more info on how to generate this extended exponentiation table, 
-see paper: 
-    "Fast software implementation of finite field operations", 
+For efficiency, gf_exp[] has size 2*GF_SIZE, so that a simple
+multiplication of two numbers can be resolved without calling % 255.
+For more info on how to generate this extended exponentiation table,
+see paper:
+    "Fast software implementation of finite field operations",
     Cheng Huang and Lihao Xu
     Washington University in St. Louis, Tech. Rep (2003).
 """
@@ -1568,12 +1568,12 @@ class RSCodec(object):
     """
 
     def __init__(self,
-                 nsym:       int  = 10,
-                 nsize:      int  = 255,
-                 fcr:        int  = 0,
-                 prim:       int  = 0x11d,
-                 generator:  int  = 2,
-                 c_exp:      int  = 8,
+                 nsym:       int = 10,
+                 nsize:      int = 255,
+                 fcr:        int = 0,
+                 prim:       int = 0x11d,
+                 generator:  int = 2,
+                 c_exp:      int = 8,
                  single_gen: bool = True
                  ) -> None:
         """\

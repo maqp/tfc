@@ -25,7 +25,7 @@ import unittest
 from unittest import mock
 
 from src.common.db_settings import Settings
-from src.common.statics     import *
+from src.common.statics     import CLEAR_ENTIRE_SCREEN, CURSOR_LEFT_UP_CORNER, DIR_USER_DATA, RX, SETTING_LENGTH, TX
 
 from tests.mock_classes import ContactList, create_group, GroupList, MasterKey
 from tests.utils        import cd_unit_test, cleanup, tamper_file, TFCTestCase
@@ -34,6 +34,7 @@ from tests.utils        import cd_unit_test, cleanup, tamper_file, TFCTestCase
 class TestSettings(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir        = cd_unit_test()
         self.file_name            = f"{DIR_USER_DATA}{TX}_settings"
         self.master_key           = MasterKey()
@@ -44,6 +45,7 @@ class TestSettings(TFCTestCase):
         self.args                 = self.contact_list, self.group_list
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_invalid_type_raises_critical_error_on_store(self):
@@ -99,15 +101,15 @@ class TestSettings(TFCTestCase):
             self.assertIsNone(self.settings.change_setting('traffic_masking', 'True', *self.args))
 
     def test_change_settings(self):
-        self.assert_fr("Error: Invalid value 'Falsee'.",
+        self.assert_fr("Error: Invalid setting value 'Falsee'.",
                        self.settings.change_setting, 'disable_gui_dialog', 'Falsee',           *self.args)
-        self.assert_fr("Error: Invalid value '1.1'.",
+        self.assert_fr("Error: Invalid setting value '1.1'.",
                        self.settings.change_setting, 'max_number_of_group_members',     '1.1', *self.args)
-        self.assert_fr("Error: Invalid value '18446744073709551616'.",
+        self.assert_fr("Error: Invalid setting value '18446744073709551616'.",
                        self.settings.change_setting, 'max_number_of_contacts',   str(2 ** 64), *self.args)
-        self.assert_fr("Error: Invalid value '-1.1'.",
+        self.assert_fr("Error: Invalid setting value '-1.1'.",
                        self.settings.change_setting, 'tm_static_delay',                '-1.1', *self.args)
-        self.assert_fr("Error: Invalid value 'True'.",
+        self.assert_fr("Error: Invalid setting value 'True'.",
                        self.settings.change_setting, 'tm_static_delay',                'True', *self.args)
 
         self.assertIsNone(self.settings.change_setting('traffic_masking',             'True', *self.args))

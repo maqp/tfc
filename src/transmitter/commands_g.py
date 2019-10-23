@@ -22,7 +22,7 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 import os
 import typing
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from src.common.db_logs    import remove_logs
 from src.common.encoding   import b58decode, int_to_bytes
@@ -30,7 +30,11 @@ from src.common.exceptions import FunctionReturn
 from src.common.input      import yes
 from src.common.misc       import ignored, validate_group_name
 from src.common.output     import group_management_print, m_print
-from src.common.statics    import *
+from src.common.statics    import (ADDED_MEMBERS, ALREADY_MEMBER, GROUP_ADD, GROUP_CREATE, GROUP_DELETE,
+                                   GROUP_ID_LENGTH, GROUP_MSG_EXIT_GROUP_HEADER, GROUP_MSG_INVITE_HEADER,
+                                   GROUP_MSG_JOIN_HEADER, GROUP_MSG_MEMBER_ADD_HEADER, GROUP_MSG_MEMBER_REM_HEADER,
+                                   GROUP_REMOVE, GROUP_RENAME, LOG_REMOVE, NEW_GROUP, NOT_IN_GROUP, RELAY_PACKET_QUEUE,
+                                   REMOVED_MEMBERS, UNKNOWN_ACCOUNTS, US_BYTE, WIN_TYPE_CONTACT)
 
 from src.transmitter.packet     import queue_command, queue_to_nc
 from src.transmitter.user_input import UserInput
@@ -42,7 +46,7 @@ if typing.TYPE_CHECKING:
     from src.common.db_masterkey import MasterKey
     from src.common.db_settings  import Settings
     from src.transmitter.windows import TxWindow
-    QueueDict = Dict[bytes, Queue[Any]]
+    QueueDict = Dict[bytes, Queue[bytes]]
     FuncDict  = (Dict[str, Callable[[str,
                                      List[bytes],
                                      ContactList,
@@ -105,7 +109,7 @@ def process_group_command(user_input:   'UserInput',
     func_d = dict(create=group_create,
                   join  =group_create,
                   add   =group_add_member,
-                  rm    =group_rm_member) # type: FuncDict
+                  rm    =group_rm_member)  # type: FuncDict
 
     func = func_d[command_type]
 
@@ -123,7 +127,7 @@ def group_create(group_name:   str,
                  group_id:     Optional[bytes] = None
                  ) -> None:
     """Create a new group.
-    
+
     Validate the group name and determine what members can be added.
     """
     error_msg = validate_group_name(group_name, contact_list, group_list)

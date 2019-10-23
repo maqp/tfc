@@ -24,7 +24,11 @@ import unittest
 from datetime import datetime
 from unittest import mock
 
-from src.common.statics import *
+from src.common.statics import (BOLD_ON, CLEAR_ENTIRE_LINE, CLEAR_ENTIRE_SCREEN, CURSOR_LEFT_UP_CORNER,
+                                CURSOR_UP_ONE_LINE, FILE, GROUP_ID_LENGTH, LOCAL_ID, NORMAL_TEXT,
+                                ONION_SERVICE_PUBLIC_KEY_LENGTH, ORIGIN_CONTACT_HEADER, ORIGIN_USER_HEADER,
+                                WIN_TYPE_COMMAND, WIN_TYPE_CONTACT, WIN_TYPE_FILE, WIN_TYPE_GROUP, WIN_UID_FILE,
+                                WIN_UID_LOCAL)
 
 from src.receiver.windows import RxWindow, WindowList
 
@@ -35,6 +39,7 @@ from tests.utils        import group_name_to_group_id, nick_to_pub_key, nick_to_
 class TestRxWindow(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.contact_list = ContactList(nicks=['Alice', 'Bob', 'Charlie', LOCAL_ID])
         self.group_list   = GroupList(groups=['test_group', 'test_group2'])
         self.settings     = Settings()
@@ -71,7 +76,14 @@ class TestRxWindow(TFCTestCase):
         self.assertEqual(window.name, 'test_group')
 
     def test_invalid_uid_raises_fr(self):
-        self.assert_fr("Invalid window 'bad_uid'.", self.create_window, 'bad_uid')
+        self.assert_fr("Invalid window 'mfqwcylbmfqwcylbmfqwcylbmfqwcylbmfqwcylbmfqwcylbmfqwbfad'.",
+                       self.create_window, ONION_SERVICE_PUBLIC_KEY_LENGTH*b'a')
+
+        self.assert_fr("Invalid window '2dnAMoWNfTXAJ'.",
+                       self.create_window, GROUP_ID_LENGTH*b'a')
+
+        self.assert_fr("Invalid window '<unable to encode>'.",
+                       self.create_window, b'bad_uid')
 
     def test_window_iterates_over_message_tuples(self):
         # Setup
@@ -373,6 +385,7 @@ testfile2.txt    15.0KB     Charlie    7.00%
 class TestWindowList(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.settings     = Settings()
         self.contact_list = ContactList(nicks=['Alice', 'Bob', 'Charlie', LOCAL_ID])
         self.group_list   = GroupList(groups=['test_group', 'test_group2'])

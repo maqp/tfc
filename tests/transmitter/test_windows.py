@@ -25,7 +25,8 @@ from unittest import mock
 
 from src.common.crypto      import blake2b
 from src.common.db_contacts import Contact
-from src.common.statics     import *
+from src.common.statics     import (COMMAND_PACKET_QUEUE, CONFIRM_CODE_LENGTH, KEX_STATUS_PENDING, KEX_STATUS_VERIFIED,
+                                    WINDOW_SELECT_QUEUE, WIN_TYPE_CONTACT, WIN_TYPE_GROUP)
 
 from src.transmitter.windows import MockWindow, select_window, TxWindow
 
@@ -37,6 +38,7 @@ from tests.utils        import tear_queues, TFCTestCase, VALID_ECDHE_PUB_KEY
 class TestMockWindow(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.window = MockWindow(nick_to_pub_key("Alice"), contacts=[create_contact(n) for n in ['Alice', 'Bob']])
 
     def test_window_iterates_over_contacts(self):
@@ -47,6 +49,7 @@ class TestMockWindow(unittest.TestCase):
 class TestTxWindow(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.contact_list  = ContactList(['Alice', 'Bob'])
         self.group_list    = GroupList(groups=['test_group', 'test_group_2'])
         self.window        = TxWindow(self.contact_list, self.group_list)
@@ -59,6 +62,7 @@ class TestTxWindow(TFCTestCase):
         self.args          = self.settings, self.queues, self.onion_service, self.gateway
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queues(self.queues)
 
     def test_window_iterates_over_contacts(self):
@@ -209,16 +213,16 @@ class TestTxWindow(TFCTestCase):
         self.window.type            = WIN_TYPE_CONTACT
         self.window.contact         = create_contact('Alice')
         self.window.window_contacts = [self.window.contact]
-        self.assertIsNot(self.window.contact,            
+        self.assertIsNot(self.window.contact,
                          self.window.contact_list.get_contact_by_pub_key(nick_to_pub_key('Alice')))
-        self.assertIsNot(self.window.window_contacts[0], 
+        self.assertIsNot(self.window.window_contacts[0],
                          self.window.contact_list.get_contact_by_pub_key(nick_to_pub_key('Alice')))
 
         # Test
         self.assertIsNone(self.window.update_window(self.group_list))
         self.assertIs(self.window.contact,
                       self.window.contact_list.get_contact_by_pub_key(nick_to_pub_key('Alice')))
-        self.assertIs(self.window.window_contacts[0], 
+        self.assertIs(self.window.window_contacts[0],
                       self.window.contact_list.get_contact_by_pub_key(nick_to_pub_key('Alice')))
 
     def test_deactivate_window_if_group_is_not_available(self):
@@ -239,7 +243,7 @@ class TestTxWindow(TFCTestCase):
     @mock.patch('builtins.input', side_effect=['Alice',
                                                VALID_ECDHE_PUB_KEY,
                                                'yes',
-                                               blake2b(nick_to_pub_key('Alice'), 
+                                               blake2b(nick_to_pub_key('Alice'),
                                                        digest_size=CONFIRM_CODE_LENGTH).hex()])
     @mock.patch('shutil.get_terminal_size', return_value=[200, 200])
     def test_selecting_pending_contact_starts_key_exchange(self, *_):
@@ -262,7 +266,7 @@ class TestTxWindow(TFCTestCase):
                                                '',
                                                VALID_ECDHE_PUB_KEY,
                                                'yes',
-                                               blake2b(nick_to_pub_key('Alice'), 
+                                               blake2b(nick_to_pub_key('Alice'),
                                                        digest_size=CONFIRM_CODE_LENGTH).hex()])
     @mock.patch('shutil.get_terminal_size', return_value=[200, 200])
     def test_adding_new_contact_from_contact_selection(self, *_):
@@ -312,6 +316,7 @@ class TestTxWindow(TFCTestCase):
 class TestSelectWindow(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.contact_list  = ContactList(nicks=['Alice'])
         self.group_list    = GroupList()
         self.user_input    = UserInput()
@@ -323,6 +328,7 @@ class TestSelectWindow(TFCTestCase):
         self.args          = self.user_input, self.window, self.settings, self.queues, self.onion_service, self.gateway
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queues(self.queues)
 
     def test_invalid_selection_raises_fr(self):

@@ -27,22 +27,28 @@ import shlex
 import socket
 import tempfile
 import time
+import typing
 
-from multiprocessing import Queue
-from typing          import Any, Dict
+from typing import Any, Dict, Optional
 
 import nacl.signing
 
 import stem.control
 import stem.process
 
+from stem.control import Controller
+
 from src.common.encoding   import pub_key_to_onion_address
 from src.common.exceptions import CriticalError
 from src.common.output     import m_print, rp_print
-from src.common.statics    import *
+from src.common.statics    import (EXIT, EXIT_QUEUE, ONION_CLOSE_QUEUE, ONION_KEY_QUEUE,
+                                   ONION_SERVICE_PRIVATE_KEY_LENGTH, TOR_CONTROL_PORT, TOR_DATA_QUEUE, TOR_SOCKS_PORT)
+
+if typing.TYPE_CHECKING:
+    from multiprocessing import Queue
 
 
-def get_available_port(min_port: int, max_port: int) -> str:
+def get_available_port(min_port: int, max_port: int) -> int:
     """Find a random available port within the given range."""
     with socket.socket() as temp_sock:
         while True:
@@ -51,7 +57,11 @@ def get_available_port(min_port: int, max_port: int) -> str:
                 break
             except OSError:
                 pass
-        _, port = temp_sock.getsockname()  # type: Any, str
+        _, port = temp_sock.getsockname()  # type: Any, int
+
+    if Tor.platform_is_tails():
+        return TOR_SOCKS_PORT
+
     return port
 
 
@@ -59,11 +69,27 @@ class Tor(object):
     """Tor class manages the starting and stopping of Tor client."""
 
     def __init__(self) -> None:
-        self.tor_process = None  # type: Any
-        self.controller  = None  # type: Any
+        self.tor_process = None  # type: Optional[Any]
+        self.controller  = None  # type: Optional[Controller]
 
-    def connect(self, port: str) -> None:
-        """Launch Tor as a subprocess."""
+    @staticmethod
+    def platform_is_tails() -> bool:
+        """Return True if Relay Program is running on Tails."""
+        with open('/etc/os-release') as f:
+            data = f.read()
+        return 'TAILS_PRODUCT_NAME="Tails"' in data
+
+    def connect(self, port: int) -> None:
+        """Launch Tor as a subprocess.
+
+        If TFC is running on top of Tails, do not launch a separate
+        instance of Tor.
+        """
+        if self.platform_is_tails():
+            self.controller = Controller.from_port(port=TOR_CONTROL_PORT)
+            self.controller.authenticate()
+            return None
+
         tor_data_directory = tempfile.TemporaryDirectory()
         tor_control_socket = os.path.join(tor_data_directory.name, 'control_socket')
 
@@ -113,7 +139,7 @@ class Tor(object):
 
     def stop(self) -> None:
         """Stop the Tor subprocess."""
-        if self.tor_process:
+        if self.tor_process is not None:
             self.tor_process.terminate()
             time.sleep(0.1)
             if not self.tor_process.poll():
@@ -174,6 +200,9 @@ def onion_service(queues: Dict[bytes, 'Queue[Any]']) -> None:
     except (EOFError, KeyboardInterrupt):
         return
 
+    if tor.controller is None:
+        raise CriticalError("No Tor controller")
+
     try:
         rp_print("Setup  75% - Launching Onion Service...", bold=True)
         key_data = stem_compatible_ed25519_key_from_private_key(private_key)
@@ -206,9 +235,11 @@ def onion_service(queues: Dict[bytes, 'Queue[Any]']) -> None:
 
             if queues[ONION_CLOSE_QUEUE].qsize() > 0:
                 command = queues[ONION_CLOSE_QUEUE].get()
-                tor.controller.remove_hidden_service(response.service_id)
-                tor.stop()
+                if not tor.platform_is_tails() and command == EXIT:
+                    tor.controller.remove_hidden_service(response.service_id)
+                    tor.stop()
                 queues[EXIT_QUEUE].put(command)
+                time.sleep(5)
                 break
 
         except (EOFError, KeyboardInterrupt):

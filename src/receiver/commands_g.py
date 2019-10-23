@@ -25,7 +25,9 @@ from src.common.encoding   import b58encode
 from src.common.exceptions import FunctionReturn
 from src.common.misc       import separate_header, split_byte_string, validate_group_name
 from src.common.output     import group_management_print, m_print
-from src.common.statics    import *
+from src.common.statics    import (ADDED_MEMBERS, ALREADY_MEMBER, GROUP_ID_LENGTH, NEW_GROUP, NOT_IN_GROUP,
+                                   ONION_SERVICE_PUBLIC_KEY_LENGTH, REMOVED_MEMBERS, UNKNOWN_ACCOUNTS, US_BYTE,
+                                   WIN_UID_LOCAL)
 
 if typing.TYPE_CHECKING:
     from datetime               import datetime

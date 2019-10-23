@@ -41,7 +41,9 @@ from src.common.db_settings  import Settings        as OrigSettings
 from src.common.encoding     import pub_key_to_onion_address, pub_key_to_short_address
 from src.common.misc         import calculate_race_condition_delay
 from src.common.reed_solomon import RSCodec
-from src.common.statics      import *
+from src.common.statics      import (DIR_USER_DATA, FINGERPRINT_LENGTH, INITIAL_HARAC, KEX_STATUS_VERIFIED, LOCAL_ID,
+                                     LOCAL_NICK, LOCAL_PUBKEY, ONION_SERVICE_PRIVATE_KEY_LENGTH, SYMMETRIC_KEY_LENGTH,
+                                     TX, WIN_TYPE_GROUP, WIN_UID_LOCAL)
 
 from src.transmitter.windows import TxWindow as OrigTxWindow
 
@@ -209,10 +211,12 @@ class MasterKey(OrigMasterKey):
             setattr(self, key, value)
 
     def load_master_key(self) -> bytes:
+        """Create mock master key bytes."""
         if getpass.getpass() == 'test_password':
             return self.master_key
         else:
             return SYMMETRIC_KEY_LENGTH * b'f'
+
 
 class OnionService(OrigOnionService):
     """Mock the object for unit testing."""

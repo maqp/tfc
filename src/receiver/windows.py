@@ -27,11 +27,14 @@ import typing
 from datetime import datetime
 from typing   import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
-from src.common.encoding   import pub_key_to_short_address
+from src.common.encoding   import b58encode, pub_key_to_onion_address, pub_key_to_short_address
 from src.common.exceptions import FunctionReturn
 from src.common.misc       import get_terminal_width
 from src.common.output     import clear_screen, m_print, print_on_previous_line
-from src.common.statics    import *
+from src.common.statics    import (BOLD_ON, EVENT, FILE, FILE_TRANSFER_INDENT, GROUP_ID_LENGTH, GROUP_MSG_ID_LENGTH, ME,
+                                   NORMAL_TEXT, ONION_SERVICE_PUBLIC_KEY_LENGTH, ORIGIN_CONTACT_HEADER,
+                                   ORIGIN_USER_HEADER, WIN_TYPE_COMMAND, WIN_TYPE_CONTACT, WIN_TYPE_FILE,
+                                   WIN_TYPE_GROUP, WIN_UID_FILE, WIN_UID_LOCAL)
 
 if typing.TYPE_CHECKING:
     from src.common.db_contacts import Contact, ContactList
@@ -96,7 +99,14 @@ class RxWindow(Iterable[MsgTuple]):
             self.window_contacts = self.group.members
 
         else:
-            raise FunctionReturn(f"Invalid window '{uid}'.")
+            if len(uid) == ONION_SERVICE_PUBLIC_KEY_LENGTH:
+                hr_uid = pub_key_to_onion_address(uid)
+            elif len(uid) == GROUP_ID_LENGTH:
+                hr_uid = b58encode(uid)
+            else:
+                hr_uid = "<unable to encode>"
+
+            raise FunctionReturn(f"Invalid window '{hr_uid}'.")
 
     def __iter__(self) -> Iterator[MsgTuple]:
         """Iterate over window's message log."""
@@ -238,7 +248,6 @@ class RxWindow(Iterable[MsgTuple]):
                 event_msg:     bool  = False                # When True, uses "-!-" as message handle
                 ) -> None:
         """Add message tuple to message log and optionally print it."""
-
         self.update_handle_dict(onion_pub_key)
 
         msg_tuple = (timestamp, message, onion_pub_key, origin, whisper, event_msg)

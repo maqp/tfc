@@ -30,7 +30,10 @@ from src.common.encoding   import bytes_to_bool, onion_address_to_pub_key, bytes
 from src.common.exceptions import CriticalError
 from src.common.misc       import ensure_dir, get_terminal_width, separate_headers, split_byte_string
 from src.common.output     import clear_screen
-from src.common.statics    import *
+from src.common.statics    import (CONTACT_LENGTH, CONTACT_LIST_INDENT, DIR_USER_DATA, DUMMY_CONTACT, DUMMY_NICK, ECDHE,
+                                   ENCODED_BOOLEAN_LENGTH, FINGERPRINT_LENGTH, KEX_STATUS_HAS_RX_PSK, KEX_STATUS_LENGTH,
+                                   KEX_STATUS_NONE, KEX_STATUS_NO_RX_PSK, KEX_STATUS_PENDING, KEX_STATUS_UNVERIFIED,
+                                   KEX_STATUS_VERIFIED, LOCAL_ID, ONION_SERVICE_PUBLIC_KEY_LENGTH, PSK)
 
 if typing.TYPE_CHECKING:
     from src.common.db_masterkey import MasterKey

@@ -31,7 +31,13 @@ import requests
 
 from src.common.crypto   import X448
 from src.common.db_onion import pub_key_to_onion_address, pub_key_to_short_address
-from src.common.statics  import *
+from src.common.statics  import (CONTACT_MGMT_QUEUE, CONTACT_REQ_QUEUE, C_REQ_MGMT_QUEUE, C_REQ_STATE_QUEUE,
+                                 DST_MESSAGE_QUEUE, EXIT, GROUP_ID_LENGTH, GROUP_MGMT_QUEUE,
+                                 GROUP_MSG_EXIT_GROUP_HEADER, GROUP_MSG_INVITE_HEADER, GROUP_MSG_JOIN_HEADER,
+                                 GROUP_MSG_MEMBER_ADD_HEADER, GROUP_MSG_MEMBER_REM_HEADER, GROUP_MSG_QUEUE,
+                                 MESSAGE_DATAGRAM_HEADER, ONION_SERVICE_PUBLIC_KEY_LENGTH, PUBLIC_KEY_DATAGRAM_HEADER,
+                                 RP_ADD_CONTACT_HEADER, RP_REMOVE_CONTACT_HEADER, TFC_PUBLIC_KEY_LENGTH, TOR_DATA_QUEUE,
+                                 UNIT_TEST_QUEUE, URL_TOKEN_QUEUE)
 
 from src.relay.client import c_req_manager, client, client_scheduler, g_msg_manager, get_data_loop
 
@@ -107,11 +113,13 @@ class TestClient(unittest.TestCase):
         return TestClient.MockSession()
 
     def setUp(self):
+        """Pre-test actions."""
         self.o_session   = requests.session
         self.queues      = gen_queue_dict()
         requests.session = TestClient.mock_session
 
     def tearDown(self):
+        """Post-test actions."""
         requests.session = self.o_session
         tear_queues(self.queues)
 
@@ -243,11 +251,13 @@ class TestGetDataLoop(unittest.TestCase):
         return TestGetDataLoop.Session()
 
     def setUp(self):
+        """Pre-test actions."""
         self.o_session   = requests.session
         self.queues      = gen_queue_dict()
         requests.session = TestGetDataLoop.mock_session
 
     def tearDown(self):
+        """Post-test actions."""
         requests.session = self.o_session
         tear_queues(self.queues)
 

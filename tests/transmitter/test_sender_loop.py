@@ -23,7 +23,11 @@ import threading
 import time
 import unittest
 
-from src.common.statics import *
+from src.common.statics import (C_N_HEADER, EXIT_QUEUE, KDB_ADD_ENTRY_HEADER, KEY_MANAGEMENT_QUEUE, LOCAL_ID,
+                                LOCAL_PUBKEY, PADDING_LENGTH, PUBLIC_KEY_DATAGRAM_HEADER, P_N_HEADER,
+                                RELAY_PACKET_QUEUE, SENDER_MODE_QUEUE, SYMMETRIC_KEY_LENGTH, TFC_PUBLIC_KEY_LENGTH,
+                                TM_NOISE_COMMAND_QUEUE, TM_NOISE_PACKET_QUEUE, UNENCRYPTED_DATAGRAM_HEADER,
+                                UNENCRYPTED_EXIT_COMMAND, UNENCRYPTED_WIPE_COMMAND, WINDOW_SELECT_QUEUE)
 
 from src.transmitter.commands    import queue_command
 from src.transmitter.packet      import queue_message, queue_to_nc
@@ -54,7 +58,7 @@ class TestSenderLoop(unittest.TestCase):
 
         settings.traffic_masking = False
         queues[SENDER_MODE_QUEUE].put(settings)
-        self.assertIsNone(sender_loop(queues, settings, gateway, key_list, unit_test=True))  # Output Alice and Bob again
+        self.assertIsNone(sender_loop(queues, settings, gateway, key_list, unit_test=True))  # Output Alice & Bob again
         self.assertEqual(len(gateway.packets), 1)
 
 

@@ -22,7 +22,8 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 import datetime
 import unittest
 
-from src.common.statics      import *
+from src.common.statics import US_BYTE
+
 from src.receiver.commands_g import group_add, group_create, group_delete, group_remove, group_rename
 
 from tests.mock_classes import Contact, ContactList, GroupList, RxWindow, Settings, WindowList
@@ -32,6 +33,7 @@ from tests.utils        import group_name_to_group_id, nick_to_pub_key, TFCTestC
 class TestGroupCreate(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.ts          = datetime.datetime.now()
         self.settings    = Settings()
         self.window_list = WindowList()
@@ -78,6 +80,7 @@ class TestGroupCreate(TFCTestCase):
 class TestGroupAdd(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.ts          = datetime.datetime.now()
         self.settings    = Settings()
         self.window_list = WindowList()
@@ -125,6 +128,7 @@ class TestGroupAdd(TFCTestCase):
 class TestGroupRemove(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.ts            = datetime.datetime.now()
         self.window_list   = WindowList()
         self.contact_list  = ContactList(nicks=[f"contact_{n}" for n in range(21)])
@@ -152,6 +156,7 @@ class TestGroupRemove(TFCTestCase):
 class TestGroupDelete(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.ts          = datetime.datetime.now()
         self.window_list = WindowList()
         self.group_list  = GroupList(groups=['test_group'])
@@ -179,6 +184,7 @@ class TestGroupDelete(TFCTestCase):
 class TestGroupRename(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.ts                  = datetime.datetime.now()
         self.group_list          = GroupList(groups=['test_group'])
         self.window_list         = WindowList()
@@ -186,7 +192,7 @@ class TestGroupRename(TFCTestCase):
         self.window_list.windows = [self.window]
         self.contact_list        = ContactList(nicks=['alice'])
         self.args                = self.ts, self.window_list, self.contact_list, self.group_list
-        
+
     def test_missing_group_id_raises_fr(self):
         # Setup
         cmd_data = group_name_to_group_id('test_group2') + b'new_name'

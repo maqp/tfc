@@ -32,7 +32,9 @@ from unittest.mock import MagicMock
 from src.common.crypto     import argon2_kdf, encrypt_and_sign
 from src.common.encoding   import b58encode, str_to_bytes
 from src.common.exceptions import FunctionReturn
-from src.common.statics    import *
+from src.common.statics    import (ARGON2_SALT_LENGTH, BOLD_ON, CLEAR_ENTIRE_SCREEN, CONFIRM_CODE_LENGTH,
+                                   CURSOR_LEFT_UP_CORNER, FINGERPRINT_LENGTH, LOCAL_ID, NORMAL_TEXT, PSK_FILE_SIZE,
+                                   SYMMETRIC_KEY_LENGTH, WIN_TYPE_CONTACT, WIN_UID_LOCAL, XCHACHA20_NONCE_LENGTH)
 
 from src.receiver.key_exchanges import key_ex_ecdhe, key_ex_psk_rx, key_ex_psk_tx, local_key_rdy, process_local_key
 
@@ -47,6 +49,7 @@ class TestProcessLocalKey(TFCTestCase):
     new_kek = os.urandom(SYMMETRIC_KEY_LENGTH)
 
     def setUp(self):
+        """Pre-test actions."""
         self.contact_list  = ContactList(nicks=[LOCAL_ID, 'Alice'])
         self.key_list      = KeyList(    nicks=[LOCAL_ID, 'Alice'])
         self.window_list   = WindowList( nicks=[LOCAL_ID, 'Alice'])
@@ -59,10 +62,11 @@ class TestProcessLocalKey(TFCTestCase):
         self.hek           = os.urandom(SYMMETRIC_KEY_LENGTH)
         self.conf_code     = os.urandom(CONFIRM_CODE_LENGTH)
         self.packet        = encrypt_and_sign(self.key + self.hek + self.conf_code, key=self.kek)
-        self.args          = (self.window_list, self.contact_list, self.key_list, self.settings, 
+        self.args          = (self.window_list, self.contact_list, self.key_list, self.settings,
                               self.kdk_hashes, self.packet_hashes, self.l_queue)
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queue(self.l_queue)
 
     @mock.patch('tkinter.Tk',     return_value=MagicMock())
@@ -150,6 +154,7 @@ class TestProcessLocalKey(TFCTestCase):
 class TestLocalKeyRdy(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.ts = datetime.fromtimestamp(1502750000)
 
     @mock.patch('time.sleep', return_value=None)
@@ -181,6 +186,7 @@ class TestLocalKeyRdy(TFCTestCase):
 class TestKeyExECDHE(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.ts           = datetime.fromtimestamp(1502750000)
         self.window_list  = WindowList(nicks=[LOCAL_ID])
         self.contact_list = ContactList()
@@ -230,6 +236,7 @@ class TestKeyExECDHE(TFCTestCase):
 class TestKeyExPSKTx(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.ts           = datetime.fromtimestamp(1502750000)
         self.window_list  = WindowList(nicks=[LOCAL_ID])
         self.contact_list = ContactList()
@@ -282,6 +289,7 @@ class TestKeyExPSKRx(TFCTestCase):
     file_name = f"{nick_to_short_address('User')}.psk - give to {nick_to_short_address('Alice')}"
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
         self.packet        = b'\x00' + nick_to_pub_key("Alice")
         self.ts            = datetime.now()
@@ -293,6 +301,7 @@ class TestKeyExPSKRx(TFCTestCase):
         self.args          = self.packet, self.ts, self.window_list, self.contact_list, self.key_list, self.settings
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_unknown_account_raises_fr(self):
@@ -359,14 +368,14 @@ class TestKeyExPSKRx(TFCTestCase):
     @mock.patch('getpass.getpass', return_value='test_password')
     def test_valid_psk(self, *_):
         # Setup
-        keyset        = self.key_list.get_keyset(nick_to_pub_key("Alice"))
-        keyset.rx_mk  = bytes(SYMMETRIC_KEY_LENGTH)
-        keyset.rx_hk  = bytes(SYMMETRIC_KEY_LENGTH)
-        salt          = os.urandom(ARGON2_SALT_LENGTH)
-        rx_key        = os.urandom(SYMMETRIC_KEY_LENGTH)
-        rx_hek        = os.urandom(SYMMETRIC_KEY_LENGTH)
-        kek           = argon2_kdf('test_password', salt, time_cost=1, memory_cost=100, parallelism=1)
-        ct_tag        = encrypt_and_sign(rx_key + rx_hek, key=kek)
+        keyset       = self.key_list.get_keyset(nick_to_pub_key("Alice"))
+        keyset.rx_mk = bytes(SYMMETRIC_KEY_LENGTH)
+        keyset.rx_hk = bytes(SYMMETRIC_KEY_LENGTH)
+        salt         = os.urandom(ARGON2_SALT_LENGTH)
+        rx_key       = os.urandom(SYMMETRIC_KEY_LENGTH)
+        rx_hek       = os.urandom(SYMMETRIC_KEY_LENGTH)
+        kek          = argon2_kdf('test_password', salt, time_cost=1, memory_cost=100, parallelism=1)
+        ct_tag       = encrypt_and_sign(rx_key + rx_hek, key=kek)
 
         with open(self.file_name, 'wb+') as f:
             f.write(salt + ct_tag)
@@ -387,9 +396,9 @@ class TestKeyExPSKRx(TFCTestCase):
     @mock.patch('getpass.getpass', return_value='test_password')
     def test_valid_psk_overwrite_failure(self, *_):
         # Setup
-        keyset        = self.key_list.get_keyset(nick_to_pub_key("Alice"))
-        keyset.rx_mk  = bytes(SYMMETRIC_KEY_LENGTH)
-        keyset.rx_hk  = bytes(SYMMETRIC_KEY_LENGTH)
+        keyset       = self.key_list.get_keyset(nick_to_pub_key("Alice"))
+        keyset.rx_mk = bytes(SYMMETRIC_KEY_LENGTH)
+        keyset.rx_hk = bytes(SYMMETRIC_KEY_LENGTH)
 
         salt   = os.urandom(ARGON2_SALT_LENGTH)
         rx_key = os.urandom(SYMMETRIC_KEY_LENGTH)

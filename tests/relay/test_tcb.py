@@ -28,7 +28,13 @@ from unittest import mock
 
 from src.common.encoding     import int_to_bytes
 from src.common.reed_solomon import RSCodec
-from src.common.statics      import *
+from src.common.statics      import (COMMAND_DATAGRAM_HEADER, DST_COMMAND_QUEUE, DST_MESSAGE_QUEUE, EXIT,
+                                     FILE_DATAGRAM_HEADER, F_TO_FLASK_QUEUE, GATEWAY_QUEUE, GROUP_ID_LENGTH,
+                                     GROUP_MSG_EXIT_GROUP_HEADER, GROUP_MSG_INVITE_HEADER, GROUP_MSG_JOIN_HEADER,
+                                     GROUP_MSG_MEMBER_ADD_HEADER, GROUP_MSG_MEMBER_REM_HEADER,
+                                     LOCAL_KEY_DATAGRAM_HEADER, MESSAGE_DATAGRAM_HEADER, M_TO_FLASK_QUEUE,
+                                     PUBLIC_KEY_DATAGRAM_HEADER, SRC_TO_RELAY_QUEUE, TFC_PUBLIC_KEY_LENGTH,
+                                     UNENCRYPTED_DATAGRAM_HEADER, UNIT_TEST_QUEUE)
 
 from src.relay.tcb import dst_outgoing, src_incoming
 
@@ -39,6 +45,7 @@ from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, tear_queue
 class TestSRCIncoming(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.settings      = Settings()
         self.unit_test_dir = cd_unit_test()
         self.gateway       = Gateway()
@@ -48,6 +55,7 @@ class TestSRCIncoming(unittest.TestCase):
         self.args          = self.queues, self.gateway
 
     def tearDown(self):
+        """Post-test actions."""
         tear_queues(self.queues)
         cleanup(self.unit_test_dir)
 
@@ -200,10 +208,11 @@ class TestDSTOutGoing(unittest.TestCase):
 
         def queue_delayer():
             """Place packets into queue after delay."""
-            time.sleep(0.01)
+            time.sleep(0.015)
             queues[DST_COMMAND_QUEUE].put(packet)
+            time.sleep(0.015)
             queues[DST_MESSAGE_QUEUE].put(packet)
-            time.sleep(0.01)
+            time.sleep(0.015)
             queues[UNIT_TEST_QUEUE].put(EXIT)
 
         threading.Thread(target=queue_delayer).start()

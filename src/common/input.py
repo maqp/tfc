@@ -28,7 +28,8 @@ from src.common.encoding   import b58decode
 from src.common.exceptions import CriticalError
 from src.common.misc       import get_terminal_width, terminal_width_check
 from src.common.output     import clear_screen, m_print, print_on_previous_line, print_spacing
-from src.common.statics    import *
+from src.common.statics    import (B58_LOCAL_KEY, B58_LOCAL_KEY_GUIDE, B58_PUBLIC_KEY, B58_PUBLIC_KEY_GUIDE,
+                                   CURSOR_UP_ONE_LINE, ECDHE, NC_BYPASS_START, NC_BYPASS_STOP)
 
 if typing.TYPE_CHECKING:
     from src.common.db_settings import Settings

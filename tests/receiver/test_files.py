@@ -28,7 +28,7 @@ from unittest import mock
 
 from src.common.crypto   import blake2b, encrypt_and_sign
 from src.common.encoding import str_to_bytes
-from src.common.statics  import *
+from src.common.statics  import COMPRESSION_LEVEL, DIR_RECV_FILES, ORIGIN_CONTACT_HEADER, SYMMETRIC_KEY_LENGTH, US_BYTE
 
 from src.receiver.files import new_file, process_assembled_file, process_file, store_unique
 
@@ -39,12 +39,14 @@ from tests.utils        import cd_unit_test, cleanup, nick_to_pub_key, TFCTestCa
 class TestStoreUnique(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
         self.file_data     = os.urandom(100)
         self.file_dir      = 'test_dir/'
         self.file_name     = 'test_file'
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_each_file_is_store_with_unique_name(self):
@@ -56,16 +58,18 @@ class TestStoreUnique(unittest.TestCase):
 class ProcessAssembledFile(TFCTestCase):
 
     def setUp(self):
-        self.unit_test_dir  = cd_unit_test()
-        self.ts             = datetime.now()
-        self.onion_pub_key  = nick_to_pub_key('Alice')
-        self.nick           = 'Alice'
-        self.settings       = Settings()
-        self.window_list    = WindowList(nick=['Alice', 'Bob'])
-        self.key            = os.urandom(SYMMETRIC_KEY_LENGTH)
-        self.args           = self.onion_pub_key, self.nick, self.settings, self.window_list
+        """Pre-test actions."""
+        self.unit_test_dir = cd_unit_test()
+        self.ts            = datetime.now()
+        self.onion_pub_key = nick_to_pub_key('Alice')
+        self.nick          = 'Alice'
+        self.settings      = Settings()
+        self.window_list   = WindowList(nick=['Alice', 'Bob'])
+        self.key           = os.urandom(SYMMETRIC_KEY_LENGTH)
+        self.args          = self.onion_pub_key, self.nick, self.settings, self.window_list
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_invalid_structure_raises_fr(self):
@@ -156,6 +160,7 @@ class ProcessAssembledFile(TFCTestCase):
 class TestNewFile(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
         self.ts            = datetime.now()
         self.packet        = b''
@@ -169,6 +174,7 @@ class TestNewFile(TFCTestCase):
         self.args          = self.file_keys, self.file_buf, self.contact_list, self.window_list, self.settings
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_unknown_account_raises_fr(self):
@@ -215,6 +221,7 @@ class TestNewFile(TFCTestCase):
 class TestProcessFile(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
         self.ts            = datetime.now()
         self.account       = nick_to_pub_key('Alice')
@@ -226,6 +233,7 @@ class TestProcessFile(TFCTestCase):
         self.args          = self.file_key, self.contact_list, self.window_list, self.settings
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_invalid_key_raises_fr(self):

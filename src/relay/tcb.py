@@ -22,14 +22,20 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 import time
 import typing
 
-from typing import Any, Dict, Union
+from typing import Any, Dict, Tuple, Union
 
 from src.common.encoding   import bytes_to_int, pub_key_to_short_address
 from src.common.encoding   import int_to_bytes, b85encode
 from src.common.exceptions import FunctionReturn
 from src.common.misc       import ignored, separate_header, split_byte_string
 from src.common.output     import rp_print
-from src.common.statics    import *
+from src.common.statics    import (COMMAND_DATAGRAM_HEADER, DATAGRAM_HEADER_LENGTH, DST_COMMAND_QUEUE,
+                                   DST_MESSAGE_QUEUE, ENCODED_INTEGER_LENGTH, FILE_DATAGRAM_HEADER, F_TO_FLASK_QUEUE,
+                                   GATEWAY_QUEUE, GROUP_ID_LENGTH, GROUP_MSG_EXIT_GROUP_HEADER, GROUP_MSG_INVITE_HEADER,
+                                   GROUP_MSG_JOIN_HEADER, GROUP_MSG_MEMBER_ADD_HEADER, GROUP_MSG_MEMBER_REM_HEADER,
+                                   LOCAL_KEY_DATAGRAM_HEADER, MESSAGE_DATAGRAM_HEADER, M_TO_FLASK_QUEUE,
+                                   ONION_SERVICE_PUBLIC_KEY_LENGTH, ORIGIN_USER_HEADER, PUBLIC_KEY_DATAGRAM_HEADER,
+                                   SRC_TO_RELAY_QUEUE, UNENCRYPTED_DATAGRAM_HEADER, UNIT_TEST_QUEUE)
 
 if typing.TYPE_CHECKING:
     from datetime           import datetime
@@ -40,7 +46,7 @@ if typing.TYPE_CHECKING:
 
 def queue_to_flask(packet:        Union[bytes, str],
                    onion_pub_key: bytes,
-                   flask_queue:   'Queue[Any]',
+                   flask_queue:   'Queue[Tuple[Union[bytes, str], bytes]]',
                    ts:            'datetime',
                    header:        bytes
                    ) -> None:
@@ -122,7 +128,7 @@ def src_incoming(queues:    'QueueDict',
 def process_group_management_message(ts:                'datetime',
                                      packet:            bytes,
                                      header:            bytes,
-                                     messages_to_flask: 'Queue[Any]') -> None:
+                                     messages_to_flask: 'Queue[Tuple[Union[bytes, str], bytes]]') -> None:
     """Parse and display group management message."""
     header_str       = header.decode()
     group_id, packet = separate_header(packet, GROUP_ID_LENGTH)

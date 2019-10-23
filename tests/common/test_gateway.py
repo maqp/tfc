@@ -33,7 +33,7 @@ from src.common.crypto       import blake2b
 from src.common.gateway      import gateway_loop, Gateway, GatewaySettings
 from src.common.misc         import ensure_dir
 from src.common.reed_solomon import RSCodec
-from src.common.statics      import *
+from src.common.statics      import DIR_USER_DATA, GATEWAY_QUEUE, NC, PACKET_CHECKSUM_LENGTH, RX, TX
 
 from tests.mock_classes import Settings
 from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, tear_queues, TFCTestCase
@@ -42,10 +42,12 @@ from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, tear_queue
 class TestGatewayLoop(unittest.TestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
         self.queues        = gen_queue_dict()
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
         tear_queues(self.queues)
 
@@ -63,10 +65,12 @@ class TestGatewayLoop(unittest.TestCase):
 class TestGatewaySerial(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
         self.settings      = Settings(session_usb_serial_adapter=True)
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     @mock.patch('time.sleep',     return_value=None)
@@ -239,6 +243,7 @@ class TestGatewaySerial(TFCTestCase):
 class TestGatewaySettings(TFCTestCase):
 
     def setUp(self):
+        """Pre-test actions."""
         self.unit_test_dir      = cd_unit_test()
         self.default_serialized = """\
 {
@@ -249,6 +254,7 @@ class TestGatewaySettings(TFCTestCase):
 }"""
 
     def tearDown(self):
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     @mock.patch('os.listdir',     side_effect=[['ttyUSB0'], ['ttyS0'], ['ttyUSB0'], ['ttyS0']])
@@ -462,13 +468,13 @@ class TestGatewaySettings(TFCTestCase):
     @mock.patch('time.sleep', return_value=None)
     def test_change_setting(self, _):
         settings = GatewaySettings(operation=TX, local_test=True, dd_sockets=True)
-        self.assert_fr("Error: Invalid value 'Falsee'.",
+        self.assert_fr("Error: Invalid setting value 'Falsee'.",
                        settings.change_setting, 'serial_baudrate',        'Falsee')
-        self.assert_fr("Error: Invalid value '1.1'.",
+        self.assert_fr("Error: Invalid setting value '1.1'.",
                        settings.change_setting, 'serial_baudrate',         '1.1', )
-        self.assert_fr("Error: Invalid value '18446744073709551616'.",
+        self.assert_fr("Error: Invalid setting value '18446744073709551616'.",
                        settings.change_setting, 'serial_baudrate',    str(2 ** 64))
-        self.assert_fr("Error: Invalid value 'Falsee'.",
+        self.assert_fr("Error: Invalid setting value 'Falsee'.",
                        settings.change_setting, 'use_serial_usb_adapter', 'Falsee')
 
         self.assertIsNone(settings.change_setting('serial_baudrate', '9600'))

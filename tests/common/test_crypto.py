@@ -40,11 +40,11 @@ from cryptography.hazmat.primitives.serialization   import Encoding, NoEncryptio
 
 from src.common.crypto  import argon2_kdf, auth_and_decrypt, blake2b, byte_padding, check_kernel_version, csprng
 from src.common.crypto  import encrypt_and_sign, rm_padding_bytes, X448
-from src.common.statics import ARGON2_MIN_MEMORY_COST, ARGON2_MIN_PARALLELISM, ARGON2_MIN_TIME_COST, ARGON2_SALT_LENGTH
-from src.common.statics import BLAKE2_DIGEST_LENGTH, BLAKE2_DIGEST_LENGTH_MAX, BLAKE2_DIGEST_LENGTH_MIN
-from src.common.statics import BLAKE2_KEY_LENGTH_MAX, BLAKE2_PERSON_LENGTH_MAX, BLAKE2_SALT_LENGTH_MAX, PADDING_LENGTH
-from src.common.statics import SYMMETRIC_KEY_LENGTH, TFC_PRIVATE_KEY_LENGTH, TFC_PUBLIC_KEY_LENGTH
-from src.common.statics import XCHACHA20_NONCE_LENGTH
+from src.common.statics import (ARGON2_MIN_MEMORY_COST, ARGON2_MIN_PARALLELISM, ARGON2_MIN_TIME_COST,
+                                ARGON2_SALT_LENGTH, BLAKE2_DIGEST_LENGTH, BLAKE2_DIGEST_LENGTH_MAX,
+                                BLAKE2_DIGEST_LENGTH_MIN, BLAKE2_KEY_LENGTH_MAX, BLAKE2_PERSON_LENGTH_MAX,
+                                BLAKE2_SALT_LENGTH_MAX, PADDING_LENGTH, SYMMETRIC_KEY_LENGTH, TFC_PRIVATE_KEY_LENGTH,
+                                TFC_PUBLIC_KEY_LENGTH, XCHACHA20_NONCE_LENGTH)
 
 from tests.utils import cd_unit_test, cleanup
 
@@ -68,6 +68,7 @@ class TestBLAKE2b(unittest.TestCase):
     """
 
     def setUp(self) -> None:
+        """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
 
         kat_file_url  = 'https://raw.githubusercontent.com/BLAKE2/BLAKE2/master/testvectors/blake2b-kat.txt'
@@ -109,6 +110,7 @@ class TestBLAKE2b(unittest.TestCase):
         self.assertEqual(len(set(digests)),  256)
 
     def tearDown(self) -> None:
+        """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_blake2b_using_the_official_known_answer_tests(self):
@@ -144,8 +146,15 @@ class TestBLAKE2bWrapper(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 blake2b(b'test_string', digest_size=invalid_digest_size)
 
-    @mock.patch('hashlib.blake2b', return_value=MagicMock(digest=(MagicMock(side_effect=[(BLAKE2_DIGEST_LENGTH-1)*b'a',
-                                                                                         (BLAKE2_DIGEST_LENGTH+1)*b'a']))))
+    @mock.patch('hashlib.blake2b', return_value=MagicMock(digest=(MagicMock(side_effect=[BLAKE2_DIGEST_LENGTH*'a']))))
+    def test_invalid_blake2b_digest_type_raises_critical_error(self, mock_blake2b):
+        with self.assertRaises(SystemExit):
+            blake2b(b'test_string')
+        mock_blake2b.assert_called()
+
+    @mock.patch('hashlib.blake2b', return_value=MagicMock(digest=(
+            MagicMock(side_effect=[(BLAKE2_DIGEST_LENGTH-1)*b'a',
+                                   (BLAKE2_DIGEST_LENGTH+1)*b'a']))))
     def test_invalid_size_blake2b_digest_raises_critical_error(self, mock_blake2b):
         with self.assertRaises(SystemExit):
             blake2b(b'test_string')
@@ -175,6 +184,7 @@ class TestArgon2KDF(unittest.TestCase):
     """
 
     def setUp(self) -> None:
+        """Pre-test actions."""
         self.unit_test_dir   = cd_unit_test()
         self.number_of_tests = 256
 
@@ -197,6 +207,7 @@ class TestArgon2KDF(unittest.TestCase):
         subprocess.Popen('make test', shell=True).wait()
 
     def tearDown(self) -> None:
+        """Post-test actions."""
         os.chdir('..')
         cleanup(self.unit_test_dir)
 
@@ -260,6 +271,7 @@ class TestArgon2KDF(unittest.TestCase):
 class TestArgon2Wrapper(unittest.TestCase):
 
     def setUp(self) -> None:
+        """Pre-test actions."""
         self.salt = os.urandom(ARGON2_SALT_LENGTH)
 
     def test_invalid_length_salt_raises_critical_error(self):
@@ -267,7 +279,21 @@ class TestArgon2Wrapper(unittest.TestCase):
                                                                    ARGON2_SALT_LENGTH+1, 1000]]
         for invalid_salt in invalid_salts:
             with self.assertRaises(SystemExit):
-                argon2_kdf('password', invalid_salt, ARGON2_MIN_TIME_COST, ARGON2_MIN_MEMORY_COST, ARGON2_MIN_PARALLELISM)
+                argon2_kdf('password', invalid_salt,
+                           ARGON2_MIN_TIME_COST, ARGON2_MIN_MEMORY_COST, ARGON2_MIN_PARALLELISM)
+
+    @mock.patch("argon2.low_level.hash_secret_raw", MagicMock(side_effect=[SYMMETRIC_KEY_LENGTH*'a']))
+    def test_invalid_type_key_from_argon2_raises_critical_error(self):
+        with self.assertRaises(SystemExit):
+            argon2_kdf('password', self.salt, ARGON2_MIN_TIME_COST, ARGON2_MIN_MEMORY_COST, ARGON2_MIN_PARALLELISM)
+
+    @mock.patch("argon2.low_level.hash_secret_raw", MagicMock(side_effect=[(SYMMETRIC_KEY_LENGTH-1)*b'a',
+                                                                           (SYMMETRIC_KEY_LENGTH+1)*b'a']))
+    def test_invalid_size_key_from_argon2_raises_critical_error(self):
+        with self.assertRaises(SystemExit):
+            argon2_kdf('password', self.salt, ARGON2_MIN_TIME_COST, ARGON2_MIN_MEMORY_COST, ARGON2_MIN_PARALLELISM)
+        with self.assertRaises(SystemExit):
+            argon2_kdf('password', self.salt, ARGON2_MIN_TIME_COST, ARGON2_MIN_MEMORY_COST, ARGON2_MIN_PARALLELISM)
 
     def test_too_small_time_cost_raises_critical_error(self):
         with self.assertRaises(SystemExit):
@@ -344,6 +370,13 @@ class TestX448(unittest.TestCase):
         public_key  = X448.derive_public_key(private_key)
         self.assertIsInstance(public_key, bytes)
         self.assertEqual(len(public_key), TFC_PUBLIC_KEY_LENGTH)
+
+    def test_deriving_invalid_type_public_key_raises_critical_error(self):
+        private_key = MagicMock(public_key=MagicMock(return_value=MagicMock(
+            public_bytes=MagicMock(side_effect=[TFC_PUBLIC_KEY_LENGTH * 'a']))))
+
+        with self.assertRaises(SystemExit):
+            X448.derive_public_key(private_key)
 
     def test_deriving_invalid_size_public_key_raises_critical_error(self):
         """
@@ -513,6 +546,7 @@ class TestXChaCha20Poly1305(unittest.TestCase):
     nonce_ct_tag_libsodium = libsodium_nonce + libsodium_ct_tag
 
     def setUp(self) -> None:
+        """Pre-test actions."""
         self.assertEqual(self.ietf_plaintext, self.libsodium_plaintext)
         self.assertEqual(self.ietf_ad,        self.libsodium_ad)
         self.assertEqual(self.ietf_key,       self.libsodium_key)
@@ -592,6 +626,16 @@ class TestBytePadding(unittest.TestCase):
     @mock.patch('cryptography.hazmat.primitives.padding.PKCS7',
                 return_value=MagicMock(
                     padder=MagicMock(return_value=MagicMock(
+                        update=MagicMock(return_value=''),
+                        finalize=MagicMock(return_value=(PADDING_LENGTH*'a'))))))
+    def test_invalid_padding_type_raises_critical_error(self, mock_padder):
+        with self.assertRaises(SystemExit):
+            byte_padding(b'test_string')
+        mock_padder.assert_called()
+
+    @mock.patch('cryptography.hazmat.primitives.padding.PKCS7',
+                return_value=MagicMock(
+                    padder=MagicMock(return_value=MagicMock(
                         update=MagicMock(return_value=b''),
                         finalize=MagicMock(return_value=(PADDING_LENGTH+1)*b'a')))))
     def test_invalid_padding_size_raises_critical_error(self, mock_padder):
@@ -662,6 +706,11 @@ class TestCSPRNG(unittest.TestCase):
         for key_size in range(BLAKE2_DIGEST_LENGTH_MIN, BLAKE2_DIGEST_LENGTH_MAX+1):
             key = csprng(key_size)
             self.assertEqual(len(key), key_size)
+
+    @mock.patch('os.getrandom', return_value=SYMMETRIC_KEY_LENGTH*'a')
+    def test_invalid_entropy_type_from_getrandom_raises_critical_error(self, _):
+        with self.assertRaises(SystemExit):
+            csprng()
 
     def test_subceeding_hash_function_min_digest_size_raises_critical_error(self):
         with self.assertRaises(SystemExit):
