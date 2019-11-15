@@ -61,8 +61,8 @@ def group_management_print(key:          str,            # Group management mess
          UNKNOWN_ACCOUNTS: "Following unknown accounts were ignored:"}[key]
 
     if members:
-        m_list = ([contact_list.get_contact_by_pub_key(m).nick for m in members if     contact_list.has_pub_key(m)]
-                  + [pub_key_to_onion_address(m)               for m in members if not contact_list.has_pub_key(m)])
+        m_list = ([contact_list.get_nick_by_pub_key(m) for m in members if     contact_list.has_pub_key(m)]
+                  + [pub_key_to_onion_address(m)       for m in members if not contact_list.has_pub_key(m)])
 
         just_len  = max(len(m) for m in m_list)
         justified = [m] + [f"  * {m.ljust(just_len)}" for m in m_list]

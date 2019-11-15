@@ -24,7 +24,8 @@ import typing
 
 import nacl.signing
 
-from src.common.crypto     import auth_and_decrypt, csprng, encrypt_and_sign
+from src.common.crypto     import csprng
+from src.common.database   import TFCDatabase
 from src.common.encoding   import pub_key_to_onion_address, pub_key_to_short_address
 from src.common.exceptions import CriticalError
 from src.common.misc       import ensure_dir
@@ -56,6 +57,7 @@ class OnionService(object):
         """Create a new OnionService object."""
         self.master_key   = master_key
         self.file_name    = f'{DIR_USER_DATA}{TX}_onion_db'
+        self.database     = TFCDatabase(self.file_name, self.master_key)
         self.is_delivered = False
         self.conf_code    = csprng(CONFIRM_CODE_LENGTH)
 
@@ -79,20 +81,13 @@ class OnionService(object):
         phase(DONE)
         return onion_private_key
 
-    def store_onion_service_private_key(self) -> None:
+    def store_onion_service_private_key(self, replace: bool = True) -> None:
         """Store Onion Service private key to an encrypted database."""
-        ct_bytes = encrypt_and_sign(self.onion_private_key, self.master_key.master_key)
-
-        ensure_dir(DIR_USER_DATA)
-        with open(self.file_name, 'wb+') as f:
-            f.write(ct_bytes)
+        self.database.store_database(self.onion_private_key, replace)
 
     def load_onion_service_private_key(self) -> bytes:
         """Load the Onion Service private key from the encrypted database."""
-        with open(self.file_name, 'rb') as f:
-            ct_bytes = f.read()
-
-        onion_private_key = auth_and_decrypt(ct_bytes, self.master_key.master_key, database=self.file_name)
+        onion_private_key = self.database.load_database()
 
         if len(onion_private_key) != ONION_SERVICE_PRIVATE_KEY_LENGTH:
             raise CriticalError("Invalid Onion Service private key length.")

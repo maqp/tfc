@@ -141,7 +141,7 @@ class RxWindow(Iterable[MsgTuple]):
     def update_handle_dict(self, pub_key: bytes) -> None:
         """Update handle for public key in `handle_dict`."""
         if self.contact_list.has_pub_key(pub_key):
-            self.handle_dict[pub_key] = self.contact_list.get_contact_by_pub_key(pub_key).nick
+            self.handle_dict[pub_key] = self.contact_list.get_nick_by_pub_key(pub_key)
         else:
             self.handle_dict[pub_key] = pub_key_to_short_address(pub_key)
 

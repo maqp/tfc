@@ -24,7 +24,7 @@ import typing
 
 from typing import Iterable, Iterator, List, Optional, Sized
 
-from src.common.crypto     import auth_and_decrypt, encrypt_and_sign
+from src.common.database   import TFCDatabase
 from src.common.encoding   import bool_to_bytes, pub_key_to_onion_address, str_to_bytes, pub_key_to_short_address
 from src.common.encoding   import bytes_to_bool, onion_address_to_pub_key, bytes_to_str
 from src.common.exceptions import CriticalError
@@ -211,11 +211,11 @@ class ContactList(Iterable[Contact], Sized):
 
     def __init__(self, master_key: 'MasterKey', settings: 'Settings') -> None:
         """Create a new ContactList object."""
-        self.master_key    = master_key
         self.settings      = settings
         self.contacts      = []  # type: List[Contact]
         self.dummy_contact = self.generate_dummy_contact()
         self.file_name     = f'{DIR_USER_DATA}{settings.software_operation}_contacts'
+        self.database      = TFCDatabase(self.file_name, master_key)
 
         ensure_dir(DIR_USER_DATA)
         if os.path.isfile(self.file_name):
@@ -235,7 +235,7 @@ class ContactList(Iterable[Contact], Sized):
         """
         return len(self.get_list_of_contacts())
 
-    def store_contacts(self) -> None:
+    def store_contacts(self, replace: bool = True) -> None:
         """Write the list of contacts to an encrypted database.
 
         This function will first create a list of contacts and dummy
@@ -252,11 +252,7 @@ class ContactList(Iterable[Contact], Sized):
         bytes.
         """
         pt_bytes = b''.join([c.serialize_c() for c in self.contacts + self._dummy_contacts()])
-        ct_bytes = encrypt_and_sign(pt_bytes, self.master_key.master_key)
-
-        ensure_dir(DIR_USER_DATA)
-        with open(self.file_name, 'wb+') as f:
-            f.write(ct_bytes)
+        self.database.store_database(pt_bytes, replace)
 
     def _load_contacts(self) -> None:
         """Load contacts from the encrypted database.
@@ -269,10 +265,7 @@ class ContactList(Iterable[Contact], Sized):
         populate the `self.contacts` list with Contact objects, the data
         of which is sliced and decoded from the dummy-free blocks.
         """
-        with open(self.file_name, 'rb') as f:
-            ct_bytes = f.read()
-
-        pt_bytes  = auth_and_decrypt(ct_bytes, self.master_key.master_key, database=self.file_name)
+        pt_bytes  = self.database.load_database()
         blocks    = split_byte_string(pt_bytes, item_len=CONTACT_LENGTH)
         df_blocks = [b for b in blocks if not b.startswith(self.dummy_contact.onion_pub_key)]
 
@@ -406,6 +399,10 @@ class ContactList(Iterable[Contact], Sized):
         matching nick or Onion Service address.
         """
         return next(c for c in self.contacts if selector in [c.onion_address, c.nick])
+
+    def get_nick_by_pub_key(self, onion_pub_key: bytes) -> str:
+        """Return nick of contact that has a matching Onion Service public key."""
+        return next(c.nick for c in self.contacts if onion_pub_key == c.onion_pub_key)
 
     def get_list_of_contacts(self) -> List[Contact]:
         """Return list of Contact objects in `self.contacts` list."""

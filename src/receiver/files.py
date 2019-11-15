@@ -61,6 +61,8 @@ def store_unique(file_data: bytes,  # File data to store
 
     with open(file_dir + file_name, 'wb+') as f:
         f.write(file_data)
+        f.flush()
+        os.fsync(f.fileno())
 
     return file_name
 
@@ -126,9 +128,11 @@ def new_file(ts:           'datetime',                             # Timestamp o
     if not contact_list.has_pub_key(onion_pub_key):
         raise FunctionReturn("File from an unknown account.", output=False)
 
-    nick = contact_list.get_contact_by_pub_key(onion_pub_key).nick
-    if not contact_list.get_contact_by_pub_key(onion_pub_key).file_reception:
-        raise FunctionReturn(f"Alert! Discarded file from {nick} as file reception for them is disabled.", bold=True)
+    contact = contact_list.get_contact_by_pub_key(onion_pub_key)
+
+    if not contact.file_reception:
+        raise FunctionReturn(
+            f"Alert! Discarded file from {contact.nick} as file reception for them is disabled.", bold=True)
 
     k = onion_pub_key + blake2b(file_ct)  # Dictionary key
 
@@ -149,7 +153,7 @@ def process_file(ts:            'datetime',     # Timestamp of received_packet
                  settings:      'Settings'      # Settings object
                  ) -> None:
     """Store file received from a contact."""
-    nick = contact_list.get_contact_by_pub_key(onion_pub_key).nick
+    nick = contact_list.get_nick_by_pub_key(onion_pub_key)
 
     phase("Processing received file", head=1)
     try:

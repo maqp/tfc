@@ -236,7 +236,7 @@ def standard_sender_loop(queues:   'QueueDict',
     while True:
         with ignored(EOFError, KeyboardInterrupt):
             if km_queue.qsize() != 0:
-                key_list.manage(*km_queue.get())
+                key_list.manage(queues, *km_queue.get())
                 continue
 
             # Commands to Receiver

@@ -17,9 +17,9 @@
 # along with TFC. If not, see <https://www.gnu.org/licenses/>.
 
 # PIP dependency file names
-ARGON2=argon2_cffi-19.1.0-cp34-abi3-manylinux1_x86_64.whl
+ARGON2=argon2_cffi-19.2.0-cp34-abi3-manylinux1_x86_64.whl
 CERTIFI=certifi-2019.9.11-py2.py3-none-any.whl
-CFFI=cffi-1.13.1-cp37-cp37m-manylinux1_x86_64.whl
+CFFI=cffi-1.13.2-cp37-cp37m-manylinux1_x86_64.whl
 CHARDET=chardet-3.0.4-py2.py3-none-any.whl
 CLICK=Click-7.0-py2.py3-none-any.whl
 CRYPTOGRAPHY=cryptography-2.8-cp34-abi3-manylinux1_x86_64.whl
@@ -33,10 +33,10 @@ PYNACL=PyNaCl-1.3.0-cp34-abi3-manylinux1_x86_64.whl
 PYSERIAL=pyserial-3.4-py2.py3-none-any.whl
 PYSOCKS=PySocks-1.7.1-py3-none-any.whl
 REQUESTS=requests-2.22.0-py2.py3-none-any.whl
-SETUPTOOLS=setuptools-41.4.0-py2.py3-none-any.whl
-SIX=six-1.12.0-py2.py3-none-any.whl
+SETUPTOOLS=setuptools-41.6.0-py2.py3-none-any.whl
+SIX=six-1.13.0-py2.py3-none-any.whl
 STEM=stem-1.7.1.tar.gz
-URLLIB3=urllib3-1.25.6-py2.py3-none-any.whl
+URLLIB3=urllib3-1.25.7-py2.py3-none-any.whl
 VIRTUALENV=virtualenv-16.7.7-py2.py3-none-any.whl
 WERKZEUG=Werkzeug-0.16.0-py2.py3-none-any.whl
 
@@ -56,7 +56,7 @@ function compare_digest {
 function verify_tcb_requirements_files {
     # To minimize the time TCB installer configuration stays online, only
     # the requirements files are authenticated between downloads.
-    compare_digest 99912fe2f7240a9b163292ff83c28b6ab41ee1c10bf96cc57f2c066537d3f153b46280e2c769b0f273c6bc36c74badb42d3c66c6fb3d16862dc96ff27319788d '' requirements.txt
+    compare_digest 3a3f8a79420ddb792f647c0bb2a82ac6bfec70f4497005a6ca77ba113cfda40bda502456156860b2a92b464eaf26b23e78bcf907d849ec40a08357955f31549d '' requirements.txt
     compare_digest 97558ed189976ccd54e3a25bcf639f1944aa43f4a4f42ff5ef2cf22349a7b649272e91746041b4e04b2f33adf1fab8818c339b1cc58f9353af3e5ac76cb1ec0b '' requirements-venv.txt
 }
 
@@ -67,53 +67,54 @@ function verify_files {
     compare_digest d361e5e8201481c6346ee6a886592c51265112be550d5224f1a7a6e116255c2f1ab8788df579d9b8372ed7bfd19bac4b6e70e00b472642966ab5b319b99a2686 '' LICENSE
     compare_digest 7e519d20fef24e25e88ec4a9c03abadf513b084e05038f17c62ca7899c2f9174a953caa0bfbd3b61e455e243513cdab737c22a34d73ebab07b65d3ce99100f0a '' LICENSE-3RD-PARTY
     compare_digest 99815d0cfbca7d83409b7317947fe940fe93fd94b50e6099a566563ee6999e33830fd883ff61e5367a040d5fda3f2a43165ef0dc6155e14a573e07dc27eba70d '' relay.py
-    compare_digest 28d06826a45ca4d64c2b4d06859ee7a0c7152198fe49b85681f7ce6b9c02b1a103fd7f3514b05b24e95e2ec5f48ce02529a2b4f2ea806b333e8141b1650d1257 '' requirements-dev.txt
-    compare_digest 8a57366899139b9906f0a75272c702575a6cd5c6ca2dd09f0dbd1be9efd5341178f9d3d64fec113af7d1fdccbb5cbdf384133aa3afa3672292e37405f60cf0a8 '' requirements-relay.txt
-    compare_digest 8ecd5957f3bfbe237549e8772720cba5b5899b51a475063edcbc416ad5f77f614da2c9069aeb31bca6d2bb74ce6f2877d29df178ec3ecf6d5dd05daaff51c6b2 '' requirements-relay-tails.txt
-    compare_digest 4a44501e21d463ff8569a1665b75c2e4d8de741d445dc3e442479cbb7282646045129233bd7313df4b9c2e64ec86b7615a8196ae2b3350de933731926d39bbda '' requirements-setuptools.txt
+    compare_digest 3904003688f993c6566fb8cc39e7bd8f820ef3ec0d097b7e467a5aa3019f480a026ae424bfb5473ff71c01002dc386528a010a8fb36cd0f5a03eb0c355450d61 '' requirements-dev.txt
+    compare_digest 119fbe604a01ad0ef1d6e758ed6ee8dc46be4d746207b0cda1d4c17ba12621d32e6f479229856c6008a77f796bbd778dbecc27bb38dca817d88c257a9d3b27b8 '' requirements-relay.txt
+    compare_digest 1696663138ca74e4c85caeeea82e34168ddbb1dd1a626a12064c43515859590e17c982dd0f1de2d807039794884bf053c147060760c84751143214e2af3611de '' requirements-relay-tails.txt
+    compare_digest 550a82b9c07376e9eaf1117f77362f89c401169a848010110c2f8f2d99d50376f4cc5308d8b7e1928e68f15834aca7d5c9a9a7e7b8db956e5e55755ab7ea0a25 '' requirements-setuptools.txt
     compare_digest 79f8272a2ab122a48c60630c965cd9d000dcafabf5ee9d69b1c33c58ec321feb17e4654dbbbf783cc8868ccdfe2777d60c6c3fc9ef16f8264d9fcf43724e83c2 '' tfc.png
-    compare_digest e4dadae63adcd72108fcfa04401f42a1bae956008303d09f22e849b207ebca699306f2bd4034ee96a5531028719f5e41689205ec8ef12cd1726a86376d3aec3e '' tfc.py
+    compare_digest 7e24d0962e0be4b8e206d9390e888caab10604f5bf1bb29af4b91c4c20e42bcc04ef4ef15ce3248ac68c0acfd2e391a96a5567d87d91223f7be63a05b9dbf843 '' tfc.py
     compare_digest 7ae1c2a393d96761843bea90edd569244bfb4e0f9943e68a4549ee46d93180d26d4101c2471c1a37785ccdfaef45eedecf15057c0a9cc6c056460c5f9a69d37b '' tfc.yml
     compare_digest c6a61b3050624874cabc28cc51e947aa1ba629b0fd62564466b902cc433c08be6ae64d53bb2f33158e198c60ef2eb7c38b0bee1a64ef9659d101dee07557ddc7 '' uninstall.sh
 
     compare_digest d4f503df2186db02641f54a545739d90974b6d9d920f76ad7e93fe1a38a68a85c167da6c19f7574d11fbb69e57d563845d174d420c55691bc2cd75a1a72806dc launchers/ terminator-config-local-test
-    compare_digest a5611269e2f69a452840ae13d888bd80d6f8e5e78fdab0cb666440491d8431e6c326dc57a52df7d9e68ecd139376606c9f6c945207f2427bb21c114fe26c0af7 launchers/ TFC-Local-test.desktop
-    compare_digest 9263737fca4773672515e0f4708e147b634bd09c8d068966806bb77d3b38dcf60b1f933846f9a649e795760ff141a31dc2b58fad38ef2afbaedb33d2f479a29b launchers/ TFC-RP.desktop
-    compare_digest 9263737fca4773672515e0f4708e147b634bd09c8d068966806bb77d3b38dcf60b1f933846f9a649e795760ff141a31dc2b58fad38ef2afbaedb33d2f479a29b launchers/ TFC-RP-Tails.desktop
-    compare_digest 113d1f8f6bc03009ef1ccfe1aed8a90bdecb54e66bd91ed815bbd83cb695419a25c614de8287475d3beab832cfcaf6d549c06832f2ea098d29ff049d7cd91da7 launchers/ TFC-RxP.desktop
-    compare_digest 1f4d4e216039b63f2579eef17dc18df5e2f1e65f09e619b62adb8dceb128de6ffe5784ea0ff1dc846af21e1ce641bc612df51e37e205fee210f94dd87b86f467 launchers/ TFC-TxP.desktop
+    compare_digest 9e670036e264cc9f5e5fa33d71f903e996ecc317e8958d99a73dd873639ce5921e31789041813b20ad89b0d09194fea3c0439619e16e7a9331c98917dee762b3 launchers/ TFC-Local-test.desktop
+    compare_digest 496a0828096944b067feb5210d46a89b320ff2789d8b17f9a4faf787d93559b93335cec77139304981654195b7d32474dc62624209510a8ae5c4690e27d26fce launchers/ TFC-RP.desktop
+    compare_digest 496a0828096944b067feb5210d46a89b320ff2789d8b17f9a4faf787d93559b93335cec77139304981654195b7d32474dc62624209510a8ae5c4690e27d26fce launchers/ TFC-RP-Tails.desktop
+    compare_digest 98db2dcc5226632383c1924b678d0bfeceaaf7696071ea5b22116fa46216e40af140b0bd127da53c6cde5f09ba200d2afa7e643284f12b6214f4c353d307ef6e launchers/ TFC-RxP.desktop
+    compare_digest eec5b006779bbdfe5a3e3da0ea5ea4655f5b77a45ac9834941fba5b5861ca503808400d29ad0b2d9790dea3ce5ba9e6747f345dbaf4398025778cf4b70de8dee launchers/ TFC-TxP.desktop
 
     compare_digest cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e src/ __init__.py
     compare_digest cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e src/common/ __init__.py
-    compare_digest 580c6453d8649d82973817de1fcfd83c73b0f6bb3e2597c5ffb6c0d3929d10f693c0a3d98dad4f528f1a1b62b220bcb99fa075ccd28e8b53d6cc966697523e25 src/common/ crypto.py
-    compare_digest 053c431755b4d6a5a869d2f06213bd23a8fb8743644b127d3622ff0223687880e8b1d510fbc976f2112318e48caa0044a1959c9af21272001e3f107fd9f785ba src/common/ db_contacts.py
-    compare_digest 8e4e8ab2dff2400f3fe72d980c95c1780d26e11f0482c555bb47cfa7513d091b06fd901666f415e0b3db291bd7f161d7182ac530a6d118a61f0b72bb665eead1 src/common/ db_groups.py
-    compare_digest 712c5422193994a65eff74f0a328107232069784c6c687f700a6823435fe65afb3e31cbd1102dbe07bc1d7e5e1572a4db6e467d477ebd3e4aab6ff3685723ccf src/common/ db_keys.py
-    compare_digest a2714c8aab538a5fc273f4eb58ea0d039effa4ce64559ab34dbe9eb92c762aff98a242443e2dffe5e55005b8778a5581f5c2ad3c07a0b6eee58e599e44a951b3 src/common/ db_logs.py
-    compare_digest c6bbb2b75f14447ba20bf1ac214b044d5a79b11a5346a1691a823c5e5ac4db05dd24a8de52856021d8d7f7f8582c1871839945323245521f320714cc72994bdf src/common/ db_masterkey.py
-    compare_digest 253521b1ed39a73a0fd6108cbcf88bbd1ffadde28be1467c1e7871094392d0a55947032ef5fc19d85727117bacf8516ac1f08f70240be20b9fc2d009a68989ee src/common/ db_onion.py
-    compare_digest 2e8ff65270e0165e510f5d330fa2cbfdc6ecf8ed953220bbe18d19a8afa6fa2bf852e56ba875c1c361fdb72016d0610e8c9fa1df302fa47f916eaaecde11e423 src/common/ db_settings.py
+    compare_digest baac9291c49fb4b963e200757b5abefbda4f19fa30e27066a41d51009db946d882ed36e4d62f984b33b1b5d0b27de2238200b4b3bdc40b114061639cd9d3deba src/common/ crypto.py
+    compare_digest c7c8b3782f7a5fd3e035ee2ffc776860caf62f501cb7f1cc8438f03c83e474e2f6b2fbbf9b8dae815fa0a44305e6978b38889cd78349f6ac4814fd2f96eddc8e src/common/ database.py
+    compare_digest 2f912fdf06b4ca20df7192b9f927473e05d4633d541f0f33346bdeb561a08ac5ee267d513ce02bfd21d2324d1ae615df1653cd4be99516464f770bc84957eb0d src/common/ db_contacts.py
+    compare_digest 226fa936d6306f7beba36d3fa9ddf9191eb45b7bd217404cdb46824b127e8e906da95c2b53083c7dd4d05cf598b159135c08049c4493b2231081822ef02a7a2f src/common/ db_groups.py
+    compare_digest b7f0b1ce630c41ded5d36a86cd0e6b17c7f708b059e613235faf4e868adcf51226d233f2e0bfe47ac54454c1561af8b77426d30f94ae26433392eeb70087c517 src/common/ db_keys.py
+    compare_digest db37a75872c207e82e83377d03bab7d72496e94a311cccbcdeccbbb089bf4ff385fa9c5a2e6a836b7a6cd552493cb215a8296e346727035a41a00e7f6d6980f2 src/common/ db_logs.py
+    compare_digest b1134de8a791cfcb7aea0dab9f2f9439621badf236cd850b344117fb791f0a2c1597445317f7e35b070dcc10e40a635801cf55b555ccfb12e354df930cdcfdd6 src/common/ db_masterkey.py
+    compare_digest c9000d541149835aa0812aa4b3108356d2f9465a767ea4273ece6340212eff287447af9247df4cea309ef7f8a5cfc887a01c8190523d1616164dd0f98718905f src/common/ db_onion.py
+    compare_digest 8b9feb9fc4a9897b00cd01a2970fea98e2139676149b75891376d4714c477a06a2cffc42f31e927e12f063c7c673d6f05a3a8e5f0a8f0194d3450192f619921d src/common/ db_settings.py
     compare_digest 7a673e6feb7a5b2e3417d2c0eee82a59b3730a5d241938a84fd866dfc838c3cd63d7ef96772d43f62df740a2ba1001456746dd6c86e950484eac3ebabed498ce src/common/ encoding.py
     compare_digest 00ad45d8fba1a605817a9f5d64cdfd6aad9c618db66befe682728a2291384c67bf5e80a5257211717a86e4a51c7e8c74f8f7ccccc3b4ac3c6f0f4c4e1b3cc98f src/common/ exceptions.py
-    compare_digest 5de68b10dc6b6ff98d7f73a2dc89d6b64c529fb4949b4a51d1b2fb4491006266bf7200b717102987347add666f12d7cfa9afc43a540304290f9a41fe48545078 src/common/ gateway.py
+    compare_digest 36fe744ac924cdf4c43babc037392e1717c6be0b5ef518be896ca76c74385a93dfe84fe5d2e4437e00b24ce694e0be243305c7c1f1b8722adbd0ae9f5806114c src/common/ gateway.py
     compare_digest 604893a2814219b2ed4e69b45d9ac2f8c2b5fc066bd085e86b76ef9df9984e6113f79fcaf3b9eb1197a9c9fc92cf524269e595d03b5009c46e8889d813475408 src/common/ input.py
-    compare_digest 1cac1bed0779f480de26054867cd732deaba5e7a46728ed8c203948ed92b96e0dbf2d5d1a696cbca445d5db2b79cde318aac28189d8806fe1ea530392a47f406 src/common/ misc.py
-    compare_digest e167f8458d1a1fc549f02a42ab9c1dc78ac2540b6a8660c77a06fe32de461eb52361a99582921b00eb50115c9fc70858dff1557c6e7ac69439768481a70b3fa7 src/common/ output.py
+    compare_digest 3379d330272e599bfb07f0591256725eabdf503423993e29f0d2f335581c23934b13ad9d477d198b866bf2c7bb2f59f2a93d634046ed619f1441019e6172aa93 src/common/ misc.py
+    compare_digest a4246dc24cccf5d1751a1c80ec6f195954fd6541b7b1573acdf29bd8d3fd4085949201a2950a298c8ec7bb153fe33626a24e0fa8856d0bc4cfd3183a5ef931fa src/common/ output.py
     compare_digest c4d97b497b341f0e7865a4e27a2a2ffd3b3c5a7bfbf72f4676f6b65d6ba66a2adb8fed563f88fa25cef555f0042290ef0ae4cbeed1697a2e19a3b8cff0b9ef1b src/common/ path.py
     compare_digest 4365ed3b6951525cb1ec8dc1177d7fd74d5dfa5eab1ca8934775391a8736eed4df039684f19ccc2d8022f20c8cf93a57a736b259e8c7235da5060c5f62057c98 src/common/ reed_solomon.py
-    compare_digest 1f26c39a8e5ec39a859e90dac2e38c08d86af02e0fc714aa0569b618dbf44de5befde601b0fec23e62e3e3b3f7281727abea37a02818c9994ac47f119a621386 src/common/ statics.py
-    compare_digest 339b402790cb3002841a1212d4dc24b07236b65baf68e3a8caf8d61bfd48af12887564be449ae49cfe5d7b88107a73e01a05053e3789398fbd560ef89f14afd4 src/common/ word_list.py
+    compare_digest 0de1ca8036e50c24cd0637b44ea7444d601cdde4d247e96a3bfc5ad817de99f0a8a53257a16296fe92c254a7e566b1d4abde93dccdaa416c3bb139fc0f3393a5 src/common/ statics.py
+    compare_digest f05c27de8d1a90dc72aeefc9e9b7ac350140668cf2ec2a18c8f33ab7219fe5e13557717f68bada8357bb98d41fbafd56754eaae523d9e660670066727ef137f7 src/common/ word_list.py
 
     compare_digest cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e src/receiver/ __init__.py
-    compare_digest eaf664c520b7a2b4374e258b153940625312262fc54f9435018beff3152073d6dadcf78bedbe081a92cf173b31f2e86582c98a6065be1bba143b6b41b2d4b3b8 src/receiver/ commands.py
+    compare_digest ace8e64f6fddb546154fc912876240227d83b817780225f122320b99990c60743e9d98af1c45dd070d3f49f3e6a7a9eea621e565b4edd51536ff8b2cf56ca2ac src/receiver/ commands.py
     compare_digest 051a1eac8e1e177bdf1c94972ed511d56d9ccfb3dc97c6418355b4415b2d1dff42c4ef5420de05d90e1697375f4db119e04932c05d6a93a89e03e7ca4c7c7346 src/receiver/ commands_g.py
-    compare_digest 4a48adedcb839176e6a5f18b430a97c96558a7474d0840d22d31241a2918f1ffaed53211c5c949b545e231cda5280cf42fb5c20e22bdaef03f5fb2c298e22e07 src/receiver/ files.py
+    compare_digest 9f8fe1cfdeeb1a8bef02b213626f77cd86d6013c55b868497a5976a04e458abdd7957a9287fe02caa050835124a2880e578d1172d72093e7099431a3fe07d8f9 src/receiver/ files.py
     compare_digest 6eae2793bdd72b9581cbbebc012a70b11744c2585fda1d1e253ff4d67cdc1d316d1f3ad7e391f5197aa1447ce21b0ecbc3e34517a8932ecd9eec7ff5d7313b5b src/receiver/ key_exchanges.py
-    compare_digest d7d28808635a0425d231770b24c1a0f332ad40dffccfcf4f88801299b121e58363b728b0a70b0bc4d1640b850f7cb069ba88f3be966eb84f9e05f0112d3e76fd src/receiver/ messages.py
-    compare_digest d651d87311ec09b8aa0a3964718ea1ea22c5bc1cc078ca87a367b420fc19716438045b31618d34264f483eb009ed1aff33704d135d0d22374df31d5438f9e00c src/receiver/ output_loop.py
-    compare_digest a1edb6fe5b04117174ce45739e0737b6e8eedeed134bc95201d837bf6785bb98c86f8404eee18eb398755c8df113d7f8daa9dae43465846b887d514619759ed2 src/receiver/ packet.py
+    compare_digest 5b933072ba33349d2ef46bd253748a6ca82ef503de83761e7aa2e8bca5880f12d0c20b6eecd8ae71fe300094d78e18bb8a7a0af5d0de21144e8e27cf51bfe3a7 src/receiver/ messages.py
+    compare_digest 755774a1954690abcb4905a03377f6367c8ea4f9b08b05dac53326c0576ffab38cf49f4e5a4357f56d3597385489800b2e1e0cbfb5f858510328cbded4a9d002 src/receiver/ output_loop.py
+    compare_digest a69bb7fb303072c813917e008126726cb93d921232051d9276901afb72287d79bdaf4e98f8547754c64aeb4453f723dbb59906e59e78b3c8fcd7d4d3194504a3 src/receiver/ packet.py
     compare_digest 20c6754ddb6261c7a3b479e6ab7bf78eb0ef8783e2141373d7aba857f413091b78dcc9c32667dd8f8d5c41927102da7e35c4c4fcb0aa7376dc42b08c0c01d6e2 src/receiver/ receiver_loop.py
-    compare_digest 7d3f18351dc97bf4c1c5ab5894619d1f34ec07874758751340d53a12da2d7079944e6187d7436990f09a82d39c89d64a0bb747678c85ead8126eebbac9fcddfd src/receiver/ windows.py
+    compare_digest 96550b54c0b9a287974debadf838294dfc7d2f1b59340f8af7b0cfe91bedde8b35c5f6d0e5d61b359524513c6f15c50de6bf7d55b350c26329986493dfadd5f7 src/receiver/ windows.py
 
     compare_digest cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e src/relay/ __init__.py
     compare_digest 5d34be330731b8b722c3580f12abd2515984ba0589ea95c0960ae099a13b9d66118a5af5cdf137bcf376bde88b0edf055888d2a5fc267081ea118fffc05a2b08 src/relay/ client.py
@@ -123,14 +124,14 @@ function verify_files {
     compare_digest 9459e6cbe17fefac356e5ce183d923efff66f6d304111f2c0dbacdfb22a92df77bb11134faf8c15400bc59174ecbec1ea0b436065a9d49d3af70b46b24a77764 src/relay/ tcb.py
 
     compare_digest cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e src/transmitter/ __init__.py
-    compare_digest 2d002fe7aab987512534bdb18433d4a626b404aafc0360253056995559b0d2097938604325bc882a36ba456af0fbcf9620909945ebddf668bc44748a31a225c0 src/transmitter/ commands.py
+    compare_digest 1fe0fda8d611ab7db6aa2911e7f6362007b1bbd53172eb213b69f9a14bb14e87c27a9ffad6def1357b926b3b51cb429d7b8db03f54c7465f6d8c95baedc23988 src/transmitter/ commands.py
     compare_digest 74291c8b952588caf7c3c6ac3e99679eaf97ba9113bfd560da4c461e16cd36c28d78a4e8750090d18606a9c1610a1a781d37fc6fe52baf47a955e0b5ec801b97 src/transmitter/ commands_g.py
     compare_digest 3a2940afcf8752f33c8f5a06293046a83d245630dde1a6877eb3c724cb03ee7b84147b4a57a62135a32862b40db1dc6c6823bedc52404146aeb6e9ef1f79692f src/transmitter/ contact.py
     compare_digest 2e78e578e62771adf7ae9f2a576d72b69a64e6b28649361244bd7a75959f2022845d73d68c3d6a4586841bb10cce906edf1c5d863fbf99b6d081dfc030f98a3d src/transmitter/ files.py
     compare_digest 7cb9fc9d095f40ce2de6b49c9bd58b9dcab6b835fe7749dce8642c3c87b0eee10c4e53ff986c09ae26fb7b8aad7fe87c5fd56a734f2e013f69195213b9d5e9ec src/transmitter/ input_loop.py
-    compare_digest e723db5bc403cec60b7df3e34d80caa7868bed4e8f0d08a6504d060fdd6c188f4afa41ecd8feb3a6520a384ccff7f8c64efeaeddb084f825d40e1854fb528f9f src/transmitter/ key_exchanges.py
+    compare_digest 29b71c3341395eec84b5f68719cd434da5ecc8a4a7ad1da91d49a5177b50c13a7d33e4a051fa5e0dba5639b2ffabd1c0bba367af27490fc711d4a0c340ca24f8 src/transmitter/ key_exchanges.py
     compare_digest 41798dfe91868b37c130a373accac93c4200dc77bd8b6c40a38835ecf4187b955ccfaa53f842ccddf78ce5607b3e361a30a4bb53bd7cb5ab6d2fb4785454dead src/transmitter/ packet.py
-    compare_digest 3f1e7a5cb58ba8fcf0ccc66195d589ac0e34153296e2c395ca099304a99bb61c25248078dc453b3cc47e08a0b207a688b0a426d095df4a7bd235d1a95bb3c8d6 src/transmitter/ sender_loop.py
+    compare_digest 31c6bbe595a1966ce3f0396ea7bfd5a7e070b2f5dce1987de2e471fddc698159b51a60a2734be1d4921c3e66a92ca7519d99793c1e61e626bf30607f6966137a src/transmitter/ sender_loop.py
     compare_digest c5a6c85e57d4456353f89fc4b2d30fc60775511720a32287720b3b301e0d6e7539677b47c4ff8c6b6f223b93da7dfbb38d1830f43e6f25c598efd54799262956 src/transmitter/ traffic_masking.py
     compare_digest 678ae2b63667d93b1d4467d029ab04778614ddf6c09dff4bb61d262373353cd7fe6b8b535292fdf28e1be36c8b57534dee9eb745ee94c72b051798ac4e1cbccd src/transmitter/ user_input.py
     compare_digest 00e247854f067194f80c86c9a3b9fbe1975e600844a1f33af79e36618680e0c9ddebaa25ef6df1a48e324e241f2b113f719fc29a2b43626eeeba4b92bdbb8528 src/transmitter/ windows.py
@@ -228,7 +229,7 @@ function verify_tails_dependencies {
     compare_digest 313b954102231d038d52ab58f41e3642579be29f827135b8dd92c06acb362effcb0a7fd5f35de9273372b92d9fe29f38381ae44f8b41aa90d2564d6dd07ecd12 '' ${PYSOCKS}
 
     # Requests
-    compare_digest 719cfa3841d0fe7c7f0a1901b8029df6685825da7f510ba61f095df64f115fae8bfa4118fa7536231ed8187cdf3385cb2d52e53c1b35b8f4aa42f7117cc4d447 '' ${URLLIB3}
+    compare_digest f6a78508cb87050e176005a088118f8ad87b17cf541457d949e5712c356f8c4de7e7516ba066e5c4bb9ced5c7e7590ba7e07d4ae7fc7190487bf27f1bb9d0668 '' ${URLLIB3}
     compare_digest fb07dbec1de86efbad82a4f73d98123c59b083c1f1277445204bef75de99ca200377ad2f1db8924ae79b31b3dd984891c87d0a6344ec4d07a0ddbbbc655821a3 '' ${IDNA}
     compare_digest bfae58c8ea19c87cc9c9bf3d0b6146bfdb3630346bd954fe8e9f7da1f09da1fc0d6943ff04802798a665ea3b610ee2d65658ce84fe5a89f9e93625ea396a17f4 '' ${CHARDET}
     compare_digest 06e8e1546d375e528a1486e1dee4fda3e585a03ef23ede85d1dad006e0eda837ebade1edde62fdc987a7f310bda69159e94ec36b79a066e0e13bbe8bf7019cfc '' ${CERTIFI}
@@ -243,12 +244,11 @@ function verify_tails_dependencies {
     compare_digest bd49cb364307569480196289fa61fbb5493e46199620333f67617367278e1f56b20fc0d40fd540bef15642a8065e488c24e97f50535e8ec143875095157d8069 '' ${FLASK}
 
     # Cryptography
-    compare_digest 326574c7542110d2cd8071136a36a6cffc7637ba948b55e0abb7f30f3821843073223301ecbec1d48b8361b0d7ccb338725eeb0424696efedc3f6bd2a23331d3 '' ${SIX}
+    compare_digest 387d94f37a74e2d86ac0a41f482638dd9aec9e94215ffc50f314eb2f8e0cfc2f15afc3e508ea37a4fbcca7e4bcfc65efa1e5cab5f8094ccedc18bee2b0f2e3a8 '' ${SIX}
     compare_digest 7f830e1c9066ee2d297a55e2bf6db4bf6447b6d9da0145d11a88c3bb98505755fb7986eafa6e06ae0b7680838f5e5d6a6d188245ca5ad45c2a727587bac93ab5 '' ${PYCPARSER}
-    compare_digest fdefd3f63f56adff50723d6a88dc6db816d3d8a31b563599d2a3633ba796f6f70d5a9430510852b3d62b97357f8764f17eeab74b13df16c7cc34e1671a82373b '' ${CFFI}
+    compare_digest b8753a0435cc7a2176f8748badc074ec6ffab6698d6be42b1770c85871f85aa7cf60152a8be053c3031b234a286c5cef07267cb812accb704783d74a2675ed3b '' ${CFFI}
     compare_digest 184003c89fee74892de25c3e5ec366faea7a5f1fcca3c82b0d5e5f9f797286671a820ca54da5266d6f879ab342c97e25bce9db366c5fb1178690cd5978d4d622 '' ${CRYPTOGRAPHY}  # manylinux1
     # compare_digest d8ddabe127ae8d7330d219e284de68b37fa450a27b4cf05334e9115388295b00148d9861c23b1a2e5ea9df0c33a2d27f3e4b25ce9abd3c334f1979920b19c902 '' ${CRYPTOGRAPHY}  # manylinux2010
-
 
     # PyNaCl
     compare_digest c4017c38b026a5c531b15839b8d61d1fae9907ba1960c2f97f4cd67fe0827729346d5186a6d6927ba84f64b4cbfdece12b287aa7750a039f4160831be871cea3 '' ${PYNACL}
@@ -257,9 +257,9 @@ function verify_tails_dependencies {
 
 function install_tails_setuptools {
     # Download setuptools package for Tails and then authenticate and install it.
-    torsocks python3.7 -m pip download --no-cache-dir -r /opt/tfc/requirements-setuptools.txt  --require-hashes -d $HOME/
+    torsocks python3.7 -m pip download --no-cache-dir -r /opt/tfc/requirements-setuptools.txt --require-hashes --no-deps -d $HOME/
     t_sudo mv $HOME/${SETUPTOOLS} /opt/tfc/
-    compare_digest a27b38d596931dfef81d705d05689b7748ce0e02d21af4a37204fc74b0913fa7241b8135535eb7749f09af361cad90c475af98493fef11c4ad974780ee01243d '' ${SETUPTOOLS}
+    compare_digest 2e90929aa61c847e1d414d427b08403679ba5f512a56d58b92ee64d47e8a2c5da18e47126e5f59faca335b3a4b5ec9857aa323d866252546a6df42c3e3ef3884 '' ${SETUPTOOLS}
     t_sudo python3.7 -m pip install /opt/tfc/${SETUPTOOLS}
     t_sudo -E rm /opt/tfc/${SETUPTOOLS}
 }
@@ -305,8 +305,8 @@ function steps_before_network_kill {
     sudo torsocks git clone --depth 1 https://github.com/maqp/tfc.git /opt/tfc
 
     verify_tcb_requirements_files
-    sudo torsocks python3.7 -m pip download --no-cache-dir -r /opt/tfc/requirements-venv.txt --require-hashes -d /opt/tfc/
-    sudo torsocks python3.7 -m pip download --no-cache-dir -r /opt/tfc/requirements.txt      --require-hashes -d /opt/tfc/
+    sudo torsocks python3.7 -m pip download --no-cache-dir -r /opt/tfc/requirements-venv.txt --require-hashes --no-deps -d /opt/tfc/
+    sudo torsocks python3.7 -m pip download --no-cache-dir -r /opt/tfc/requirements.txt      --require-hashes --no-deps -d /opt/tfc/
 }
 
 
@@ -362,8 +362,8 @@ function install_local_test {
     sudo python3.7 -m virtualenv /opt/tfc/venv_tfc --system-site-packages
 
     . /opt/tfc/venv_tfc/bin/activate
-    sudo torsocks python3.7 -m pip install -r /opt/tfc/requirements.txt       --require-hashes
-    sudo torsocks python3.7 -m pip install -r /opt/tfc/requirements-relay.txt --require-hashes
+    sudo torsocks python3.7 -m pip install -r /opt/tfc/requirements.txt       --require-hashes --no-deps
+    sudo torsocks python3.7 -m pip install -r /opt/tfc/requirements-relay.txt --require-hashes --no-deps
     deactivate
 
     sudo mv /opt/tfc/tfc.png                                /usr/share/pixmaps/
@@ -399,7 +399,7 @@ function install_developer {
 
     torsocks git clone https://github.com/maqp/tfc.git $HOME/tfc
 
-    torsocks python3.7 -m pip install -r $HOME/tfc/requirements-venv.txt --require-hashes
+    torsocks python3.7 -m pip install -r $HOME/tfc/requirements-venv.txt --require-hashes --no-deps
 
     python3.7 -m virtualenv $HOME/tfc/venv_tfc --system-site-packages
 
@@ -435,7 +435,7 @@ function install_relay_ubuntu {
     sudo python3.7 -m virtualenv /opt/tfc/venv_relay --system-site-packages
 
     . /opt/tfc/venv_relay/bin/activate
-    sudo torsocks python3.7 -m pip install -r /opt/tfc/requirements-relay.txt --require-hashes
+    sudo torsocks python3.7 -m pip install -r /opt/tfc/requirements-relay.txt --require-hashes --no-deps
     deactivate
 
     sudo mv /opt/tfc/tfc.png                  /usr/share/pixmaps/
@@ -478,8 +478,8 @@ function install_relay_tails {
 
     install_tails_setuptools
 
-    torsocks python3.7 -m pip download --no-cache-dir -r /opt/tfc/requirements-venv.txt        --require-hashes -d $HOME/
-    torsocks python3.7 -m pip download --no-cache-dir -r /opt/tfc/requirements-relay-tails.txt --require-hashes -d $HOME/
+    torsocks python3.7 -m pip download --no-cache-dir -r /opt/tfc/requirements-venv.txt        --require-hashes --no-deps -d $HOME/
+    torsocks python3.7 -m pip download --no-cache-dir -r /opt/tfc/requirements-relay-tails.txt --require-hashes --no-deps -d $HOME/
 
     move_tails_dependencies
     verify_tails_dependencies
@@ -528,8 +528,8 @@ function install_relay {
 function install_virtualenv {
     # Some distros want virtualenv installed as sudo and other do
     # not. Install both to improve the chances of compatibility.
-    sudo torsocks python3.7 -m pip install -r /opt/tfc/requirements-venv.txt --require-hashes
-    torsocks python3.7 -m pip install -r /opt/tfc/requirements-venv.txt --require-hashes
+    sudo torsocks python3.7 -m pip install -r /opt/tfc/requirements-venv.txt --require-hashes --no-deps
+    torsocks python3.7 -m pip install -r /opt/tfc/requirements-venv.txt --require-hashes --no-deps
 }
 
 
@@ -699,9 +699,9 @@ function arg_error {
     clear
     echo -e "\nUsage: bash install.sh [OPTION]\n"
     echo    "Mandatory arguments"
-    echo    "  tcb      Install Transmitter/Receiver Program (*buntu 19.04+)"
-    echo    "  relay    Install Relay Program                (*buntu 19.04+ / Tails (Debian Buster+))"
-    echo -e "  local    Install insecure local testing mode  (*buntu 19.04+)\n"
+    echo    "  tcb      Install Transmitter/Receiver Program (*buntu 19.10+ / Debian 10 / PureOS 9.0+ )"
+    echo    "  relay    Install Relay Program                (*buntu 19.10+ / Debian 10 / PureOS 9.0+ / Tails 4.0+)"
+    echo -e "  local    Install insecure local testing mode  (*buntu 19.10+ / Debian 10 / PureOS 9.0+ )\n"
     exit 1
 }
 

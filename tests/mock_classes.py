@@ -27,6 +27,7 @@ from typing   import Generator, Iterable, List, Sized
 
 import nacl.signing
 
+from src.common.database     import TFCUnencryptedDatabase
 from src.common.db_contacts  import Contact
 from src.common.db_groups    import Group
 from src.common.db_keys      import KeySet
@@ -116,7 +117,7 @@ class ContactList(OrigContactList, Iterable, Sized):
     def __iter__(self) -> Generator:
         yield from self.contacts
 
-    def store_contacts(self):
+    def store_contacts(self, replace: bool = True):
         """Mock method."""
         pass
 
@@ -163,7 +164,7 @@ class GroupList(OrigGroupList, Iterable, Sized):
         """Mock method."""
         return len(self.groups)
 
-    def store_groups(self):
+    def store_groups(self, replace: bool = True):
         """Mock method."""
         self.store_groups_called = True
 
@@ -189,7 +190,7 @@ class KeyList(OrigKeyList):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-    def store_keys(self):
+    def store_keys(self, replace: bool = True):
         """Mock method."""
         self.store_keys_called = True
 
@@ -206,6 +207,7 @@ class MasterKey(OrigMasterKey):
         self.local_test = False
         self.master_key = bytes(SYMMETRIC_KEY_LENGTH)
         self.file_name  = f'{DIR_USER_DATA}{TX}_login_data'
+        self.database   = TFCUnencryptedDatabase(self.file_name)
 
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -278,7 +280,7 @@ class Settings(OrigSettings):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-    def store_settings(self):
+    def store_settings(self, replace: bool = True):
         """Mock method."""
         pass
 

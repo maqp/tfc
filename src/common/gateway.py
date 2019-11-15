@@ -439,8 +439,11 @@ class GatewaySettings(object):
     def store_settings(self) -> None:
         """Store serial settings in JSON format."""
         serialized = json.dumps(self, default=(lambda o: {k: self.__dict__[k] for k in self.key_list}), indent=4)
+
         with open(self.file_name, 'w+') as f:
             f.write(serialized)
+            f.flush()
+            os.fsync(f.fileno())
 
     def invalid_setting(self, key: str, json_dict: Dict[str, Union[bool, int, str]]) -> None:
         """Notify about setting an invalid value to default value."""

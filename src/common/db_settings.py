@@ -25,7 +25,7 @@ import typing
 
 from typing import Union
 
-from src.common.crypto     import auth_and_decrypt, encrypt_and_sign
+from src.common.database   import TFCDatabase
 from src.common.encoding   import bool_to_bytes, double_to_bytes, int_to_bytes
 from src.common.encoding   import bytes_to_bool, bytes_to_double, bytes_to_int
 from src.common.exceptions import CriticalError, FunctionReturn
@@ -92,6 +92,7 @@ class Settings(object):
         self.local_testing_mode = local_test
 
         self.file_name = f'{DIR_USER_DATA}{operation}_settings'
+        self.database  = TFCDatabase(self.file_name, master_key)
 
         self.all_keys = list(vars(self).keys())
         self.key_list = self.all_keys[:self.all_keys.index('master_key')]
@@ -103,7 +104,7 @@ class Settings(object):
         else:
             self.store_settings()
 
-    def store_settings(self) -> None:
+    def store_settings(self, replace: bool = True) -> None:
         """Store settings to an encrypted database.
 
         The plaintext in the encrypted database is a constant
@@ -123,18 +124,11 @@ class Settings(object):
                 raise CriticalError("Invalid attribute type in settings.")
 
         pt_bytes = b''.join(bytes_lst)
-        ct_bytes = encrypt_and_sign(pt_bytes, self.master_key.master_key)
-
-        ensure_dir(DIR_USER_DATA)
-        with open(self.file_name, 'wb+') as f:
-            f.write(ct_bytes)
+        self.database.store_database(pt_bytes, replace)
 
     def load_settings(self) -> None:
         """Load settings from the encrypted database."""
-        with open(self.file_name, 'rb') as f:
-            ct_bytes = f.read()
-
-        pt_bytes = auth_and_decrypt(ct_bytes, self.master_key.master_key, database=self.file_name)
+        pt_bytes = self.database.load_database()
 
         # Update settings based on plaintext byte string content
         for key in self.key_list:

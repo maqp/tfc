@@ -20,18 +20,23 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os.path
+import threading
+import time
 import unittest
+
+from unittest import mock
 
 from src.common.crypto   import blake2b, encrypt_and_sign
 from src.common.db_keys  import KeyList, KeySet
 from src.common.encoding import int_to_bytes
 from src.common.misc     import ensure_dir
-from src.common.statics  import (DIR_USER_DATA, INITIAL_HARAC, KDB_ADD_ENTRY_HEADER, KDB_CHANGE_MASTER_KEY_HEADER,
-                                 KDB_REMOVE_ENTRY_HEADER, KDB_UPDATE_SIZE_HEADER, KEYSET_LENGTH, LOCAL_ID, LOCAL_PUBKEY,
+from src.common.statics  import (DIR_USER_DATA, INITIAL_HARAC, KDB_ADD_ENTRY_HEADER, KDB_HALT_ACK_HEADER,
+                                 KDB_M_KEY_CHANGE_HALT_HEADER, KDB_REMOVE_ENTRY_HEADER, KDB_UPDATE_SIZE_HEADER,
+                                 KEY_MANAGEMENT_QUEUE, KEY_MGMT_ACK_QUEUE, KEYSET_LENGTH, LOCAL_ID, LOCAL_PUBKEY,
                                  POLY1305_TAG_LENGTH, RX, SYMMETRIC_KEY_LENGTH, TX, XCHACHA20_NONCE_LENGTH)
 
 from tests.mock_classes import create_keyset, MasterKey, nick_to_pub_key, Settings
-from tests.utils        import cd_unit_test, cleanup, tamper_file
+from tests.utils        import cd_unit_test, cleanup, tamper_file, gen_queue_dict
 
 
 class TestKeySet(unittest.TestCase):
@@ -176,25 +181,39 @@ class TestKeyList(unittest.TestCase):
         # Test KeySet was removed
         self.assertFalse(self.keylist.has_keyset(nick_to_pub_key('Bob')))
 
-    def test_change_master_key(self):
+    @mock.patch('builtins.input', side_effect=['test_password'])
+    def test_change_master_key(self, _):
+        # Setup
         key         = SYMMETRIC_KEY_LENGTH * b'\x01'
         master_key2 = MasterKey(master_key=key)
+        queues      = gen_queue_dict()
+
+        def queue_delayer():
+            """Place packet to queue after timer runs out."""
+            time.sleep(0.1)
+            queues[KEY_MANAGEMENT_QUEUE].put(master_key2.master_key)
+        threading.Thread(target=queue_delayer).start()
 
         # Test that new key is different from existing one
         self.assertNotEqual(key, self.master_key.master_key)
 
         # Change master key
-        self.assertIsNone(self.keylist.change_master_key(master_key2))
+        self.assertIsNone(self.keylist.change_master_key(queues))
 
         # Test that master key has changed
         self.assertEqual(self.keylist.master_key.master_key, key)
+        self.assertEqual(self.keylist.database.database_key, key)
 
-        # Test that loading of the database with new key succeeds
-        self.assertIsInstance(KeyList(master_key2, self.settings), KeyList)
+        self.assertEqual(queues[KEY_MGMT_ACK_QUEUE].get(), KDB_HALT_ACK_HEADER)
+        self.assertEqual(queues[KEY_MGMT_ACK_QUEUE].get(), key)
 
     def test_update_database(self):
+        # Setup
+        queues = gen_queue_dict()
+
+        # Test
         self.assertEqual(os.path.getsize(self.file_name), 9016)
-        self.assertIsNone(self.keylist.manage(KDB_UPDATE_SIZE_HEADER, Settings(max_number_of_contacts=100)))
+        self.assertIsNone(self.keylist.manage(queues, KDB_UPDATE_SIZE_HEADER, Settings(max_number_of_contacts=100)))
         self.assertEqual(os.path.getsize(self.file_name), 17816)
         self.assertEqual(self.keylist.settings.max_number_of_contacts, 100)
 
@@ -231,34 +250,36 @@ class TestKeyList(unittest.TestCase):
         self.assertTrue(self.keylist.has_local_keyset())
 
     def test_manage(self):
+        # Setup
+        queues = gen_queue_dict()
+
         # Test that KeySet for David does not exist
         self.assertFalse(self.keylist.has_keyset(nick_to_pub_key('David')))
 
         # Test adding KeySet
-        self.assertIsNone(self.keylist.manage(KDB_ADD_ENTRY_HEADER, nick_to_pub_key('David'),
+        self.assertIsNone(self.keylist.manage(queues, KDB_ADD_ENTRY_HEADER, nick_to_pub_key('David'),
                                               bytes(SYMMETRIC_KEY_LENGTH), bytes(SYMMETRIC_KEY_LENGTH),
                                               bytes(SYMMETRIC_KEY_LENGTH), bytes(SYMMETRIC_KEY_LENGTH)))
         self.assertTrue(self.keylist.has_keyset(nick_to_pub_key('David')))
 
         # Test removing KeySet
-        self.assertIsNone(self.keylist.manage(KDB_REMOVE_ENTRY_HEADER, nick_to_pub_key('David')))
+        self.assertIsNone(self.keylist.manage(queues, KDB_REMOVE_ENTRY_HEADER, nick_to_pub_key('David')))
         self.assertFalse(self.keylist.has_keyset(nick_to_pub_key('David')))
 
         # Test changing master key
         new_key = SYMMETRIC_KEY_LENGTH * b'\x01'
 
         self.assertNotEqual(self.master_key.master_key, new_key)
-        self.assertIsNone(self.keylist.manage(KDB_CHANGE_MASTER_KEY_HEADER, MasterKey(master_key=new_key)))
-        self.assertEqual(self.keylist.master_key.master_key, new_key)
 
-        # Test updating key_database with new settings changes database size.
-        self.assertEqual(os.path.getsize(self.file_name), 9016)
-        self.assertIsNone(self.keylist.manage(KDB_UPDATE_SIZE_HEADER, Settings(max_number_of_contacts=100)))
-        self.assertEqual(os.path.getsize(self.file_name), 17816)
+        queues[KEY_MANAGEMENT_QUEUE].put(new_key)
+        self.assertIsNone(self.keylist.manage(queues, KDB_M_KEY_CHANGE_HALT_HEADER))
+
+        self.assertEqual(self.keylist.master_key.master_key, new_key)
+        self.assertEqual(self.keylist.database.database_key, new_key)
 
         # Test invalid KeyList management command raises Critical Error
         with self.assertRaises(SystemExit):
-            self.keylist.manage('invalid_key', None)
+            self.keylist.manage(queues, 'invalid_key', None)
 
 
 if __name__ == '__main__':

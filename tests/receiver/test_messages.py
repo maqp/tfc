@@ -20,17 +20,17 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
 import base64
-import os
 import unittest
 
 from datetime import datetime
 from unittest import mock
 
+from src.common.database import MessageLog
 from src.common.encoding import bool_to_bytes
 from src.common.misc     import ensure_dir
 from src.common.statics  import (BLAKE2_DIGEST_LENGTH, DIR_USER_DATA, FILE, FILE_KEY_HEADER, GROUP_ID_LENGTH, LOCAL_ID,
-                                 LOCAL_PUBKEY, LOG_ENTRY_LENGTH, MESSAGE, MESSAGE_LENGTH, ORIGIN_CONTACT_HEADER,
-                                 ORIGIN_USER_HEADER, SYMMETRIC_KEY_LENGTH)
+                                 LOCAL_PUBKEY, MESSAGE, MESSAGE_LENGTH, ORIGIN_CONTACT_HEADER, ORIGIN_USER_HEADER,
+                                 SYMMETRIC_KEY_LENGTH)
 
 from src.receiver.messages import process_message
 from src.receiver.packet   import PacketList
@@ -72,9 +72,12 @@ class TestProcessMessage(TFCTestCase):
         self.group_id     = group_name_to_group_id('test_group')
         self.file_keys    = dict()
 
+        self.log_file         = f'{DIR_USER_DATA}{self.settings.software_operation}_logs'
+        self.tfc_log_database = MessageLog(self.log_file, self.master_key.master_key)
+
         self.group_list.get_group('test_group').log_messages = True
         self.args = (self.window_list, self.packet_list, self.contact_list, self.key_list,
-                     self.group_list, self.settings, self.master_key, self.file_keys)
+                     self.group_list, self.settings, self.file_keys, self.tfc_log_database)
 
         ensure_dir(DIR_USER_DATA)
 
@@ -114,8 +117,6 @@ class TestProcessMessage(TFCTestCase):
         for p in assembly_ct_list:
             self.assertIsNone(process_message(self.ts, p, *self.args))
 
-        self.assertEqual(os.path.getsize(self.file_name), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
-
     @mock.patch('time.sleep', return_value=None)
     def test_private_msg_from_user(self, _):
         # Setup
@@ -125,8 +126,6 @@ class TestProcessMessage(TFCTestCase):
         # Test
         for p in assembly_ct_list:
             self.assertIsNone(process_message(self.ts, p, *self.args))
-
-        self.assertEqual(os.path.getsize(self.file_name), len(assembly_ct_list) * LOG_ENTRY_LENGTH)
 
     # Whispered messages
     @mock.patch('time.sleep', return_value=None)
@@ -144,8 +143,6 @@ class TestProcessMessage(TFCTestCase):
             self.assert_fr("Whisper message complete.",
                            process_message, self.ts, p, *self.args)
 
-        self.assertEqual(os.path.getsize(self.file_name), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
-
     @mock.patch('time.sleep', return_value=None)
     def test_whisper_msg_from_user(self, _):
         # Setup
@@ -159,8 +156,6 @@ class TestProcessMessage(TFCTestCase):
         for p in assembly_ct_list[-1:]:
             self.assert_fr("Whisper message complete.", process_message, self.ts, p, *self.args)
 
-        self.assertEqual(os.path.getsize(self.file_name), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
-
     @mock.patch('time.sleep', return_value=None)
     def test_empty_whisper_msg_from_user(self, _):
         # Setup
@@ -173,8 +168,6 @@ class TestProcessMessage(TFCTestCase):
 
         for p in assembly_ct_list[-1:]:
             self.assert_fr("Whisper message complete.", process_message, self.ts, p, *self.args)
-
-        self.assertEqual(os.path.getsize(self.file_name), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
 
     # File key messages
     @mock.patch('time.sleep', return_value=None)
@@ -229,8 +222,6 @@ class TestProcessMessage(TFCTestCase):
         self.assert_fr("Error: Message from contact had an invalid header.",
                        process_message, self.ts, assembly_ct_list[0], *self.args)
 
-        self.assertEqual(os.path.getsize(self.file_name), LOG_ENTRY_LENGTH)
-
     @mock.patch('time.sleep', return_value=None)
     def test_invalid_window_raises_fr(self, _):
         # Setup
@@ -244,8 +235,6 @@ class TestProcessMessage(TFCTestCase):
         self.assert_fr("Error: Received message to an unknown group.",
                        process_message, self.ts, assembly_ct_list[0], *self.args)
 
-        self.assertEqual(os.path.getsize(self.file_name), LOG_ENTRY_LENGTH)
-
     @mock.patch('time.sleep', return_value=None)
     def test_invalid_message_raises_fr(self, _):
         # Setup
@@ -257,8 +246,6 @@ class TestProcessMessage(TFCTestCase):
         self.assert_fr("Error: Received an invalid group message.",
                        process_message, self.ts, assembly_ct_list[0], *self.args)
 
-        self.assertEqual(os.path.getsize(self.file_name), LOG_ENTRY_LENGTH)
-
     @mock.patch('time.sleep', return_value=None)
     def test_invalid_whisper_header_raises_fr(self, _):
         # Setup
@@ -269,8 +256,6 @@ class TestProcessMessage(TFCTestCase):
         # Test
         self.assert_fr("Error: Message from contact had an invalid whisper header.",
                        process_message, self.ts, assembly_ct_list[0], *self.args)
-
-        self.assertEqual(os.path.getsize(self.file_name), LOG_ENTRY_LENGTH)
 
     @mock.patch('time.sleep', return_value=None)
     def test_contact_not_in_group_raises_fr(self, _):
@@ -284,8 +269,6 @@ class TestProcessMessage(TFCTestCase):
         self.assert_fr("Error: Account is not a member of the group.",
                        process_message, self.ts, assembly_ct_list[0], *self.args)
 
-        self.assertEqual(os.path.getsize(self.file_name), LOG_ENTRY_LENGTH)
-
     @mock.patch('time.sleep', return_value=None)
     def test_normal_group_msg_from_contact(self, _):
         # Setup
@@ -296,8 +279,6 @@ class TestProcessMessage(TFCTestCase):
         for p in assembly_ct_list:
             self.assertIsNone(process_message(self.ts, p, *self.args))
 
-        self.assertEqual(os.path.getsize(self.file_name), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
-
     @mock.patch('time.sleep', return_value=None)
     def test_normal_group_msg_from_user(self, _):
         # Setup
@@ -307,8 +288,6 @@ class TestProcessMessage(TFCTestCase):
 
         for p in assembly_ct_list:
             self.assertIsNone(process_message(self.ts, p, *self.args))
-
-        self.assertEqual(os.path.getsize(self.file_name), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
 
     # Files
     @mock.patch('time.sleep', return_value=None)
@@ -325,8 +304,6 @@ class TestProcessMessage(TFCTestCase):
             self.assert_fr("File storage complete.",
                            process_message, self.ts, p, *self.args)
 
-        self.assertEqual(os.path.getsize(self.file_name), len(assembly_ct_list)*LOG_ENTRY_LENGTH)
-
     @mock.patch('time.sleep', return_value=None)
     def test_file_when_reception_is_disabled(self, _):
         # Setup
@@ -338,8 +315,6 @@ class TestProcessMessage(TFCTestCase):
         # Test
         self.assert_fr("Alert! File transmission from Alice but reception is disabled.",
                        process_message, self.ts, assembly_ct_list[0], *self.args)
-
-        self.assertEqual(os.path.getsize(self.file_name), LOG_ENTRY_LENGTH)
 
 
 if __name__ == '__main__':

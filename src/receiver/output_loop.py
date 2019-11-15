@@ -26,6 +26,7 @@ import typing
 
 from typing import Any, Dict, List, Tuple
 
+from src.common.database   import MessageLog
 from src.common.exceptions import FunctionReturn
 from src.common.output     import clear_screen
 from src.common.statics    import (COMMAND_DATAGRAM_HEADER, EXIT_QUEUE, FILE_DATAGRAM_HEADER, LOCAL_KEY_DATAGRAM_HEADER,
@@ -57,6 +58,7 @@ def output_loop(queues:       Dict[bytes, 'Queue[Any]'],
                 key_list:     'KeyList',
                 group_list:   'GroupList',
                 master_key:   'MasterKey',
+                message_log:  'MessageLog',
                 stdin_fd:     int,
                 unit_test:    bool = False
                 ) -> None:
@@ -109,7 +111,7 @@ def output_loop(queues:       Dict[bytes, 'Queue[Any]'],
                         and packet_buffer[onion_pub_key]):
                     ts, packet = packet_buffer[onion_pub_key].pop(0)
                     process_message(ts, packet, window_list, packet_list, contact_list, key_list,
-                                    group_list, settings, master_key, file_keys)
+                                    group_list, settings, file_keys, message_log)
                     continue
 
             # New messages
@@ -119,7 +121,7 @@ def output_loop(queues:       Dict[bytes, 'Queue[Any]'],
 
                 if contact_list.has_pub_key(onion_pub_key) and key_list.has_rx_mk(onion_pub_key):
                     process_message(ts, packet, window_list, packet_list, contact_list, key_list,
-                                    group_list, settings, master_key, file_keys)
+                                    group_list, settings, file_keys, message_log)
                 else:
                     packet_buffer.setdefault(onion_pub_key, []).append((ts, packet))
                 continue

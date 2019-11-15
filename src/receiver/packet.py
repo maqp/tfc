@@ -82,14 +82,34 @@ def decrypt_assembly_packet(packet:        bytes,          # Assembly packet cip
                             contact_list:  'ContactList',  # ContactList object
                             key_list:      'KeyList'       # Keylist object
                             ) -> bytes:                    # Decrypted assembly packet
-    """Decrypt assembly packet from contact/local Transmitter."""
+    """Decrypt assembly packet from contact/local Transmitter.
+
+    This function authenticates and decrypts incoming message and
+    command datagrams. This function does not authenticate/decrypt
+    incoming file and/or local key datagrams.
+
+    While all message datagrams have been implicitly assumed to have
+    originated from some contact until this point, to prevent the
+    possibility of existential forgeries, the origin of message will be
+    validated at this point with the cryptographic Poly1305-tag.
+
+    As per the cryptographic doom principle, the message will not be
+    even decrypted unless the Poly1305 tag of the ciphertext is valid.
+
+    This function also authentication of packets that handle control
+    flow of the Receiver program. Like messages, command datagrams have
+    been implicitly assumed to be commands until this point. However,
+    unless the Poly1305-tag of the purported command is found to be valid
+    with the forward secret local key, it will not be even decrypted,
+    let alone processed.
+    """
     ct_harac, ct_assemby_packet = separate_header(packet, header_length=HARAC_CT_LENGTH)
     local_window                = window_list.get_local_window()
     command                     = onion_pub_key == LOCAL_PUBKEY
 
     p_type    = "command" if command                                      else "packet"
     direction = "from"    if command or (origin == ORIGIN_CONTACT_HEADER) else "sent to"
-    nick      = contact_list.get_contact_by_pub_key(onion_pub_key).nick
+    nick      = contact_list.get_nick_by_pub_key(onion_pub_key)
 
     # Load keys
     keyset  = key_list.get_keyset(onion_pub_key)

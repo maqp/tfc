@@ -28,12 +28,13 @@ from multiprocessing import Queue
 from unittest        import mock
 from unittest.mock   import MagicMock
 
+from src.common.database import MessageLog, TFCDatabase
 from src.common.db_logs  import write_log_entry
 from src.common.encoding import int_to_bytes
 from src.common.statics  import (CH_FILE_RECV, CH_LOGGING, CH_NOTIFY, CLEAR_ENTIRE_LINE, COMMAND, CURSOR_UP_ONE_LINE,
-                                 C_L_HEADER, DISABLE, ENABLE, F_S_HEADER, LOCAL_ID, LOCAL_PUBKEY, LOG_REMOVE, MESSAGE,
-                                 ORIGIN_CONTACT_HEADER, PADDING_LENGTH, RESET, RX, SYMMETRIC_KEY_LENGTH, US_BYTE,
-                                 WIN_TYPE_CONTACT, WIN_TYPE_GROUP, WIN_UID_FILE, WIPE)
+                                 C_L_HEADER, DIR_USER_DATA, DISABLE, ENABLE, F_S_HEADER, LOCAL_ID, LOCAL_PUBKEY,
+                                 LOG_REMOVE, MESSAGE, ORIGIN_CONTACT_HEADER, PADDING_LENGTH, RESET, RX,
+                                 SYMMETRIC_KEY_LENGTH, US_BYTE, WIN_TYPE_CONTACT, WIN_TYPE_GROUP, WIN_UID_FILE, WIPE)
 
 from src.receiver.packet   import PacketList
 from src.receiver.commands import ch_contact_s, ch_master_key, ch_nick, ch_setting, contact_rem, exit_tfc, log_command
@@ -179,6 +180,8 @@ class TestLogCommand(TFCTestCase):
         self.master_key        = MasterKey(operation=RX, local_test=True)
         self.args              = (self.ts, self.window_list, self.contact_list,
                                   self.group_list, self.settings, self.master_key)
+        self.log_file          = f'{DIR_USER_DATA}{self.settings.software_operation}_logs'
+        self.tfc_log_database  = MessageLog(self.log_file, self.master_key.master_key)
 
         time_float = struct.unpack('<L', bytes.fromhex('08ceae02'))[0]
         self.time  = datetime.fromtimestamp(time_float).strftime("%H:%M:%S.%f")[:-4]
@@ -190,13 +193,17 @@ class TestLogCommand(TFCTestCase):
             os.remove('Receiver - Plaintext log (None)')
 
     def test_print(self):
+        # Setup
+        os.remove(self.log_file)
+
+        # Test
         self.assert_fr(f"No log database available.", log_command, self.cmd_data, *self.args)
 
     @mock.patch('struct.pack', return_value=bytes.fromhex('08ceae02'))
     def test_export(self, _):
         # Setup
         for p in assembly_packet_creator(MESSAGE, 'A short message'):
-            write_log_entry(p, nick_to_pub_key("Bob"), self.settings, self.master_key, origin=ORIGIN_CONTACT_HEADER)
+            write_log_entry(p, nick_to_pub_key("Bob"), self.tfc_log_database, origin=ORIGIN_CONTACT_HEADER)
 
         # Test
         self.assertIsNone(log_command(self.cmd_data, *self.args))
@@ -237,16 +244,18 @@ class TestChMasterKey(TFCTestCase):
 
     def setUp(self):
         """Pre-test actions."""
-        self.unit_test_dir = cd_unit_test()
-        self.ts            = datetime.now()
-        self.master_key    = MasterKey()
-        self.settings      = Settings()
-        self.contact_list  = ContactList(nicks=[LOCAL_ID])
-        self.window_list   = WindowList(nicks=[LOCAL_ID])
-        self.group_list    = GroupList()
-        self.key_list      = KeyList()
-        self.args          = (self.ts, self.window_list, self.contact_list, self.group_list,
-                              self.key_list, self.settings, self.master_key)
+        self.unit_test_dir    = cd_unit_test()
+        self.ts               = datetime.now()
+        self.master_key       = MasterKey()
+        self.settings         = Settings()
+        self.contact_list     = ContactList(nicks=[LOCAL_ID])
+        self.window_list      = WindowList(nicks=[LOCAL_ID])
+        self.group_list       = GroupList()
+        self.key_list         = KeyList()
+        self.args             = (self.ts, self.window_list, self.contact_list, self.group_list,
+                                 self.key_list, self.settings, self.master_key)
+        self.log_file         = f'{DIR_USER_DATA}{self.settings.software_operation}_logs'
+        self.tfc_log_database = MessageLog(self.log_file, self.master_key.master_key)
 
     def tearDown(self):
         """Post-test actions."""
@@ -257,22 +266,59 @@ class TestChMasterKey(TFCTestCase):
     @mock.patch('os.popen',                  return_value=MagicMock(
         read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemAvailable 10240"])))))
     @mock.patch('multiprocessing.cpu_count', return_value=1)
-    @mock.patch('getpass.getpass',           return_value='a')
+    @mock.patch('getpass.getpass',           side_effect=['test_password', 'a', 'a'])
     @mock.patch('time.sleep',                return_value=None)
     def test_master_key_change(self, *_):
         # Setup
-        write_log_entry(F_S_HEADER + bytes(PADDING_LENGTH), nick_to_pub_key("Alice"), self.settings, self.master_key)
+        write_log_entry(F_S_HEADER + bytes(PADDING_LENGTH), nick_to_pub_key("Alice"), self.tfc_log_database)
+
+        self.contact_list.file_name  = f'{DIR_USER_DATA}{RX}_contacts'
+        self.group_list.file_name    = f'{DIR_USER_DATA}{RX}_groups'
+        self.key_list.file_name      = f'{DIR_USER_DATA}{RX}_keys'
+        self.settings.file_name      = f'{DIR_USER_DATA}{RX}_settings'
+
+        self.contact_list.database = TFCDatabase(self.contact_list.file_name, self.contact_list.master_key)
+        self.group_list.database   = TFCDatabase(self.group_list.file_name,   self.group_list.master_key)
+        self.key_list.database     = TFCDatabase(self.key_list.file_name,     self.group_list.master_key)
+        self.settings.database     = TFCDatabase(self.settings.file_name,     self.settings.master_key)
+
+        orig_cl_rd = self.contact_list.database.replace_database
+        orig_gl_rd = self.group_list.database.replace_database
+        orig_kl_rd = self.key_list.database.replace_database
+        orig_st_rd = self.settings.database.replace_database
+
+        self.contact_list.database.replace_database = lambda: None
+        self.group_list.database.replace_database   = lambda: None
+        self.key_list.database.replace_database     = lambda: None
+        self.settings.database.replace_database     = lambda: None
 
         # Test
         self.assertEqual(self.master_key.master_key, bytes(SYMMETRIC_KEY_LENGTH))
         self.assertIsNone(ch_master_key(*self.args))
         self.assertNotEqual(self.master_key.master_key, bytes(SYMMETRIC_KEY_LENGTH))
 
+        # Teardown
+        self.contact_list.database.replace_database = orig_cl_rd
+        self.group_list.database.replace_database   = orig_gl_rd
+        self.key_list.database.replace_database     = orig_kl_rd
+        self.settings.database.replace_database     = orig_st_rd
+
+    @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.1)
+    @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 1.0)
+    @mock.patch('os.popen',                  return_value=MagicMock(
+        read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemAvailable 10240"])))))
+    @mock.patch('multiprocessing.cpu_count', return_value=1)
+    @mock.patch('getpass.getpass',           return_value='a')
+    @mock.patch('time.sleep',                return_value=None)
+    def test_invalid_password_raises_function_return(self, *_):
+        self.assertEqual(self.master_key.master_key, bytes(SYMMETRIC_KEY_LENGTH))
+        self.assert_fr("Error: Invalid password.", ch_master_key, *self.args)
+
     @mock.patch('getpass.getpass', return_value='a')
     @mock.patch('time.sleep',      return_value=None)
     @mock.patch('os.getrandom',    side_effect=KeyboardInterrupt)
     def test_keyboard_interrupt_raises_fr(self, *_):
-        self.assert_fr("Password change aborted.", ch_master_key, *self.args)
+        self.assert_fr("Error: Invalid password.", ch_master_key, *self.args)
 
 
 class TestChNick(TFCTestCase):

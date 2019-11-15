@@ -435,7 +435,7 @@ def validate_nick(nick: str,                                      # Nick to vali
 
         # Allow existing nick if it matches the account being replaced.
         if contact_list.has_pub_key(onion_pub_key):
-            if nick == contact_list.get_contact_by_pub_key(onion_pub_key).nick:
+            if nick == contact_list.get_nick_by_pub_key(onion_pub_key):
                 error_msg = ''
 
     if nick in group_list.get_list_of_group_names():

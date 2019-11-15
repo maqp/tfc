@@ -19,7 +19,7 @@ You should have received a copy of the GNU General Public License
 along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
-eff_wordlist = [
+eff_wordlist = (
 'abacus',
 'abdomen',
 'abdominal',
@@ -7796,4 +7796,4 @@ eff_wordlist = [
 'zoologist',
 'zoology',
 'zoom'
-]
+)

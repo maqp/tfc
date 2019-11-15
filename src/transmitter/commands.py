@@ -29,22 +29,24 @@ import typing
 from multiprocessing import Queue
 from typing          import Any, Dict, List, Tuple, Union
 
-from src.common.db_logs    import access_logs, change_log_db_key, remove_logs
+from src.common.db_logs    import access_logs, change_log_db_key, remove_logs, replace_log_db
+from src.common.db_keys    import KeyList
 from src.common.encoding   import b58decode, b58encode, bool_to_bytes, int_to_bytes, onion_address_to_pub_key
-from src.common.exceptions import FunctionReturn
+from src.common.exceptions import CriticalError, FunctionReturn
 from src.common.input      import yes
-from src.common.misc       import ensure_dir, get_terminal_width, validate_onion_addr
+from src.common.misc       import get_terminal_width, ignored, validate_onion_addr
 from src.common.output     import clear_screen, m_print, phase, print_on_previous_line
-from src.common.statics    import (CH_MASTER_KEY, CH_SETTING, CLEAR, CLEAR_SCREEN, COMMAND_PACKET_QUEUE, DIR_USER_DATA,
-                                   DONE, EXIT_PROGRAM, GROUP_ID_ENC_LENGTH, KDB_CHANGE_MASTER_KEY_HEADER,
+from src.common.statics    import (CH_MASTER_KEY, CH_SETTING, CLEAR, CLEAR_SCREEN, COMMAND_PACKET_QUEUE, DONE,
+                                   EXIT_PROGRAM, GROUP_ID_ENC_LENGTH, KDB_HALT_ACK_HEADER, KDB_M_KEY_CHANGE_HALT_HEADER,
                                    KDB_UPDATE_SIZE_HEADER, KEX_STATUS_UNVERIFIED, KEX_STATUS_VERIFIED,
-                                   KEY_MANAGEMENT_QUEUE, LOCAL_TESTING_PACKET_DELAY, LOGFILE_MASKING_QUEUE, LOG_DISPLAY,
-                                   LOG_EXPORT, LOG_REMOVE, MESSAGE, ONION_ADDRESS_LENGTH, RELAY_PACKET_QUEUE, RESET,
-                                   RESET_SCREEN, RX, SENDER_MODE_QUEUE, TRAFFIC_MASKING_QUEUE, TX, UNENCRYPTED_BAUDRATE,
-                                   UNENCRYPTED_DATAGRAM_HEADER, UNENCRYPTED_EC_RATIO, UNENCRYPTED_EXIT_COMMAND,
-                                   UNENCRYPTED_MANAGE_CONTACT_REQ, UNENCRYPTED_SCREEN_CLEAR, UNENCRYPTED_SCREEN_RESET,
-                                   UNENCRYPTED_WIPE_COMMAND, US_BYTE, VERSION, WIN_ACTIVITY, WIN_SELECT, WIN_TYPE_GROUP,
-                                   WIN_UID_FILE, WIN_UID_LOCAL, WIPE_USR_DATA)
+                                   KEY_MANAGEMENT_QUEUE, KEY_MGMT_ACK_QUEUE, LOCAL_TESTING_PACKET_DELAY,
+                                   LOGFILE_MASKING_QUEUE, LOG_DISPLAY, LOG_EXPORT, LOG_REMOVE, MESSAGE,
+                                   ONION_ADDRESS_LENGTH, RELAY_PACKET_QUEUE, RESET, RESET_SCREEN, RX, SENDER_MODE_QUEUE,
+                                   TRAFFIC_MASKING_QUEUE, TX, UNENCRYPTED_BAUDRATE, UNENCRYPTED_DATAGRAM_HEADER,
+                                   UNENCRYPTED_EC_RATIO, UNENCRYPTED_EXIT_COMMAND, UNENCRYPTED_MANAGE_CONTACT_REQ,
+                                   UNENCRYPTED_SCREEN_CLEAR, UNENCRYPTED_SCREEN_RESET, UNENCRYPTED_WIPE_COMMAND,
+                                   US_BYTE, VERSION, WIN_ACTIVITY, WIN_SELECT, WIN_TYPE_GROUP, WIN_UID_FILE,
+                                   WIN_UID_LOCAL, WIPE_USR_DATA)
 
 from src.transmitter.commands_g    import process_group_command
 from src.transmitter.contact       import add_new_contact, change_nick, contact_setting, remove_contact
@@ -284,10 +286,7 @@ def log_command(user_input:   'UserInput',
         raise FunctionReturn("Log file export aborted.", tail_clear=True, head=0, delay=1)
 
     if settings.ask_password_for_log_access:
-        try:
-            authenticated = master_key.load_master_key() == master_key.master_key
-        except (EOFError, KeyboardInterrupt):
-            raise FunctionReturn(f"Log file {action} aborted.", tail_clear=True, head=2, delay=1)
+        authenticated = master_key.authenticate_action()
     else:
         authenticated = True
 
@@ -430,43 +429,84 @@ def change_master_key(user_input:    'UserInput',
                       onion_service: 'OnionService'
                       ) -> None:
     """Change the master key on Transmitter/Receiver Program."""
+    if settings.traffic_masking:
+        raise FunctionReturn("Error: Command is disabled during traffic masking.", head_clear=True)
+
     try:
-        if settings.traffic_masking:
-            raise FunctionReturn("Error: Command is disabled during traffic masking.", head_clear=True)
+        device = user_input.plaintext.split()[1].lower()
+    except IndexError:
+        raise FunctionReturn(f"Error: No target-system ('{TX}' or '{RX}') specified.", head_clear=True)
 
-        try:
-            device = user_input.plaintext.split()[1].lower()
-        except IndexError:
-            raise FunctionReturn(f"Error: No target-system ('{TX}' or '{RX}') specified.", head_clear=True)
+    if device not in [TX, RX]:
+        raise FunctionReturn(f"Error: Invalid target system '{device}'.", head_clear=True)
 
-        if device not in [TX, RX]:
-            raise FunctionReturn(f"Error: Invalid target system '{device}'.", head_clear=True)
+    if device == RX:
+        queue_command(CH_MASTER_KEY, settings, queues)
+        return None
 
-        if device == RX:
-            queue_command(CH_MASTER_KEY, settings, queues)
-            return None
+    authenticated = master_key.authenticate_action()
 
+    if authenticated:
+        # Halt `sender_loop` for the duration of database re-encryption.
+        queues[KEY_MANAGEMENT_QUEUE].put((KDB_M_KEY_CHANGE_HALT_HEADER,))
+        while queues[KEY_MGMT_ACK_QUEUE].qsize() == 0:
+            time.sleep(0.001)
+        if queues[KEY_MGMT_ACK_QUEUE].get() != KDB_HALT_ACK_HEADER:
+            raise FunctionReturn("Error: Key database returned wrong signal.")
+
+        # Load old key_list from database file as it's not used on input_loop side.
+        key_list = KeyList(master_key, settings)
+
+        # Cache old master key to allow log file re-encryption.
         old_master_key = master_key.master_key[:]
-        new_master_key = master_key.master_key = master_key.new_master_key()
 
+        # Create new master key but do not store new master key data into any database.
+        new_master_key = master_key.master_key = master_key.new_master_key(replace=False)
         phase("Re-encrypting databases")
 
-        queues[KEY_MANAGEMENT_QUEUE].put((KDB_CHANGE_MASTER_KEY_HEADER, master_key))
+        # Update encryption keys for databases
+        contact_list.database.database_key  = new_master_key
+        key_list.database.database_key      = new_master_key
+        group_list.database.database_key    = new_master_key
+        settings.database.database_key      = new_master_key
+        onion_service.database.database_key = new_master_key
 
-        ensure_dir(DIR_USER_DATA)
-        if os.path.isfile(f'{DIR_USER_DATA}{settings.software_operation}_logs'):
+        # Create temp databases for each database, do not replace original.
+        with ignored(FunctionReturn):
             change_log_db_key(old_master_key, new_master_key, settings)
+        contact_list.store_contacts(replace=False)
+        key_list.store_keys(replace=False)
+        group_list.store_groups(replace=False)
+        settings.store_settings(replace=False)
+        onion_service.store_onion_service_private_key(replace=False)
 
-        contact_list.store_contacts()
-        group_list.store_groups()
-        settings.store_settings()
-        onion_service.store_onion_service_private_key()
+        # At this point all temp files exist and they have been checked to be valid by the respective
+        # temp file writing function. It's now time to create a temp file for the new master key
+        # database. Once the temp master key database is created, the `replace_database_data()` method
+        # will also run the atomic `os.replace()` command for the master key database.
+        master_key.replace_database_data()
+
+        # Next we do the atomic `os.replace()` for all other files too.
+        replace_log_db(settings)
+        contact_list.database.replace_database()
+        key_list.database.replace_database()
+        group_list.database.replace_database()
+        settings.database.replace_database()
+        onion_service.database.replace_database()
+
+        # Now all databases have been updated. It's time to let
+        # the key database know what the new master key is.
+        queues[KEY_MANAGEMENT_QUEUE].put(new_master_key)
+
+        # We then wait for the key database to acknowledge
+        # it has successfully replaced the master key.
+        while queues[KEY_MGMT_ACK_QUEUE].qsize() == 0:
+            time.sleep(0.001)
+        if queues[KEY_MGMT_ACK_QUEUE].get() != new_master_key:
+            raise CriticalError("Key database failed to install new master key.")
 
         phase(DONE)
         m_print("Master key successfully changed.", bold=True, tail_clear=True, delay=1, head=1)
-
-    except (EOFError, KeyboardInterrupt):
-        raise FunctionReturn("Password change aborted.", tail_clear=True, delay=1, head=2)
 
 
 def remove_log(user_input:   'UserInput',
@@ -548,12 +588,7 @@ def change_setting(user_input:   'UserInput',
         raise FunctionReturn("Error: Serial interface setting can only be changed manually.", head_clear=True)
 
     if setting == 'ask_password_for_log_access':
-        try:
-            authenticated = master_key.load_master_key() == master_key.master_key
-        except (EOFError, KeyboardInterrupt):
-            raise FunctionReturn(f"Setting change aborted.", tail_clear=True, head=2, delay=1)
-
-        if not authenticated:
+        if not master_key.authenticate_action():
             raise FunctionReturn("Error: No permission to change setting.", head_clear=True)
 
     # Change the setting

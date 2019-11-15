@@ -25,7 +25,7 @@ import typing
 
 from typing import Callable, Iterable, Iterator, List, Sized
 
-from src.common.crypto      import auth_and_decrypt, encrypt_and_sign
+from src.common.database    import TFCDatabase
 from src.common.db_contacts import Contact
 from src.common.encoding    import bool_to_bytes, int_to_bytes, str_to_bytes, onion_address_to_pub_key, b58encode
 from src.common.encoding    import bytes_to_bool, bytes_to_int, bytes_to_str
@@ -213,11 +213,11 @@ class GroupList(Iterable[Group], Sized):
                  contact_list: 'ContactList'
                  ) -> None:
         """Create a new GroupList object."""
-        self.master_key   = master_key
         self.settings     = settings
         self.contact_list = contact_list
         self.groups       = []  # type: List[Group]
         self.file_name    = f'{DIR_USER_DATA}{settings.software_operation}_groups'
+        self.database     = TFCDatabase(self.file_name, master_key)
 
         ensure_dir(DIR_USER_DATA)
         if os.path.isfile(self.file_name):
@@ -233,7 +233,7 @@ class GroupList(Iterable[Group], Sized):
         """Return the number of Group objects in `self.groups`."""
         return len(self.groups)
 
-    def store_groups(self) -> None:
+    def store_groups(self, replace: bool = True) -> None:
         """Write the list of groups to an encrypted database.
 
         This function will first generate a header that stores
@@ -255,11 +255,7 @@ class GroupList(Iterable[Group], Sized):
         """
         pt_bytes  = self._generate_group_db_header()
         pt_bytes += b''.join([g.serialize_g() for g in (self.groups + self._dummy_groups())])
-        ct_bytes  = encrypt_and_sign(pt_bytes, self.master_key.master_key)
-
-        ensure_dir(DIR_USER_DATA)
-        with open(self.file_name, 'wb+') as f:
-            f.write(ct_bytes)
+        self.database.store_database(pt_bytes, replace)
 
     def _load_groups(self) -> None:
         """Load groups from the encrypted database.
@@ -274,9 +270,7 @@ class GroupList(Iterable[Group], Sized):
         obtain data required to create Group objects. Finally, if
         needed, the function will update the group database content.
         """
-        with open(self.file_name, 'rb') as f:
-            ct_bytes = f.read()
-        pt_bytes = auth_and_decrypt(ct_bytes, self.master_key.master_key, database=self.file_name)
+        pt_bytes = self.database.load_database()
 
         # Slice and decode headers
         group_db_headers, pt_bytes = separate_header(pt_bytes, GROUP_DB_HEADER_LENGTH)

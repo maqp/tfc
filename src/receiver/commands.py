@@ -24,19 +24,19 @@ import typing
 
 from typing import Any, Dict, Union
 
-from src.common.db_logs    import access_logs, change_log_db_key, remove_logs
+from src.common.db_logs    import access_logs, change_log_db_key, remove_logs, replace_log_db
 from src.common.encoding   import bytes_to_int, pub_key_to_short_address
 from src.common.exceptions import FunctionReturn
-from src.common.misc       import ensure_dir, separate_header
+from src.common.misc       import ignored, separate_header
 from src.common.output     import clear_screen, m_print, phase, print_on_previous_line
 from src.common.statics    import (CH_FILE_RECV, CH_LOGGING, CH_MASTER_KEY, CH_NICKNAME, CH_NOTIFY, CH_SETTING,
-                                   CLEAR_SCREEN, COMMAND, CONTACT_REM, CONTACT_SETTING_HEADER_LENGTH, DIR_USER_DATA,
-                                   DISABLE, DONE, ENABLE, ENCODED_INTEGER_LENGTH, ENCRYPTED_COMMAND_HEADER_LENGTH, EXIT,
-                                   EXIT_PROGRAM, GROUP_ADD, GROUP_CREATE, GROUP_DELETE, GROUP_REMOVE, GROUP_RENAME,
-                                   KEY_EX_ECDHE, KEY_EX_PSK_RX, KEY_EX_PSK_TX, LOCAL_KEY_RDY, LOCAL_PUBKEY, LOG_DISPLAY,
-                                   LOG_EXPORT, LOG_REMOVE, ONION_SERVICE_PUBLIC_KEY_LENGTH, ORIGIN_USER_HEADER, RESET,
-                                   RESET_SCREEN, US_BYTE, WIN_ACTIVITY, WIN_SELECT, WIN_TYPE_CONTACT, WIN_TYPE_GROUP,
-                                   WIN_UID_FILE, WIN_UID_LOCAL, WIPE, WIPE_USR_DATA)
+                                   CLEAR_SCREEN, COMMAND, CONTACT_REM, CONTACT_SETTING_HEADER_LENGTH, DISABLE, DONE,
+                                   ENABLE, ENCODED_INTEGER_LENGTH, ENCRYPTED_COMMAND_HEADER_LENGTH, EXIT, EXIT_PROGRAM,
+                                   GROUP_ADD, GROUP_CREATE, GROUP_DELETE, GROUP_REMOVE, GROUP_RENAME, KEY_EX_ECDHE,
+                                   KEY_EX_PSK_RX, KEY_EX_PSK_TX, LOCAL_KEY_RDY, LOCAL_PUBKEY, LOG_DISPLAY, LOG_EXPORT,
+                                   LOG_REMOVE, ONION_SERVICE_PUBLIC_KEY_LENGTH, ORIGIN_USER_HEADER, RESET, RESET_SCREEN,
+                                   US_BYTE, WIN_ACTIVITY, WIN_SELECT, WIN_TYPE_CONTACT, WIN_TYPE_GROUP, WIN_UID_FILE,
+                                   WIN_UID_LOCAL, WIPE, WIPE_USR_DATA)
 
 from src.receiver.commands_g    import group_add, group_create, group_delete, group_remove, group_rename
 from src.receiver.key_exchanges import key_ex_ecdhe, key_ex_psk_rx, key_ex_psk_tx, local_key_rdy
@@ -198,30 +198,48 @@ def ch_master_key(ts:           'datetime',
                   master_key:   'MasterKey'
                   ) -> None:
     """Prompt the user for a new master password and derive a new master key from that."""
-    try:
-        old_master_key        = master_key.master_key[:]
-        master_key.master_key = master_key.new_master_key()
+    if not master_key.authenticate_action():
+        raise FunctionReturn("Error: Invalid password.", tail_clear=True, delay=1, head=2)
 
-        phase("Re-encrypting databases")
+    # Cache old master key to allow log file re-encryption.
+    old_master_key = master_key.master_key[:]
 
-        ensure_dir(DIR_USER_DATA)
-        file_name = f'{DIR_USER_DATA}{settings.software_operation}_logs'
-        if os.path.isfile(file_name):
-            change_log_db_key(old_master_key, master_key.master_key, settings)
+    # Create new master key but do not store new master key data into any database.
+    new_master_key = master_key.master_key = master_key.new_master_key(replace=False)
+    phase("Re-encrypting databases")
 
-        key_list.store_keys()
-        settings.store_settings()
-        contact_list.store_contacts()
-        group_list.store_groups()
+    # Update encryption keys for databases
+    contact_list.database.database_key = new_master_key
+    key_list.database.database_key     = new_master_key
+    group_list.database.database_key   = new_master_key
+    settings.database.database_key     = new_master_key
 
-        phase(DONE)
-        m_print("Master password successfully changed.", bold=True, tail_clear=True, delay=1, head=1)
+    # Create temp databases for each database, do not replace original.
+    with ignored(FunctionReturn):
+        change_log_db_key(old_master_key, new_master_key, settings)
+    contact_list.store_contacts(replace=False)
+    key_list.store_keys(replace=False)
+    group_list.store_groups(replace=False)
+    settings.store_settings(replace=False)
 
-        local_win = window_list.get_local_window()
-        local_win.add_new(ts, "Changed Receiver master password.")
+    # At this point all temp files exist and they have been checked to be valid by the respective
+    # temp file writing function. It's now time to create a temp file for the new master key
+    # database. Once the temp master key database is created, the `replace_database_data()` method
+    # will also run the atomic `os.replace()` command for the master key database.
+    master_key.replace_database_data()
 
-    except (EOFError, KeyboardInterrupt):
-        raise FunctionReturn("Password change aborted.", tail_clear=True, delay=1, head=2)
+    # Next we do the atomic `os.replace()` for all other files too.
+    replace_log_db(settings)
+    contact_list.database.replace_database()
+    key_list.database.replace_database()
+    group_list.database.replace_database()
+    settings.database.replace_database()
+
+    phase(DONE)
+    m_print("Master password successfully changed.", bold=True, tail_clear=True, delay=1, head=1)
+
+    local_win = window_list.get_local_window()
+    local_win.add_new(ts, "Changed Receiver master password.")
 
 
 def ch_nick(cmd_data:     bytes,

@@ -1,2 +1,2 @@
 # Setuptools (Allows installation of pycparser which is a sub-dependency of the cryptography and PyNaCl packages)
-setuptools==41.4.0  --hash=sha512:a27b38d596931dfef81d705d05689b7748ce0e02d21af4a37204fc74b0913fa7241b8135535eb7749f09af361cad90c475af98493fef11c4ad974780ee01243d  # Tails4: 40.8.0      OnionShare2: -
+setuptools==41.6.0  --hash=sha512:2e90929aa61c847e1d414d427b08403679ba5f512a56d58b92ee64d47e8a2c5da18e47126e5f59faca335b3a4b5ec9857aa323d866252546a6df42c3e3ef3884  # Tails4: 40.8.0      OnionShare2: -

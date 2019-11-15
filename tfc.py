@@ -26,6 +26,7 @@ from multiprocessing import Process, Queue
 from typing          import Any, Dict
 
 from src.common.crypto       import check_kernel_version
+from src.common.database     import MessageLog
 from src.common.db_contacts  import ContactList
 from src.common.db_groups    import GroupList
 from src.common.db_keys      import KeyList
@@ -36,8 +37,8 @@ from src.common.db_settings  import Settings
 from src.common.gateway      import Gateway, gateway_loop
 from src.common.misc         import ensure_dir, monitor_processes, process_arguments
 from src.common.output       import print_title
-from src.common.statics      import (COMMAND_DATAGRAM_HEADER, COMMAND_PACKET_QUEUE, DIR_TFC, EXIT_QUEUE,
-                                     FILE_DATAGRAM_HEADER, GATEWAY_QUEUE, KEY_MANAGEMENT_QUEUE,
+from src.common.statics      import (COMMAND_DATAGRAM_HEADER, COMMAND_PACKET_QUEUE, DIR_TFC, EXIT_QUEUE, DIR_USER_DATA,
+                                     FILE_DATAGRAM_HEADER, GATEWAY_QUEUE, KEY_MANAGEMENT_QUEUE, KEY_MGMT_ACK_QUEUE,
                                      LOCAL_KEY_DATAGRAM_HEADER, LOGFILE_MASKING_QUEUE, LOG_PACKET_QUEUE,
                                      LOG_SETTING_QUEUE, MESSAGE_DATAGRAM_HEADER, MESSAGE_PACKET_QUEUE,
                                      RELAY_PACKET_QUEUE, SENDER_MODE_QUEUE, TM_COMMAND_PACKET_QUEUE,
@@ -106,6 +107,7 @@ def main() -> None:
     contact_list = ContactList(master_key, settings)
     key_list     = KeyList(    master_key, settings)
     group_list   = GroupList(  master_key, settings, contact_list)
+    message_log  = MessageLog(f'{DIR_USER_DATA}{settings.software_operation}_logs', master_key.master_key)
 
     if settings.software_operation == TX:
         onion_service = OnionService(master_key)
@@ -123,6 +125,7 @@ def main() -> None:
                   TRAFFIC_MASKING_QUEUE:   Queue(),  # `log_writer_loop` traffic masking setting management commands
                   LOGFILE_MASKING_QUEUE:   Queue(),  # `log_writer_loop` logfile masking setting management commands
                   KEY_MANAGEMENT_QUEUE:    Queue(),  # `sender_loop` key database management commands
+                  KEY_MGMT_ACK_QUEUE:      Queue(),  # `sender_loop` key management ACK messages to `input_loop`
                   SENDER_MODE_QUEUE:       Queue(),  # `sender_loop` default/traffic masking mode switch commands
                   WINDOW_SELECT_QUEUE:     Queue(),  # `sender_loop` window selection commands during traffic masking
                   EXIT_QUEUE:              Queue()   # EXIT/WIPE signal from `input_loop` to `main`
@@ -131,7 +134,7 @@ def main() -> None:
         process_list = [Process(target=input_loop,      args=(queues, settings, gateway, contact_list, group_list,
                                                               master_key, onion_service, sys.stdin.fileno())),
                         Process(target=sender_loop,     args=(queues, settings, gateway, key_list)),
-                        Process(target=log_writer_loop, args=(queues, settings)),
+                        Process(target=log_writer_loop, args=(queues, settings, message_log)),
                         Process(target=noise_loop,      args=(queues, contact_list)),
                         Process(target=noise_loop,      args=(queues,))]
 
@@ -147,7 +150,7 @@ def main() -> None:
         process_list = [Process(target=gateway_loop,  args=(queues, gateway)),
                         Process(target=receiver_loop, args=(queues, gateway)),
                         Process(target=output_loop,   args=(queues, gateway, settings, contact_list, key_list,
-                                                            group_list, master_key, sys.stdin.fileno()))]
+                                                            group_list, master_key, message_log, sys.stdin.fileno()))]
 
     for p in process_list:
         p.start()

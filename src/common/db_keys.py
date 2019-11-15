@@ -20,24 +20,27 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+import time
 import typing
 
-from typing import Any, Callable, List
+from typing import Any, Callable, Dict, List
 
-from src.common.crypto     import auth_and_decrypt, blake2b, csprng, encrypt_and_sign
+from src.common.crypto     import blake2b, csprng
+from src.common.database   import TFCDatabase
 from src.common.encoding   import int_to_bytes, onion_address_to_pub_key
 from src.common.encoding   import bytes_to_int
 from src.common.exceptions import CriticalError
 from src.common.misc       import ensure_dir, separate_headers, split_byte_string
 from src.common.statics    import (DIR_USER_DATA, DUMMY_CONTACT, HARAC_LENGTH, INITIAL_HARAC, KDB_ADD_ENTRY_HEADER,
-                                   KDB_CHANGE_MASTER_KEY_HEADER, KDB_REMOVE_ENTRY_HEADER, KDB_UPDATE_SIZE_HEADER,
-                                   KEYSET_LENGTH, LOCAL_PUBKEY, ONION_SERVICE_PUBLIC_KEY_LENGTH, RX,
-                                   SYMMETRIC_KEY_LENGTH, TX)
+                                   KDB_HALT_ACK_HEADER, KDB_M_KEY_CHANGE_HALT_HEADER, KDB_REMOVE_ENTRY_HEADER,
+                                   KDB_UPDATE_SIZE_HEADER, KEY_MANAGEMENT_QUEUE, KEY_MGMT_ACK_QUEUE, KEYSET_LENGTH,
+                                   LOCAL_PUBKEY, ONION_SERVICE_PUBLIC_KEY_LENGTH, RX, SYMMETRIC_KEY_LENGTH, TX)
 
 if typing.TYPE_CHECKING:
+    from multiprocessing         import Queue
     from src.common.db_masterkey import MasterKey
     from src.common.db_settings  import Settings
-
+    QueueDict = Dict[bytes, Queue[Any]]
 
 class KeySet(object):
     """\
@@ -183,6 +186,7 @@ class KeyList(object):
         self.dummy_keyset = self.generate_dummy_keyset()
         self.dummy_id     = self.dummy_keyset.onion_pub_key
         self.file_name    = f'{DIR_USER_DATA}{settings.software_operation}_keys'
+        self.database     = TFCDatabase(self.file_name, master_key)
 
         ensure_dir(DIR_USER_DATA)
         if os.path.isfile(self.file_name):
@@ -190,7 +194,7 @@ class KeyList(object):
         else:
             self.store_keys()
 
-    def store_keys(self) -> None:
+    def store_keys(self, replace: bool = True) -> None:
         """Write the list of KeySet objects to an encrypted database.
 
         This function will first create a list of KeySets and dummy
@@ -206,11 +210,7 @@ class KeyList(object):
         size of the final database is 9016 bytes.
         """
         pt_bytes = b''.join([k.serialize_k() for k in self.keysets + self._dummy_keysets()])
-        ct_bytes = encrypt_and_sign(pt_bytes, self.master_key.master_key)
-
-        ensure_dir(DIR_USER_DATA)
-        with open(self.file_name, 'wb+') as f:
-            f.write(ct_bytes)
+        self.database.store_database(pt_bytes, replace)
 
     def _load_keys(self) -> None:
         """Load KeySets from the encrypted database.
@@ -223,10 +223,7 @@ class KeyList(object):
         populate the `self.keysets` list with KeySet objects, the data
         of which is sliced and decoded from the dummy-free blocks.
         """
-        with open(self.file_name, 'rb') as f:
-            ct_bytes = f.read()
-
-        pt_bytes  = auth_and_decrypt(ct_bytes, self.master_key.master_key, database=self.file_name)
+        pt_bytes  = self.database.load_database()
         blocks    = split_byte_string(pt_bytes, item_len=KEYSET_LENGTH)
         df_blocks = [b for b in blocks if not b.startswith(self.dummy_id)]
 
@@ -312,10 +309,24 @@ class KeyList(object):
                 self.store_keys()
                 break
 
-    def change_master_key(self, master_key: 'MasterKey') -> None:
+    def change_master_key(self, queues: 'QueueDict') -> None:
         """Change the master key and encrypt the database with the new key."""
-        self.master_key = master_key
-        self.store_keys()
+        key_queue = queues[KEY_MANAGEMENT_QUEUE]
+        ack_queue = queues[KEY_MGMT_ACK_QUEUE]
+
+        # Halt sender loop here until keys have been replaced by the
+        # `input_loop` process, and new master key is delivered.
+        ack_queue.put(KDB_HALT_ACK_HEADER)
+        while key_queue.qsize() == 0:
+            time.sleep(0.001)
+        new_master_key = key_queue.get()
+
+        # Replace master key.
+        self.database.database_key = new_master_key
+        self.master_key.master_key = new_master_key
+
+        # Send new master key back to `input_loop` process to verify it was received.
+        ack_queue.put(new_master_key)
 
     def update_database(self, settings: 'Settings') -> None:
         """Update settings and database size."""
@@ -353,7 +364,7 @@ class KeyList(object):
         """Return True if local KeySet object exists, else False."""
         return any(k.onion_pub_key == LOCAL_PUBKEY for k in self.keysets)
 
-    def manage(self, command: str, *params: Any) -> None:
+    def manage(self, queues: 'QueueDict', command: str, *params: Any) -> None:
         """Manage KeyList based on a command.
 
         The command is delivered from `input_process` to `sender_loop`
@@ -363,9 +374,9 @@ class KeyList(object):
             self.add_keyset(*params)
         elif command == KDB_REMOVE_ENTRY_HEADER:
             self.remove_keyset(*params)
-        elif command == KDB_CHANGE_MASTER_KEY_HEADER:
-            self.change_master_key(*params)
+        elif command == KDB_M_KEY_CHANGE_HALT_HEADER:
+            self.change_master_key(queues)
         elif command == KDB_UPDATE_SIZE_HEADER:
             self.update_database(*params)
         else:
-            raise CriticalError("Invalid KeyList management command.")
+            raise CriticalError(f"Invalid KeyList management command '{command}'.")

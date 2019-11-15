@@ -30,9 +30,10 @@ from unittest      import mock
 from unittest.mock import MagicMock
 
 from src.common.crypto   import blake2b, encrypt_and_sign
+from src.common.database import MessageLog
 from src.common.encoding import b58encode, bool_to_bytes, int_to_bytes, str_to_bytes
-from src.common.statics  import (CH_FILE_RECV, COMMAND, COMMAND_DATAGRAM_HEADER, CONFIRM_CODE_LENGTH, ENABLE, EXIT,
-                                 FILE_DATAGRAM_HEADER, FILE_KEY_HEADER, INITIAL_HARAC, KEY_EX_ECDHE,
+from src.common.statics  import (CH_FILE_RECV, COMMAND, COMMAND_DATAGRAM_HEADER, CONFIRM_CODE_LENGTH, DIR_USER_DATA,
+                                 ENABLE, EXIT, FILE_DATAGRAM_HEADER, FILE_KEY_HEADER, INITIAL_HARAC, KEY_EX_ECDHE,
                                  LOCAL_KEY_DATAGRAM_HEADER, MESSAGE, MESSAGE_DATAGRAM_HEADER, ORIGIN_CONTACT_HEADER,
                                  PRIVATE_MESSAGE_HEADER, SYMMETRIC_KEY_LENGTH, UNIT_TEST_QUEUE, US_BYTE, WIN_SELECT,
                                  WIN_UID_FILE, WIN_UID_LOCAL)
@@ -42,7 +43,7 @@ from src.transmitter.packet import split_to_assembly_packets
 from src.receiver.output_loop import output_loop
 
 from tests.mock_classes import ContactList, Gateway, GroupList, KeyList, MasterKey, nick_to_pub_key, Settings
-from tests.utils        import gen_queue_dict, tear_queues
+from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, tear_queues
 
 
 def rotate_key(key: bytes, harac: int) -> Tuple[bytes, int]:
@@ -54,12 +55,14 @@ class TestOutputLoop(unittest.TestCase):
 
     def setUp(self):
         """Pre-test actions."""
-        self.o_sleep = time.sleep
-        time.sleep   = lambda _: None
+        self.unit_test_dir = cd_unit_test()
+        self.o_sleep       = time.sleep
+        time.sleep         = lambda _: None
 
     def tearDown(self):
         """Post-test actions."""
         time.sleep = self.o_sleep
+        cleanup(self.unit_test_dir)
 
     @mock.patch('tkinter.Tk',     return_value=MagicMock())
     @mock.patch('os.system',      return_value=None)
@@ -73,7 +76,7 @@ class TestOutputLoop(unittest.TestCase):
         conf_code  = bytes(1)
         tx_pub_key = nick_to_pub_key('Bob')
         o_sleep    = self.o_sleep
-        test_delay = 0.1
+        test_delay = 0.2
 
         def queue_packet(mk, hk, tx_harac, packet, onion_pub_key=None):
             """Create encrypted datagram."""
@@ -159,8 +162,12 @@ class TestOutputLoop(unittest.TestCase):
         threading.Thread(target=queue_delayer).start()
 
         # Test
-        self.assertIsNone(output_loop(queues, Gateway(), Settings(), ContactList(), KeyList(),
-                                      GroupList(), MasterKey(), stdin_fd=1, unit_test=True))
+        master_key  = MasterKey()
+        settings    = Settings()
+        message_log = MessageLog(f'{DIR_USER_DATA}{settings.software_operation}_logs', master_key.master_key)
+
+        self.assertIsNone(output_loop(queues, Gateway(), settings, ContactList(), KeyList(),
+                                      GroupList(), master_key, message_log, stdin_fd=1, unit_test=True))
 
         # Teardown
         tear_queues(queues)
