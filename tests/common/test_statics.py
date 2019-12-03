@@ -24,14 +24,17 @@ import unittest
 import src.common.statics
 
 from src.common.encoding import onion_address_to_pub_key
-from src.common.misc     import validate_onion_addr
+from src.common.misc import validate_onion_addr
 
 
 class TestStatics(unittest.TestCase):
-
-    def test_uniqueness(self):
-        variable_list = [getattr(src.common.statics, i) for i in dir(src.common.statics) if not i.startswith('__')]
-        variable_list = [v for v in variable_list if (isinstance(v, str) or isinstance(v, bytes))]
+    def test_uniqueness(self) -> None:
+        variable_list = [
+            getattr(src.common.statics, i)
+            for i in dir(src.common.statics)
+            if not i.startswith("__")
+        ]
+        variable_list = [v for v in variable_list if (isinstance(v, (bytes, str)))]
 
         # Debugger
         for unique_variable in list(set(variable_list)):
@@ -40,15 +43,22 @@ class TestStatics(unittest.TestCase):
                 if variable == unique_variable:
                     repeats += 1
             if repeats > 1:
-                spacing = (3 - len(unique_variable)) * ' '
-                print(f"Setting value '{unique_variable}'{spacing} appeared in {repeats} variables: ", end='')
-                items = [i for i in dir(src.common.statics)
-                         if not i.startswith('__') and getattr(src.common.statics, i) == unique_variable]
-                print(', '.join(items))
+                spacing = (3 - len(unique_variable)) * " "
+                print(
+                    f"Setting value '{unique_variable}'{spacing} appeared in {repeats} variables: ",
+                    end="",
+                )
+                items = [
+                    i
+                    for i in dir(src.common.statics)
+                    if not i.startswith("__")
+                    and getattr(src.common.statics, i) == unique_variable
+                ]
+                print(", ".join(items))
 
         self.assertEqual(len(list(set(variable_list))), len(variable_list))
 
-    def test_group_id_length_is_not_same_as_onion_service_pub_key_length(self):
+    def test_group_id_length_is_not_same_as_onion_service_pub_key_length(self) -> None:
         """\
         In current implementation, `src.common.db_logs.remove_logs`
         determines the type of data to be removed from the length of
@@ -57,49 +67,59 @@ class TestStatics(unittest.TestCase):
         able to distinguish what type of entries (contacts or group
         logs) should be removed from the database.
         """
-        self.assertNotEqual(src.common.statics.ONION_SERVICE_PUBLIC_KEY_LENGTH,
-                            src.common.statics.GROUP_ID_LENGTH)
+        self.assertNotEqual(
+            src.common.statics.ONION_SERVICE_PUBLIC_KEY_LENGTH,
+            src.common.statics.GROUP_ID_LENGTH,
+        )
 
-    def test_reserved_accounts_are_valid(self):
+    def test_reserved_accounts_are_valid(self) -> None:
         """\
         Each used account placeholder should be a valid, but reserved
         account.
         """
-        reserved_accounts = [src.common.statics.LOCAL_ID,
-                             src.common.statics.DUMMY_CONTACT,
-                             src.common.statics.DUMMY_MEMBER]
+        reserved_accounts = [
+            src.common.statics.LOCAL_ID,
+            src.common.statics.DUMMY_CONTACT,
+            src.common.statics.DUMMY_MEMBER,
+        ]
 
         for account in reserved_accounts:
-            self.assertEqual(validate_onion_addr(account), "Error: Can not add reserved account.")
+            self.assertEqual(
+                validate_onion_addr(account), "Error: Can not add reserved account."
+            )
 
         # Test each account is unique.
-        self.assertEqual(len(reserved_accounts),
-                         len(set(reserved_accounts)))
+        self.assertEqual(len(reserved_accounts), len(set(reserved_accounts)))
 
-    def test_local_pubkey(self):
+    def test_local_pubkey(self) -> None:
         """Test that local key's reserved public key is valid."""
-        self.assertEqual(src.common.statics.LOCAL_PUBKEY,
-                         onion_address_to_pub_key(src.common.statics.LOCAL_ID))
+        self.assertEqual(
+            src.common.statics.LOCAL_PUBKEY,
+            onion_address_to_pub_key(src.common.statics.LOCAL_ID),
+        )
 
-    def test_group_management_header_length_matches_datagram_header_length(self):
+    def test_group_management_header_length_matches_datagram_header_length(
+        self,
+    ) -> None:
         """
         As group management messages are handled as messages available
         to Relay Program, the header should be the same as any datagrams
         handled by the Relay program.
         """
-        self.assertEqual(src.common.statics.GROUP_MGMT_HEADER_LENGTH,
-                         src.common.statics.DATAGRAM_HEADER_LENGTH)
+        self.assertEqual(
+            src.common.statics.GROUP_MGMT_HEADER_LENGTH,
+            src.common.statics.DATAGRAM_HEADER_LENGTH,
+        )
 
-    def test_key_exchanges_start_with_different_letter(self):
+    def test_key_exchanges_start_with_different_letter(self) -> None:
         """
         Key exchange can be selected by entering just X to represent
         X448 or P to represent X448. This test detects if selection
         names would ever be set to something like PUBLIC and PSK
         that both start with P.
         """
-        self.assertNotEqual(src.common.statics.ECDHE[:1],
-                            src.common.statics.PSK[:1])
+        self.assertNotEqual(src.common.statics.ECDHE[:1], src.common.statics.PSK[:1])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(exit=False)

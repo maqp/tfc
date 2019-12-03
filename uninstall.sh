@@ -23,7 +23,7 @@ function yn_prompt {
 
     if [[ $REPLY =~ ^[Yy]$ ]]
     then
-        eval $2
+        eval "${2}"
     fi
 }
 

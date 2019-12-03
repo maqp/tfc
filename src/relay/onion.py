@@ -29,7 +29,7 @@ import tempfile
 import time
 import typing
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 import nacl.signing
 
@@ -38,26 +38,38 @@ import stem.process
 
 from stem.control import Controller
 
-from src.common.encoding   import pub_key_to_onion_address
+from src.common.encoding import pub_key_to_onion_address
 from src.common.exceptions import CriticalError
-from src.common.output     import m_print, rp_print
-from src.common.statics    import (EXIT, EXIT_QUEUE, ONION_CLOSE_QUEUE, ONION_KEY_QUEUE,
-                                   ONION_SERVICE_PRIVATE_KEY_LENGTH, TOR_CONTROL_PORT, TOR_DATA_QUEUE, TOR_SOCKS_PORT)
+from src.common.output import m_print, rp_print
+from src.common.statics import (
+    EXIT,
+    EXIT_QUEUE,
+    ONION_CLOSE_QUEUE,
+    ONION_KEY_QUEUE,
+    ONION_SERVICE_PRIVATE_KEY_LENGTH,
+    TOR_CONTROL_PORT,
+    TOR_DATA_QUEUE,
+    TOR_SOCKS_PORT,
+)
 
 if typing.TYPE_CHECKING:
     from multiprocessing import Queue
 
+    QueueDict = Dict[bytes, Queue[Any]]
+
 
 def get_available_port(min_port: int, max_port: int) -> int:
     """Find a random available port within the given range."""
+    sys_rand = random.SystemRandom()
+
     with socket.socket() as temp_sock:
         while True:
             try:
-                temp_sock.bind(('127.0.0.1', random.randint(min_port, max_port)))
+                temp_sock.bind(("127.0.0.1", sys_rand.randint(min_port, max_port)))
                 break
             except OSError:
                 pass
-        _, port = temp_sock.getsockname()  # type: Any, int
+        _, port = temp_sock.getsockname()  # type: str, int
 
     if Tor.platform_is_tails():
         return TOR_SOCKS_PORT
@@ -70,12 +82,12 @@ class Tor(object):
 
     def __init__(self) -> None:
         self.tor_process = None  # type: Optional[Any]
-        self.controller  = None  # type: Optional[Controller]
+        self.controller = None  # type: Optional[Controller]
 
     @staticmethod
     def platform_is_tails() -> bool:
         """Return True if Relay Program is running on Tails."""
-        with open('/etc/os-release') as f:
+        with open("/etc/os-release") as f:
             data = f.read()
         return 'TAILS_PRODUCT_NAME="Tails"' in data
 
@@ -91,29 +103,17 @@ class Tor(object):
             return None
 
         tor_data_directory = tempfile.TemporaryDirectory()
-        tor_control_socket = os.path.join(tor_data_directory.name, 'control_socket')
+        tor_control_socket = os.path.join(tor_data_directory.name, "control_socket")
 
-        if not os.path.isfile('/usr/bin/tor'):
+        if not os.path.isfile("/usr/bin/tor"):
             raise CriticalError("Check that Tor is installed.")
 
-        while True:
-            try:
-                self.tor_process = stem.process.launch_tor_with_config(
-                    config={'DataDirectory':   tor_data_directory.name,
-                            'SocksPort':       str(port),
-                            'ControlSocket':   tor_control_socket,
-                            'AvoidDiskWrites': '1',
-                            'Log':             'notice stdout',
-                            'GeoIPFile':       '/usr/share/tor/geoip',
-                            'GeoIPv6File ':    '/usr/share/tor/geoip6'},
-                    tor_cmd='/usr/bin/tor')
-                break
-
-            except OSError:
-                pass  # Tor timed out. Try again.
+        self.launch_tor_process(port, tor_control_socket, tor_data_directory)
 
         start_ts = time.monotonic()
-        self.controller = stem.control.Controller.from_socket_file(path=tor_control_socket)
+        self.controller = stem.control.Controller.from_socket_file(
+            path=tor_control_socket
+        )
         self.controller.authenticate()
 
         while True:
@@ -125,17 +125,42 @@ class Tor(object):
                 raise CriticalError("Tor socket closed.")
 
             res_parts = shlex.split(response)
-            summary   = res_parts[4].split('=')[1]
+            summary = res_parts[4].split("=")[1]
 
-            if summary == 'Done':
-                tor_version = self.controller.get_version().version_str.split(' (')[0]
+            if summary == "Done":
+                tor_version = self.controller.get_version().version_str.split(" (")[0]
                 rp_print(f"Setup  70% - Tor {tor_version} is now running", bold=True)
                 break
 
             if time.monotonic() - start_ts > 15:
                 start_ts = time.monotonic()
-                self.controller = stem.control.Controller.from_socket_file(path=tor_control_socket)
+                self.controller = stem.control.Controller.from_socket_file(
+                    path=tor_control_socket
+                )
                 self.controller.authenticate()
+
+    def launch_tor_process(
+        self, port: int, tor_control_socket: Union[bytes, str], tor_data_directory: Any
+    ) -> None:
+        """Launch Tor process."""
+        while True:
+            try:
+                self.tor_process = stem.process.launch_tor_with_config(
+                    config={
+                        "DataDirectory": tor_data_directory.name,
+                        "SocksPort": str(port),
+                        "ControlSocket": tor_control_socket,
+                        "AvoidDiskWrites": "1",
+                        "Log": "notice stdout",
+                        "GeoIPFile": "/usr/share/tor/geoip",
+                        "GeoIPv6File ": "/usr/share/tor/geoip6",
+                    },
+                    tor_cmd="/usr/bin/tor",
+                )
+                break
+
+            except OSError:
+                pass  # Tor timed out. Try again.
 
     def stop(self) -> None:
         """Stop the Tor subprocess."""
@@ -164,13 +189,18 @@ def stem_compatible_ed25519_key_from_private_key(private_key: bytes) -> str:
     def encode_int(y: int) -> bytes:
         """Encode integer to 32-byte bytestring (little-endian format)."""
         bits = [(y >> i) & 1 for i in range(b)]
-        return b''.join([bytes([(sum([bits[i * 8 + j] << j for j in range(8)]))]) for i in range(b // 8)])
+        return b"".join(
+            [
+                bytes([(sum([bits[i * 8 + j] << j for j in range(8)]))])
+                for i in range(b // 8)
+            ]
+        )
 
     def expand_private_key(sk: bytes) -> bytes:
         """Expand private key to base64 blob."""
         h = hashlib.sha512(sk).digest()
         a = 2 ** (b - 2) + sum(2 ** i * bit(h, i) for i in range(3, b - 2))
-        k = b''.join([bytes([h[i]]) for i in range(b // 8, b // 4)])
+        k = b"".join([bytes([h[i]]) for i in range(b // 8, b // 4)])
 
         return encode_int(a) + k
 
@@ -182,20 +212,20 @@ def stem_compatible_ed25519_key_from_private_key(private_key: bytes) -> str:
     return base64.b64encode(expanded_private_key).decode()
 
 
-def onion_service(queues: Dict[bytes, 'Queue[Any]']) -> None:
+def onion_service(queues: Dict[bytes, "Queue[Any]"]) -> None:
     """Manage the Tor Onion Service and control Tor via stem."""
     rp_print("Setup   0% - Waiting for Onion Service configuration...", bold=True)
-    while queues[ONION_KEY_QUEUE].qsize() == 0:
+    while not queues[ONION_KEY_QUEUE].qsize():
         time.sleep(0.1)
 
     private_key, c_code = queues[ONION_KEY_QUEUE].get()  # type: bytes, bytes
-    public_key_user     = bytes(nacl.signing.SigningKey(seed=private_key).verify_key)
-    onion_addr_user     = pub_key_to_onion_address(public_key_user)
+    public_key_user = bytes(nacl.signing.SigningKey(seed=private_key).verify_key)
+    onion_addr_user = pub_key_to_onion_address(public_key_user)
 
     try:
         rp_print("Setup  10% - Launching Tor...", bold=True)
         tor_port = get_available_port(1000, 65535)
-        tor      = Tor()
+        tor = Tor()
         tor.connect(tor_port)
     except (EOFError, KeyboardInterrupt):
         return
@@ -206,15 +236,23 @@ def onion_service(queues: Dict[bytes, 'Queue[Any]']) -> None:
     try:
         rp_print("Setup  75% - Launching Onion Service...", bold=True)
         key_data = stem_compatible_ed25519_key_from_private_key(private_key)
-        response = tor.controller.create_ephemeral_hidden_service(ports={80: 5000},
-                                                                  key_type='ED25519-V3',
-                                                                  key_content=key_data,
-                                                                  await_publication=True)
+        response = tor.controller.create_ephemeral_hidden_service(
+            ports={80: 5000},
+            key_type="ED25519-V3",
+            key_content=key_data,
+            await_publication=True,
+        )
         rp_print("Setup 100% - Onion Service is now published.", bold=True)
 
-        m_print(["Your TFC account is:",
-                 onion_addr_user, '',
-                 f"Onion Service confirmation code (to Transmitter): {c_code.hex()}"], box=True)
+        m_print(
+            [
+                "Your TFC account is:",
+                onion_addr_user,
+                "",
+                f"Onion Service confirmation code (to Transmitter): {c_code.hex()}",
+            ],
+            box=True,
+        )
 
         # Allow the client to start looking for contacts at this point.
         queues[TOR_DATA_QUEUE].put((tor_port, onion_addr_user))
@@ -223,6 +261,11 @@ def onion_service(queues: Dict[bytes, 'Queue[Any]']) -> None:
         tor.stop()
         return
 
+    monitor_queues(tor, response, queues)
+
+
+def monitor_queues(tor: Tor, response: Any, queues: "QueueDict") -> None:
+    """Monitor queues for incoming packets."""
     while True:
         try:
             time.sleep(0.1)
@@ -230,12 +273,22 @@ def onion_service(queues: Dict[bytes, 'Queue[Any]']) -> None:
             if queues[ONION_KEY_QUEUE].qsize() > 0:
                 _, c_code = queues[ONION_KEY_QUEUE].get()
 
-                m_print(["Onion Service is already running.", '',
-                         f"Onion Service confirmation code (to Transmitter): {c_code.hex()}"], box=True)
+                m_print(
+                    [
+                        "Onion Service is already running.",
+                        "",
+                        f"Onion Service confirmation code (to Transmitter): {c_code.hex()}",
+                    ],
+                    box=True,
+                )
 
             if queues[ONION_CLOSE_QUEUE].qsize() > 0:
                 command = queues[ONION_CLOSE_QUEUE].get()
-                if not tor.platform_is_tails() and command == EXIT:
+                if (
+                    not tor.platform_is_tails()
+                    and command == EXIT
+                    and tor.controller is not None
+                ):
                     tor.controller.remove_hidden_service(response.service_id)
                     tor.stop()
                 queues[EXIT_QUEUE].put(command)
@@ -245,6 +298,7 @@ def onion_service(queues: Dict[bytes, 'Queue[Any]']) -> None:
         except (EOFError, KeyboardInterrupt):
             pass
         except stem.SocketClosed:
-            tor.controller.remove_hidden_service(response.service_id)
-            tor.stop()
+            if tor.controller is not None:
+                tor.controller.remove_hidden_service(response.service_id)
+                tor.stop()
             break

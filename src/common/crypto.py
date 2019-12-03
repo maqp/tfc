@@ -42,23 +42,39 @@ import nacl.exceptions
 import nacl.secret
 import nacl.utils
 
-from cryptography.hazmat.primitives                 import padding
+from typing import Tuple
+
+from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448PublicKey
-from cryptography.hazmat.primitives.serialization   import Encoding, PublicFormat
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 from src.common.exceptions import CriticalError
-from src.common.misc       import separate_header
-from src.common.statics    import (ARGON2_SALT_LENGTH, BITS_PER_BYTE, BLAKE2_DIGEST_LENGTH, BLAKE2_DIGEST_LENGTH_MAX,
-                                   BLAKE2_DIGEST_LENGTH_MIN, PADDING_LENGTH, SYMMETRIC_KEY_LENGTH,
-                                   TFC_PUBLIC_KEY_LENGTH, X448_SHARED_SECRET_LENGTH, XCHACHA20_NONCE_LENGTH)
+from src.common.misc import separate_header
+from src.common.statics import (
+    ARGON2_SALT_LENGTH,
+    BITS_PER_BYTE,
+    BLAKE2_DIGEST_LENGTH,
+    BLAKE2_DIGEST_LENGTH_MAX,
+    BLAKE2_DIGEST_LENGTH_MIN,
+    FINGERPRINT,
+    FINGERPRINT_LENGTH,
+    MESSAGE_KEY,
+    HEADER_KEY,
+    PADDING_LENGTH,
+    SYMMETRIC_KEY_LENGTH,
+    TFC_PUBLIC_KEY_LENGTH,
+    X448_SHARED_SECRET_LENGTH,
+    XCHACHA20_NONCE_LENGTH,
+)
 
 
-def blake2b(message:     bytes,                        # Message to hash
-            key:         bytes = b'',                  # Key for keyed hashing
-            salt:        bytes = b'',                  # Salt for randomized hashing
-            person:      bytes = b'',                  # Personalization string
-            digest_size: int   = BLAKE2_DIGEST_LENGTH  # Length of the digest
-            ) -> bytes:                                # The BLAKE2b digest
+def blake2b(
+    message: bytes,  # Message to hash
+    key: bytes = b"",  # Key for keyed hashing
+    salt: bytes = b"",  # Salt for randomized hashing
+    person: bytes = b"",  # Personalization string
+    digest_size: int = BLAKE2_DIGEST_LENGTH,  # Length of the digest
+) -> bytes:  # The BLAKE2b digest
     """Generate BLAKE2b digest (i.e. cryptographic hash) of a message.
 
     BLAKE2 is the successor of SHA3-finalist BLAKE*, designed by
@@ -118,16 +134,16 @@ def blake2b(message:     bytes,                        # Message to hash
          https://github.com/python/cpython/blob/3.7/Lib/hashlib.py
     """
     try:
-        digest = hashlib.blake2b(message,
-                                 digest_size=digest_size,
-                                 key=key,
-                                 salt=salt,
-                                 person=person).digest()  # type: bytes
+        digest = hashlib.blake2b(
+            message, digest_size=digest_size, key=key, salt=salt, person=person
+        ).digest()  # type: bytes
     except ValueError as e:
         raise CriticalError(str(e))
 
     if not isinstance(digest, bytes):
-        raise CriticalError(f"BLAKE2b returned an invalid type ({type(digest)}) digest.")
+        raise CriticalError(
+            f"BLAKE2b returned an invalid type ({type(digest)}) digest."
+        )
 
     if len(digest) != digest_size:
         raise CriticalError(f"BLAKE2b digest had invalid length ({len(digest)} bytes).")
@@ -135,12 +151,13 @@ def blake2b(message:     bytes,                        # Message to hash
     return digest
 
 
-def argon2_kdf(password:    str,    # Password to derive the key from
-               salt:        bytes,  # Salt to derive the key from
-               time_cost:   int,    # Number of iterations
-               memory_cost: int,    # Amount of memory to use (in bytes)
-               parallelism: int     # Number of threads to use
-               ) -> bytes:          # The derived key
+def argon2_kdf(
+    password: str,  # Password to derive the key from
+    salt: bytes,  # Salt to derive the key from
+    time_cost: int,  # Number of iterations
+    memory_cost: int,  # Amount of memory to use (in bytes)
+    parallelism: int,  # Number of threads to use
+) -> bytes:  # The derived key
     """Derive an encryption key from password and salt using Argon2id.
 
     Argon2 is a password hashing function designed by Alex Biryukov,
@@ -215,13 +232,15 @@ def argon2_kdf(password:    str,    # Password to derive the key from
         raise CriticalError(f"Invalid salt length ({len(salt)} bytes).")
 
     try:
-        key = argon2.low_level.hash_secret_raw(secret=password.encode(),
-                                               salt=salt,
-                                               time_cost=time_cost,
-                                               memory_cost=memory_cost,
-                                               parallelism=parallelism,
-                                               hash_len=SYMMETRIC_KEY_LENGTH,
-                                               type=argon2.Type.ID)  # type: bytes
+        key = argon2.low_level.hash_secret_raw(
+            secret=password.encode(),
+            salt=salt,
+            time_cost=time_cost,
+            memory_cost=memory_cost,
+            parallelism=parallelism,
+            hash_len=SYMMETRIC_KEY_LENGTH,
+            type=argon2.Type.ID,
+        )  # type: bytes
 
     except argon2.exceptions.Argon2Error as e:
         raise CriticalError(str(e))
@@ -230,7 +249,9 @@ def argon2_kdf(password:    str,    # Password to derive the key from
         raise CriticalError(f"Argon2 returned an invalid type ({type(key)}) key.")
 
     if len(key) != SYMMETRIC_KEY_LENGTH:
-        raise CriticalError(f"Derived an invalid length key from password ({len(key)} bytes).")
+        raise CriticalError(
+            f"Derived an invalid length key from password ({len(key)} bytes)."
+        )
 
     return key
 
@@ -315,7 +336,7 @@ class X448(object):
     """
 
     @staticmethod
-    def generate_private_key() -> 'X448PrivateKey':
+    def generate_private_key() -> "X448PrivateKey":
         """Generate the X448 private key.
 
         The pyca/cryptography's key generation process is as follows:
@@ -364,21 +385,26 @@ class X448(object):
         return X448PrivateKey.generate()
 
     @staticmethod
-    def derive_public_key(private_key: 'X448PrivateKey') -> bytes:
+    def derive_public_key(private_key: "X448PrivateKey") -> bytes:
         """Derive public key from an X448 private key."""
-        public_key = private_key.public_key().public_bytes(encoding=Encoding.Raw,
-                                                           format=PublicFormat.Raw)  # type: bytes
+        public_key = private_key.public_key().public_bytes(
+            encoding=Encoding.Raw, format=PublicFormat.Raw
+        )  # type: bytes
 
         if not isinstance(public_key, bytes):
-            raise CriticalError(f"Generated an invalid type ({type(public_key)}) public key.")
+            raise CriticalError(
+                f"Generated an invalid type ({type(public_key)}) public key."
+            )
 
         if len(public_key) != TFC_PUBLIC_KEY_LENGTH:
-            raise CriticalError(f"Generated an invalid size public key from private key ({len(public_key)} bytes).")
+            raise CriticalError(
+                f"Generated an invalid size public key from private key ({len(public_key)} bytes)."
+            )
 
         return public_key
 
     @staticmethod
-    def shared_key(private_key: 'X448PrivateKey', public_key: bytes) -> bytes:
+    def shared_key(private_key: "X448PrivateKey", public_key: bytes) -> bytes:
         """Derive the X448 shared key.
 
         The pyca/cryptography library validates the length of the public
@@ -403,23 +429,96 @@ class X448(object):
         extract unidirectional message/header keys and fingerprints.
         """
         try:
-            shared_secret = private_key.exchange(X448PublicKey.from_public_bytes(public_key))  # type: bytes
+            shared_secret = private_key.exchange(
+                X448PublicKey.from_public_bytes(public_key)
+            )  # type: bytes
         except ValueError as e:
             raise CriticalError(str(e))
 
         if not isinstance(shared_secret, bytes):  # pragma: no cover
-            raise CriticalError(f"Derived an invalid type ({type(shared_secret)}) shared secret.")
+            raise CriticalError(
+                f"Derived an invalid type ({type(shared_secret)}) shared secret."
+            )
 
         if len(shared_secret) != X448_SHARED_SECRET_LENGTH:  # pragma: no cover
-            raise CriticalError(f"Generated an invalid size shared secret ({len(shared_secret)} bytes).")
+            raise CriticalError(
+                f"Generated an invalid size shared secret ({len(shared_secret)} bytes)."
+            )
 
         return blake2b(shared_secret, digest_size=SYMMETRIC_KEY_LENGTH)
 
+    @staticmethod
+    def derive_keys(
+        dh_shared_key: bytes, tfc_public_key_user: bytes, tfc_public_key_contact: bytes
+    ) -> Tuple[bytes, bytes, bytes, bytes, bytes, bytes]:
+        """Create domain separated message and header keys and fingerprints from shared key.
 
-def encrypt_and_sign(plaintext: bytes,       # Plaintext to encrypt
-                     key:       bytes,       # 32-byte symmetric key
-                     ad:        bytes = b''  # Associated data
-                     ) -> bytes:             # Nonce + ciphertext + tag
+        Domain separate unidirectional keys from shared key by using public
+        keys as message and the context variable as personalization string.
+
+        Domain separate fingerprints of public keys by using the shared
+        secret as key and the context variable as personalization string.
+        This way entities who might monitor fingerprint verification
+        channel are unable to correlate spoken values with public keys
+        that they might see on RAM or screen of Networked Computer:
+        Public keys can not be derived from the fingerprints due to
+        preimage resistance of BLAKE2b, and fingerprints can not be
+        derived from public key without the X448 shared key. Using the
+        context variable ensures fingerprints are distinct from derived
+        message and header keys.
+        """
+        tx_mk = blake2b(
+            tfc_public_key_contact,
+            dh_shared_key,
+            person=MESSAGE_KEY,
+            digest_size=SYMMETRIC_KEY_LENGTH,
+        )
+        rx_mk = blake2b(
+            tfc_public_key_user,
+            dh_shared_key,
+            person=MESSAGE_KEY,
+            digest_size=SYMMETRIC_KEY_LENGTH,
+        )
+
+        tx_hk = blake2b(
+            tfc_public_key_contact,
+            dh_shared_key,
+            person=HEADER_KEY,
+            digest_size=SYMMETRIC_KEY_LENGTH,
+        )
+        rx_hk = blake2b(
+            tfc_public_key_user,
+            dh_shared_key,
+            person=HEADER_KEY,
+            digest_size=SYMMETRIC_KEY_LENGTH,
+        )
+
+        tx_fp = blake2b(
+            tfc_public_key_user,
+            dh_shared_key,
+            person=FINGERPRINT,
+            digest_size=FINGERPRINT_LENGTH,
+        )
+        rx_fp = blake2b(
+            tfc_public_key_contact,
+            dh_shared_key,
+            person=FINGERPRINT,
+            digest_size=FINGERPRINT_LENGTH,
+        )
+
+        key_tuple = tx_mk, rx_mk, tx_hk, rx_hk, tx_fp, rx_fp
+
+        if len(key_tuple) != len(set(key_tuple)):
+            raise CriticalError("Derived keys were not unique.")
+
+        return key_tuple
+
+
+def encrypt_and_sign(
+    plaintext: bytes,  # Plaintext to encrypt
+    key: bytes,  # 32-byte symmetric key
+    ad: bytes = b"",  # Associated data
+) -> bytes:  # Nonce + ciphertext + tag
     """Encrypt plaintext with XChaCha20-Poly1305 (IETF variant).
 
     ChaCha20 is a stream cipher published by Daniel J. Bernstein (djb)
@@ -498,18 +597,21 @@ def encrypt_and_sign(plaintext: bytes,       # Plaintext to encrypt
     nonce = csprng(XCHACHA20_NONCE_LENGTH)
 
     try:
-        ct_tag = nacl.bindings.crypto_aead_xchacha20poly1305_ietf_encrypt(plaintext, ad, nonce, key)  # type: bytes
+        ct_tag = nacl.bindings.crypto_aead_xchacha20poly1305_ietf_encrypt(
+            plaintext, ad, nonce, key
+        )  # type: bytes
     except nacl.exceptions.CryptoError as e:
         raise CriticalError(str(e))
 
     return nonce + ct_tag
 
 
-def auth_and_decrypt(nonce_ct_tag: bytes,       # Nonce + ciphertext + tag
-                     key:          bytes,       # 32-byte symmetric key
-                     database:     str   = '',  # When provided, gracefully exits TFC when the tag is invalid
-                     ad:           bytes = b''  # Associated data
-                     ) -> bytes:                # Plaintext
+def auth_and_decrypt(
+    nonce_ct_tag: bytes,  # Nonce + ciphertext + tag
+    key: bytes,  # 32-byte symmetric key
+    database: str = "",  # When provided, gracefully exits TFC when the tag is invalid
+    ad: bytes = b"",  # Associated data
+) -> bytes:  # Plaintext
     """Authenticate and decrypt XChaCha20-Poly1305 ciphertext.
 
     The Poly1305 tag is checked using constant time `sodium_memcmp`:
@@ -534,16 +636,21 @@ def auth_and_decrypt(nonce_ct_tag: bytes,       # Nonce + ciphertext + tag
     nonce, ct_tag = separate_header(nonce_ct_tag, XCHACHA20_NONCE_LENGTH)
 
     try:
-        plaintext = nacl.bindings.crypto_aead_xchacha20poly1305_ietf_decrypt(ct_tag, ad, nonce, key)  # type: bytes
+        plaintext = nacl.bindings.crypto_aead_xchacha20poly1305_ietf_decrypt(
+            ct_tag, ad, nonce, key
+        )  # type: bytes
         return plaintext
     except nacl.exceptions.CryptoError:
         if database:
-            raise CriticalError(f"Authentication of data in database '{database}' failed.")
+            raise CriticalError(
+                f"Authentication of data in database '{database}' failed."
+            )
         raise
 
 
-def byte_padding(bytestring: bytes  # Bytestring to be padded
-                 ) -> bytes:        # Padded bytestring
+def byte_padding(
+    bytestring: bytes,  # Bytestring to be padded
+) -> bytes:  # Padded bytestring
     """Pad bytestring to next 255 bytes.
 
     TFC adds padding to messages it outputs. The padding ensures each
@@ -565,8 +672,8 @@ def byte_padding(bytestring: bytes  # Bytestring to be padded
     For a better explanation, see
         https://en.wikipedia.org/wiki/Padding_(cryptography)#PKCS#5_and_PKCS#7
     """
-    padder  = padding.PKCS7(PADDING_LENGTH * BITS_PER_BYTE).padder()
-    padded  = padder.update(bytestring)  # type: bytes
+    padder = padding.PKCS7(PADDING_LENGTH * BITS_PER_BYTE).padder()
+    padded = padder.update(bytestring)  # type: bytes
     padded += padder.finalize()
 
     if not isinstance(padded, bytes):
@@ -578,22 +685,24 @@ def byte_padding(bytestring: bytes  # Bytestring to be padded
     return padded
 
 
-def rm_padding_bytes(bytestring: bytes  # Padded bytestring
-                     ) -> bytes:        # Bytestring without padding
+def rm_padding_bytes(
+    bytestring: bytes,  # Padded bytestring
+) -> bytes:  # Bytestring without padding
     """Remove padding from plaintext.
 
     The length of padding is determined by the ord-value of the last
     byte that is always part of the padding.
     """
-    unpadder  = padding.PKCS7(PADDING_LENGTH * BITS_PER_BYTE).unpadder()
-    unpadded  = unpadder.update(bytestring)  # type: bytes
+    unpadder = padding.PKCS7(PADDING_LENGTH * BITS_PER_BYTE).unpadder()
+    unpadded = unpadder.update(bytestring)  # type: bytes
     unpadded += unpadder.finalize()
 
     return unpadded
 
 
-def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
-           ) -> bytes:                             # The generated key
+def csprng(
+    key_length: int = SYMMETRIC_KEY_LENGTH,  # Length of the key
+) -> bytes:  # The generated key
     """Generate a cryptographically secure random key.
 
     The default key length is 32 bytes (256 bits).
@@ -605,7 +714,7 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
     For more details, see
         https://www.2uo.de/myths-about-urandom/
         https://www.chronox.de/lrng/doc/lrng.pdf
-        https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/LinuxRNG/LinuxRNG_EN.pdf?__blob=publicationFile&v=16
+        https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/LinuxRNG/LinuxRNG_EN.pdf
         https://github.com/torvalds/linux/blob/master/drivers/char/random.c
 
 
@@ -648,7 +757,7 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
     ┃_randomness┃┃  _randomness  ┃┃_randomness┃┃_randomness┃┃ _randomness ┃
     ┗━━━━━━━━━━━┛┗━━━━━━━━━━━━━━━┛┗━━━━━━━━━━━┛┗━━━━━━━━━━━┛┗━━━━━━━━━━━━━┛
 
-     [1] https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/LinuxRNG/LinuxRNG_EN.pdf?__blob=publicationFile&v=16
+     [1] https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/LinuxRNG/LinuxRNG_EN.pdf
 
 
     Entropy sources
@@ -768,11 +877,11 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
 
         o User space IOCTL of RNDADDENTROPY.[1; p.39]
 
-     [1] https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/LinuxRNG/LinuxRNG_EN.pdf?__blob=publicationFile&v=16
+     [1] https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/LinuxRNG/LinuxRNG_EN.pdf
      [2] https://spectrum.ieee.org/computing/hardware/behind-intels-new-randomnumber-generator
      [3] https://software.intel.com/sites/default/files/managed/98/4a/DRNG_Software_Implementation_Guide_2.1.pdf
      [4] https://www.amd.com/system/files/TechDocs/amd-random-number-generator.pdf
-     [5] https://security.stackexchange.com/questions/183506/random-seed-not-propagating-to-the-entropy-pools-in-a-timely-manner
+     [5] https://security.stackexchange.com/q/183506
 
 
     The input_pool
@@ -846,7 +955,7 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
     the use of /dev/random, and it will then reduce the input_pool's
     entropy estimator by 1024 bits.[1; pp.59-60]
 
-     [1] https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/LinuxRNG/LinuxRNG_EN.pdf?__blob=publicationFile&v=16
+     [1] https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/LinuxRNG/LinuxRNG_EN.pdf
      [2] https://github.com/torvalds/linux/blob/master/drivers/char/random.c#L791
      [3] https://github.com/torvalds/linux/blob/master/drivers/char/random.c#L1032
 
@@ -952,7 +1061,7 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
     The result is then XORed with the key component of the DRNG state
     [1; p.34].
 
-     [1] https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/LinuxRNG/LinuxRNG_EN.pdf?__blob=publicationFile&v=16
+     [1] https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/LinuxRNG/LinuxRNG_EN.pdf
      [2] https://lkml.org/lkml/2019/5/30/867
      [3] https://github.com/torvalds/linux/blob/master/drivers/char/random.c#L889
          https://github.com/torvalds/linux/blob/master/drivers/char/random.c#L1058
@@ -1028,7 +1137,9 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
         raise CriticalError(f"GETRANDOM returned invalid type data ({type(entropy)}).")
 
     if len(entropy) != key_length:
-        raise CriticalError(f"GETRANDOM returned invalid amount of entropy ({len(entropy)} bytes).")
+        raise CriticalError(
+            f"GETRANDOM returned invalid amount of entropy ({len(entropy)} bytes)."
+        )
 
     compressed = blake2b(entropy, digest_size=key_length)
 
@@ -1048,9 +1159,9 @@ def check_kernel_version() -> None:
     trusted).[2; p.138]
 
      [1] https://lkml.org/lkml/2016/7/25/43
-     [2] https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/LinuxRNG/LinuxRNG_EN.pdf?__blob=publicationFile&v=16
+     [2] https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/LinuxRNG/LinuxRNG_EN.pdf
     """
-    major_v, minor_v = [int(i) for i in os.uname()[2].split('.')[:2]]  # type: int, int
+    major_v, minor_v = [int(i) for i in os.uname()[2].split(".")[:2]]  # type: int, int
 
     if major_v < 4 or (major_v == 4 and minor_v < 17):
         raise CriticalError("Insecure kernel CSPRNG version detected.")

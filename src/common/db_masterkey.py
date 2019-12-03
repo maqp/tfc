@@ -27,18 +27,29 @@ import time
 
 from typing import List, Optional, Tuple
 
-from src.common.crypto     import argon2_kdf, blake2b, csprng
-from src.common.database   import TFCUnencryptedDatabase
-from src.common.encoding   import bytes_to_int, int_to_bytes
-from src.common.exceptions import CriticalError, FunctionReturn, graceful_exit
-from src.common.input      import pwd_prompt
-from src.common.misc       import ensure_dir, separate_headers
-from src.common.output     import clear_screen, m_print, phase, print_on_previous_line
-from src.common.word_list  import eff_wordlist
-from src.common.statics    import (ARGON2_MIN_MEMORY_COST, ARGON2_MIN_PARALLELISM, ARGON2_MIN_TIME_COST,
-                                   ARGON2_SALT_LENGTH, BLAKE2_DIGEST_LENGTH, DIR_USER_DATA, DONE,
-                                   ENCODED_INTEGER_LENGTH, GENERATE, MASTERKEY_DB_SIZE, MAX_KEY_DERIVATION_TIME,
-                                   MIN_KEY_DERIVATION_TIME, PASSWORD_MIN_BIT_STRENGTH, RESET)
+from src.common.crypto import argon2_kdf, blake2b, csprng
+from src.common.database import TFCUnencryptedDatabase
+from src.common.encoding import bytes_to_int, int_to_bytes
+from src.common.exceptions import CriticalError, graceful_exit, SoftError
+from src.common.input import pwd_prompt
+from src.common.misc import ensure_dir, reset_terminal, separate_headers
+from src.common.output import clear_screen, m_print, phase, print_on_previous_line
+from src.common.word_list import eff_wordlist
+from src.common.statics import (
+    ARGON2_MIN_MEMORY_COST,
+    ARGON2_MIN_PARALLELISM,
+    ARGON2_MIN_TIME_COST,
+    ARGON2_SALT_LENGTH,
+    BLAKE2_DIGEST_LENGTH,
+    DIR_USER_DATA,
+    DONE,
+    ENCODED_INTEGER_LENGTH,
+    GENERATE,
+    MASTERKEY_DB_SIZE,
+    MAX_KEY_DERIVATION_TIME,
+    MIN_KEY_DERIVATION_TIME,
+    PASSWORD_MIN_BIT_STRENGTH,
+)
 
 
 class MasterKey(object):
@@ -49,9 +60,10 @@ class MasterKey(object):
 
     def __init__(self, operation: str, local_test: bool) -> None:
         """Create a new MasterKey object."""
-        self.file_name     = f'{DIR_USER_DATA}{operation}_login_data'
-        self.database      = TFCUnencryptedDatabase(self.file_name)
-        self.local_test    = local_test
+        self.operation = operation
+        self.file_name = f"{DIR_USER_DATA}{self.operation}_login_data"
+        self.database = TFCUnencryptedDatabase(self.file_name)
+        self.local_test = local_test
         self.database_data = None  # type: Optional[bytes]
 
         ensure_dir(DIR_USER_DATA)
@@ -64,25 +76,24 @@ class MasterKey(object):
             graceful_exit()
 
     @staticmethod
-    def timed_key_derivation(password:    str,
-                             salt:        bytes,
-                             time_cost:   int,
-                             memory_cost: int,
-                             parallelism: int
-                             ) -> Tuple[bytes, float]:
+    def timed_key_derivation(
+        password: str, salt: bytes, time_cost: int, memory_cost: int, parallelism: int
+    ) -> Tuple[bytes, float]:
         """Derive key and measure its derivation time."""
         time_start = time.monotonic()
         master_key = argon2_kdf(password, salt, time_cost, memory_cost, parallelism)
-        kd_time    = time.monotonic() - time_start
+        kd_time = time.monotonic() - time_start
 
         return master_key, kd_time
 
-    @staticmethod
-    def get_available_memory() -> int:
+    def get_available_memory(self) -> int:
         """Return the amount of available memory in the system."""
-        fields    = os.popen("cat /proc/meminfo").read().splitlines()
-        field     = [f for f in fields if f.startswith('MemAvailable')][0]
+        fields = os.popen("/bin/cat /proc/meminfo").read().splitlines()
+        field = [f for f in fields if f.startswith("MemAvailable")][0]
         mem_avail = int(field.split()[1])
+
+        if self.local_test:
+            mem_avail //= 2
 
         return mem_avail
 
@@ -90,16 +101,16 @@ class MasterKey(object):
     def generate_master_password() -> Tuple[int, str]:
         """Generate a strong password using the EFF wordlist."""
         word_space = len(eff_wordlist)
-        sys_rand   = random.SystemRandom()
+        sys_rand = random.SystemRandom()
 
         pwd_bit_strength = 0.0
-        password_words   = []  # type: List[str]
+        password_words = []  # type: List[str]
 
         while pwd_bit_strength < PASSWORD_MIN_BIT_STRENGTH:
             password_words.append(sys_rand.choice(eff_wordlist))
             pwd_bit_strength = math.log2(word_space ** len(password_words))
 
-        password = ' '.join(password_words)
+        password = " ".join(password_words)
 
         return int(pwd_bit_strength), password
 
@@ -164,29 +175,35 @@ class MasterKey(object):
         slow even with GPUs/ASICs/FPGAs, as long as the password is
         sufficiently strong.
         """
-        password  = MasterKey.new_password()
-        salt      = csprng(ARGON2_SALT_LENGTH)
+        password = MasterKey.new_password()
+        salt = csprng(ARGON2_SALT_LENGTH)
         time_cost = ARGON2_MIN_TIME_COST
 
         # Determine the amount of memory used from the amount of free RAM in the system.
         memory_cost = self.get_available_memory()
-        if self.local_test:
-            memory_cost //= 2
 
         # Determine the amount of threads to use
         parallelism = multiprocessing.cpu_count()
         if self.local_test:
             parallelism = max(ARGON2_MIN_PARALLELISM, parallelism // 2)
 
-        phase("Deriving master key", head=2)
-
         # Initial key derivation
-        master_key, kd_time = self.timed_key_derivation(password, salt, time_cost, memory_cost, parallelism)
+        phase("Deriving master key", head=2, offset=0)
+        master_key, kd_time = self.timed_key_derivation(
+            password, salt, time_cost, memory_cost, parallelism
+        )
+        phase("", done=True)
+        print()
 
         # If derivation was too fast, increase time_cost
         while kd_time < MIN_KEY_DERIVATION_TIME:
+            print_on_previous_line()
+            phase(f"Trying time cost {time_cost+1}")
             time_cost += 1
-            master_key, kd_time = self.timed_key_derivation(password, salt, time_cost, memory_cost, parallelism)
+            master_key, kd_time = self.timed_key_derivation(
+                password, salt, time_cost, memory_cost, parallelism
+            )
+            phase(f"{kd_time:.1f}s", done=True)
 
         # At this point time_cost may have value of 1 or it may have increased to e.g. 3, which might make it take
         # longer than MAX_KEY_DERIVATION_TIME. If that's the case, it makes no sense to lower it back to 2 because even
@@ -201,10 +218,18 @@ class MasterKey(object):
             lower_bound = ARGON2_MIN_MEMORY_COST
             upper_bound = memory_cost
 
-            while kd_time < MIN_KEY_DERIVATION_TIME or kd_time > MAX_KEY_DERIVATION_TIME:
+            while (
+                kd_time < MIN_KEY_DERIVATION_TIME or kd_time > MAX_KEY_DERIVATION_TIME
+            ):
 
-                middle              = (lower_bound + upper_bound) // 2
-                master_key, kd_time = self.timed_key_derivation(password, salt, time_cost, middle, parallelism)
+                middle = (lower_bound + upper_bound) // 2
+
+                print_on_previous_line()
+                phase(f"Trying memory cost {middle} KiB")
+                master_key, kd_time = self.timed_key_derivation(
+                    password, salt, time_cost, middle, parallelism
+                )
+                phase(f"{kd_time:.1f}s", done=True)
 
                 # The search might fail e.g. if external CPU load causes delay in key derivation, which causes the
                 # search to continue into wrong branch. In such a situation the search is restarted. The binary search
@@ -214,7 +239,7 @@ class MasterKey(object):
                 # and user experience (negatively).
                 if middle == lower_bound or middle == upper_bound:
                     lower_bound = ARGON2_MIN_MEMORY_COST
-                    upper_bound = memory_cost
+                    upper_bound = self.get_available_memory()
                     continue
 
                 if kd_time < MIN_KEY_DERIVATION_TIME:
@@ -226,11 +251,13 @@ class MasterKey(object):
         memory_cost = middle if middle is not None else memory_cost
 
         # Store values to database
-        database_data = (salt
-                         + blake2b(master_key)
-                         + int_to_bytes(time_cost)
-                         + int_to_bytes(memory_cost)
-                         + int_to_bytes(parallelism))
+        database_data = (
+            salt
+            + blake2b(master_key)
+            + int_to_bytes(time_cost)
+            + int_to_bytes(memory_cost)
+            + int_to_bytes(parallelism)
+        )
 
         if replace:
             self.database.store_unencrypted_database(database_data)
@@ -240,7 +267,10 @@ class MasterKey(object):
             # before all new databases have been successfully written. We therefore just cache
             # the database data.
             self.database_data = database_data
-        phase(DONE)
+
+        print_on_previous_line(2)
+        phase("Deriving master key")
+        phase(DONE, delay=1)
 
         return master_key
 
@@ -264,11 +294,17 @@ class MasterKey(object):
         if len(database_data) != MASTERKEY_DB_SIZE:
             raise CriticalError(f"Invalid {self.file_name} database size.")
 
-        salt, key_hash, time_bytes, memory_bytes, parallelism_bytes \
-            = separate_headers(database_data, [ARGON2_SALT_LENGTH, BLAKE2_DIGEST_LENGTH,
-                                               ENCODED_INTEGER_LENGTH, ENCODED_INTEGER_LENGTH])
+        salt, key_hash, time_bytes, memory_bytes, parallelism_bytes = separate_headers(
+            database_data,
+            [
+                ARGON2_SALT_LENGTH,
+                BLAKE2_DIGEST_LENGTH,
+                ENCODED_INTEGER_LENGTH,
+                ENCODED_INTEGER_LENGTH,
+            ],
+        )
 
-        time_cost   = bytes_to_int(time_bytes)
+        time_cost = bytes_to_int(time_bytes)
         memory_cost = bytes_to_int(memory_bytes)
         parallelism = bytes_to_int(parallelism_bytes)
 
@@ -281,9 +317,9 @@ class MasterKey(object):
                 phase("Password correct", done=True, delay=1)
                 clear_screen()
                 return purp_key
-            else:
-                phase("Invalid password", done=True, delay=1)
-                print_on_previous_line(reps=5)
+
+            phase("Invalid password", done=True, delay=1)
+            print_on_previous_line(reps=5)
 
     @classmethod
     def new_password(cls, purpose: str = "master password") -> str:
@@ -293,11 +329,21 @@ class MasterKey(object):
         if password_1 == GENERATE:
             pwd_bit_strength, password_1 = MasterKey.generate_master_password()
 
-            m_print([f"Generated a {pwd_bit_strength}-bit password:",
-                     '', password_1, '',
-                     "Write down this password and dispose of the copy once you remember it.",
-                     "Press <Enter> to continue."], manual_proceed=True, box=True, head=1, tail=1)
-            os.system(RESET)
+            m_print(
+                [
+                    f"Generated a {pwd_bit_strength}-bit password:",
+                    "",
+                    password_1,
+                    "",
+                    "Write down this password and dispose of the copy once you remember it.",
+                    "Press <Enter> to continue.",
+                ],
+                manual_proceed=True,
+                box=True,
+                head=1,
+                tail=1,
+            )
+            reset_terminal()
 
             password_2 = password_1
         else:
@@ -305,10 +351,10 @@ class MasterKey(object):
 
         if password_1 == password_2:
             return password_1
-        else:
-            m_print("Error: Passwords did not match. Try again.", head=1, tail=1)
-            print_on_previous_line(delay=1, reps=7)
-            return cls.new_password(purpose)
+
+        m_print("Error: Passwords did not match. Try again.", head=1, tail=1)
+        print_on_previous_line(delay=1, reps=7)
+        return cls.new_password(purpose)
 
     @classmethod
     def get_password(cls, purpose: str = "master password") -> str:
@@ -320,6 +366,8 @@ class MasterKey(object):
         try:
             authenticated = self.load_master_key() == self.master_key
         except (EOFError, KeyboardInterrupt):
-            raise FunctionReturn(f"Authentication aborted.", tail_clear=True, head=2, delay=1)
+            raise SoftError(
+                f"Authentication aborted.", tail_clear=True, head=2, delay=1
+            )
 
         return authenticated

@@ -24,18 +24,25 @@ import hashlib
 import struct
 
 from datetime import datetime
-from typing   import List, Union
+from typing import List, Union
 
-from src.common.statics import (B58_ALPHABET, B58_CHECKSUM_LENGTH, MAINNET_HEADER, ONION_ADDRESS_CHECKSUM_ID,
-                                ONION_ADDRESS_CHECKSUM_LENGTH, ONION_SERVICE_VERSION, ONION_SERVICE_VERSION_LENGTH,
-                                PADDING_LENGTH, TESTNET_HEADER, TRUNC_ADDRESS_LENGTH)
+from src.common.statics import (
+    B58_ALPHABET,
+    B58_CHECKSUM_LENGTH,
+    MAINNET_HEADER,
+    ONION_ADDRESS_CHECKSUM_ID,
+    ONION_ADDRESS_CHECKSUM_LENGTH,
+    ONION_SERVICE_VERSION,
+    ONION_SERVICE_VERSION_LENGTH,
+    PADDING_LENGTH,
+    TESTNET_HEADER,
+    TRUNC_ADDRESS_LENGTH,
+)
 
 
 def sha256d(message: bytes) -> bytes:
     """Chain SHA256 twice for Bitcoin WIF format."""
-    return hashlib.sha256(
-        hashlib.sha256(message).digest()
-    ).digest()
+    return hashlib.sha256(hashlib.sha256(message).digest()).digest()
 
 
 def b58encode(byte_string: bytes, public_key: bool = False) -> str:
@@ -45,20 +52,20 @@ def b58encode(byte_string: bytes, public_key: bool = False) -> str:
     (WIF) for mainnet and testnet addresses.
         https://en.bitcoin.it/wiki/Wallet_import_format
     """
-    net_id       = TESTNET_HEADER if public_key else MAINNET_HEADER
-    byte_string  = net_id + byte_string
+    net_id = TESTNET_HEADER if public_key else MAINNET_HEADER
+    byte_string = net_id + byte_string
     byte_string += sha256d(byte_string)[:B58_CHECKSUM_LENGTH]
 
     original_len = len(byte_string)
-    byte_string  = byte_string.lstrip(b'\x00')
-    new_len      = len(byte_string)
+    byte_string = byte_string.lstrip(b"\x00")
+    new_len = len(byte_string)
 
     p, acc = 1, 0
     for byte in bytearray(byte_string[::-1]):
         acc += p * byte
-        p   *= 256
+        p *= 256
 
-    encoded = ''
+    encoded = ""
     while acc > 0:
         acc, mod = divmod(acc, 58)
         encoded += B58_ALPHABET[mod]
@@ -68,30 +75,35 @@ def b58encode(byte_string: bytes, public_key: bool = False) -> str:
 
 def b58decode(string: str, public_key: bool = False) -> bytes:
     """Decode a Base58-encoded string and verify the checksum."""
-    net_id   = TESTNET_HEADER if public_key else MAINNET_HEADER
+    net_id = TESTNET_HEADER if public_key else MAINNET_HEADER
     orig_len = len(string)
-    string   = string.lstrip(B58_ALPHABET[0])
-    new_len  = len(string)
+    string = string.lstrip(B58_ALPHABET[0])
+    new_len = len(string)
 
     p, acc = 1, 0
     for c in string[::-1]:
         acc += p * B58_ALPHABET.index(c)
-        p   *= 58
+        p *= 58
 
     decoded = []
     while acc > 0:
         acc, mod = divmod(acc, 256)
         decoded.append(mod)
 
-    decoded_ = (bytes(decoded) + (orig_len - new_len) * b'\x00')[::-1]  # type: Union[bytes, List[int]]
+    decoded_ = (bytes(decoded) + (orig_len - new_len) * b"\x00")[
+        ::-1
+    ]  # type: Union[bytes, List[int]]
 
-    if sha256d(bytes(decoded_[:-B58_CHECKSUM_LENGTH]))[:B58_CHECKSUM_LENGTH] != decoded_[-B58_CHECKSUM_LENGTH:]:
+    if (
+        sha256d(bytes(decoded_[:-B58_CHECKSUM_LENGTH]))[:B58_CHECKSUM_LENGTH]
+        != decoded_[-B58_CHECKSUM_LENGTH:]
+    ):
         raise ValueError
 
-    if decoded_[:len(net_id)] != net_id:
+    if decoded_[: len(net_id)] != net_id:
         raise ValueError
 
-    return bytes(decoded_[len(net_id):-B58_CHECKSUM_LENGTH])
+    return bytes(decoded_[len(net_id) : -B58_CHECKSUM_LENGTH])
 
 
 def b85encode(data: bytes) -> str:
@@ -133,6 +145,7 @@ def b10encode(fingerprint: bytes) -> str:
 
 # Database unicode string padding
 
+
 def unicode_padding(string: str) -> str:
     """Pad Unicode string to 255 chars.
 
@@ -144,7 +157,7 @@ def unicode_padding(string: str) -> str:
     if len(string) >= PADDING_LENGTH:
         raise CriticalError("Invalid input size.")
 
-    length  = PADDING_LENGTH - (len(string) % PADDING_LENGTH)
+    length = PADDING_LENGTH - (len(string) % PADDING_LENGTH)
     string += length * chr(length)
 
     if len(string) != PADDING_LENGTH:  # pragma: no cover
@@ -155,10 +168,11 @@ def unicode_padding(string: str) -> str:
 
 def rm_padding_str(string: str) -> str:
     """Remove padding from plaintext."""
-    return string[:-ord(string[-1:])]
+    return string[: -ord(string[-1:])]
 
 
 # Database constant length encoding
+
 
 def onion_address_to_pub_key(account: str) -> bytes:
     """Encode TFC account to a public key byte string.
@@ -166,7 +180,9 @@ def onion_address_to_pub_key(account: str) -> bytes:
     The public key is the most compact possible representation of a TFC
     account, so it is useful when storing the address into databases.
     """
-    return base64.b32decode(account.upper())[:-(ONION_ADDRESS_CHECKSUM_LENGTH + ONION_SERVICE_VERSION_LENGTH)]
+    return base64.b32decode(account.upper())[
+        : -(ONION_ADDRESS_CHECKSUM_LENGTH + ONION_SERVICE_VERSION_LENGTH)
+    ]
 
 
 def bool_to_bytes(boolean: bool) -> bytes:
@@ -176,12 +192,12 @@ def bool_to_bytes(boolean: bool) -> bytes:
 
 def int_to_bytes(integer: int) -> bytes:
     """Convert integer to an 8-byte byte string."""
-    return struct.pack('!Q', integer)
+    return struct.pack("!Q", integer)
 
 
 def double_to_bytes(double_: float) -> bytes:
     """Convert double to an 8-byte byte string."""
-    return struct.pack('d', double_)
+    return struct.pack("d", double_)
 
 
 def str_to_bytes(string: str) -> bytes:
@@ -189,10 +205,11 @@ def str_to_bytes(string: str) -> bytes:
 
     Length of padded string is 255 * 4 + 4 (BOM) = 1024 bytes.
     """
-    return unicode_padding(string).encode('utf-32')
+    return unicode_padding(string).encode("utf-32")
 
 
 # Decoding
+
 
 def pub_key_to_onion_address(public_key: bytes) -> str:
     """Decode public key byte string to TFC account.
@@ -201,12 +218,13 @@ def pub_key_to_onion_address(public_key: bytes) -> str:
     public key of v3 Onion Service into service ID:
         https://gitweb.torproject.org/torspec.git/tree/rend-spec-v3.txt#n2019
     """
-    checksum = hashlib.sha3_256(ONION_ADDRESS_CHECKSUM_ID
-                                + public_key
-                                + ONION_SERVICE_VERSION
-                                ).digest()[:ONION_ADDRESS_CHECKSUM_LENGTH]
+    checksum = hashlib.sha3_256(
+        ONION_ADDRESS_CHECKSUM_ID + public_key + ONION_SERVICE_VERSION
+    ).digest()[:ONION_ADDRESS_CHECKSUM_LENGTH]
 
-    return base64.b32encode(public_key + checksum + ONION_SERVICE_VERSION).lower().decode()
+    return (
+        base64.b32encode(public_key + checksum + ONION_SERVICE_VERSION).lower().decode()
+    )
 
 
 def pub_key_to_short_address(public_key: bytes) -> str:
@@ -223,13 +241,13 @@ def bytes_to_bool(byte_string: Union[bytes, int]) -> bool:
 
 def bytes_to_int(byte_string: bytes) -> int:
     """Convert 8-byte byte string to an integer."""
-    int_format = struct.unpack('!Q', byte_string)[0]  # type: int
+    int_format = struct.unpack("!Q", byte_string)[0]  # type: int
     return int_format
 
 
 def bytes_to_double(byte_string: bytes) -> float:
     """Convert 8-byte byte string to double."""
-    float_format = struct.unpack('d', byte_string)[0]  # type: float
+    float_format = struct.unpack("d", byte_string)[0]  # type: float
     return float_format
 
 
@@ -238,9 +256,9 @@ def bytes_to_str(byte_string: bytes) -> str:
 
     Decode byte string with UTF-32 and remove Unicode padding.
     """
-    return rm_padding_str(byte_string.decode('utf-32'))
+    return rm_padding_str(byte_string.decode("utf-32"))
 
 
 def bytes_to_timestamp(byte_string: bytes) -> datetime:
     """Covert 4-byte byte string to datetime object."""
-    return datetime.fromtimestamp(struct.unpack('<L', byte_string)[0])
+    return datetime.fromtimestamp(struct.unpack("<L", byte_string)[0])

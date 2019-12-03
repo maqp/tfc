@@ -26,36 +26,37 @@ import typing
 
 from typing import Dict, NoReturn
 
-from src.common.exceptions import FunctionReturn
-from src.common.misc       import get_tab_completer, ignored
-from src.common.statics    import COMMAND, FILE, MESSAGE
+from src.common.exceptions import SoftError
+from src.common.misc import get_tab_completer, ignored
+from src.common.statics import COMMAND, FILE, MESSAGE
 
-from src.transmitter.commands      import process_command
-from src.transmitter.contact       import add_new_contact
+from src.transmitter.commands import process_command
+from src.transmitter.contact import add_new_contact
 from src.transmitter.key_exchanges import export_onion_service_data, new_local_key
-from src.transmitter.packet        import queue_file, queue_message
-from src.transmitter.user_input    import get_input
-from src.transmitter.windows       import TxWindow
+from src.transmitter.packet import queue_file, queue_message
+from src.transmitter.user_input import get_input
+from src.transmitter.windows import TxWindow
 
 if typing.TYPE_CHECKING:
-    from multiprocessing         import Queue
-    from src.common.db_contacts  import ContactList
-    from src.common.db_groups    import GroupList
+    from multiprocessing import Queue
+    from src.common.db_contacts import ContactList
+    from src.common.db_groups import GroupList
     from src.common.db_masterkey import MasterKey
-    from src.common.db_onion     import OnionService
-    from src.common.db_settings  import Settings
-    from src.common.gateway      import Gateway
+    from src.common.db_onion import OnionService
+    from src.common.db_settings import Settings
+    from src.common.gateway import Gateway
 
 
-def input_loop(queues:        Dict[bytes, 'Queue[bytes]'],
-               settings:      'Settings',
-               gateway:       'Gateway',
-               contact_list:  'ContactList',
-               group_list:    'GroupList',
-               master_key:    'MasterKey',
-               onion_service: 'OnionService',
-               stdin_fd:      int
-               ) -> NoReturn:
+def input_loop(
+    queues: Dict[bytes, "Queue[bytes]"],
+    settings: "Settings",
+    gateway: "Gateway",
+    contact_list: "ContactList",
+    group_list: "GroupList",
+    master_key: "MasterKey",
+    onion_service: "OnionService",
+    stdin_fd: int,
+) -> NoReturn:
     """Get input from user and process it accordingly.
 
     Running this loop as a process allows handling different functions
@@ -63,23 +64,29 @@ def input_loop(queues:        Dict[bytes, 'Queue[bytes]'],
     generation, separate from assembly packet output.
     """
     sys.stdin = os.fdopen(stdin_fd)
-    window    = TxWindow(contact_list, group_list)
+    window = TxWindow(contact_list, group_list)
 
     while True:
-        with ignored(EOFError, FunctionReturn, KeyboardInterrupt):
-            readline.set_completer(get_tab_completer(contact_list, group_list, settings, gateway))
-            readline.parse_and_bind('tab: complete')
+        with ignored(EOFError, SoftError, KeyboardInterrupt):
+            readline.set_completer(
+                get_tab_completer(contact_list, group_list, settings, gateway)
+            )
+            readline.parse_and_bind("tab: complete")
 
             window.update_window(group_list)
 
             while not onion_service.is_delivered:
-                export_onion_service_data(contact_list, settings, onion_service, gateway)
+                export_onion_service_data(
+                    contact_list, settings, onion_service, gateway
+                )
 
             while not contact_list.has_local_contact():
                 new_local_key(contact_list, settings, queues)
 
             while not contact_list.has_contacts():
-                add_new_contact(contact_list, group_list, settings, queues, onion_service)
+                add_new_contact(
+                    contact_list, group_list, settings, queues, onion_service
+                )
 
             while not window.is_selected():
                 window.select_tx_window(settings, queues, onion_service, gateway)
@@ -94,4 +101,13 @@ def input_loop(queues:        Dict[bytes, 'Queue[bytes]'],
 
             elif user_input.type == COMMAND:
                 process_command(
-                    user_input, window, contact_list, group_list, settings, queues, master_key, onion_service, gateway)
+                    user_input,
+                    window,
+                    contact_list,
+                    group_list,
+                    settings,
+                    queues,
+                    master_key,
+                    onion_service,
+                    gateway,
+                )

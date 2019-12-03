@@ -2,8 +2,16 @@
 
 ### Tinfoil Chat
 
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Python 3.7](https://img.shields.io/badge/python-3.7-informational.svg)](https://www.python.org/downloads/release/python-370/)
+[![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 [![Build Status](https://travis-ci.org/maqp/tfc.svg?branch=master)](https://travis-ci.org/maqp/tfc) 
 [![Coverage Status](https://coveralls.io/repos/github/maqp/tfc/badge.svg?branch=master)](https://coveralls.io/github/maqp/tfc?branch=master)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/71fa9cc1da424f52a576a04c2722da26)](https://www.codacy.com/manual/maqp/tfc?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=maqp/tfc&amp;utm_campaign=Badge_Grade)
+[![CodeFactor](https://www.codefactor.io/repository/github/maqp/tfc/badge)](https://www.codefactor.io/repository/github/maqp/tfc)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Requirements Status](https://requires.io/github/maqp/tfc/requirements.svg?branch=master)](https://requires.io/github/maqp/tfc/requirements/?branch=master)
+[![Known Vulnerabilities](https://snyk.io/test/github/maqp/tfc/badge.svg)](https://snyk.io/test/github/maqp/tfc)
 
 Tinfoil Chat (TFC) is a 
 [FOSS](https://www.gnu.org/philosophy/free-sw.html)+[FHD](https://www.gnu.org/philosophy/free-hardware-designs.en.html) 

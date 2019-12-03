@@ -22,31 +22,37 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 import time
 import unittest
 
-from src.common.statics import (C_N_HEADER, PADDING_LENGTH, PLACEHOLDER_DATA, TM_NOISE_COMMAND_QUEUE,
-                                TM_NOISE_PACKET_QUEUE, TRAFFIC_MASKING)
+from src.common.misc import HideRunTime
+from src.common.statics import (
+    C_N_HEADER,
+    PADDING_LENGTH,
+    PLACEHOLDER_DATA,
+    TM_NOISE_COMMAND_QUEUE,
+    TM_NOISE_PACKET_QUEUE,
+    TRAFFIC_MASKING,
+)
 
-from src.transmitter.traffic_masking import HideRunTime, noise_loop
+from src.transmitter.traffic_masking import noise_loop
 
 from tests.mock_classes import ContactList, Settings
-from tests.utils        import gen_queue_dict, tear_queues
+from tests.utils import gen_queue_dict, tear_queues
 
 
 class TestHideRunTime(unittest.TestCase):
-
-    def setUp(self):
+    def setUp(self) -> None:
         """Pre-test actions."""
         self.settings = Settings()
         self.settings.tm_random_delay = 1
         self.settings.tm_static_delay = 1
 
-    def test_traffic_masking_delay(self):
+    def test_traffic_masking_delay(self) -> None:
         start = time.monotonic()
         with HideRunTime(self.settings, delay_type=TRAFFIC_MASKING):
             pass
         duration = time.monotonic() - start
         self.assertTrue(duration > self.settings.tm_static_delay)
 
-    def test_static_time(self):
+    def test_static_time(self) -> None:
         start = time.monotonic()
         with HideRunTime(self.settings, duration=1):
             pass
@@ -55,22 +61,21 @@ class TestHideRunTime(unittest.TestCase):
 
 
 class TestNoiseLoop(unittest.TestCase):
-
-    def setUp(self):
+    def setUp(self) -> None:
         """Pre-test actions."""
-        self.queues       = gen_queue_dict()
-        self.contact_list = ContactList(nicks=['Alice'])
+        self.queues = gen_queue_dict()
+        self.contact_list = ContactList(nicks=["Alice"])
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         """Post-test actions."""
         tear_queues(self.queues)
 
-    def test_noise_commands(self):
+    def test_noise_commands(self) -> None:
         self.assertIsNone(noise_loop(self.queues, unit_test=True))
         packet = self.queues[TM_NOISE_COMMAND_QUEUE].get()
         self.assertEqual(packet, C_N_HEADER + bytes(PADDING_LENGTH))
 
-    def test_noise_packets(self):
+    def test_noise_packets(self) -> None:
         self.assertIsNone(noise_loop(self.queues, self.contact_list, unit_test=True))
         packet, log_messages, log_as_ph = self.queues[TM_NOISE_PACKET_QUEUE].get()
         self.assertEqual(packet, PLACEHOLDER_DATA)
@@ -78,5 +83,5 @@ class TestNoiseLoop(unittest.TestCase):
         self.assertTrue(log_as_ph)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(exit=False)

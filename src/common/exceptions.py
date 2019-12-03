@@ -24,9 +24,9 @@ import sys
 import typing
 
 from datetime import datetime
-from typing   import Optional
+from typing import Optional
 
-from src.common.output  import clear_screen, m_print
+from src.common.output import clear_screen, m_print
 from src.common.statics import TFC
 
 if typing.TYPE_CHECKING:
@@ -38,49 +38,62 @@ class CriticalError(Exception):
 
     def __init__(self, error_message: str, exit_code: int = 1) -> None:
         """A severe exception that requires TFC to gracefully exit."""
-        graceful_exit(f"Critical error in function '{inspect.stack()[1][3]}':\n{error_message}",
-                      clear=False, exit_code=exit_code)
+        graceful_exit(
+            f"Critical error in function '{inspect.stack()[1][3]}':\n{error_message}",
+            clear=False,
+            exit_code=exit_code,
+        )
 
 
-class FunctionReturn(Exception):
-    """Print return message and return to exception handler function."""
+class SoftError(Exception):
+    """A soft exception from which TFC can automatically recover from.
 
-    def __init__(self,
-                 message:    str,
-                 window:     Optional['RxWindow'] = None,   # The window to include the message in
-                 output:     bool                 = True,   # When False, doesn't print message when adding it to window
-                 bold:       bool                 = False,  # When True, prints the message in bold
-                 head_clear: bool                 = False,  # When True, clears the screen before printing message
-                 tail_clear: bool                 = False,  # When True, clears the screen after message (needs delay)
-                 delay:      float                = 0,      # The delay before continuing
-                 head:       int                  = 1,      # The number of new-lines to print before the message
-                 tail:       int                  = 1,      # The number of new-lines to print after message
-                 ) -> None:
+    When a SoftError is raised, TFC prints a message
+    and returns to the exception handler function.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        window: Optional["RxWindow"] = None,  # The window to include the message in
+        output: bool = True,  # When False, doesn't print message when adding it to window
+        bold: bool = False,  # When True, prints the message in bold
+        head_clear: bool = False,  # When True, clears the screen before printing message
+        tail_clear: bool = False,  # When True, clears the screen after message (needs delay)
+        delay: float = 0,  # The delay before continuing
+        head: int = 1,  # The number of new-lines to print before the message
+        tail: int = 1,  # The number of new-lines to print after message
+        ts: Optional["datetime"] = None,  # Datetime object
+    ) -> None:
         """Print return message and return to exception handler function."""
         self.message = message
 
         if window is None:
             if output:
-                m_print(self.message,
-                        bold=bold,
-                        head_clear=head_clear,
-                        tail_clear=tail_clear,
-                        delay=delay,
-                        head=head,
-                        tail=tail)
+                m_print(
+                    self.message,
+                    bold=bold,
+                    head_clear=head_clear,
+                    tail_clear=tail_clear,
+                    delay=delay,
+                    head=head,
+                    tail=tail,
+                )
         else:
-            window.add_new(datetime.now(), self.message, output=output)
+            ts = datetime.now() if ts is None else ts
+            window.add_new(ts, self.message, output=output)
 
 
-def graceful_exit(message:   str  = '',    # Exit message to print
-                  clear:     bool = True,  # When False, does not clear screen before printing message
-                  exit_code: int  = 0      # Value returned to parent process
-                  ) -> None:
+def graceful_exit(
+    message: str = "",  # Exit message to print
+    clear: bool = True,  # When False, does not clear screen before printing message
+    exit_code: int = 0,  # Value returned to parent process
+) -> None:
     """Display a message and exit TFC."""
     if clear:
         clear_screen()
     if message:
-        print('\n' + message)
+        print("\n" + message)
     print(f"\nExiting {TFC}.\n")
 
     sys.exit(exit_code)
