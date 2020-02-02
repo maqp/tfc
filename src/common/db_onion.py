@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -24,19 +24,13 @@ import typing
 
 import nacl.signing
 
-from src.common.crypto import csprng
-from src.common.database import TFCDatabase
-from src.common.encoding import pub_key_to_onion_address, pub_key_to_short_address
+from src.common.crypto     import csprng
+from src.common.database   import TFCDatabase
+from src.common.encoding   import pub_key_to_onion_address, pub_key_to_short_address
 from src.common.exceptions import CriticalError
-from src.common.misc import ensure_dir
-from src.common.output import phase
-from src.common.statics import (
-    CONFIRM_CODE_LENGTH,
-    DIR_USER_DATA,
-    DONE,
-    ONION_SERVICE_PRIVATE_KEY_LENGTH,
-    TX,
-)
+from src.common.misc       import ensure_dir
+from src.common.output     import phase
+from src.common.statics    import CONFIRM_CODE_LENGTH, DIR_USER_DATA, DONE, ONION_SERVICE_PRIVATE_KEY_LENGTH, TX
 
 if typing.TYPE_CHECKING:
     from src.common.db_masterkey import MasterKey
@@ -59,13 +53,13 @@ class OnionService(object):
     anyway.
     """
 
-    def __init__(self, master_key: "MasterKey") -> None:
+    def __init__(self, master_key: 'MasterKey') -> None:
         """Create a new OnionService object."""
-        self.master_key = master_key
-        self.file_name = f"{DIR_USER_DATA}{TX}_onion_db"
-        self.database = TFCDatabase(self.file_name, self.master_key)
+        self.master_key   = master_key
+        self.file_name    = f'{DIR_USER_DATA}{TX}_onion_db'
+        self.database     = TFCDatabase(self.file_name, self.master_key)
         self.is_delivered = False
-        self.conf_code = csprng(CONFIRM_CODE_LENGTH)
+        self.conf_code    = csprng(CONFIRM_CODE_LENGTH)
 
         ensure_dir(DIR_USER_DATA)
         if os.path.isfile(self.file_name):
@@ -74,9 +68,7 @@ class OnionService(object):
             self.onion_private_key = self.new_onion_service_private_key()
             self.store_onion_service_private_key()
 
-        self.public_key = bytes(
-            nacl.signing.SigningKey(seed=self.onion_private_key).verify_key
-        )
+        self.public_key = bytes(nacl.signing.SigningKey(seed=self.onion_private_key).verify_key)
 
         self.user_onion_address = pub_key_to_onion_address(self.public_key)
         self.user_short_address = pub_key_to_short_address(self.public_key)

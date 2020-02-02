@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -24,46 +24,20 @@ import typing
 
 from typing import Iterable, Iterator, List, Optional, Sized
 
-from src.common.database import TFCDatabase
-from src.common.encoding import (
-    bool_to_bytes,
-    pub_key_to_onion_address,
-    str_to_bytes,
-    pub_key_to_short_address,
-)
-from src.common.encoding import bytes_to_bool, onion_address_to_pub_key, bytes_to_str
+from src.common.database   import TFCDatabase
+from src.common.encoding   import bool_to_bytes, pub_key_to_onion_address, str_to_bytes, pub_key_to_short_address
+from src.common.encoding   import bytes_to_bool, onion_address_to_pub_key, bytes_to_str
 from src.common.exceptions import CriticalError
-from src.common.misc import (
-    ensure_dir,
-    get_terminal_width,
-    separate_headers,
-    split_byte_string,
-)
-from src.common.output import clear_screen
-from src.common.statics import (
-    CONTACT_LENGTH,
-    CONTACT_LIST_INDENT,
-    DIR_USER_DATA,
-    DUMMY_CONTACT,
-    DUMMY_NICK,
-    ECDHE,
-    ENCODED_BOOLEAN_LENGTH,
-    FINGERPRINT_LENGTH,
-    KEX_STATUS_HAS_RX_PSK,
-    KEX_STATUS_LENGTH,
-    KEX_STATUS_NONE,
-    KEX_STATUS_NO_RX_PSK,
-    KEX_STATUS_PENDING,
-    KEX_STATUS_UNVERIFIED,
-    KEX_STATUS_VERIFIED,
-    LOCAL_ID,
-    ONION_SERVICE_PUBLIC_KEY_LENGTH,
-    PSK,
-)
+from src.common.misc       import ensure_dir, get_terminal_width, separate_headers, split_byte_string
+from src.common.output     import clear_screen
+from src.common.statics    import (CONTACT_LENGTH, CONTACT_LIST_INDENT, DIR_USER_DATA, DUMMY_CONTACT, DUMMY_NICK, ECDHE,
+                                   ENCODED_BOOLEAN_LENGTH, FINGERPRINT_LENGTH, KEX_STATUS_HAS_RX_PSK, KEX_STATUS_LENGTH,
+                                   KEX_STATUS_NONE, KEX_STATUS_NO_RX_PSK, KEX_STATUS_PENDING, KEX_STATUS_UNVERIFIED,
+                                   KEX_STATUS_VERIFIED, LOCAL_ID, ONION_SERVICE_PUBLIC_KEY_LENGTH, PSK)
 
 if typing.TYPE_CHECKING:
     from src.common.db_masterkey import MasterKey
-    from src.common.db_settings import Settings
+    from src.common.db_settings  import Settings
     from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey
 
 
@@ -153,32 +127,31 @@ class Contact(object):
                      with each other.
     """
 
-    def __init__(
-        self,
-        onion_pub_key: bytes,
-        nick: str,
-        tx_fingerprint: bytes,
-        rx_fingerprint: bytes,
-        kex_status: bytes,
-        log_messages: bool,
-        file_reception: bool,
-        notifications: bool,
-    ) -> None:
+    def __init__(self,
+                 onion_pub_key:  bytes,
+                 nick:           str,
+                 tx_fingerprint: bytes,
+                 rx_fingerprint: bytes,
+                 kex_status:     bytes,
+                 log_messages:   bool,
+                 file_reception: bool,
+                 notifications:  bool
+                 ) -> None:
         """Create a new Contact object.
 
         `self.short_address` is a truncated version of the account used
         to identify TFC account in printed messages.
         """
-        self.onion_pub_key = onion_pub_key
-        self.nick = nick
-        self.tx_fingerprint = tx_fingerprint
-        self.rx_fingerprint = rx_fingerprint
-        self.kex_status = kex_status
-        self.log_messages = log_messages
-        self.file_reception = file_reception
-        self.notifications = notifications
-        self.onion_address = pub_key_to_onion_address(self.onion_pub_key)
-        self.short_address = pub_key_to_short_address(self.onion_pub_key)
+        self.onion_pub_key   = onion_pub_key
+        self.nick            = nick
+        self.tx_fingerprint  = tx_fingerprint
+        self.rx_fingerprint  = rx_fingerprint
+        self.kex_status      = kex_status
+        self.log_messages    = log_messages
+        self.file_reception  = file_reception
+        self.notifications   = notifications
+        self.onion_address   = pub_key_to_onion_address(self.onion_pub_key)
+        self.short_address   = pub_key_to_short_address(self.onion_pub_key)
         self.tfc_private_key = None  # type: Optional[X448PrivateKey]
 
     def serialize_c(self) -> bytes:
@@ -192,16 +165,14 @@ class Contact(object):
         metadata about the contact the ciphertext length of the contact
         database would reveal.
         """
-        return (
-            self.onion_pub_key
-            + self.tx_fingerprint
-            + self.rx_fingerprint
-            + self.kex_status
-            + bool_to_bytes(self.log_messages)
-            + bool_to_bytes(self.file_reception)
-            + bool_to_bytes(self.notifications)
-            + str_to_bytes(self.nick)
-        )
+        return (self.onion_pub_key
+                + self.tx_fingerprint
+                + self.rx_fingerprint
+                + self.kex_status
+                + bool_to_bytes(self.log_messages)
+                + bool_to_bytes(self.file_reception)
+                + bool_to_bytes(self.notifications)
+                + str_to_bytes(self.nick))
 
     def uses_psk(self) -> bool:
         """\
@@ -238,13 +209,13 @@ class ContactList(Iterable[Contact], Sized):
     readable names for making queries to the database.
     """
 
-    def __init__(self, master_key: "MasterKey", settings: "Settings") -> None:
+    def __init__(self, master_key: 'MasterKey', settings: 'Settings') -> None:
         """Create a new ContactList object."""
-        self.settings = settings
-        self.contacts = []  # type: List[Contact]
+        self.settings      = settings
+        self.contacts      = []  # type: List[Contact]
         self.dummy_contact = self.generate_dummy_contact()
-        self.file_name = f"{DIR_USER_DATA}{settings.software_operation}_contacts"
-        self.database = TFCDatabase(self.file_name, master_key)
+        self.file_name     = f'{DIR_USER_DATA}{settings.software_operation}_contacts'
+        self.database      = TFCDatabase(self.file_name, master_key)
 
         ensure_dir(DIR_USER_DATA)
         if os.path.isfile(self.file_name):
@@ -280,9 +251,7 @@ class ContactList(Iterable[Contact], Sized):
         and a 16-byte tag, so the size of the final database is 57313
         bytes.
         """
-        pt_bytes = b"".join(
-            [c.serialize_c() for c in self.contacts + self._dummy_contacts()]
-        )
+        pt_bytes = b''.join([c.serialize_c() for c in self.contacts + self._dummy_contacts()])
         self.database.store_database(pt_bytes, replace)
 
     def _load_contacts(self) -> None:
@@ -296,45 +265,30 @@ class ContactList(Iterable[Contact], Sized):
         populate the `self.contacts` list with Contact objects, the data
         of which is sliced and decoded from the dummy-free blocks.
         """
-        pt_bytes = self.database.load_database()
-        blocks = split_byte_string(pt_bytes, item_len=CONTACT_LENGTH)
-        df_blocks = [
-            b for b in blocks if not b.startswith(self.dummy_contact.onion_pub_key)
-        ]
+        pt_bytes  = self.database.load_database()
+        blocks    = split_byte_string(pt_bytes, item_len=CONTACT_LENGTH)
+        df_blocks = [b for b in blocks if not b.startswith(self.dummy_contact.onion_pub_key)]
 
         for block in df_blocks:
             if len(block) != CONTACT_LENGTH:
                 raise CriticalError("Invalid data in contact database.")
 
-            (
-                onion_pub_key,
-                tx_fingerprint,
-                rx_fingerprint,
-                kex_status_byte,
-                log_messages_byte,
-                file_reception_byte,
-                notifications_byte,
-                nick_bytes,
-            ) = separate_headers(
-                block,
-                [ONION_SERVICE_PUBLIC_KEY_LENGTH]
-                + 2 * [FINGERPRINT_LENGTH]
-                + [KEX_STATUS_LENGTH]
-                + 3 * [ENCODED_BOOLEAN_LENGTH],
-            )
+            (onion_pub_key, tx_fingerprint, rx_fingerprint, kex_status_byte,
+             log_messages_byte, file_reception_byte, notifications_byte,
+             nick_bytes) = separate_headers(block,
+                                            [ONION_SERVICE_PUBLIC_KEY_LENGTH]
+                                            + 2*[FINGERPRINT_LENGTH]
+                                            + [KEX_STATUS_LENGTH]
+                                            + 3*[ENCODED_BOOLEAN_LENGTH])
 
-            self.contacts.append(
-                Contact(
-                    onion_pub_key=onion_pub_key,
-                    tx_fingerprint=tx_fingerprint,
-                    rx_fingerprint=rx_fingerprint,
-                    kex_status=kex_status_byte,
-                    log_messages=bytes_to_bool(log_messages_byte),
-                    file_reception=bytes_to_bool(file_reception_byte),
-                    notifications=bytes_to_bool(notifications_byte),
-                    nick=bytes_to_str(nick_bytes),
-                )
-            )
+            self.contacts.append(Contact(onion_pub_key =onion_pub_key,
+                                         tx_fingerprint=tx_fingerprint,
+                                         rx_fingerprint=rx_fingerprint,
+                                         kex_status    =kex_status_byte,
+                                         log_messages  =bytes_to_bool(log_messages_byte),
+                                         file_reception=bytes_to_bool(file_reception_byte),
+                                         notifications =bytes_to_bool(notifications_byte),
+                                         nick          =bytes_to_str(nick_bytes)))
 
     @staticmethod
     def generate_dummy_contact() -> Contact:
@@ -344,16 +298,14 @@ class ContactList(Iterable[Contact], Sized):
         serialization when the data is stored to, or read from the
         database.
         """
-        return Contact(
-            onion_pub_key=onion_address_to_pub_key(DUMMY_CONTACT),
-            nick=DUMMY_NICK,
-            tx_fingerprint=bytes(FINGERPRINT_LENGTH),
-            rx_fingerprint=bytes(FINGERPRINT_LENGTH),
-            kex_status=KEX_STATUS_NONE,
-            log_messages=False,
-            file_reception=False,
-            notifications=False,
-        )
+        return Contact(onion_pub_key =onion_address_to_pub_key(DUMMY_CONTACT),
+                       nick          =DUMMY_NICK,
+                       tx_fingerprint=bytes(FINGERPRINT_LENGTH),
+                       rx_fingerprint=bytes(FINGERPRINT_LENGTH),
+                       kex_status    =KEX_STATUS_NONE,
+                       log_messages  =False,
+                       file_reception=False,
+                       notifications =False)
 
     def _dummy_contacts(self) -> List[Contact]:
         """\
@@ -368,20 +320,19 @@ class ContactList(Iterable[Contact], Sized):
         KeyList database that contains the local key.
         """
         number_of_contacts_to_store = self.settings.max_number_of_contacts + 1
-        number_of_dummies = number_of_contacts_to_store - len(self.contacts)
+        number_of_dummies           = number_of_contacts_to_store - len(self.contacts)
         return [self.dummy_contact] * number_of_dummies
 
-    def add_contact(
-        self,
-        onion_pub_key: bytes,
-        nick: str,
-        tx_fingerprint: bytes,
-        rx_fingerprint: bytes,
-        kex_status: bytes,
-        log_messages: bool,
-        file_reception: bool,
-        notifications: bool,
-    ) -> None:
+    def add_contact(self,
+                    onion_pub_key:  bytes,
+                    nick:           str,
+                    tx_fingerprint: bytes,
+                    rx_fingerprint: bytes,
+                    kex_status:     bytes,
+                    log_messages:   bool,
+                    file_reception: bool,
+                    notifications:  bool
+                    ) -> None:
         """\
         Add a new contact to `self.contacts` list and write changes to
         the database.
@@ -398,23 +349,19 @@ class ContactList(Iterable[Contact], Sized):
         """
         if self.has_pub_key(onion_pub_key):
             current_contact = self.get_contact_by_pub_key(onion_pub_key)
-            log_messages = current_contact.log_messages
-            file_reception = current_contact.file_reception
-            notifications = current_contact.notifications
+            log_messages    = current_contact.log_messages
+            file_reception  = current_contact.file_reception
+            notifications   = current_contact.notifications
             self.remove_contact_by_pub_key(onion_pub_key)
 
-        self.contacts.append(
-            Contact(
-                onion_pub_key,
-                nick,
-                tx_fingerprint,
-                rx_fingerprint,
-                kex_status,
-                log_messages,
-                file_reception,
-                notifications,
-            )
-        )
+        self.contacts.append(Contact(onion_pub_key,
+                                     nick,
+                                     tx_fingerprint,
+                                     rx_fingerprint,
+                                     kex_status,
+                                     log_messages,
+                                     file_reception,
+                                     notifications))
         self.store_contacts()
 
     def remove_contact_by_pub_key(self, onion_pub_key: bytes) -> None:
@@ -475,23 +422,13 @@ class ContactList(Iterable[Contact], Sized):
 
     def get_list_of_pending_pub_keys(self) -> List[bytes]:
         """Return list of public keys for contacts that haven't completed key exchange yet."""
-        return [
-            c.onion_pub_key for c in self.contacts if c.kex_status == KEX_STATUS_PENDING
-        ]
+        return [c.onion_pub_key for c in self.contacts if c.kex_status == KEX_STATUS_PENDING]
 
     def get_list_of_existing_pub_keys(self) -> List[bytes]:
         """Return list of public keys for contacts with whom key exchange has been completed."""
-        return [
-            c.onion_pub_key
-            for c in self.get_list_of_contacts()
-            if c.kex_status
-            in [
-                KEX_STATUS_UNVERIFIED,
-                KEX_STATUS_VERIFIED,
-                KEX_STATUS_HAS_RX_PSK,
-                KEX_STATUS_NO_RX_PSK,
-            ]
-        ]
+        return [c.onion_pub_key for c in self.get_list_of_contacts()
+                if c.kex_status in [KEX_STATUS_UNVERIFIED, KEX_STATUS_VERIFIED,
+                                    KEX_STATUS_HAS_RX_PSK, KEX_STATUS_NO_RX_PSK]]
 
     def contact_selectors(self) -> List[str]:
         """Return list of string-type UIDs that can be used to select a contact."""
@@ -503,9 +440,7 @@ class ContactList(Iterable[Contact], Sized):
 
     def has_only_pending_contacts(self) -> bool:
         """Return True if ContactList only has pending contacts, else False."""
-        return all(
-            c.kex_status == KEX_STATUS_PENDING for c in self.get_list_of_contacts()
-        )
+        return all(c.kex_status == KEX_STATUS_PENDING for c in self.get_list_of_contacts())
 
     def has_pub_key(self, onion_pub_key: bytes) -> bool:
         """Return True if contact with public key exists, else False."""
@@ -526,46 +461,41 @@ class ContactList(Iterable[Contact], Sized):
         corresponds to what nick etc.
         """
         # Initialize columns
-        c1 = ["Contact"]
-        c2 = ["Account"]
-        c3 = ["Logging"]
-        c4 = ["Notify"]
-        c5 = ["Files "]
-        c6 = ["Key Ex"]
+        c1 = ['Contact']
+        c2 = ['Account']
+        c3 = ['Logging']
+        c4 = ['Notify']
+        c5 = ['Files ']
+        c6 = ['Key Ex']
 
         # Key exchange status dictionary
-        kex_dict = {
-            KEX_STATUS_PENDING: f"{ECDHE} (Pending)",
-            KEX_STATUS_UNVERIFIED: f"{ECDHE} (Unverified)",
-            KEX_STATUS_VERIFIED: f"{ECDHE} (Verified)",
-            KEX_STATUS_NO_RX_PSK: f"{PSK}  (No contact key)",
-            KEX_STATUS_HAS_RX_PSK: PSK,
-        }
+        kex_dict = {KEX_STATUS_PENDING:    f"{ECDHE} (Pending)",
+                    KEX_STATUS_UNVERIFIED: f"{ECDHE} (Unverified)",
+                    KEX_STATUS_VERIFIED:   f"{ECDHE} (Verified)",
+                    KEX_STATUS_NO_RX_PSK:  f"{PSK}  (No contact key)",
+                    KEX_STATUS_HAS_RX_PSK: PSK
+                    }
 
         # Populate columns with contact data
         for c in self.get_list_of_contacts():
             c1.append(c.nick)
             c2.append(c.short_address)
-            c3.append("Yes" if c.log_messages else "No")
-            c4.append("Yes" if c.notifications else "No")
-            c5.append("Accept" if c.file_reception else "Reject")
+            c3.append('Yes'    if c.log_messages   else 'No')
+            c4.append('Yes'    if c.notifications  else 'No')
+            c5.append('Accept' if c.file_reception else 'Reject')
             c6.append(kex_dict[c.kex_status])
 
         # Calculate column widths
-        c1w, c2w, c3w, c4w, c5w, = [
-            max(len(v) for v in column) + CONTACT_LIST_INDENT
-            for column in [c1, c2, c3, c4, c5]
-        ]
+        c1w, c2w, c3w, c4w, c5w, = [max(len(v) for v in column) + CONTACT_LIST_INDENT
+                                    for column in [c1, c2, c3, c4, c5]]
 
         # Align columns by adding whitespace between fields of each line
-        lines = [
-            f"{f1:{c1w}}{f2:{c2w}}{f3:{c3w}}{f4:{c4w}}{f5:{c5w}}{f6}"
-            for f1, f2, f3, f4, f5, f6 in zip(c1, c2, c3, c4, c5, c6)
-        ]
+        lines = [f'{f1:{c1w}}{f2:{c2w}}{f3:{c3w}}{f4:{c4w}}{f5:{c5w}}{f6}'
+                 for f1, f2, f3, f4, f5, f6 in zip(c1, c2, c3, c4, c5, c6)]
 
         # Add a terminal-wide line between the column names and the data
-        lines.insert(1, get_terminal_width() * "─")
+        lines.insert(1, get_terminal_width() * '─')
 
         # Print the contact list
         clear_screen()
-        print("\n" + "\n".join(lines) + "\n\n")
+        print('\n' + '\n'.join(lines) + '\n\n')

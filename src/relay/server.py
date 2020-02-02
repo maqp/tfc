@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -23,30 +23,26 @@ import hmac
 import logging
 import typing
 
-from io import BytesIO
+from io              import BytesIO
 from multiprocessing import Queue
-from typing import Any, Dict, List, Optional
+from typing          import Any, Dict, List, Optional
 
 from flask import Flask, send_file
 
-from src.common.misc import HideRunTime
-from src.common.statics import (
-    CONTACT_REQ_QUEUE,
-    F_TO_FLASK_QUEUE,
-    M_TO_FLASK_QUEUE,
-    URL_TOKEN_QUEUE,
-)
+from src.common.misc    import HideRunTime
+from src.common.statics import CONTACT_REQ_QUEUE, F_TO_FLASK_QUEUE, M_TO_FLASK_QUEUE, URL_TOKEN_QUEUE
 
 if typing.TYPE_CHECKING:
-    QueueDict = Dict[bytes, Queue[Any]]
-    PubKeyDict = Dict[str, bytes]
+    QueueDict   = Dict[bytes, Queue[Any]]
+    PubKeyDict  = Dict[str, bytes]
     MessageDict = Dict[bytes, List[str]]
-    FileDict = Dict[bytes, List[bytes]]
+    FileDict    = Dict[bytes, List[bytes]]
 
 
-def validate_url_token(
-    purp_url_token: str, queues: "QueueDict", pub_key_dict: "PubKeyDict"
-) -> bool:
+def validate_url_token(purp_url_token: str,
+                       queues:         'QueueDict',
+                       pub_key_dict:   'PubKeyDict'
+                       ) -> bool:
     """Validate URL token using constant time comparison."""
     # This context manager hides the duration of URL_TOKEN_QUEUE check as
     # well as the number of accounts in pub_key_dict when iterating over keys.
@@ -76,9 +72,10 @@ def validate_url_token(
     return valid_url_token
 
 
-def flask_server(
-    queues: "QueueDict", url_token_public_key: str, unit_test: bool = False
-) -> Optional[Flask]:
+def flask_server(queues:               'QueueDict',
+                 url_token_public_key: str,
+                 unit_test:            bool = False
+                 ) -> Optional[Flask]:
     """Run Flask web server for outgoing messages.
 
     This process runs Flask web server from where clients of contacts
@@ -98,23 +95,23 @@ def flask_server(
     connection is strongly authenticated by the Onion Service domain
     name, that is, the TFC account pinned by the user.
     """
-    app = Flask(__name__)
-    pub_key_dict = dict()  # type: PubKeyDict
-    message_dict = dict()  # type: MessageDict
-    file_dict = dict()  # type: FileDict
+    app          = Flask(__name__)
+    pub_key_dict = dict()  # type: Dict[str, bytes]
+    message_dict = dict()  # type: Dict[bytes, List[str]]
+    file_dict    = dict()  # type: Dict[bytes, List[bytes]]
 
-    @app.route("/")
+    @app.route('/')
     def index() -> str:
         """Return the URL token public key to contacts that know the .onion address."""
         return url_token_public_key
 
-    @app.route("/contact_request/<string:purp_onion_address>")
+    @app.route('/contact_request/<string:purp_onion_address>')
     def contact_request(purp_onion_address: str) -> str:
         """Pass contact request to `c_req_manager`."""
         queues[CONTACT_REQ_QUEUE].put(purp_onion_address)
-        return "OK"
+        return 'OK'
 
-    @app.route("/<purp_url_token>/files/")
+    @app.route('/<purp_url_token>/files/')
     def file_get(purp_url_token: str) -> Any:
         """Validate the URL token and return a queued file."""
         return get_file(purp_url_token, queues, pub_key_dict, file_dict)
@@ -126,7 +123,7 @@ def flask_server(
 
     # --------------------------------------------------------------------------
 
-    log = logging.getLogger("werkzeug")
+    log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
 
     if unit_test:
@@ -136,15 +133,14 @@ def flask_server(
         return None
 
 
-def get_message(
-    purp_url_token: str,
-    queues: "QueueDict",
-    pub_key_dict: "PubKeyDict",
-    message_dict: "MessageDict",
-) -> str:
+def get_message(purp_url_token: str,
+                queues:         'QueueDict',
+                pub_key_dict:   'PubKeyDict',
+                message_dict:   'MessageDict'
+                ) -> str:
     """Send queued messages to contact."""
     if not validate_url_token(purp_url_token, queues, pub_key_dict):
-        return ""
+        return ''
 
     identified_onion_pub_key = pub_key_dict[purp_url_token]
 
@@ -154,27 +150,21 @@ def get_message(
         packet, onion_pub_key = queues[M_TO_FLASK_QUEUE].get()
         message_dict.setdefault(onion_pub_key, []).append(packet)
 
-    if (
-        identified_onion_pub_key in message_dict
-        and message_dict[identified_onion_pub_key]
-    ):
-        packets = "\n".join(
-            message_dict[identified_onion_pub_key]
-        )  # All messages for contact
+    if identified_onion_pub_key in message_dict and message_dict[identified_onion_pub_key]:
+        packets = '\n'.join(message_dict[identified_onion_pub_key])  # All messages for contact
         message_dict[identified_onion_pub_key] = []
         return packets
-    return ""
+    return ''
 
 
-def get_file(
-    purp_url_token: str,
-    queues: "QueueDict",
-    pub_key_dict: "PubKeyDict",
-    file_dict: "FileDict",
-) -> Any:
+def get_file(purp_url_token: str,
+             queues:         'QueueDict',
+             pub_key_dict:   'PubKeyDict',
+             file_dict:      'FileDict'
+             ) -> Any:
     """Send queued files to contact."""
     if not validate_url_token(purp_url_token, queues, pub_key_dict):
-        return ""
+        return ''
 
     identified_onion_pub_key = pub_key_dict[purp_url_token]
 
@@ -187,4 +177,4 @@ def get_file(
         mem.write(file_dict[identified_onion_pub_key].pop(0))
         mem.seek(0)
         return send_file(mem, mimetype="application/octet-stream")
-    return ""
+    return ''

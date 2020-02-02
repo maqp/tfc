@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -19,52 +19,23 @@ You should have received a copy of the GNU General Public License
 along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
-import time
 import unittest
 
-from src.common.misc import HideRunTime
-from src.common.statics import (
-    C_N_HEADER,
-    PADDING_LENGTH,
-    PLACEHOLDER_DATA,
-    TM_NOISE_COMMAND_QUEUE,
-    TM_NOISE_PACKET_QUEUE,
-    TRAFFIC_MASKING,
-)
+from src.common.statics import (C_N_HEADER, PADDING_LENGTH, PLACEHOLDER_DATA, TM_NOISE_COMMAND_QUEUE,
+                                TM_NOISE_PACKET_QUEUE)
 
 from src.transmitter.traffic_masking import noise_loop
 
-from tests.mock_classes import ContactList, Settings
-from tests.utils import gen_queue_dict, tear_queues
-
-
-class TestHideRunTime(unittest.TestCase):
-    def setUp(self) -> None:
-        """Pre-test actions."""
-        self.settings = Settings()
-        self.settings.tm_random_delay = 1
-        self.settings.tm_static_delay = 1
-
-    def test_traffic_masking_delay(self) -> None:
-        start = time.monotonic()
-        with HideRunTime(self.settings, delay_type=TRAFFIC_MASKING):
-            pass
-        duration = time.monotonic() - start
-        self.assertTrue(duration > self.settings.tm_static_delay)
-
-    def test_static_time(self) -> None:
-        start = time.monotonic()
-        with HideRunTime(self.settings, duration=1):
-            pass
-        duration = time.monotonic() - start
-        self.assertTrue(0.9 < duration < 1.1)
+from tests.mock_classes import ContactList
+from tests.utils        import gen_queue_dict, tear_queues
 
 
 class TestNoiseLoop(unittest.TestCase):
+
     def setUp(self) -> None:
         """Pre-test actions."""
-        self.queues = gen_queue_dict()
-        self.contact_list = ContactList(nicks=["Alice"])
+        self.queues       = gen_queue_dict()
+        self.contact_list = ContactList(nicks=['Alice'])
 
     def tearDown(self) -> None:
         """Post-test actions."""
@@ -83,5 +54,5 @@ class TestNoiseLoop(unittest.TestCase):
         self.assertTrue(log_as_ph)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main(exit=False)

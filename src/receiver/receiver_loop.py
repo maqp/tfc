@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -24,36 +24,31 @@ import time
 import typing
 
 from datetime import datetime
-from typing import Any, Dict
+from typing   import Any, Dict
 
-from src.common.encoding import bytes_to_int
+from src.common.encoding   import bytes_to_int
 from src.common.exceptions import SoftError
-from src.common.misc import ignored, separate_headers
-from src.common.output import m_print
-from src.common.statics import (
-    COMMAND_DATAGRAM_HEADER,
-    DATAGRAM_HEADER_LENGTH,
-    DATAGRAM_TIMESTAMP_LENGTH,
-    FILE_DATAGRAM_HEADER,
-    GATEWAY_QUEUE,
-    LOCAL_KEY_DATAGRAM_HEADER,
-    MESSAGE_DATAGRAM_HEADER,
-)
+from src.common.misc       import ignored, separate_headers
+from src.common.output     import m_print
+from src.common.statics    import (COMMAND_DATAGRAM_HEADER, DATAGRAM_HEADER_LENGTH, DATAGRAM_TIMESTAMP_LENGTH,
+                                   FILE_DATAGRAM_HEADER, GATEWAY_QUEUE, LOCAL_KEY_DATAGRAM_HEADER,
+                                   MESSAGE_DATAGRAM_HEADER)
 
 if typing.TYPE_CHECKING:
-    from multiprocessing import Queue
+    from multiprocessing    import Queue
     from src.common.gateway import Gateway
 
 
-def receiver_loop(
-    queues: Dict[bytes, "Queue[Any]"], gateway: "Gateway", unit_test: bool = False
-) -> None:
+def receiver_loop(queues:    Dict[bytes, 'Queue[Any]'],
+                  gateway:   'Gateway',
+                  unit_test: bool = False
+                  ) -> None:
     """Decode received packets and forward them to packet queues."""
     gateway_queue = queues[GATEWAY_QUEUE]
 
     while True:
         with ignored(EOFError, KeyboardInterrupt):
-            if not gateway_queue.qsize():
+            if gateway_queue.qsize() == 0:
                 time.sleep(0.01)
 
             _, packet = gateway_queue.get()
@@ -63,26 +58,16 @@ def receiver_loop(
             except SoftError:
                 continue
 
-            header, ts_bytes, payload = separate_headers(
-                packet, [DATAGRAM_HEADER_LENGTH, DATAGRAM_TIMESTAMP_LENGTH]
-            )
+            header, ts_bytes, payload = separate_headers(packet, [DATAGRAM_HEADER_LENGTH, DATAGRAM_TIMESTAMP_LENGTH])
 
             try:
                 ts = datetime.strptime(str(bytes_to_int(ts_bytes)), "%Y%m%d%H%M%S%f")
             except (ValueError, struct.error):
-                m_print(
-                    "Error: Failed to decode timestamp in the received packet.",
-                    head=1,
-                    tail=1,
-                )
+                m_print("Error: Failed to decode timestamp in the received packet.", head=1, tail=1)
                 continue
 
-            if header in [
-                MESSAGE_DATAGRAM_HEADER,
-                FILE_DATAGRAM_HEADER,
-                COMMAND_DATAGRAM_HEADER,
-                LOCAL_KEY_DATAGRAM_HEADER,
-            ]:
+            if header in [MESSAGE_DATAGRAM_HEADER, FILE_DATAGRAM_HEADER,
+                          COMMAND_DATAGRAM_HEADER, LOCAL_KEY_DATAGRAM_HEADER]:
                 queues[header].put((ts, payload))
 
             if unit_test:

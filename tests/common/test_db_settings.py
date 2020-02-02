@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -23,47 +23,40 @@ import os.path
 import unittest
 
 from unittest import mock
+from typing   import Any
 
 from src.common.db_settings import Settings
-from src.common.statics import (
-    CLEAR_ENTIRE_SCREEN,
-    CURSOR_LEFT_UP_CORNER,
-    DIR_USER_DATA,
-    RX,
-    SETTING_LENGTH,
-    TX,
-)
+from src.common.statics     import CLEAR_ENTIRE_SCREEN, CURSOR_LEFT_UP_CORNER, DIR_USER_DATA, RX, SETTING_LENGTH, TX
 
 from tests.mock_classes import ContactList, create_group, GroupList, MasterKey
-from tests.utils import cd_unit_test, cleanup, tamper_file, TFCTestCase
+from tests.utils        import cd_unit_test, cleanup, tamper_file, TFCTestCase
 
 
 class TestSettings(TFCTestCase):
+
     def setUp(self) -> None:
         """Pre-test actions."""
-        self.unit_test_dir = cd_unit_test()
-        self.file_name = f"{DIR_USER_DATA}{TX}_settings"
-        self.master_key = MasterKey()
-        self.settings = Settings(self.master_key, operation=TX, local_test=False)
-        self.contact_list = ContactList(nicks=[f"contact_{n}" for n in range(18)])
-        self.group_list = GroupList(groups=[f"group_{n}" for n in range(18)])
-        self.group_list.groups[0] = create_group(
-            "group_0", [f"contact_{n}" for n in range(18)]
-        )
-        self.args = self.contact_list, self.group_list
+        self.unit_test_dir        = cd_unit_test()
+        self.file_name            = f"{DIR_USER_DATA}{TX}_settings"
+        self.master_key           = MasterKey()
+        self.settings             = Settings(self.master_key, operation=TX, local_test=False)
+        self.contact_list         = ContactList(nicks=[f'contact_{n}' for n in range(18)])
+        self.group_list           = GroupList(groups=[f'group_{n}' for n in range(18)])
+        self.group_list.groups[0] = create_group('group_0', [f'contact_{n}' for n in range(18)])
+        self.args                 = self.contact_list, self.group_list
 
     def tearDown(self) -> None:
         """Post-test actions."""
         cleanup(self.unit_test_dir)
 
     def test_invalid_type_raises_critical_error_on_store(self) -> None:
-        self.settings.tm_random_delay = b"bytestring"
+        self.settings.tm_random_delay = b'bytestring'
         with self.assertRaises(SystemExit):
             self.settings.store_settings()
 
     def test_invalid_type_raises_critical_error_on_load(self) -> None:
         with self.assertRaises(SystemExit):
-            self.settings.nc_bypass_messages = b"bytestring"
+            self.settings.nc_bypass_messages = b'bytestring'
             self.settings.load_settings()
 
     def test_store_and_load_tx_settings(self) -> None:
@@ -96,9 +89,7 @@ class TestSettings(TFCTestCase):
         self.settings.store_settings()
 
         # Test reading from database works normally
-        self.assertIsInstance(
-            Settings(self.master_key, operation=TX, local_test=False), Settings
-        )
+        self.assertIsInstance(Settings(self.master_key, operation=TX, local_test=False), Settings)
 
         # Test loading of the tampered database raises CriticalError
         tamper_file(self.file_name, tamper_size=1)
@@ -106,160 +97,63 @@ class TestSettings(TFCTestCase):
             Settings(self.master_key, operation=TX, local_test=False)
 
     def test_invalid_type_raises_critical_error_when_changing_settings(self) -> None:
-        self.settings.traffic_masking = b"bytestring"
+        self.settings.traffic_masking = b'bytestring'
         with self.assertRaises(SystemExit):
-            self.assertIsNone(
-                self.settings.change_setting("traffic_masking", "True", *self.args)
-            )
+            self.assertIsNone(self.settings.change_setting('traffic_masking', 'True', *self.args))
 
     def test_change_settings(self) -> None:
-        self.assert_se(
-            "Error: Invalid setting value 'Falsee'.",
-            self.settings.change_setting,
-            "disable_gui_dialog",
-            "Falsee",
-            *self.args,
-        )
-        self.assert_se(
-            "Error: Invalid setting value '1.1'.",
-            self.settings.change_setting,
-            "max_number_of_group_members",
-            "1.1",
-            *self.args,
-        )
-        self.assert_se(
-            "Error: Invalid setting value '18446744073709551616'.",
-            self.settings.change_setting,
-            "max_number_of_contacts",
-            str(2 ** 64),
-            *self.args,
-        )
-        self.assert_se(
-            "Error: Invalid setting value '-1.1'.",
-            self.settings.change_setting,
-            "tm_static_delay",
-            "-1.1",
-            *self.args,
-        )
-        self.assert_se(
-            "Error: Invalid setting value 'True'.",
-            self.settings.change_setting,
-            "tm_static_delay",
-            "True",
-            *self.args,
-        )
+        self.assert_se("Error: Invalid setting value 'Falsee'.",
+                       self.settings.change_setting, 'disable_gui_dialog', 'Falsee', *self.args)
+        self.assert_se("Error: Invalid setting value '1.1'.",
+                       self.settings.change_setting, 'max_number_of_group_members',     '1.1', *self.args)
+        self.assert_se("Error: Invalid setting value '18446744073709551616'.",
+                       self.settings.change_setting, 'max_number_of_contacts', str(2 ** 64), *self.args)
+        self.assert_se("Error: Invalid setting value '-1.1'.",
+                       self.settings.change_setting, 'tm_static_delay',                '-1.1', *self.args)
+        self.assert_se("Error: Invalid setting value 'True'.",
+                       self.settings.change_setting, 'tm_static_delay',                'True', *self.args)
 
-        self.assertIsNone(
-            self.settings.change_setting("traffic_masking", "True", *self.args)
-        )
-        self.assertIsNone(
-            self.settings.change_setting(
-                "max_number_of_group_members", "100", *self.args
-            )
-        )
+        self.assertIsNone(self.settings.change_setting('traffic_masking',             'True', *self.args))
+        self.assertIsNone(self.settings.change_setting('max_number_of_group_members',  '100', *self.args))
 
-    @mock.patch("builtins.input", side_effect=["No", "Yes"])
-    def test_validate_key_value_pair(self, _) -> None:
-        self.assert_se(
-            "Error: Database padding settings must be divisible by 10.",
-            self.settings.validate_key_value_pair,
-            "max_number_of_group_members",
-            0,
-            *self.args,
-        )
-        self.assert_se(
-            "Error: Database padding settings must be divisible by 10.",
-            self.settings.validate_key_value_pair,
-            "max_number_of_group_members",
-            18,
-            *self.args,
-        )
-        self.assert_se(
-            "Error: Database padding settings must be divisible by 10.",
-            self.settings.validate_key_value_pair,
-            "max_number_of_groups",
-            18,
-            *self.args,
-        )
-        self.assert_se(
-            "Error: Database padding settings must be divisible by 10.",
-            self.settings.validate_key_value_pair,
-            "max_number_of_contacts",
-            18,
-            *self.args,
-        )
-        self.assert_se(
-            "Error: Can't set the max number of members lower than 20.",
-            self.settings.validate_key_value_pair,
-            "max_number_of_group_members",
-            10,
-            *self.args,
-        )
-        self.assert_se(
-            "Error: Can't set the max number of groups lower than 20.",
-            self.settings.validate_key_value_pair,
-            "max_number_of_groups",
-            10,
-            *self.args,
-        )
-        self.assert_se(
-            "Error: Can't set the max number of contacts lower than 20.",
-            self.settings.validate_key_value_pair,
-            "max_number_of_contacts",
-            10,
-            *self.args,
-        )
-        self.assert_se(
-            "Error: Too small value for message notify duration.",
-            self.settings.validate_key_value_pair,
-            "new_message_notify_duration",
-            0.04,
-            *self.args,
-        )
-        self.assert_se(
-            "Error: Can't set static delay lower than 0.1.",
-            self.settings.validate_key_value_pair,
-            "tm_static_delay",
-            0.01,
-            *self.args,
-        )
-        self.assert_se(
-            "Error: Can't set random delay lower than 0.1.",
-            self.settings.validate_key_value_pair,
-            "tm_random_delay",
-            0.01,
-            *self.args,
-        )
-        self.assert_se(
-            "Aborted traffic masking setting change.",
-            self.settings.validate_key_value_pair,
-            "tm_random_delay",
-            0.1,
-            *self.args,
-        )
+    @mock.patch('builtins.input', side_effect=['No', 'Yes'])
+    def test_validate_key_value_pair(self, _: Any) -> None:
+        self.assert_se("Error: Database padding settings must be divisible by 10.",
+                       self.settings.validate_key_value_pair, 'max_number_of_group_members', 0, *self.args)
+        self.assert_se("Error: Database padding settings must be divisible by 10.",
+                       self.settings.validate_key_value_pair, 'max_number_of_group_members', 18, *self.args)
+        self.assert_se("Error: Database padding settings must be divisible by 10.",
+                       self.settings.validate_key_value_pair, 'max_number_of_groups', 18, *self.args)
+        self.assert_se("Error: Database padding settings must be divisible by 10.",
+                       self.settings.validate_key_value_pair, 'max_number_of_contacts', 18, *self.args)
+        self.assert_se("Error: Can't set the max number of members lower than 20.",
+                       self.settings.validate_key_value_pair, 'max_number_of_group_members', 10, *self.args)
+        self.assert_se("Error: Can't set the max number of groups lower than 20.",
+                       self.settings.validate_key_value_pair, 'max_number_of_groups', 10, *self.args)
+        self.assert_se("Error: Can't set the max number of contacts lower than 20.",
+                       self.settings.validate_key_value_pair, 'max_number_of_contacts', 10, *self.args)
+        self.assert_se("Error: Too small value for message notify duration.",
+                       self.settings.validate_key_value_pair, 'new_message_notify_duration', 0.04, *self.args)
+        self.assert_se("Error: Can't set static delay lower than 0.1.",
+                       self.settings.validate_key_value_pair, 'tm_static_delay', 0.01, *self.args)
+        self.assert_se("Error: Can't set random delay lower than 0.1.",
+                       self.settings.validate_key_value_pair, 'tm_random_delay', 0.01, *self.args)
+        self.assert_se("Aborted traffic masking setting change.",
+                       self.settings.validate_key_value_pair, 'tm_random_delay', 0.1, *self.args)
 
-        self.assertIsNone(
-            self.settings.validate_key_value_pair("serial_baudrate", 9600, *self.args)
-        )
-        self.assertIsNone(
-            self.settings.validate_key_value_pair("tm_static_delay", 1, *self.args)
-        )
+        self.assertIsNone(self.settings.validate_key_value_pair("serial_baudrate",  9600, *self.args))
+        self.assertIsNone(self.settings.validate_key_value_pair("tm_static_delay",     1, *self.args))
 
-    @mock.patch("shutil.get_terminal_size", return_value=(64, 64))
-    def test_too_narrow_terminal_raises_fr_when_printing_settings(self, _) -> None:
+    @mock.patch('shutil.get_terminal_size', return_value=(64, 64))
+    def test_too_narrow_terminal_raises_fr_when_printing_settings(self, _: Any) -> None:
         # Test
-        self.assert_se(
-            "Error: Screen width is too small.", self.settings.print_settings
-        )
+        self.assert_se("Error: Screen width is too small.", self.settings.print_settings)
 
     def test_print_settings(self) -> None:
         self.settings.max_number_of_group_members = 30
-        self.settings.log_messages_by_default = True
-        self.settings.tm_static_delay = 10.2
-        self.assert_prints(
-            CLEAR_ENTIRE_SCREEN
-            + CURSOR_LEFT_UP_CORNER
-            + """\
+        self.settings.log_messages_by_default     = True
+        self.settings.tm_static_delay             = 10.2
+        self.assert_prints(CLEAR_ENTIRE_SCREEN + CURSOR_LEFT_UP_CORNER + """\
 
 Setting name                    Current value   Default value   Description
 ────────────────────────────────────────────────────────────────────────────────
@@ -351,10 +245,8 @@ max_decompress_size             100000000       100000000       Max size
                                                                 decompressing
                                                                 file
 
-""",
-            self.settings.print_settings,
-        )
+""", self.settings.print_settings)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main(exit=False)

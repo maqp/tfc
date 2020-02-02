@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -30,17 +30,16 @@ import tkinter
 from tkinter import filedialog
 
 from src.common.exceptions import SoftError
-from src.common.output import m_print, print_on_previous_line
+from src.common.output     import m_print, print_on_previous_line
 
 if typing.TYPE_CHECKING:
     from src.common.db_settings import Settings
 
 
-def ask_path_gui(
-    prompt_msg: str,  # Directory selection prompt
-    settings: "Settings",  # Settings object
-    get_file: bool = False,  # When True, prompts for a path to file instead of a directory
-) -> str:  # Selected directory or file
+def ask_path_gui(prompt_msg: str,          # Directory selection prompt
+                 settings:   'Settings',   # Settings object
+                 get_file:   bool = False  # When True, prompts for a path to file instead of a directory
+                 ) -> str:                 # Selected directory or file
     """Prompt (file) path with Tkinter / CLI prompt."""
     try:
         if settings.disable_gui_dialog:
@@ -57,10 +56,7 @@ def ask_path_gui(
         root.destroy()
 
         if not file_path:
-            raise SoftError(
-                ("File" if get_file else "Path") + " selection aborted.",
-                head_clear=True,
-            )
+            raise SoftError(("File" if get_file else "Path") + " selection aborted.", head_clear=True)
 
         return file_path
 
@@ -91,13 +87,11 @@ class Completer(object):
     def complete_path(self, path: Optional[str] = None) -> Any:
         """Perform completion of the filesystem path."""
         if not path:
-            return self.listdir(".")
+            return self.listdir('.')
 
         dir_name, rest = os.path.split(path)
-        tmp = dir_name if dir_name else "."
-        matches = [
-            os.path.join(dir_name, p) for p in self.listdir(tmp) if p.startswith(rest)
-        ]
+        tmp            = dir_name if dir_name else '.'
+        matches        = [os.path.join(dir_name, p) for p in self.listdir(tmp) if p.startswith(rest)]
 
         # More than one match, or single match which does not exist (typo)
         if len(matches) > 1 or not os.path.exists(path):
@@ -108,12 +102,12 @@ class Completer(object):
             return [os.path.join(path, p) for p in self.listdir(path)]
 
         # Exact file match terminates this completion
-        return [path + " "]
+        return [path + ' ']
 
     def path_complete(self, args: Optional[List[str]] = None) -> Any:
         """Return the list of directories from the current directory."""
         if not args:
-            return self.complete_path(".")
+            return self.complete_path('.')
 
         # Treat the last arg as a path and complete it
         return self.complete_path(args[-1])
@@ -124,22 +118,20 @@ class Completer(object):
         return self.path_complete(line)[state]
 
 
-def ask_path_cli(
-    prompt_msg: str,  # File selection prompt
-    get_file: bool = False,  # When True, prompts for a file instead of a directory
-) -> str:  # Selected directory or file
+def ask_path_cli(prompt_msg: str,          # File selection prompt
+                 get_file:   bool = False  # When True, prompts for a file instead of a directory
+                 ) -> str:                 # Selected directory or file
     """\
     Prompt file location or store directory for a file with tab-complete
     supported CLI.
     """
-    readline.set_completer_delims(" \t\n;")
-    readline.parse_and_bind("tab: complete")
+    readline.set_completer_delims(' \t\n;')
+    readline.parse_and_bind('tab: complete')
     readline.set_completer(Completer(get_file).complete)
-    print("")
+    print('')
 
-    if get_file:
-        return cli_get_file(prompt_msg)
-    return cli_get_path(prompt_msg)
+    func = cli_get_file if get_file else cli_get_path
+    return func(prompt_msg)
 
 
 def cli_get_file(prompt_msg: str) -> str:
@@ -153,9 +145,9 @@ def cli_get_file(prompt_msg: str) -> str:
                 raise KeyboardInterrupt
 
             if os.path.isfile(path_to_file):
-                if path_to_file.startswith("./"):
-                    path_to_file = path_to_file[len("./") :]
-                print("")
+                if path_to_file.startswith('./'):
+                    path_to_file = path_to_file[len('./'):]
+                print('')
                 return path_to_file
 
             m_print("File selection error.", head=1, tail=1)
@@ -172,8 +164,8 @@ def cli_get_path(prompt_msg: str) -> str:
         try:
             directory = input(prompt_msg + ": ")
 
-            if directory.startswith("./"):
-                directory = directory[len("./") :]
+            if directory.startswith('./'):
+                directory = directory[len('./'):]
 
             if not directory.endswith(os.sep):
                 directory += os.sep

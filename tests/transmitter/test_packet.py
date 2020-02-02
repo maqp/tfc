@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -25,78 +25,31 @@ import time
 import unittest
 
 from multiprocessing import Queue
-from unittest import mock
+from unittest        import mock
+from typing          import Any
 
-from src.common.statics import (
-    ASSEMBLY_PACKET_LENGTH,
-    COMMAND,
-    COMMAND_PACKET_QUEUE,
-    C_A_HEADER,
-    C_E_HEADER,
-    C_L_HEADER,
-    C_S_HEADER,
-    FILE,
-    F_A_HEADER,
-    F_E_HEADER,
-    F_L_HEADER,
-    F_S_HEADER,
-    GROUP_MSG_INVITE_HEADER,
-    LOCAL_ID,
-    MESSAGE,
-    MESSAGE_PACKET_QUEUE,
-    M_A_HEADER,
-    M_E_HEADER,
-    M_L_HEADER,
-    M_S_HEADER,
-    RELAY_PACKET_QUEUE,
-    SYMMETRIC_KEY_LENGTH,
-    TM_COMMAND_PACKET_QUEUE,
-    TM_FILE_PACKET_QUEUE,
-    TM_MESSAGE_PACKET_QUEUE,
-    WIN_TYPE_CONTACT,
-    WIN_TYPE_GROUP,
-)
+from src.common.statics import (ASSEMBLY_PACKET_LENGTH, COMMAND, COMMAND_PACKET_QUEUE, C_A_HEADER, C_E_HEADER,
+                                C_L_HEADER, C_S_HEADER, FILE, F_A_HEADER, F_E_HEADER, F_L_HEADER, F_S_HEADER,
+                                GROUP_MSG_INVITE_HEADER, LOCAL_ID, MESSAGE, MESSAGE_PACKET_QUEUE, M_A_HEADER,
+                                M_E_HEADER, M_L_HEADER, M_S_HEADER, RELAY_PACKET_QUEUE, SYMMETRIC_KEY_LENGTH,
+                                TM_COMMAND_PACKET_QUEUE, TM_FILE_PACKET_QUEUE, TM_MESSAGE_PACKET_QUEUE,
+                                WIN_TYPE_CONTACT, WIN_TYPE_GROUP)
 
-from src.transmitter.packet import (
-    cancel_packet,
-    queue_command,
-    queue_file,
-    queue_message,
-    queue_assembly_packets,
-)
+from src.transmitter.packet import cancel_packet, queue_command, queue_file, queue_message, queue_assembly_packets
 from src.transmitter.packet import send_file, send_packet, split_to_assembly_packets
 
-from tests.mock_classes import (
-    create_contact,
-    create_group,
-    create_keyset,
-    Gateway,
-    ContactList,
-    KeyList,
-)
-from tests.mock_classes import (
-    nick_to_pub_key,
-    OnionService,
-    Settings,
-    TxWindow,
-    UserInput,
-)
-from tests.utils import (
-    cd_unit_test,
-    cleanup,
-    gen_queue_dict,
-    tear_queue,
-    tear_queues,
-    TFCTestCase,
-)
+from tests.mock_classes import create_contact, create_group, create_keyset, Gateway, ContactList, KeyList
+from tests.mock_classes import nick_to_pub_key, OnionService, Settings, TxWindow, UserInput
+from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, tear_queue, tear_queues, TFCTestCase
 
 
 class TestQueueMessage(unittest.TestCase):
+
     def setUp(self) -> None:
         """Pre-test actions."""
-        self.queues = gen_queue_dict()
+        self.queues   = gen_queue_dict()
         self.settings = Settings()
-        self.args = self.settings, self.queues
+        self.args     = self.settings, self.queues
 
     def tearDown(self) -> None:
         """Post-test actions."""
@@ -104,9 +57,9 @@ class TestQueueMessage(unittest.TestCase):
 
     def test_private_message_header(self) -> None:
         # Setup
-        user_input = UserInput(plaintext="Test message", type=MESSAGE)
-        window = TxWindow(log_messages=True)
-        window.window_contacts = [create_contact("Alice")]
+        user_input = UserInput(plaintext='Test message', type=MESSAGE)
+        window     = TxWindow(log_messages=True)
+        window.window_contacts = [create_contact('Alice')]
 
         # Test
         self.assertIsNone(queue_message(user_input, window, *self.args))
@@ -114,14 +67,12 @@ class TestQueueMessage(unittest.TestCase):
 
     def test_group_message_header(self) -> None:
         # Setup
-        user_input = UserInput(plaintext="Test message", type=MESSAGE)
-        window = TxWindow(
-            name="test_group",
-            type=WIN_TYPE_GROUP,
-            group=create_group("test_group"),
-            log_messages=True,
-        )
-        window.window_contacts = [create_contact("Alice")]
+        user_input = UserInput(plaintext='Test message', type=MESSAGE)
+        window     = TxWindow(name='test_group',
+                              type=WIN_TYPE_GROUP,
+                              group=create_group('test_group'),
+                              log_messages=True)
+        window.window_contacts = [create_contact('Alice')]
 
         # Test
         self.assertIsNone(queue_message(user_input, window, *self.args))
@@ -129,180 +80,143 @@ class TestQueueMessage(unittest.TestCase):
 
     def test_group_management_message_header(self) -> None:
         # Setup
-        user_input = UserInput(plaintext="Test message", type=MESSAGE)
-        window = TxWindow(log_messages=True)
-        window.window_contacts = [create_contact("Alice")]
+        user_input = UserInput(plaintext='Test message', type=MESSAGE)
+        window     = TxWindow(log_messages=True)
+        window.window_contacts = [create_contact('Alice')]
 
         # Test
-        self.assertIsNone(
-            queue_message(
-                user_input, window, *self.args, header=GROUP_MSG_INVITE_HEADER
-            )
-        )
+        self.assertIsNone(queue_message(user_input, window, *self.args, header=GROUP_MSG_INVITE_HEADER))
         self.assertEqual(self.queues[MESSAGE_PACKET_QUEUE].qsize(), 1)
 
 
 class TestSendFile(TFCTestCase):
+
     def setUp(self) -> None:
         """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
-        self.settings = Settings()
-        self.queues = gen_queue_dict()
-        self.window = TxWindow()
+        self.settings      = Settings()
+        self.queues        = gen_queue_dict()
+        self.window        = TxWindow()
         self.onion_service = OnionService()
-        self.contact_list = ContactList(nicks=["Alice", "Bob", "Charlie"])
-        self.args = self.settings, self.queues, self.window
+        self.contact_list  = ContactList(nicks=['Alice', 'Bob', 'Charlie'])
+        self.args          = self.settings, self.queues, self.window
 
     def tearDown(self) -> None:
         """Post-test actions."""
         cleanup(self.unit_test_dir)
         tear_queues(self.queues)
 
-    def test_traffic_masking_raises_fr(self) -> None:
+    def test_traffic_masking_raises_se(self) -> None:
         self.settings.traffic_masking = True
-        self.assert_se(
-            "Error: Command is disabled during traffic masking.",
-            send_file,
-            "testfile.txt",
-            *self.args
-        )
+        self.assert_se("Error: Command is disabled during traffic masking.", send_file, "testfile.txt", *self.args)
 
-    def test_missing_file_raises_fr(self) -> None:
+    def test_missing_file_raises_se(self) -> None:
         self.assert_se("Error: File not found.", send_file, "testfile.txt", *self.args)
 
-    def test_empty_file_raises_fr(self) -> None:
+    def test_empty_file_raises_se(self) -> None:
         # Setup
-        open("testfile.txt", "wb+").close()
+        open('testfile.txt', 'wb+').close()
 
         # Test
-        self.assert_se(
-            "Error: Target file is empty.", send_file, "testfile.txt", *self.args
-        )
+        self.assert_se("Error: Target file is empty.", send_file, "testfile.txt", *self.args)
 
-    @mock.patch("time.sleep", return_value=None)
-    def test_file_transmission_to_contact(self, _) -> None:
+    @mock.patch('time.sleep', return_value=None)
+    def test_file_transmission_to_contact(self, _: Any) -> None:
         # Setup
-        self.window.window_contacts = [
-            self.contact_list.get_contact_by_address_or_nick("Alice")
-        ]
-        self.window.type_print = "contact"
+        self.window.window_contacts = [self.contact_list.get_contact_by_address_or_nick('Alice')]
+        self.window.type_print      = 'contact'
 
         input_data = os.urandom(5)
-        with open("testfile.txt", "wb+") as f:
+        with open('testfile.txt', 'wb+') as f:
             f.write(input_data)
 
         # Test
         self.assertIsNone(send_file("testfile.txt", *self.args))
         self.assertEqual(self.queues[MESSAGE_PACKET_QUEUE].qsize(), 1)
-        self.assertEqual(self.queues[RELAY_PACKET_QUEUE].qsize(), 1)
+        self.assertEqual(self.queues[RELAY_PACKET_QUEUE].qsize(),   1)
 
-    @mock.patch("time.sleep", return_value=None)
-    def test_file_transmission_to_group(self, _) -> None:
+    @mock.patch('time.sleep', return_value=None)
+    def test_file_transmission_to_group(self, _: Any) -> None:
         # Setup
-        self.window.window_contacts = [
-            self.contact_list.get_contact_by_address_or_nick("Alice"),
-            self.contact_list.get_contact_by_address_or_nick("Bob"),
-        ]
-        self.window.type_print = "group"
+        self.window.window_contacts = [self.contact_list.get_contact_by_address_or_nick('Alice'),
+                                       self.contact_list.get_contact_by_address_or_nick('Bob')]
+        self.window.type_print      = 'group'
 
         input_data = os.urandom(5)
-        with open("testfile.txt", "wb+") as f:
+        with open('testfile.txt', 'wb+') as f:
             f.write(input_data)
 
         self.assertIsNone(send_file("testfile.txt", *self.args))
         self.assertEqual(self.queues[MESSAGE_PACKET_QUEUE].qsize(), 2)
-        self.assertEqual(self.queues[RELAY_PACKET_QUEUE].qsize(), 1)
+        self.assertEqual(self.queues[RELAY_PACKET_QUEUE].qsize(),   1)
 
 
 class TestQueueFile(TFCTestCase):
 
-    file_list = (
-        "tx_contacts",
-        "tx_groups",
-        "tx_keys",
-        "tx_login_data",
-        "tx_settings",
-        "rx_contacts",
-        "rx_groups",
-        "rx_keys",
-        "rx_login_data",
-        "rx_settings",
-        "tx_serial_settings.json",
-        "nc_serial_settings.json",
-        "rx_serial_settings.json",
-        "tx_onion_db",
-    )
+    file_list = ('tx_contacts', 'tx_groups', 'tx_keys', 'tx_login_data', 'tx_settings',
+                 'rx_contacts', 'rx_groups', 'rx_keys', 'rx_login_data', 'rx_settings',
+                 'tx_serial_settings.json', 'nc_serial_settings.json',
+                 'rx_serial_settings.json', 'tx_onion_db')
 
     def setUp(self) -> None:
         """Pre-test actions."""
         self.unit_test_dir = cd_unit_test()
-        self.queues = gen_queue_dict()
+        self.queues        = gen_queue_dict()
 
     def tearDown(self) -> None:
         """Post-test actions."""
         cleanup(self.unit_test_dir)
         tear_queues(self.queues)
 
-    @mock.patch("time.sleep", return_value=None)
-    @mock.patch("builtins.input", side_effect=file_list)
-    def test_tfc_database_raises_fr(self, *_) -> None:
-        window = TxWindow(
-            name="Alice",
-            type=WIN_TYPE_CONTACT,
-            type_print="contact",
-            uid=nick_to_pub_key("Alice"),
-        )
-        settings = Settings(traffic_masking=True, disable_gui_dialog=True)
+    @mock.patch('time.sleep',     return_value=None)
+    @mock.patch('builtins.input', side_effect=file_list)
+    def test_tfc_database_raises_se(self, *_: Any) -> None:
+        window   = TxWindow(name='Alice',
+                            type=WIN_TYPE_CONTACT,
+                            type_print='contact',
+                            uid=nick_to_pub_key("Alice"))
+        settings = Settings(traffic_masking=True,
+                            disable_gui_dialog=True)
 
         for file in self.file_list:
-            with open(file, "wb+") as f:
-                f.write(b"a")
+            with open(file, 'wb+') as f:
+                f.write(b'a')
 
-            self.assert_se(
-                "Error: Can't send TFC database.",
-                queue_file,
-                window,
-                settings,
-                self.queues,
-            )
+            self.assert_se("Error: Can't send TFC database.", queue_file, window, settings, self.queues)
 
-    @mock.patch("shutil.get_terminal_size", return_value=[150, 150])
-    @mock.patch("builtins.input", side_effect=["./testfile.txt", "No"])
-    def test_aborted_file(self, *_) -> None:
+    @mock.patch('shutil.get_terminal_size', return_value=[150, 150])
+    @mock.patch('builtins.input',           side_effect=['./testfile.txt', 'No'])
+    def test_aborted_file(self, *_: Any) -> None:
         # Setup
         input_data = os.urandom(5)
-        with open("testfile.txt", "wb+") as f:
+        with open('testfile.txt', 'wb+') as f:
             f.write(input_data)
 
-        window = TxWindow(
-            name="Alice",
-            type=WIN_TYPE_CONTACT,
-            type_print="contact",
-            uid=nick_to_pub_key("Alice"),
-        )
-        settings = Settings(traffic_masking=True, disable_gui_dialog=True)
+        window   = TxWindow(name='Alice',
+                            type=WIN_TYPE_CONTACT,
+                            type_print='contact',
+                            uid=nick_to_pub_key("Alice"))
+        settings = Settings(traffic_masking=True,
+                            disable_gui_dialog=True)
 
         # Test
-        self.assert_se(
-            "File selection aborted.", queue_file, window, settings, self.queues
-        )
+        self.assert_se("File selection aborted.", queue_file, window, settings, self.queues)
 
-    @mock.patch("shutil.get_terminal_size", return_value=[150, 150])
-    @mock.patch("builtins.input", side_effect=["./testfile.txt", "Yes"])
-    def test_file_queue_short_traffic_masking(self, *_) -> None:
+    @mock.patch('shutil.get_terminal_size', return_value=[150, 150])
+    @mock.patch('builtins.input',           side_effect=['./testfile.txt', 'Yes'])
+    def test_file_queue_short_traffic_masking(self, *_: Any) -> None:
         # Setup
         input_data = os.urandom(5)
-        with open("testfile.txt", "wb+") as f:
+        with open('testfile.txt', 'wb+') as f:
             f.write(input_data)
 
-        window = TxWindow(
-            name="Alice",
-            type=WIN_TYPE_CONTACT,
-            type_print="contact",
-            uid=nick_to_pub_key("Alice"),
-            log_messages=True,
-        )
-        settings = Settings(traffic_masking=True, disable_gui_dialog=True)
+        window   = TxWindow(name='Alice',
+                            type=WIN_TYPE_CONTACT,
+                            type_print='contact',
+                            uid=nick_to_pub_key("Alice"),
+                            log_messages=True)
+        settings = Settings(traffic_masking=True,
+                            disable_gui_dialog=True)
 
         # Test
         self.assertIsNone(queue_file(window, settings, self.queues))
@@ -313,69 +227,60 @@ class TestQueueFile(TFCTestCase):
         self.assertTrue(log_messages)
         self.assertTrue(log_as_ph)
 
-    @mock.patch("time.sleep", return_value=None)
-    @mock.patch("builtins.input", side_effect=["./testfile.txt", "Yes"])
-    def test_file_queue_long_normal(self, *_) -> None:
+    @mock.patch('time.sleep',     return_value=None)
+    @mock.patch('builtins.input', side_effect=['./testfile.txt', 'Yes'])
+    def test_file_queue_long_normal(self, *_: Any) -> None:
         # Setup
         input_data = os.urandom(2000)
-        with open("testfile.txt", "wb+") as f:
+        with open('testfile.txt', 'wb+') as f:
             f.write(input_data)
 
-        window = TxWindow(
-            name="Alice",
-            type=WIN_TYPE_CONTACT,
-            type_print="contact",
-            uid=nick_to_pub_key("Alice"),
-            window_contacts=[create_contact("Alice")],
-            log_messages=True,
-        )
-        settings = Settings(
-            traffic_masking=False,
-            disable_gui_dialog=True,
-            confirm_sent_files=True,
-            multi_packet_random_delay=True,
-        )
+        window   = TxWindow(name='Alice',
+                            type=WIN_TYPE_CONTACT,
+                            type_print='contact',
+                            uid=nick_to_pub_key("Alice"),
+                            window_contacts=[create_contact('Alice')],
+                            log_messages=True)
+        settings = Settings(traffic_masking=False,
+                            disable_gui_dialog=True,
+                            confirm_sent_files=True,
+                            multi_packet_random_delay=True)
 
         # Test
         self.assertIsNone(queue_file(window, settings, self.queues))
         self.assertEqual(self.queues[RELAY_PACKET_QUEUE].qsize(), 1)
 
-    @mock.patch("shutil.get_terminal_size", return_value=[150, 150])
-    @mock.patch("time.sleep", return_value=None)
-    @mock.patch("builtins.input", side_effect=["./testfile.txt", KeyboardInterrupt])
-    def test_keyboard_interrupt_raises_fr(self, *_) -> None:
+    @mock.patch('shutil.get_terminal_size', return_value=[150, 150])
+    @mock.patch('time.sleep',               return_value=None)
+    @mock.patch('builtins.input',           side_effect=['./testfile.txt', KeyboardInterrupt])
+    def test_keyboard_interrupt_raises_se(self, *_: Any) -> None:
         # Setup
         input_data = os.urandom(2000)
-        with open("testfile.txt", "wb+") as f:
+        with open('testfile.txt', 'wb+') as f:
             f.write(input_data)
 
-        window = TxWindow(
-            name="Alice",
-            type=WIN_TYPE_CONTACT,
-            type_print="contact",
-            uid=nick_to_pub_key("Alice"),
-            window_contacts=[create_contact("Alice")],
-            log_messages=True,
-        )
-        settings = Settings(
-            traffic_masking=True,
-            disable_gui_dialog=True,
-            confirm_sent_files=True,
-            multi_packet_random_delay=True,
-        )
+        window   = TxWindow(name='Alice',
+                            type=WIN_TYPE_CONTACT,
+                            type_print='contact',
+                            uid=nick_to_pub_key("Alice"),
+                            window_contacts=[create_contact('Alice')],
+                            log_messages=True)
+        settings = Settings(traffic_masking=True,
+                            disable_gui_dialog=True,
+                            confirm_sent_files=True,
+                            multi_packet_random_delay=True)
 
         # Test
-        self.assert_se(
-            "File selection aborted.", queue_file, window, settings, self.queues
-        )
+        self.assert_se("File selection aborted.", queue_file, window, settings, self.queues)
         self.assertEqual(self.queues[RELAY_PACKET_QUEUE].qsize(), 0)
 
 
 class TestQueueCommand(unittest.TestCase):
+
     def setUp(self) -> None:
         """Pre-test actions."""
         self.settings = Settings()
-        self.queues = gen_queue_dict()
+        self.queues   = gen_queue_dict()
 
     def tearDown(self) -> None:
         """Post-test actions."""
@@ -388,8 +293,9 @@ class TestQueueCommand(unittest.TestCase):
 
 
 class TestSplitToAssemblyPackets(unittest.TestCase):
+
     def test_short_message(self) -> None:
-        packet_list = split_to_assembly_packets(b"Short message", MESSAGE)
+        packet_list = split_to_assembly_packets(b'Short message', MESSAGE)
         self.assertEqual(len(packet_list), 1)
         self.assertTrue(packet_list[0].startswith(M_S_HEADER))
 
@@ -409,9 +315,7 @@ class TestSplitToAssemblyPackets(unittest.TestCase):
     def test_long_file(self) -> None:
         packet_list = split_to_assembly_packets(os.urandom(800), FILE)
         self.assertEqual(len(packet_list), 4)
-        self.assertTrue(
-            packet_list[0].startswith(F_L_HEADER + b"\x00\x00\x00\x00\x00\x00\x00\x04")
-        )
+        self.assertTrue(packet_list[0].startswith(F_L_HEADER + b'\x00\x00\x00\x00\x00\x00\x00\x04'))
         self.assertTrue(packet_list[1].startswith(F_A_HEADER))
         self.assertTrue(packet_list[2].startswith(F_A_HEADER))
         self.assertTrue(packet_list[3].startswith(F_E_HEADER))
@@ -431,21 +335,23 @@ class TestSplitToAssemblyPackets(unittest.TestCase):
 
 
 class TestQueueAssemblyPackets(unittest.TestCase):
+
     def setUp(self) -> None:
         """Pre-test actions."""
         self.settings = Settings()
-        self.queues = gen_queue_dict()
-        self.window = TxWindow(uid=nick_to_pub_key("Alice"), log_messages=True)
-        self.window.window_contacts = [create_contact("Alice")]
-        self.args = self.settings, self.queues, self.window
-
+        self.queues   = gen_queue_dict()
+        self.window   = TxWindow(uid=nick_to_pub_key("Alice"),
+                                 log_messages=True)
+        self.window.window_contacts = [create_contact('Alice')]
+        self.args                   = self.settings, self.queues, self.window
+    
     def tearDown(self) -> None:
         """Post-test actions."""
         tear_queues(self.queues)
 
     def test_queue_message_traffic_masking(self) -> None:
         # Setup
-        packet_list = split_to_assembly_packets(os.urandom(200), MESSAGE)
+        packet_list                   = split_to_assembly_packets(os.urandom(200), MESSAGE)
         self.settings.traffic_masking = True
 
         # Test
@@ -464,9 +370,7 @@ class TestQueueAssemblyPackets(unittest.TestCase):
         self.assertIsNone(queue_assembly_packets(packet_list, MESSAGE, *self.args))
         self.assertEqual(self.queues[MESSAGE_PACKET_QUEUE].qsize(), 1)
 
-        packet, pub_key, log_setting, log_as_ph, win_uid = self.queues[
-            MESSAGE_PACKET_QUEUE
-        ].get()
+        packet, pub_key, log_setting, log_as_ph, win_uid = self.queues[MESSAGE_PACKET_QUEUE].get()
         self.assertIsInstance(packet, bytes)
         self.assertEqual(pub_key, nick_to_pub_key("Alice"))
         self.assertEqual(win_uid, nick_to_pub_key("Alice"))
@@ -475,7 +379,7 @@ class TestQueueAssemblyPackets(unittest.TestCase):
 
     def test_queue_file_traffic_masking(self) -> None:
         # Setup
-        packet_list = split_to_assembly_packets(os.urandom(200), FILE)
+        packet_list                   = split_to_assembly_packets(os.urandom(200), FILE)
         self.settings.traffic_masking = True
 
         # Test
@@ -488,7 +392,7 @@ class TestQueueAssemblyPackets(unittest.TestCase):
 
     def test_queue_command_traffic_masking(self) -> None:
         # Setup
-        packet_list = split_to_assembly_packets(os.urandom(200), COMMAND)
+        packet_list                   = split_to_assembly_packets(os.urandom(200), COMMAND)
         self.settings.traffic_masking = True
 
         # Test
@@ -499,8 +403,8 @@ class TestQueueAssemblyPackets(unittest.TestCase):
 
     def test_queue_command_traffic_masking_no_window(self) -> None:
         # Setup
-        self.window = None
-        packet_list = split_to_assembly_packets(os.urandom(200), COMMAND)
+        self.window                   = None
+        packet_list                   = split_to_assembly_packets(os.urandom(200), COMMAND)
         self.settings.traffic_masking = True
 
         # Test
@@ -538,10 +442,10 @@ class TestSendPacket(unittest.TestCase):
 
     def setUp(self) -> None:
         """Pre-test actions."""
-        self.l_queue = Queue()
-        self.key_list = KeyList(nicks=["Alice"])
-        self.settings = Settings()
-        self.gateway = Gateway()
+        self.l_queue       = Queue()
+        self.key_list      = KeyList(nicks=['Alice'])
+        self.settings      = Settings()
+        self.gateway       = Gateway()
         self.onion_service = OnionService()
 
     def tearDown(self) -> None:
@@ -553,69 +457,37 @@ class TestSendPacket(unittest.TestCase):
         pub_key = nick_to_pub_key("Alice")
         for msg_len in range(1, 256):
             with self.assertRaises(SystemExit):
-                send_packet(
-                    self.key_list,
-                    self.gateway,
-                    self.l_queue,
-                    bytes(msg_len),
-                    pub_key,
-                    True,
-                )
+                send_packet(self.key_list, self.gateway, self.l_queue, bytes(msg_len), pub_key, True)
 
         for msg_len in range(257, 300):
             with self.assertRaises(SystemExit):
-                send_packet(
-                    self.key_list,
-                    self.gateway,
-                    self.l_queue,
-                    bytes(msg_len),
-                    pub_key,
-                    True,
-                )
+                send_packet(self.key_list, self.gateway, self.l_queue, bytes(msg_len), pub_key, True)
 
     def test_invalid_harac_raises_raises_struct_error(self) -> None:
         # Check that in the case where an internal error caused bytestring (possible key material) to end up in hash
         # ratchet value, the system raises some error that prevents the output of packet. In this case the, error comes
         # from the unsuccessful encoding of hash ratchet counter.
-        for harac_len in range(1, 33):
-            key_list = KeyList()
-            key_list.keysets = [
-                create_keyset(
-                    "Alice",
-                    tx_key=SYMMETRIC_KEY_LENGTH * b"\x02",
-                    tx_harac=harac_len * b"k",
-                )
-            ]
+        for msg_len in range(1, 33):
+            key_list         = KeyList()
+            key_list.keysets = [create_keyset('Alice',
+                                              tx_key=SYMMETRIC_KEY_LENGTH * b'\x02',
+                                              tx_harac=msg_len * b'k')]  # <-- Intentional type error
 
             with self.assertRaises(struct.error):
-                send_packet(
-                    key_list,
-                    self.gateway,
-                    self.l_queue,
-                    bytes(ASSEMBLY_PACKET_LENGTH),
-                    nick_to_pub_key("Alice"),
-                    True,
-                )
+                send_packet(key_list, self.gateway, self.l_queue,
+                            bytes(ASSEMBLY_PACKET_LENGTH), nick_to_pub_key("Alice"), True)
 
     def test_valid_message_packet(self) -> None:
         # Setup
-        gateway = Gateway(serial_error_correction=5)
-        key_list = KeyList(master_key=bytes(SYMMETRIC_KEY_LENGTH))
-        key_list.keysets = [
-            create_keyset("Alice", tx_key=SYMMETRIC_KEY_LENGTH * b"\x02", tx_harac=8)
-        ]
+        gateway          = Gateway(serial_error_correction=5)
+        key_list         = KeyList(master_key=bytes(SYMMETRIC_KEY_LENGTH))
+        key_list.keysets = [create_keyset('Alice',
+                                          tx_key=SYMMETRIC_KEY_LENGTH * b'\x02',
+                                          tx_harac=8)]
 
         # Test
-        self.assertIsNone(
-            send_packet(
-                key_list,
-                gateway,
-                self.l_queue,
-                bytes(ASSEMBLY_PACKET_LENGTH),
-                nick_to_pub_key("Alice"),
-                True,
-            )
-        )
+        self.assertIsNone(send_packet(key_list, gateway, self.l_queue,
+                                      bytes(ASSEMBLY_PACKET_LENGTH), nick_to_pub_key("Alice"), True))
         self.assertEqual(len(gateway.packets), 1)
         time.sleep(0.01)
         self.assertFalse(self.l_queue.empty())
@@ -629,21 +501,19 @@ class TestSendPacket(unittest.TestCase):
         compromise plaintext.
         """
         # Setup
-        key_list = KeyList(master_key=bytes(SYMMETRIC_KEY_LENGTH))
+        key_list         = KeyList(master_key=bytes(SYMMETRIC_KEY_LENGTH))
         key_list.keysets = [create_keyset(LOCAL_ID)]
 
         # Test
-        self.assertIsNone(
-            send_packet(
-                key_list, self.gateway, self.l_queue, bytes(ASSEMBLY_PACKET_LENGTH)
-            )
-        )
+        self.assertIsNone(send_packet(key_list, self.gateway, self.l_queue,
+                                      bytes(ASSEMBLY_PACKET_LENGTH)))
         self.assertEqual(len(self.gateway.packets), 1)
         self.assertEqual(len(self.gateway.packets[0]), 345)
         self.assertEqual(self.l_queue.qsize(), 1)
 
 
 class TestCancelPacket(TFCTestCase):
+
     def setUp(self) -> None:
         """Pre-test actions."""
         self.queues = gen_queue_dict()
@@ -654,115 +524,67 @@ class TestCancelPacket(TFCTestCase):
 
     def test_cancel_message_during_normal(self) -> None:
         # Setup
-        user_input = UserInput("cm")
-        settings = Settings()
-        window = TxWindow(
-            name="Alice",
-            type=WIN_TYPE_CONTACT,
-            type_print="contact",
-            uid=nick_to_pub_key("Alice"),
-        )
-        window.window_contacts = [create_contact("Alice")]
+        user_input = UserInput('cm')
+        settings   = Settings()
+        window     = TxWindow(name='Alice',
+                              type=WIN_TYPE_CONTACT,
+                              type_print='contact',
+                              uid=nick_to_pub_key("Alice"))
+        window.window_contacts = [create_contact('Alice')]
 
         self.queues[MESSAGE_PACKET_QUEUE].put(
-            (
-                "test_message1",
-                nick_to_pub_key("Alice"),
-                False,
-                False,
-                nick_to_pub_key("Alice"),
-            )
-        )
+            ('test_message1', nick_to_pub_key("Alice"),   False, False, nick_to_pub_key("Alice")))
         self.queues[MESSAGE_PACKET_QUEUE].put(
-            (
-                "test_message2",
-                nick_to_pub_key("Charlie"),
-                False,
-                False,
-                nick_to_pub_key("Charlie"),
-            )
-        )
+            ('test_message2', nick_to_pub_key("Charlie"), False, False, nick_to_pub_key("Charlie")))
         self.queues[MESSAGE_PACKET_QUEUE].put(
-            (
-                "test_message3",
-                nick_to_pub_key("Alice"),
-                False,
-                False,
-                nick_to_pub_key("Alice"),
-            )
-        )
+            ('test_message3', nick_to_pub_key("Alice"),   False, False, nick_to_pub_key("Alice")))
 
         # Test
-        self.assert_se(
-            "Cancelled queued messages to contact Alice.",
-            cancel_packet,
-            user_input,
-            window,
-            settings,
-            self.queues,
-        )
+        self.assert_se("Cancelled queued messages to contact Alice.",
+                       cancel_packet, user_input, window, settings, self.queues)
         self.assertEqual(self.queues[MESSAGE_PACKET_QUEUE].qsize(), 2)
 
     def test_cancel_group_message_during_normal(self) -> None:
         # Setup
-        user_input = UserInput("cm")
-        settings = Settings()
-        window = TxWindow(
-            name="test_group", type=WIN_TYPE_GROUP, type_print="group", uid="test_group"
-        )
-        window.window_contacts = [create_contact("Alice")]
+        user_input = UserInput('cm')
+        settings   = Settings()
+        window     = TxWindow(name='test_group',
+                              type=WIN_TYPE_GROUP,
+                              type_print='group',
+                              uid='test_group')
+        window.window_contacts = [create_contact('Alice')]
 
-        self.queues[MESSAGE_PACKET_QUEUE].put(
-            ("test_message1", nick_to_pub_key("Alice"), False, False, "test_group")
-        )
-        self.queues[MESSAGE_PACKET_QUEUE].put(
-            ("test_message2", nick_to_pub_key("Alice"), False, False, "test_group")
-        )
+        self.queues[MESSAGE_PACKET_QUEUE].put(('test_message1', nick_to_pub_key("Alice"), False, False, 'test_group'))
+        self.queues[MESSAGE_PACKET_QUEUE].put(('test_message2', nick_to_pub_key("Alice"), False, False, 'test_group'))
 
         # Test
-        self.assert_se(
-            "Cancelled queued messages to group test_group.",
-            cancel_packet,
-            user_input,
-            window,
-            settings,
-            self.queues,
-        )
+        self.assert_se("Cancelled queued messages to group test_group.",
+                       cancel_packet, user_input, window, settings, self.queues)
         self.assertEqual(self.queues[MESSAGE_PACKET_QUEUE].qsize(), 1)  # Cancel packet
 
     def test_cancel_message_during_traffic_masking(self) -> None:
         # Setup
-        user_input = UserInput("cm")
-        settings = Settings(traffic_masking=True)
-        window = TxWindow()
-        window.window_contacts = [create_contact("Alice")]
+        user_input = UserInput('cm')
+        settings   = Settings(traffic_masking=True)
+        window     = TxWindow()
+        window.window_contacts = [create_contact('Alice')]
 
-        self.queues[TM_MESSAGE_PACKET_QUEUE].put(
-            ("test_message1", {nick_to_pub_key("Alice"): False})
-        )
-        self.queues[TM_MESSAGE_PACKET_QUEUE].put(
-            ("test_message2", {nick_to_pub_key("Alice"): False})
-        )
+        self.queues[TM_MESSAGE_PACKET_QUEUE].put(('test_message1', {nick_to_pub_key("Alice"): False}))
+        self.queues[TM_MESSAGE_PACKET_QUEUE].put(('test_message2', {nick_to_pub_key("Alice"): False}))
 
         # Test
         self.assertIsNone(cancel_packet(user_input, window, settings, self.queues))
-        self.assertEqual(
-            self.queues[TM_MESSAGE_PACKET_QUEUE].qsize(), 1
-        )  # Cancel packet in queue
+        self.assertEqual(self.queues[TM_MESSAGE_PACKET_QUEUE].qsize(), 1)  # Cancel packet in queue
 
     def test_cancel_file_during_traffic_masking(self) -> None:
         # Setup
-        user_input = UserInput("cf")
-        settings = Settings(traffic_masking=True)
-        window = TxWindow()
-        window.window_contacts = [create_contact("Alice")]
+        user_input = UserInput('cf')
+        settings   = Settings(traffic_masking=True)
+        window     = TxWindow()
+        window.window_contacts = [create_contact('Alice')]
 
-        self.queues[TM_FILE_PACKET_QUEUE].put(
-            ("testfile1", {nick_to_pub_key("Alice"): False})
-        )
-        self.queues[TM_FILE_PACKET_QUEUE].put(
-            ("testfile2", {nick_to_pub_key("Alice"): False})
-        )
+        self.queues[TM_FILE_PACKET_QUEUE].put(('testfile1', {nick_to_pub_key("Alice"): False}))
+        self.queues[TM_FILE_PACKET_QUEUE].put(('testfile2', {nick_to_pub_key("Alice"): False}))
 
         # Test
         self.assertIsNone(cancel_packet(user_input, window, settings, self.queues))
@@ -770,37 +592,27 @@ class TestCancelPacket(TFCTestCase):
 
     def test_cancel_file_during_normal(self) -> None:
         # Setup
-        user_input = UserInput("cf")
-        settings = Settings()
-        window = TxWindow(
-            name="Alice",
-            type=WIN_TYPE_CONTACT,
-            type_print="contact",
-            uid=nick_to_pub_key("Alice"),
-        )
-        window.window_contacts = [create_contact("Alice")]
+        user_input = UserInput('cf')
+        settings   = Settings()
+        window     = TxWindow(name='Alice',
+                              type=WIN_TYPE_CONTACT,
+                              type_print='contact',
+                              uid=nick_to_pub_key("Alice"))
+        window.window_contacts = [create_contact('Alice')]
 
         # Test
-        self.assert_se(
-            "Files are only queued during traffic masking.",
-            cancel_packet,
-            user_input,
-            window,
-            settings,
-            self.queues,
-        )
+        self.assert_se('Files are only queued during traffic masking.',
+                       cancel_packet, user_input, window, settings, self.queues)
 
     def test_cancel_file_when_nothing_to_cancel(self) -> None:
         # Setup
-        user_input = UserInput("cf")
-        settings = Settings(traffic_masking=True)
-        window = TxWindow(
-            name="Alice",
-            type=WIN_TYPE_CONTACT,
-            type_print="contact",
-            uid=nick_to_pub_key("Alice"),
-        )
-        window.window_contacts = [create_contact("Alice")]
+        user_input = UserInput('cf')
+        settings   = Settings(traffic_masking=True)
+        window     = TxWindow(name='Alice',
+                              type=WIN_TYPE_CONTACT,
+                              type_print='contact',
+                              uid=nick_to_pub_key("Alice"))
+        window.window_contacts = [create_contact('Alice')]
 
         # Test
         self.assertIsNone(cancel_packet(user_input, window, settings, self.queues))
@@ -808,27 +620,19 @@ class TestCancelPacket(TFCTestCase):
 
     def test_cancel_message_when_nothing_to_cancel(self) -> None:
         # Setup
-        user_input = UserInput("cm")
-        settings = Settings()
-        window = TxWindow(
-            name="Alice",
-            type=WIN_TYPE_CONTACT,
-            type_print="contact",
-            uid=nick_to_pub_key("Alice"),
-        )
-        window.window_contacts = [create_contact("Alice")]
+        user_input = UserInput('cm')
+        settings   = Settings()
+        window     = TxWindow(name='Alice',
+                              type=WIN_TYPE_CONTACT,
+                              type_print='contact',
+                              uid=nick_to_pub_key("Alice"))
+        window.window_contacts = [create_contact('Alice')]
 
         # Test
-        self.assert_se(
-            "No messages queued for contact Alice.",
-            cancel_packet,
-            user_input,
-            window,
-            settings,
-            self.queues,
-        )
+        self.assert_se("No messages queued for contact Alice.",
+                       cancel_packet, user_input, window, settings, self.queues)
         self.assertEqual(self.queues[TM_FILE_PACKET_QUEUE].qsize(), 0)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main(exit=False)

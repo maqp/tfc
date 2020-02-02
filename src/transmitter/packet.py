@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -26,72 +26,40 @@ import zlib
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from src.common.crypto import blake2b, byte_padding, csprng, encrypt_and_sign
-from src.common.encoding import bool_to_bytes, int_to_bytes, str_to_bytes
+from src.common.crypto     import blake2b, byte_padding, csprng, encrypt_and_sign
+from src.common.encoding   import bool_to_bytes, int_to_bytes, str_to_bytes
 from src.common.exceptions import CriticalError, SoftError
-from src.common.input import yes
-from src.common.misc import split_byte_string
-from src.common.output import m_print, phase, print_on_previous_line
-from src.common.path import ask_path_gui
-from src.common.statics import (
-    ASSEMBLY_PACKET_LENGTH,
-    COMMAND,
-    COMMAND_DATAGRAM_HEADER,
-    COMMAND_PACKET_QUEUE,
-    COMPRESSION_LEVEL,
-    C_A_HEADER,
-    C_E_HEADER,
-    C_L_HEADER,
-    C_S_HEADER,
-    DONE,
-    FILE,
-    FILE_DATAGRAM_HEADER,
-    FILE_KEY_HEADER,
-    FILE_PACKET_CTR_LENGTH,
-    F_A_HEADER,
-    F_C_HEADER,
-    F_E_HEADER,
-    F_L_HEADER,
-    F_S_HEADER,
-    GROUP_MESSAGE_HEADER,
-    GROUP_MSG_ID_LENGTH,
-    LOCAL_PUBKEY,
-    MESSAGE,
-    MESSAGE_DATAGRAM_HEADER,
-    MESSAGE_PACKET_QUEUE,
-    M_A_HEADER,
-    M_C_HEADER,
-    M_E_HEADER,
-    M_L_HEADER,
-    M_S_HEADER,
-    PADDING_LENGTH,
-    PRIVATE_MESSAGE_HEADER,
-    RELAY_PACKET_QUEUE,
-    TM_COMMAND_PACKET_QUEUE,
-    TM_FILE_PACKET_QUEUE,
-    TM_MESSAGE_PACKET_QUEUE,
-    WIN_TYPE_GROUP,
-)
+from src.common.input      import yes
+from src.common.misc       import split_byte_string
+from src.common.output     import m_print, phase, print_on_previous_line
+from src.common.path       import ask_path_gui
+from src.common.statics    import (ASSEMBLY_PACKET_LENGTH, COMMAND, COMMAND_DATAGRAM_HEADER, COMMAND_PACKET_QUEUE,
+                                   COMPRESSION_LEVEL, C_A_HEADER, C_E_HEADER, C_L_HEADER, C_S_HEADER, DONE, FILE,
+                                   FILE_DATAGRAM_HEADER, FILE_KEY_HEADER, FILE_PACKET_CTR_LENGTH, F_A_HEADER,
+                                   F_C_HEADER, F_E_HEADER, F_L_HEADER, F_S_HEADER, GROUP_MESSAGE_HEADER,
+                                   GROUP_MSG_ID_LENGTH, LOCAL_PUBKEY, MESSAGE, MESSAGE_DATAGRAM_HEADER,
+                                   MESSAGE_PACKET_QUEUE, M_A_HEADER, M_C_HEADER, M_E_HEADER, M_L_HEADER, M_S_HEADER,
+                                   PADDING_LENGTH, PRIVATE_MESSAGE_HEADER, RELAY_PACKET_QUEUE, TM_COMMAND_PACKET_QUEUE,
+                                   TM_FILE_PACKET_QUEUE, TM_MESSAGE_PACKET_QUEUE, WIN_TYPE_GROUP)
 
-from src.transmitter.files import File
+from src.transmitter.files       import File
 from src.transmitter.window_mock import MockWindow
-from src.transmitter.user_input import UserInput
+from src.transmitter.user_input  import UserInput
 
 if typing.TYPE_CHECKING:
-    from multiprocessing import Queue
-    from src.common.db_keys import KeyList
+    from multiprocessing         import Queue
+    from src.common.db_keys      import KeyList
     from src.common.db_masterkey import MasterKey
-    from src.common.db_settings import Settings
-    from src.common.gateway import Gateway
+    from src.common.db_settings  import Settings
+    from src.common.gateway      import Gateway
     from src.transmitter.windows import TxWindow
-
-    QueueDict = Dict[bytes, Queue[Any]]
-    log_queue_data = Tuple[
-        Optional[bytes], bytes, Optional[bool], Optional[bool], MasterKey
-    ]
+    QueueDict      = Dict[bytes, Queue[Any]]
+    log_queue_data = Tuple[Optional[bytes], bytes, Optional[bool], Optional[bool], MasterKey]
 
 
-def queue_to_nc(packet: bytes, nc_queue: "Queue[bytes]",) -> None:
+def queue_to_nc(packet:   bytes,
+                nc_queue: 'Queue[bytes]',
+                ) -> None:
     """Queue unencrypted command/exported file to Networked Computer.
 
     This function queues unencrypted packets intended for Relay Program
@@ -102,22 +70,24 @@ def queue_to_nc(packet: bytes, nc_queue: "Queue[bytes]",) -> None:
     nc_queue.put(packet)
 
 
-def queue_command(command: bytes, settings: "Settings", queues: "QueueDict") -> None:
+def queue_command(command:  bytes,
+                  settings: 'Settings',
+                  queues:   'QueueDict'
+                  ) -> None:
     """Split command to assembly packets and queue them for sender_loop()."""
     assembly_packets = split_to_assembly_packets(command, COMMAND)
 
     queue_assembly_packets(assembly_packets, COMMAND, settings, queues)
 
 
-def queue_message(
-    user_input: "UserInput",
-    window: Union["MockWindow", "TxWindow"],
-    settings: "Settings",
-    queues: "QueueDict",
-    header: bytes = b"",
-    whisper: bool = False,
-    log_as_ph: bool = False,
-) -> None:
+def queue_message(user_input: 'UserInput',
+                  window:     Union['MockWindow', 'TxWindow'],
+                  settings:   'Settings',
+                  queues:     'QueueDict',
+                  header:     bytes = b'',
+                  whisper:    bool  = False,
+                  log_as_ph:  bool  = False
+                  ) -> None:
     """\
     Prepend header to message, split the message into assembly packets,
     and queue the assembly packets.
@@ -155,23 +125,20 @@ def queue_message(
     """
     if not header:
         if window.type == WIN_TYPE_GROUP and window.group is not None:
-            header = (
-                GROUP_MESSAGE_HEADER
-                + window.group.group_id
-                + os.urandom(GROUP_MSG_ID_LENGTH)
-            )
+            header = GROUP_MESSAGE_HEADER + window.group.group_id + os.urandom(GROUP_MSG_ID_LENGTH)
         else:
             header = PRIVATE_MESSAGE_HEADER
 
-    payload = bool_to_bytes(whisper) + header + user_input.plaintext.encode()
+    payload          = bool_to_bytes(whisper) + header + user_input.plaintext.encode()
     assembly_packets = split_to_assembly_packets(payload, MESSAGE)
 
-    queue_assembly_packets(
-        assembly_packets, MESSAGE, settings, queues, window, log_as_ph
-    )
+    queue_assembly_packets(assembly_packets, MESSAGE, settings, queues, window, log_as_ph)
 
 
-def queue_file(window: "TxWindow", settings: "Settings", queues: "QueueDict") -> None:
+def queue_file(window:   'TxWindow',
+               settings: 'Settings',
+               queues:   'QueueDict'
+               ) -> None:
     """Ask file path and load file data.
 
     In TFC there are two ways to send a file.
@@ -193,51 +160,35 @@ def queue_file(window: "TxWindow", settings: "Settings", queues: "QueueDict") ->
     """
     path = ask_path_gui("Select file to send...", settings, get_file=True)
 
-    if path.endswith(
-        (
-            "tx_contacts",
-            "tx_groups",
-            "tx_keys",
-            "tx_login_data",
-            "tx_settings",
-            "rx_contacts",
-            "rx_groups",
-            "rx_keys",
-            "rx_login_data",
-            "rx_settings",
-            "tx_serial_settings.json",
-            "nc_serial_settings.json",
-            "rx_serial_settings.json",
-            "tx_onion_db",
-        )
-    ):
+    if path.endswith(('tx_contacts', 'tx_groups', 'tx_keys', 'tx_login_data', 'tx_settings',
+                      'rx_contacts', 'rx_groups', 'rx_keys', 'rx_login_data', 'rx_settings',
+                      'tx_serial_settings.json', 'nc_serial_settings.json',
+                      'rx_serial_settings.json', 'tx_onion_db')):
         raise SoftError("Error: Can't send TFC database.", head_clear=True)
 
     if not settings.traffic_masking:
         send_file(path, settings, queues, window)
         return
 
-    file = File(path, window, settings)
+    file             = File(path, window, settings)
     assembly_packets = split_to_assembly_packets(file.plaintext, FILE)
 
     if settings.confirm_sent_files:
         try:
-            if not yes(
-                f"Send {file.name.decode()} ({file.size_hr}) to {window.type_print} {window.name} "
-                f"({len(assembly_packets)} packets, time: {file.time_hr})?"
-            ):
+            if not yes(f"Send {file.name.decode()} ({file.size_hr}) to {window.type_print} {window.name} "
+                       f"({len(assembly_packets)} packets, time: {file.time_hr})?"):
                 raise SoftError("File selection aborted.", head_clear=True)
         except (EOFError, KeyboardInterrupt):
             raise SoftError("File selection aborted.", head_clear=True)
 
-    queue_assembly_packets(
-        assembly_packets, FILE, settings, queues, window, log_as_ph=True
-    )
+    queue_assembly_packets(assembly_packets, FILE, settings, queues, window, log_as_ph=True)
 
 
-def send_file(
-    path: str, settings: "Settings", queues: "QueueDict", window: "TxWindow"
-) -> None:
+def send_file(path:     str,
+              settings: 'Settings',
+              queues:   'QueueDict',
+              window:   'TxWindow'
+              ) -> None:
     """Send file to window members in a single transmission.
 
     This is the default mode for file transmission, used when traffic
@@ -301,22 +252,20 @@ def send_file(
     another file instead.
     """
     if settings.traffic_masking:
-        raise SoftError(
-            "Error: Command is disabled during traffic masking.", head_clear=True
-        )
+        raise SoftError("Error: Command is disabled during traffic masking.", head_clear=True)
 
-    name = path.split("/")[-1]
+    name = path.split('/')[-1]
     data = bytearray()
     data.extend(str_to_bytes(name))
 
     if not os.path.isfile(path):
         raise SoftError("Error: File not found.", head_clear=True)
 
-    if not os.path.getsize(path):
+    if os.path.getsize(path) == 0:
         raise SoftError("Error: Target file is empty.", head_clear=True)
 
     phase("Reading data")
-    with open(path, "rb") as f:
+    with open(path, 'rb') as f:
         data.extend(f.read())
     phase(DONE)
     print_on_previous_line(flush=True)
@@ -328,27 +277,25 @@ def send_file(
 
     phase("Encrypting data")
     file_key = csprng()
-    file_ct = encrypt_and_sign(comp, file_key)
-    ct_hash = blake2b(file_ct)
+    file_ct  = encrypt_and_sign(comp, file_key)
+    ct_hash  = blake2b(file_ct)
     phase(DONE)
     print_on_previous_line(flush=True)
 
     phase("Exporting data")
-    no_contacts = int_to_bytes(len(window))
-    ser_contacts = b"".join([c.onion_pub_key for c in window])
-    file_packet = FILE_DATAGRAM_HEADER + no_contacts + ser_contacts + file_ct
+    no_contacts  = int_to_bytes(len(window))
+    ser_contacts = b''.join([c.onion_pub_key for c in window])
+    file_packet  = FILE_DATAGRAM_HEADER + no_contacts + ser_contacts + file_ct
     queue_to_nc(file_packet, queues[RELAY_PACKET_QUEUE])
 
     key_delivery_msg = base64.b85encode(ct_hash + file_key).decode()
     for contact in window:
-        queue_message(
-            user_input=UserInput(key_delivery_msg, MESSAGE),
-            window=MockWindow(contact.onion_pub_key, [contact]),
-            settings=settings,
-            queues=queues,
-            header=FILE_KEY_HEADER,
-            log_as_ph=True,
-        )
+        queue_message(user_input=UserInput(key_delivery_msg, MESSAGE),
+                      window    =MockWindow(contact.onion_pub_key, [contact]),
+                      settings  =settings,
+                      queues    =queues,
+                      header    =FILE_KEY_HEADER,
+                      log_as_ph =True)
     phase(DONE)
     print_on_previous_line(flush=True)
     m_print(f"Sent file '{name}' to {window.type_print} {window.name}.")
@@ -388,7 +335,7 @@ def split_to_assembly_packets(payload: bytes, p_type: str) -> List[bytes]:
         payload = zlib.compress(payload, level=COMPRESSION_LEVEL)
 
     if len(payload) < PADDING_LENGTH:
-        padded = byte_padding(payload)
+        padded      = byte_padding(payload)
         packet_list = [s_header + padded]
 
     else:
@@ -409,23 +356,20 @@ def split_to_assembly_packets(payload: bytes, p_type: str) -> List[bytes]:
         if p_type == FILE:
             p_list[0] = int_to_bytes(len(p_list)) + p_list[0][FILE_PACKET_CTR_LENGTH:]
 
-        packet_list = (
-            [l_header + p_list[0]]
-            + [a_header + p for p in p_list[1:-1]]
-            + [e_header + p_list[-1]]
-        )
+        packet_list = ([l_header + p_list[0]] +
+                       [a_header + p for p in p_list[1:-1]] +
+                       [e_header + p_list[-1]])
 
     return packet_list
 
 
-def queue_assembly_packets(
-    assembly_packet_list: List[bytes],
-    p_type: str,
-    settings: "Settings",
-    queues: "QueueDict",
-    window: Optional[Union["TxWindow", "MockWindow"]] = None,
-    log_as_ph: bool = False,
-) -> None:
+def queue_assembly_packets(assembly_packet_list: List[bytes],
+                           p_type:               str,
+                           settings:             'Settings',
+                           queues:               'QueueDict',
+                           window:               Optional[Union['TxWindow', 'MockWindow']] = None,
+                           log_as_ph:            bool = False
+                           ) -> None:
     """Queue assembly packets for sender_loop().
 
     This function is the last function on Transmitter Program's
@@ -437,48 +381,29 @@ def queue_assembly_packets(
     if p_type in [MESSAGE, FILE] and window is not None:
 
         if settings.traffic_masking:
-            queue = (
-                queues[TM_MESSAGE_PACKET_QUEUE]
-                if p_type == MESSAGE
-                else queues[TM_FILE_PACKET_QUEUE]
-            )
+            queue = queues[TM_MESSAGE_PACKET_QUEUE] if p_type == MESSAGE else queues[TM_FILE_PACKET_QUEUE]
             for assembly_packet in assembly_packet_list:
                 queue.put((assembly_packet, window.log_messages, log_as_ph))
         else:
             queue = queues[MESSAGE_PACKET_QUEUE]
             for c in window:
                 for assembly_packet in assembly_packet_list:
-                    queue.put(
-                        (
-                            assembly_packet,
-                            c.onion_pub_key,
-                            window.log_messages,
-                            log_as_ph,
-                            window.uid,
-                        )
-                    )
+                    queue.put((assembly_packet, c.onion_pub_key, window.log_messages, log_as_ph, window.uid))
 
     elif p_type == COMMAND:
-        queue = (
-            queues[TM_COMMAND_PACKET_QUEUE]
-            if settings.traffic_masking
-            else queues[COMMAND_PACKET_QUEUE]
-        )
+        queue = queues[TM_COMMAND_PACKET_QUEUE] if settings.traffic_masking else queues[COMMAND_PACKET_QUEUE]
         for assembly_packet in assembly_packet_list:
             queue.put(assembly_packet)
 
 
-def send_packet(
-    key_list: "KeyList",  # Key list object
-    gateway: "Gateway",  # Gateway object
-    log_queue: "Queue[log_queue_data]",  # Multiprocessing queue for logged messages
-    assembly_packet: bytes,  # Padded plaintext assembly packet
-    onion_pub_key: Optional[bytes] = None,  # Recipient v3 Onion Service address
-    log_messages: Optional[bool] = None,  # When True, log the message assembly packet
-    log_as_ph: Optional[
-        bool
-    ] = None,  # When True, log assembly packet as placeholder data
-) -> None:
+def send_packet(key_list:        'KeyList',                # Key list object
+                gateway:         'Gateway',                # Gateway object
+                log_queue:       'Queue[log_queue_data]',  # Multiprocessing queue for logged messages
+                assembly_packet: bytes,                    # Padded plaintext assembly packet
+                onion_pub_key:   Optional[bytes] = None,   # Recipient v3 Onion Service address
+                log_messages:    Optional[bool]  = None,   # When True, log the message assembly packet
+                log_as_ph:       Optional[bool]  = None    # When True, log assembly packet as placeholder data
+                ) -> None:
     """Encrypt and send assembly packet.
 
     The assembly packets are encrypted using a symmetric message key.
@@ -517,25 +442,22 @@ def send_packet(
         keyset = key_list.get_keyset(onion_pub_key)
         header = MESSAGE_DATAGRAM_HEADER + onion_pub_key
 
-    harac_in_bytes = int_to_bytes(keyset.tx_harac)
-    encrypted_harac = encrypt_and_sign(harac_in_bytes, keyset.tx_hk)
+    harac_in_bytes    = int_to_bytes(keyset.tx_harac)
+    encrypted_harac   = encrypt_and_sign(harac_in_bytes,  keyset.tx_hk)
     encrypted_message = encrypt_and_sign(assembly_packet, keyset.tx_mk)
-    encrypted_packet = header + encrypted_harac + encrypted_message
+    encrypted_packet  = header + encrypted_harac + encrypted_message
     gateway.write(encrypted_packet)
 
     keyset.rotate_tx_mk()
 
-    log_queue.put(
-        (onion_pub_key, assembly_packet, log_messages, log_as_ph, key_list.master_key)
-    )
+    log_queue.put((onion_pub_key, assembly_packet, log_messages, log_as_ph, key_list.master_key))
 
 
-def cancel_packet(
-    user_input: "UserInput",
-    window: "TxWindow",
-    settings: "Settings",
-    queues: "QueueDict",
-) -> None:
+def cancel_packet(user_input: 'UserInput',
+                  window:     'TxWindow',
+                  settings:   'Settings',
+                  queues:     'QueueDict'
+                  ) -> None:
     """Cancel sent message/file to contact/group.
 
     In cases where the assembly packets have not yet been encrypted or
@@ -551,21 +473,14 @@ def cancel_packet(
     re-writing it in a compiled language (which is very bad for users'
     rights).
     """
-    header, p_type = dict(cm=(M_C_HEADER, "messages"), cf=(F_C_HEADER, "files"))[
-        user_input.plaintext
-    ]
+    header, p_type = dict(cm=(M_C_HEADER, 'messages'),
+                          cf=(F_C_HEADER, 'files'   ))[user_input.plaintext]
 
     if settings.traffic_masking:
-        queue = (
-            queues[TM_MESSAGE_PACKET_QUEUE]
-            if header == M_C_HEADER
-            else queues[TM_FILE_PACKET_QUEUE]
-        )
+        queue = queues[TM_MESSAGE_PACKET_QUEUE] if header == M_C_HEADER else queues[TM_FILE_PACKET_QUEUE]
     else:
         if header == F_C_HEADER:
-            raise SoftError(
-                "Files are only queued during traffic masking.", head_clear=True
-            )
+            raise SoftError("Files are only queued during traffic masking.", head_clear=True)
         queue = queues[MESSAGE_PACKET_QUEUE]
 
     cancel_pt = header + bytes(PADDING_LENGTH)
@@ -579,14 +494,13 @@ def cancel_packet(
         cancel_standard_packet(cancel, cancel_pt, log_as_ph, p_type, queue, window)
 
 
-def cancel_standard_packet(
-    cancel: bool,
-    cancel_pt: bytes,
-    log_as_ph: bool,
-    p_type: str,
-    queue: "Queue[Any]",
-    window: "TxWindow",
-) -> None:
+def cancel_standard_packet(cancel:    bool,
+                           cancel_pt: bytes,
+                           log_as_ph: bool,
+                           p_type:    str,
+                           queue:     'Queue[Any]',
+                           window:    'TxWindow'
+                           ) -> None:
     """Cancel standard packet."""
     p_buffer = []
     while queue.qsize():
@@ -602,9 +516,7 @@ def cancel_standard_packet(
     # Put cancel packets for each window contact to queue first
     if cancel:
         for c in window:
-            queue.put(
-                (cancel_pt, c.onion_pub_key, c.log_messages, log_as_ph, window.uid)
-            )
+            queue.put((cancel_pt, c.onion_pub_key, c.log_messages, log_as_ph, window.uid))
 
     # Put buffered tuples back to the queue
     for p in p_buffer:
@@ -616,9 +528,12 @@ def cancel_standard_packet(
     raise SoftError(message, head_clear=True)
 
 
-def cancel_traffic_masking_packet(
-    cancel: bool, cancel_pt: bytes, log_as_ph: bool, p_type: str, queue: "Queue[Any]"
-) -> None:
+def cancel_traffic_masking_packet(cancel:    bool,
+                                  cancel_pt: bytes,
+                                  log_as_ph: bool,
+                                  p_type:    str,
+                                  queue:     'Queue[Any]'
+                                  ) -> None:
     """Cancel traffic masking packet."""
     if queue.qsize():
         cancel = True
@@ -630,8 +545,4 @@ def cancel_traffic_masking_packet(
 
         queue.put((cancel_pt, log_messages, log_as_ph))
 
-    m_print(
-        f"Cancelled queues {p_type}." if cancel else f"No {p_type} to cancel.",
-        head=1,
-        tail=1,
-    )
+    m_print(f"Cancelled queues {p_type}." if cancel else f"No {p_type} to cancel.", head=1, tail=1)

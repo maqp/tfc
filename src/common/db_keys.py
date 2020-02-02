@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -25,37 +25,21 @@ import typing
 
 from typing import Any, Callable, Dict, List
 
-from src.common.crypto import blake2b, csprng
-from src.common.database import TFCDatabase
-from src.common.encoding import int_to_bytes, onion_address_to_pub_key
-from src.common.encoding import bytes_to_int
+from src.common.crypto     import blake2b, csprng
+from src.common.database   import TFCDatabase
+from src.common.encoding   import int_to_bytes, onion_address_to_pub_key
+from src.common.encoding   import bytes_to_int
 from src.common.exceptions import CriticalError
-from src.common.misc import ensure_dir, separate_headers, split_byte_string
-from src.common.statics import (
-    DIR_USER_DATA,
-    DUMMY_CONTACT,
-    HARAC_LENGTH,
-    INITIAL_HARAC,
-    KDB_ADD_ENTRY_HEADER,
-    KDB_HALT_ACK_HEADER,
-    KDB_M_KEY_CHANGE_HALT_HEADER,
-    KDB_REMOVE_ENTRY_HEADER,
-    KDB_UPDATE_SIZE_HEADER,
-    KEY_MANAGEMENT_QUEUE,
-    KEY_MGMT_ACK_QUEUE,
-    KEYSET_LENGTH,
-    LOCAL_PUBKEY,
-    ONION_SERVICE_PUBLIC_KEY_LENGTH,
-    RX,
-    SYMMETRIC_KEY_LENGTH,
-    TX,
-)
+from src.common.misc       import ensure_dir, separate_headers, split_byte_string
+from src.common.statics    import (DIR_USER_DATA, DUMMY_CONTACT, HARAC_LENGTH, INITIAL_HARAC, KDB_ADD_ENTRY_HEADER,
+                                   KDB_HALT_ACK_HEADER, KDB_M_KEY_CHANGE_HALT_HEADER, KDB_REMOVE_ENTRY_HEADER,
+                                   KDB_UPDATE_SIZE_HEADER, KEY_MANAGEMENT_QUEUE, KEY_MGMT_ACK_QUEUE, KEYSET_LENGTH,
+                                   LOCAL_PUBKEY, ONION_SERVICE_PUBLIC_KEY_LENGTH, RX, SYMMETRIC_KEY_LENGTH, TX)
 
 if typing.TYPE_CHECKING:
-    from multiprocessing import Queue
+    from multiprocessing         import Queue
     from src.common.db_masterkey import MasterKey
-    from src.common.db_settings import Settings
-
+    from src.common.db_settings  import Settings
     QueueDict = Dict[bytes, Queue[Any]]
 
 
@@ -87,17 +71,16 @@ class KeySet(object):
                    only by the Receiver Program.
     """
 
-    def __init__(
-        self,
-        onion_pub_key: bytes,
-        tx_mk: bytes,
-        rx_mk: bytes,
-        tx_hk: bytes,
-        rx_hk: bytes,
-        tx_harac: int,
-        rx_harac: int,
-        store_keys: Callable[..., None],
-    ) -> None:
+    def __init__(self,
+                 onion_pub_key: bytes,
+                 tx_mk:         bytes,
+                 rx_mk:         bytes,
+                 tx_hk:         bytes,
+                 rx_hk:         bytes,
+                 tx_harac:      int,
+                 rx_harac:      int,
+                 store_keys:    Callable[..., None]
+                 ) -> None:
         """Create a new KeySet object.
 
         The `self.store_keys` is a reference to the method of the parent
@@ -105,13 +88,13 @@ class KeySet(object):
         encrypted database.
         """
         self.onion_pub_key = onion_pub_key
-        self.tx_mk = tx_mk
-        self.rx_mk = rx_mk
-        self.tx_hk = tx_hk
-        self.rx_hk = rx_hk
-        self.tx_harac = tx_harac
-        self.rx_harac = rx_harac
-        self.store_keys = store_keys
+        self.tx_mk         = tx_mk
+        self.rx_mk         = rx_mk
+        self.tx_hk         = tx_hk
+        self.rx_hk         = rx_hk
+        self.tx_harac      = tx_harac
+        self.rx_harac      = rx_harac
+        self.store_keys    = store_keys
 
     def serialize_k(self) -> bytes:
         """Return KeySet data as a constant length byte string.
@@ -123,15 +106,13 @@ class KeySet(object):
         serialization is to hide any metadata about the KeySet database
         the ciphertext length of the key database would reveal.
         """
-        return (
-            self.onion_pub_key
-            + self.tx_mk
-            + self.rx_mk
-            + self.tx_hk
-            + self.rx_hk
-            + int_to_bytes(self.tx_harac)
-            + int_to_bytes(self.rx_harac)
-        )
+        return (self.onion_pub_key
+                + self.tx_mk
+                + self.rx_mk
+                + self.tx_hk
+                + self.rx_hk
+                + int_to_bytes(self.tx_harac)
+                + int_to_bytes(self.rx_harac))
 
     def rotate_tx_mk(self) -> None:
         """\
@@ -149,13 +130,15 @@ class KeySet(object):
         [1] (pp. 17-18) https://netzpolitik.org/wp-upload/SCIMP-paper.pdf
         [2] https://signal.org/blog/advanced-ratcheting/
         """
-        self.tx_mk = blake2b(
-            self.tx_mk + int_to_bytes(self.tx_harac), digest_size=SYMMETRIC_KEY_LENGTH
-        )
+        self.tx_mk     = blake2b(self.tx_mk + int_to_bytes(self.tx_harac), digest_size=SYMMETRIC_KEY_LENGTH)
         self.tx_harac += 1
         self.store_keys()
 
-    def update_mk(self, direction: str, key: bytes, offset: int) -> None:
+    def update_mk(self,
+                  direction: str,
+                  key:       bytes,
+                  offset:    int
+                  ) -> None:
         """Update Receiver Program's tx/rx-message key and tx/rx-harac.
 
         This method provides per-message forward secrecy for received
@@ -165,11 +148,11 @@ class KeySet(object):
         function is not linear like in the case of `rotate_tx_mk`.
         """
         if direction == TX:
-            self.tx_mk = key
+            self.tx_mk     = key
             self.tx_harac += offset
             self.store_keys()
         elif direction == RX:
-            self.rx_mk = key
+            self.rx_mk     = key
             self.rx_harac += offset
             self.store_keys()
         else:
@@ -196,15 +179,15 @@ class KeyList(object):
     being stored in the database.
     """
 
-    def __init__(self, master_key: "MasterKey", settings: "Settings") -> None:
+    def __init__(self, master_key: 'MasterKey', settings: 'Settings') -> None:
         """Create a new KeyList object."""
-        self.master_key = master_key
-        self.settings = settings
-        self.keysets = []  # type: List[KeySet]
+        self.master_key   = master_key
+        self.settings     = settings
+        self.keysets      = []  # type: List[KeySet]
         self.dummy_keyset = self.generate_dummy_keyset()
-        self.dummy_id = self.dummy_keyset.onion_pub_key
-        self.file_name = f"{DIR_USER_DATA}{settings.software_operation}_keys"
-        self.database = TFCDatabase(self.file_name, master_key)
+        self.dummy_id     = self.dummy_keyset.onion_pub_key
+        self.file_name    = f'{DIR_USER_DATA}{settings.software_operation}_keys'
+        self.database     = TFCDatabase(self.file_name, master_key)
 
         ensure_dir(DIR_USER_DATA)
         if os.path.isfile(self.file_name):
@@ -227,9 +210,7 @@ class KeyList(object):
         ciphertext includes a 24-byte nonce and a 16-byte tag, so the
         size of the final database is 9016 bytes.
         """
-        pt_bytes = b"".join(
-            [k.serialize_k() for k in self.keysets + self._dummy_keysets()]
-        )
+        pt_bytes = b''.join([k.serialize_k() for k in self.keysets + self._dummy_keysets()])
         self.database.store_database(pt_bytes, replace)
 
     def _load_keys(self) -> None:
@@ -243,44 +224,28 @@ class KeyList(object):
         populate the `self.keysets` list with KeySet objects, the data
         of which is sliced and decoded from the dummy-free blocks.
         """
-        pt_bytes = self.database.load_database()
-        blocks = split_byte_string(pt_bytes, item_len=KEYSET_LENGTH)
+        pt_bytes  = self.database.load_database()
+        blocks    = split_byte_string(pt_bytes, item_len=KEYSET_LENGTH)
         df_blocks = [b for b in blocks if not b.startswith(self.dummy_id)]
 
         for block in df_blocks:
             if len(block) != KEYSET_LENGTH:
                 raise CriticalError("Invalid data in key database.")
 
-            (
-                onion_pub_key,
-                tx_mk,
-                rx_mk,
-                tx_hk,
-                rx_hk,
-                tx_harac_bytes,
-                rx_harac_bytes,
-            ) = separate_headers(
-                block,
-                [ONION_SERVICE_PUBLIC_KEY_LENGTH]
-                + 4 * [SYMMETRIC_KEY_LENGTH]
-                + [HARAC_LENGTH],
-            )
+            onion_pub_key, tx_mk, rx_mk, tx_hk, rx_hk, tx_harac_bytes, rx_harac_bytes \
+                = separate_headers(block, [ONION_SERVICE_PUBLIC_KEY_LENGTH] + 4*[SYMMETRIC_KEY_LENGTH] + [HARAC_LENGTH])
 
-            self.keysets.append(
-                KeySet(
-                    onion_pub_key=onion_pub_key,
-                    tx_mk=tx_mk,
-                    rx_mk=rx_mk,
-                    tx_hk=tx_hk,
-                    rx_hk=rx_hk,
-                    tx_harac=bytes_to_int(tx_harac_bytes),
-                    rx_harac=bytes_to_int(rx_harac_bytes),
-                    store_keys=self.store_keys,
-                )
-            )
+            self.keysets.append(KeySet(onion_pub_key=onion_pub_key,
+                                       tx_mk=tx_mk,
+                                       rx_mk=rx_mk,
+                                       tx_hk=tx_hk,
+                                       rx_hk=rx_hk,
+                                       tx_harac=bytes_to_int(tx_harac_bytes),
+                                       rx_harac=bytes_to_int(rx_harac_bytes),
+                                       store_keys=self.store_keys))
 
     @staticmethod
-    def generate_dummy_keyset() -> "KeySet":
+    def generate_dummy_keyset() -> 'KeySet':
         """Generate a dummy KeySet object.
 
         The dummy KeySet simplifies the code around the constant length
@@ -290,16 +255,14 @@ class KeyList(object):
         In case the dummy keyset would ever be loaded accidentally, it
         uses a set of random keys to prevent decryption by eavesdropper.
         """
-        return KeySet(
-            onion_pub_key=onion_address_to_pub_key(DUMMY_CONTACT),
-            tx_mk=csprng(),
-            rx_mk=csprng(),
-            tx_hk=csprng(),
-            rx_hk=csprng(),
-            tx_harac=INITIAL_HARAC,
-            rx_harac=INITIAL_HARAC,
-            store_keys=lambda: None,
-        )
+        return KeySet(onion_pub_key=onion_address_to_pub_key(DUMMY_CONTACT),
+                      tx_mk=csprng(),
+                      rx_mk=csprng(),
+                      tx_hk=csprng(),
+                      rx_hk=csprng(),
+                      tx_harac=INITIAL_HARAC,
+                      rx_harac=INITIAL_HARAC,
+                      store_keys=lambda: None)
 
     def _dummy_keysets(self) -> List[KeySet]:
         """\
@@ -309,17 +272,15 @@ class KeyList(object):
         The additional contact (+1) is the local key.
         """
         number_of_contacts_to_store = self.settings.max_number_of_contacts + 1
-        number_of_dummies = number_of_contacts_to_store - len(self.keysets)
+        number_of_dummies           = number_of_contacts_to_store - len(self.keysets)
         return [self.dummy_keyset] * number_of_dummies
 
-    def add_keyset(
-        self,
-        onion_pub_key: bytes,
-        tx_mk: bytes,
-        rx_mk: bytes,
-        tx_hk: bytes,
-        rx_hk: bytes,
-    ) -> None:
+    def add_keyset(self,
+                   onion_pub_key: bytes,
+                   tx_mk:         bytes,
+                   rx_mk:         bytes,
+                   tx_hk:         bytes,
+                   rx_hk:         bytes) -> None:
         """\
         Add a new KeySet to `self.keysets` list and write changes to the
         database.
@@ -327,18 +288,14 @@ class KeyList(object):
         if self.has_keyset(onion_pub_key):
             self.remove_keyset(onion_pub_key)
 
-        self.keysets.append(
-            KeySet(
-                onion_pub_key=onion_pub_key,
-                tx_mk=tx_mk,
-                rx_mk=rx_mk,
-                tx_hk=tx_hk,
-                rx_hk=rx_hk,
-                tx_harac=INITIAL_HARAC,
-                rx_harac=INITIAL_HARAC,
-                store_keys=self.store_keys,
-            )
-        )
+        self.keysets.append(KeySet(onion_pub_key=onion_pub_key,
+                                   tx_mk=tx_mk,
+                                   rx_mk=rx_mk,
+                                   tx_hk=tx_hk,
+                                   rx_hk=rx_hk,
+                                   tx_harac=INITIAL_HARAC,
+                                   rx_harac=INITIAL_HARAC,
+                                   store_keys=self.store_keys))
         self.store_keys()
 
     def remove_keyset(self, onion_pub_key: bytes) -> None:
@@ -353,7 +310,7 @@ class KeyList(object):
                 self.store_keys()
                 break
 
-    def change_master_key(self, queues: "QueueDict") -> None:
+    def change_master_key(self, queues: 'QueueDict') -> None:
         """Change the master key and encrypt the database with the new key."""
         key_queue = queues[KEY_MANAGEMENT_QUEUE]
         ack_queue = queues[KEY_MGMT_ACK_QUEUE]
@@ -361,7 +318,7 @@ class KeyList(object):
         # Halt sender loop here until keys have been replaced by the
         # `input_loop` process, and new master key is delivered.
         ack_queue.put(KDB_HALT_ACK_HEADER)
-        while not key_queue.qsize():
+        while key_queue.qsize() == 0:
             time.sleep(0.001)
         new_master_key = key_queue.get()
 
@@ -372,7 +329,7 @@ class KeyList(object):
         # Send new master key back to `input_loop` process to verify it was received.
         ack_queue.put(new_master_key)
 
-    def update_database(self, settings: "Settings") -> None:
+    def update_database(self, settings: 'Settings') -> None:
         """Update settings and database size."""
         self.settings = settings
         self.store_keys()
@@ -386,9 +343,7 @@ class KeyList(object):
 
     def get_list_of_pub_keys(self) -> List[bytes]:
         """Return list of Onion Service public keys for KeySets."""
-        return [
-            k.onion_pub_key for k in self.keysets if k.onion_pub_key != LOCAL_PUBKEY
-        ]
+        return [k.onion_pub_key for k in self.keysets if k.onion_pub_key != LOCAL_PUBKEY]
 
     def has_keyset(self, onion_pub_key: bytes) -> bool:
         """Return True if KeySet with matching Onion Service public key exists, else False."""
@@ -410,7 +365,7 @@ class KeyList(object):
         """Return True if local KeySet object exists, else False."""
         return any(k.onion_pub_key == LOCAL_PUBKEY for k in self.keysets)
 
-    def manage(self, queues: "QueueDict", command: str, *params: Any) -> None:
+    def manage(self, queues: 'QueueDict', command: str, *params: Any) -> None:
         """Manage KeyList based on a command.
 
         The command is delivered from `input_process` to `sender_loop`

@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -24,47 +24,39 @@ import typing
 
 from typing import Any, Dict, Optional, Tuple, Union
 
-from src.common.misc import ignored
-from src.common.statics import (
-    C_N_HEADER,
-    NOISE_PACKET_BUFFER,
-    PADDING_LENGTH,
-    P_N_HEADER,
-    TM_NOISE_COMMAND_QUEUE,
-    TM_NOISE_PACKET_QUEUE,
-)
+from src.common.misc    import ignored
+from src.common.statics import (C_N_HEADER, NOISE_PACKET_BUFFER, PADDING_LENGTH, P_N_HEADER,
+                                TM_NOISE_COMMAND_QUEUE, TM_NOISE_PACKET_QUEUE)
 
 if typing.TYPE_CHECKING:
-    from multiprocessing import Queue
+    from multiprocessing        import Queue
     from src.common.db_contacts import ContactList
-
     QueueDict = Dict[bytes, Queue[Any]]
 
 
-def noise_loop(
-    queues: "QueueDict",
-    contact_list: Optional["ContactList"] = None,
-    unit_test: bool = False,
-) -> None:
+def noise_loop(queues:       'QueueDict',
+               contact_list: Optional['ContactList'] = None,
+               unit_test:    bool                    = False
+               ) -> None:
     """Generate noise packets for traffic masking.
 
     This process ensures noise packet / noise command queue always has
     noise assembly packets available.
     """
     log_messages = True  # This setting is ignored: settings.log_file_masking controls logging of noise packets.
-    log_as_ph = True
+    log_as_ph    = True
 
-    header = C_N_HEADER if contact_list is None else P_N_HEADER
+    header                = C_N_HEADER if contact_list is None else P_N_HEADER
     noise_assembly_packet = header + bytes(PADDING_LENGTH)
 
     if contact_list is None:
         # Noise command
-        queue = queues[TM_NOISE_COMMAND_QUEUE]
+        queue   = queues[TM_NOISE_COMMAND_QUEUE]
         content = noise_assembly_packet  # type: Union[bytes, Tuple[bytes, bool, bool]]
 
     else:
         # Noise packet
-        queue = queues[TM_NOISE_PACKET_QUEUE]
+        queue   = queues[TM_NOISE_PACKET_QUEUE]
         content = (noise_assembly_packet, log_messages, log_as_ph)
 
     while True:

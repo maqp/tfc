@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -28,52 +28,35 @@ import tkinter
 import typing
 
 from datetime import datetime
-from typing import List, Tuple
+from typing   import List, Tuple
 
 import nacl.exceptions
 
-from src.common.crypto import argon2_kdf, auth_and_decrypt, blake2b, csprng
+from src.common.crypto       import argon2_kdf, auth_and_decrypt, blake2b, csprng
 from src.common.db_masterkey import MasterKey
-from src.common.encoding import b58encode, bytes_to_str, pub_key_to_short_address
-from src.common.exceptions import SoftError
-from src.common.input import get_b58_key
-from src.common.misc import reset_terminal, separate_header, separate_headers
-from src.common.output import m_print, phase, print_on_previous_line
-from src.common.path import ask_path_gui
-from src.common.statics import (
-    ARGON2_PSK_MEMORY_COST,
-    ARGON2_PSK_PARALLELISM,
-    ARGON2_PSK_TIME_COST,
-    ARGON2_SALT_LENGTH,
-    B58_LOCAL_KEY,
-    CONFIRM_CODE_LENGTH,
-    DONE,
-    FINGERPRINT_LENGTH,
-    KEX_STATUS_HAS_RX_PSK,
-    KEX_STATUS_LOCAL_KEY,
-    KEX_STATUS_NONE,
-    KEX_STATUS_NO_RX_PSK,
-    LOCAL_NICK,
-    LOCAL_PUBKEY,
-    ONION_SERVICE_PUBLIC_KEY_LENGTH,
-    PSK_FILE_SIZE,
-    SYMMETRIC_KEY_LENGTH,
-    WIN_TYPE_CONTACT,
-    WIN_TYPE_GROUP,
-)
+from src.common.encoding     import b58encode, bytes_to_str, pub_key_to_short_address
+from src.common.exceptions   import SoftError
+from src.common.input        import get_b58_key
+from src.common.misc         import reset_terminal, separate_header, separate_headers
+from src.common.output       import m_print, phase, print_on_previous_line
+from src.common.path         import ask_path_gui
+from src.common.statics      import (ARGON2_PSK_MEMORY_COST, ARGON2_PSK_PARALLELISM, ARGON2_PSK_TIME_COST,
+                                     ARGON2_SALT_LENGTH, B58_LOCAL_KEY, CONFIRM_CODE_LENGTH, DONE, FINGERPRINT_LENGTH,
+                                     KEX_STATUS_HAS_RX_PSK, KEX_STATUS_LOCAL_KEY, KEX_STATUS_NONE, KEX_STATUS_NO_RX_PSK,
+                                     LOCAL_NICK, LOCAL_PUBKEY, ONION_SERVICE_PUBLIC_KEY_LENGTH, PSK_FILE_SIZE,
+                                     SYMMETRIC_KEY_LENGTH, WIN_TYPE_CONTACT, WIN_TYPE_GROUP)
 
 if typing.TYPE_CHECKING:
-    from multiprocessing import Queue
+    from multiprocessing        import Queue
     from src.common.db_contacts import ContactList
-    from src.common.db_keys import KeyList
+    from src.common.db_keys     import KeyList
     from src.common.db_settings import Settings
-    from src.receiver.windows import WindowList
+    from src.receiver.windows   import WindowList
 
     local_key_queue = Queue[Tuple[datetime, bytes]]
 
 
 # Local key
-
 
 def protect_kdk(kdk: bytes) -> None:
     """Prevent leak of KDK via terminal history / clipboard."""
@@ -91,9 +74,9 @@ def protect_kdk(kdk: bytes) -> None:
     root.destroy()
 
 
-def process_local_key_buffer(
-    kdk: bytes, l_queue: "local_key_queue",
-) -> Tuple[datetime, bytes]:
+def process_local_key_buffer(kdk:     bytes,
+                             l_queue: 'local_key_queue'
+                             ) -> Tuple[datetime, bytes]:
     """Check if the kdk was for a packet further ahead in the queue."""
     buffer = []  # type: List[Tuple[datetime, bytes]]
     while l_queue.qsize() > 0:
@@ -106,10 +89,10 @@ def process_local_key_buffer(
             plaintext = auth_and_decrypt(tup[1], kdk)
 
             # If we reach this point, decryption was successful.
-            for unexamined in buffer[i + 1 :]:
+            for unexamined in buffer[i + 1:]:
                 l_queue.put(unexamined)
             buffer = []
-            ts = tup[0]
+            ts     = tup[0]
 
             return ts, plaintext
 
@@ -121,14 +104,13 @@ def process_local_key_buffer(
     raise SoftError("Error: Incorrect key decryption key.", delay=1)
 
 
-def decrypt_local_key(
-    ts: "datetime",
-    packet: bytes,
-    kdk_hashes: List[bytes],
-    packet_hashes: List[bytes],
-    settings: "Settings",
-    l_queue: "local_key_queue",
-) -> Tuple["datetime", bytes]:
+def decrypt_local_key(ts:            'datetime',
+                      packet:        bytes,
+                      kdk_hashes:    List[bytes],
+                      packet_hashes: List[bytes],
+                      settings:      'Settings',
+                      l_queue:       'local_key_queue'
+                      ) -> Tuple['datetime', bytes]:
     """Decrypt local key packet."""
     while True:
         kdk = get_b58_key(B58_LOCAL_KEY, settings)
@@ -153,17 +135,16 @@ def decrypt_local_key(
         return ts, plaintext
 
 
-def process_local_key(
-    ts: "datetime",
-    packet: bytes,
-    window_list: "WindowList",
-    contact_list: "ContactList",
-    key_list: "KeyList",
-    settings: "Settings",
-    kdk_hashes: List[bytes],
-    packet_hashes: List[bytes],
-    l_queue: "Queue[Tuple[datetime, bytes]]",
-) -> None:
+def process_local_key(ts:            'datetime',
+                      packet:        bytes,
+                      window_list:   'WindowList',
+                      contact_list:  'ContactList',
+                      key_list:      'KeyList',
+                      settings:      'Settings',
+                      kdk_hashes:    List[bytes],
+                      packet_hashes: List[bytes],
+                      l_queue:       'Queue[Tuple[datetime, bytes]]'
+                      ) -> None:
     """Decrypt local key packet and add local contact/keyset."""
     first_local_key = not key_list.has_local_keyset()
 
@@ -173,41 +154,27 @@ def process_local_key(
 
         m_print("Local key setup", bold=True, head_clear=True, head=1, tail=1)
 
-        ts, plaintext = decrypt_local_key(
-            ts, packet, kdk_hashes, packet_hashes, settings, l_queue
-        )
+        ts, plaintext = decrypt_local_key(ts, packet, kdk_hashes, packet_hashes, settings, l_queue)
 
         # Add local contact to contact list database
-        contact_list.add_contact(
-            LOCAL_PUBKEY,
-            LOCAL_NICK,
-            KEX_STATUS_LOCAL_KEY,
-            bytes(FINGERPRINT_LENGTH),
-            bytes(FINGERPRINT_LENGTH),
-            False,
-            False,
-            True,
-        )
+        contact_list.add_contact(LOCAL_PUBKEY,
+                                 LOCAL_NICK,
+                                 KEX_STATUS_LOCAL_KEY,
+                                 bytes(FINGERPRINT_LENGTH),
+                                 bytes(FINGERPRINT_LENGTH),
+                                 False, False, True)
 
         tx_mk, tx_hk, c_code = separate_headers(plaintext, 2 * [SYMMETRIC_KEY_LENGTH])
 
         # Add local keyset to keyset database
-        key_list.add_keyset(
-            onion_pub_key=LOCAL_PUBKEY,
-            tx_mk=tx_mk,
-            rx_mk=csprng(),
-            tx_hk=tx_hk,
-            rx_hk=csprng(),
-        )
+        key_list.add_keyset(onion_pub_key=LOCAL_PUBKEY,
+                            tx_mk=tx_mk,
+                            rx_mk=csprng(),
+                            tx_hk=tx_hk,
+                            rx_hk=csprng())
 
-        m_print(
-            [
-                "Local key successfully installed.",
-                f"Confirmation code (to Transmitter): {c_code.hex()}",
-            ],
-            box=True,
-            head=1,
-        )
+        m_print(["Local key successfully installed.", f"Confirmation code (to Transmitter): {c_code.hex()}"],
+                box=True, head=1)
 
         cmd_win = window_list.get_command_window()
 
@@ -225,9 +192,10 @@ def process_local_key(
         raise SoftError("Local key setup aborted.", output=False)
 
 
-def local_key_rdy(
-    ts: "datetime", window_list: "WindowList", contact_list: "ContactList"
-) -> None:
+def local_key_rdy(ts:           'datetime',
+                  window_list:  'WindowList',
+                  contact_list: 'ContactList'
+                  ) -> None:
     """Clear local key bootstrap process from the screen."""
     message = "Successfully completed the local key setup."
     cmd_win = window_list.get_command_window()
@@ -236,10 +204,7 @@ def local_key_rdy(
     m_print(message, bold=True, tail_clear=True, delay=1)
 
     if contact_list.has_contacts():
-        if window_list.active_win is not None and window_list.active_win.type in [
-            WIN_TYPE_CONTACT,
-            WIN_TYPE_GROUP,
-        ]:
+        if window_list.active_win is not None and window_list.active_win.type in [WIN_TYPE_CONTACT, WIN_TYPE_GROUP]:
             window_list.active_win.redraw()
     else:
         m_print("Waiting for new contacts", bold=True, head=1, tail=1)
@@ -247,36 +212,30 @@ def local_key_rdy(
 
 # ECDHE
 
-
-def key_ex_ecdhe(
-    packet: bytes,
-    ts: "datetime",
-    window_list: "WindowList",
-    contact_list: "ContactList",
-    key_list: "KeyList",
-    settings: "Settings",
-) -> None:
+def key_ex_ecdhe(packet:       bytes,
+                 ts:           'datetime',
+                 window_list:  'WindowList',
+                 contact_list: 'ContactList',
+                 key_list:     'KeyList',
+                 settings:     'Settings'
+                 ) -> None:
     """Add contact and symmetric keys derived from X448 shared key."""
 
-    onion_pub_key, tx_mk, rx_mk, tx_hk, rx_hk, nick_bytes = separate_headers(
-        packet, [ONION_SERVICE_PUBLIC_KEY_LENGTH] + 4 * [SYMMETRIC_KEY_LENGTH]
-    )
+    onion_pub_key, tx_mk, rx_mk, tx_hk, rx_hk, nick_bytes \
+        = separate_headers(packet, [ONION_SERVICE_PUBLIC_KEY_LENGTH] + 4*[SYMMETRIC_KEY_LENGTH])
 
     try:
         nick = bytes_to_str(nick_bytes)
     except (struct.error, UnicodeError):
         raise SoftError("Error: Received invalid contact data")
 
-    contact_list.add_contact(
-        onion_pub_key,
-        nick,
-        bytes(FINGERPRINT_LENGTH),
-        bytes(FINGERPRINT_LENGTH),
-        KEX_STATUS_NONE,
-        settings.log_messages_by_default,
-        settings.accept_files_by_default,
-        settings.show_notifications_by_default,
-    )
+    contact_list.add_contact(onion_pub_key, nick,
+                             bytes(FINGERPRINT_LENGTH),
+                             bytes(FINGERPRINT_LENGTH),
+                             KEX_STATUS_NONE,
+                             settings.log_messages_by_default,
+                             settings.accept_files_by_default,
+                             settings.show_notifications_by_default)
 
     key_list.add_keyset(onion_pub_key, tx_mk, rx_mk, tx_hk, rx_hk)
 
@@ -290,51 +249,42 @@ def key_ex_ecdhe(
 
 # PSK
 
-
-def key_ex_psk_tx(
-    packet: bytes,
-    ts: "datetime",
-    window_list: "WindowList",
-    contact_list: "ContactList",
-    key_list: "KeyList",
-    settings: "Settings",
-) -> None:
+def key_ex_psk_tx(packet:       bytes,
+                  ts:           'datetime',
+                  window_list:  'WindowList',
+                  contact_list: 'ContactList',
+                  key_list:     'KeyList',
+                  settings:     'Settings'
+                  ) -> None:
     """Add contact and Tx-PSKs."""
-    onion_pub_key, tx_mk, _, tx_hk, _, nick_bytes = separate_headers(
-        packet, [ONION_SERVICE_PUBLIC_KEY_LENGTH] + 4 * [SYMMETRIC_KEY_LENGTH]
-    )
+
+    onion_pub_key, tx_mk, _, tx_hk, _, nick_bytes \
+        = separate_headers(packet, [ONION_SERVICE_PUBLIC_KEY_LENGTH] + 4*[SYMMETRIC_KEY_LENGTH])
 
     try:
         nick = bytes_to_str(nick_bytes)
     except (struct.error, UnicodeError):
         raise SoftError("Error: Received invalid contact data")
 
-    contact_list.add_contact(
-        onion_pub_key,
-        nick,
-        bytes(FINGERPRINT_LENGTH),
-        bytes(FINGERPRINT_LENGTH),
-        KEX_STATUS_NO_RX_PSK,
-        settings.log_messages_by_default,
-        settings.accept_files_by_default,
-        settings.show_notifications_by_default,
-    )
+    contact_list.add_contact(onion_pub_key, nick,
+                             bytes(FINGERPRINT_LENGTH),
+                             bytes(FINGERPRINT_LENGTH),
+                             KEX_STATUS_NO_RX_PSK,
+                             settings.log_messages_by_default,
+                             settings.accept_files_by_default,
+                             settings.show_notifications_by_default)
 
     # The Rx-side keys are set as null-byte strings to indicate they have not
     # been added yet. The zero-keys do not allow existential forgeries as
     # `decrypt_assembly_packet`does not allow the use of zero-keys for decryption.
-    key_list.add_keyset(
-        onion_pub_key=onion_pub_key,
-        tx_mk=tx_mk,
-        rx_mk=bytes(SYMMETRIC_KEY_LENGTH),
-        tx_hk=tx_hk,
-        rx_hk=bytes(SYMMETRIC_KEY_LENGTH),
-    )
+    key_list.add_keyset(onion_pub_key=onion_pub_key,
+                        tx_mk=tx_mk,
+                        rx_mk=bytes(SYMMETRIC_KEY_LENGTH),
+                        tx_hk=tx_hk,
+                        rx_hk=bytes(SYMMETRIC_KEY_LENGTH))
 
-    c_code = blake2b(onion_pub_key, digest_size=CONFIRM_CODE_LENGTH)
-    message = (
-        f"Added Tx-side PSK for {nick} ({pub_key_to_short_address(onion_pub_key)})."
-    )
+    c_code  = blake2b(onion_pub_key, digest_size=CONFIRM_CODE_LENGTH)
+    message = f"Added Tx-side PSK for {nick} ({pub_key_to_short_address(onion_pub_key)})."
     cmd_win = window_list.get_command_window()
     cmd_win.add_new(ts, message)
 
@@ -347,13 +297,7 @@ def decrypt_rx_psk(ct_tag: bytes, salt: bytes) -> bytes:
         try:
             password = MasterKey.get_password("PSK password")
             phase("Deriving the key decryption key", head=2)
-            kdk = argon2_kdf(
-                password,
-                salt,
-                ARGON2_PSK_TIME_COST,
-                ARGON2_PSK_MEMORY_COST,
-                ARGON2_PSK_PARALLELISM,
-            )
+            kdk = argon2_kdf(password, salt, ARGON2_PSK_TIME_COST, ARGON2_PSK_MEMORY_COST, ARGON2_PSK_PARALLELISM)
             psk = auth_and_decrypt(ct_tag, kdk)
             phase(DONE)
             return psk
@@ -366,28 +310,25 @@ def decrypt_rx_psk(ct_tag: bytes, salt: bytes) -> bytes:
             raise SoftError("PSK import aborted.", head=2, delay=1, tail_clear=True)
 
 
-def key_ex_psk_rx(
-    packet: bytes,
-    ts: "datetime",
-    window_list: "WindowList",
-    contact_list: "ContactList",
-    key_list: "KeyList",
-    settings: "Settings",
-) -> None:
+def key_ex_psk_rx(packet:       bytes,
+                  ts:           'datetime',
+                  window_list:  'WindowList',
+                  contact_list: 'ContactList',
+                  key_list:     'KeyList',
+                  settings:     'Settings'
+                  ) -> None:
     """Import Rx-PSK of contact."""
     c_code, onion_pub_key = separate_header(packet, CONFIRM_CODE_LENGTH)
-    short_addr = pub_key_to_short_address(onion_pub_key)
+    short_addr            = pub_key_to_short_address(onion_pub_key)
 
     if not contact_list.has_pub_key(onion_pub_key):
         raise SoftError(f"Error: Unknown account '{short_addr}'.", head_clear=True)
 
-    contact = contact_list.get_contact_by_pub_key(onion_pub_key)
-    psk_file = ask_path_gui(
-        f"Select PSK for {contact.nick} ({short_addr})", settings, get_file=True
-    )
+    contact  = contact_list.get_contact_by_pub_key(onion_pub_key)
+    psk_file = ask_path_gui(f"Select PSK for {contact.nick} ({short_addr})", settings, get_file=True)
 
     try:
-        with open(psk_file, "rb") as f:
+        with open(psk_file, 'rb') as f:
             psk_data = f.read()
     except PermissionError:
         raise SoftError("Error: No read permission for the PSK file.")
@@ -396,14 +337,13 @@ def key_ex_psk_rx(
         raise SoftError("Error: The PSK data in the file was invalid.", head_clear=True)
 
     salt, ct_tag = separate_header(psk_data, ARGON2_SALT_LENGTH)
-
-    psk = decrypt_rx_psk(ct_tag, salt)
+    psk          = decrypt_rx_psk(ct_tag, salt)
     rx_mk, rx_hk = separate_header(psk, SYMMETRIC_KEY_LENGTH)
 
     if any(k == bytes(SYMMETRIC_KEY_LENGTH) for k in [rx_mk, rx_hk]):
         raise SoftError("Error: Received invalid keys from contact.", head_clear=True)
 
-    keyset = key_list.get_keyset(onion_pub_key)
+    keyset       = key_list.get_keyset(onion_pub_key)
     keyset.rx_mk = rx_mk
     keyset.rx_hk = rx_hk
     key_list.store_keys()
@@ -415,27 +355,14 @@ def key_ex_psk_rx(
     # the program itself, and therefore trusted, but it's still good practice.
     subprocess.Popen(f"shred -n 3 -z -u {pipes.quote(psk_file)}", shell=True).wait()
     if os.path.isfile(psk_file):
-        m_print(
-            f"Warning! Overwriting of PSK ({psk_file}) failed. Press <Enter> to continue.",
-            manual_proceed=True,
-            box=True,
-        )
+        m_print(f"Warning! Overwriting of PSK ({psk_file}) failed. Press <Enter> to continue.",
+                manual_proceed=True, box=True)
 
     message = f"Added Rx-side PSK for {contact.nick} ({short_addr})."
     cmd_win = window_list.get_command_window()
     cmd_win.add_new(ts, message)
 
-    m_print(
-        [
-            message,
-            "",
-            "Warning!",
-            "Physically destroy the keyfile transmission media ",
-            "to ensure it does not steal data from this computer!",
-            "",
-            f"Confirmation code (to Transmitter): {c_code.hex()}",
-        ],
-        box=True,
-        head=1,
-        tail=1,
-    )
+    m_print([message, '', "Warning!",
+             "Physically destroy the keyfile transmission media ",
+             "to ensure it does not steal data from this computer!", '',
+             f"Confirmation code (to Transmitter): {c_code.hex()}"], box=True, head=1, tail=1)

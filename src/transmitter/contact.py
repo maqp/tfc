@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -23,68 +23,40 @@ import typing
 
 from typing import Any, Dict
 
-from src.common.db_logs import remove_logs
-from src.common.encoding import onion_address_to_pub_key
+from src.common.db_logs    import remove_logs
+from src.common.encoding   import onion_address_to_pub_key
 from src.common.exceptions import SoftError
-from src.common.input import box_input, yes
-from src.common.misc import (
-    ignored,
-    validate_key_exchange,
-    validate_nick,
-    validate_onion_addr,
-)
-from src.common.output import m_print
-from src.common.statics import (
-    ALL,
-    CH_FILE_RECV,
-    CH_LOGGING,
-    CH_NICKNAME,
-    CH_NOTIFY,
-    CONTACT_REM,
-    DISABLE,
-    ECDHE,
-    ENABLE,
-    KDB_REMOVE_ENTRY_HEADER,
-    KEY_MANAGEMENT_QUEUE,
-    LOGGING,
-    LOG_SETTING_QUEUE,
-    NOTIFY,
-    ONION_ADDRESS_LENGTH,
-    PSK,
-    RELAY_PACKET_QUEUE,
-    STORE,
-    TRUNC_ADDRESS_LENGTH,
-    UNENCRYPTED_ADD_NEW_CONTACT,
-    UNENCRYPTED_DATAGRAM_HEADER,
-    UNENCRYPTED_REM_CONTACT,
-    WIN_TYPE_CONTACT,
-    WIN_TYPE_GROUP,
-)
+from src.common.input      import box_input, yes
+from src.common.misc       import ignored, validate_key_exchange, validate_nick, validate_onion_addr
+from src.common.output     import m_print, print_on_previous_line
+from src.common.statics    import (ALL, CH_FILE_RECV, CH_LOGGING, CH_NICKNAME, CH_NOTIFY, CONTACT_REM, DISABLE, ECDHE,
+                                   ENABLE, KDB_REMOVE_ENTRY_HEADER, KEY_MANAGEMENT_QUEUE, LOGGING, LOG_SETTING_QUEUE,
+                                   NOTIFY, ONION_ADDRESS_LENGTH, PSK, RELAY_PACKET_QUEUE, STORE, TRUNC_ADDRESS_LENGTH,
+                                   UNENCRYPTED_ACCOUNT_CHECK, UNENCRYPTED_ADD_NEW_CONTACT, UNENCRYPTED_DATAGRAM_HEADER,
+                                   UNENCRYPTED_REM_CONTACT, WIN_TYPE_CONTACT, WIN_TYPE_GROUP)
 
-from src.transmitter.commands_g import group_rename
+from src.transmitter.commands_g    import group_rename
 from src.transmitter.key_exchanges import create_pre_shared_key, start_key_exchange
-from src.transmitter.packet import queue_command, queue_to_nc
+from src.transmitter.packet        import queue_command, queue_to_nc
 
 if typing.TYPE_CHECKING:
-    from multiprocessing import Queue
-    from src.common.db_contacts import ContactList
-    from src.common.db_groups import GroupList
-    from src.common.db_masterkey import MasterKey
-    from src.common.db_onion import OnionService
-    from src.common.db_settings import Settings
+    from multiprocessing            import Queue
+    from src.common.db_contacts     import ContactList
+    from src.common.db_groups       import GroupList
+    from src.common.db_masterkey    import MasterKey
+    from src.common.db_onion        import OnionService
+    from src.common.db_settings     import Settings
     from src.transmitter.user_input import UserInput
-    from src.transmitter.windows import TxWindow
-
+    from src.transmitter.windows    import TxWindow
     QueueDict = Dict[bytes, Queue[Any]]
 
 
-def add_new_contact(
-    contact_list: "ContactList",
-    group_list: "GroupList",
-    settings: "Settings",
-    queues: "QueueDict",
-    onion_service: "OnionService",
-) -> None:
+def add_new_contact(contact_list:  'ContactList',
+                    group_list:    'GroupList',
+                    settings:      'Settings',
+                    queues:        'QueueDict',
+                    onion_service: 'OnionService'
+                    ) -> None:
     """Prompt for contact account details and initialize desired key exchange.
 
     This function requests the minimum amount of data about the
@@ -103,90 +75,78 @@ def add_new_contact(
     """
     try:
         if settings.traffic_masking:
-            raise SoftError(
-                "Error: Command is disabled during traffic masking.", head_clear=True
-            )
+            raise SoftError("Error: Command is disabled during traffic masking.", head_clear=True)
 
         if len(contact_list) >= settings.max_number_of_contacts:
-            raise SoftError(
-                f"Error: TFC settings only allow {settings.max_number_of_contacts} accounts.",
-                head_clear=True,
-            )
+            raise SoftError(f"Error: TFC settings only allow {settings.max_number_of_contacts} accounts.",
+                            head_clear=True)
 
         m_print("Add new contact", head=1, bold=True, head_clear=True)
 
-        m_print(
-            [
-                "Your TFC account is",
-                onion_service.user_onion_address,
-                "",
-                "Warning!",
-                "Anyone who knows this account",
-                "can see when your TFC is online",
-            ],
-            box=True,
-        )
+        m_print(["Your TFC account is",
+                 onion_service.user_onion_address,
+                 '', "Warning!",
+                 "Anyone who knows this account",
+                 "can see when your TFC is online"], box=True)
 
-        contact_address = box_input(
-            "Contact account",
-            expected_len=ONION_ADDRESS_LENGTH,
-            validator=validate_onion_addr,
-            validator_args=onion_service.user_onion_address,
-        ).strip()
-        onion_pub_key = onion_address_to_pub_key(contact_address)
+        contact_address = get_onion_address_from_user(onion_service.user_onion_address, queues)
+        onion_pub_key   = onion_address_to_pub_key(contact_address)
 
-        contact_nick = box_input(
-            "Contact nick",
-            expected_len=ONION_ADDRESS_LENGTH,  # Limited to 255 but such long nick is unpractical.
-            validator=validate_nick,
-            validator_args=(contact_list, group_list, onion_pub_key),
-        ).strip()
+        contact_nick = box_input("Contact nick",
+                                 expected_len=ONION_ADDRESS_LENGTH,  # Limited to 255 but such long nick is unpractical.
+                                 validator=validate_nick,
+                                 validator_args=(contact_list, group_list, onion_pub_key)).strip()
 
-        key_exchange = box_input(
-            f"Key exchange ([{ECDHE}],PSK) ",
-            default=ECDHE,
-            expected_len=28,
-            validator=validate_key_exchange,
-        ).strip()
+        key_exchange = box_input(f"Key exchange ([{ECDHE}],PSK) ",
+                                 default=ECDHE,
+                                 expected_len=28,
+                                 validator=validate_key_exchange).strip()
 
-        relay_command = (
-            UNENCRYPTED_DATAGRAM_HEADER + UNENCRYPTED_ADD_NEW_CONTACT + onion_pub_key
-        )
+        relay_command = UNENCRYPTED_DATAGRAM_HEADER + UNENCRYPTED_ADD_NEW_CONTACT + onion_pub_key
         queue_to_nc(relay_command, queues[RELAY_PACKET_QUEUE])
 
         if key_exchange.upper() in ECDHE:
-            start_key_exchange(
-                onion_pub_key, contact_nick, contact_list, settings, queues
-            )
+            start_key_exchange(onion_pub_key, contact_nick, contact_list, settings, queues)
 
         elif key_exchange.upper() in PSK:
-            create_pre_shared_key(
-                onion_pub_key,
-                contact_nick,
-                contact_list,
-                settings,
-                onion_service,
-                queues,
-            )
+            create_pre_shared_key(onion_pub_key, contact_nick, contact_list, settings, onion_service, queues)
 
     except (EOFError, KeyboardInterrupt):
         raise SoftError("Contact creation aborted.", head=2, delay=1, tail_clear=True)
 
 
-def remove_contact(
-    user_input: "UserInput",
-    window: "TxWindow",
-    contact_list: "ContactList",
-    group_list: "GroupList",
-    settings: "Settings",
-    queues: "QueueDict",
-    master_key: "MasterKey",
-) -> None:
+def get_onion_address_from_user(onion_address_user: str, queues: 'QueueDict') -> str:
+    """Get contact's Onion Address from user."""
+    while True:
+        onion_address_contact = box_input("Contact account", expected_len=ONION_ADDRESS_LENGTH)
+        error_msg             = validate_onion_addr(onion_address_contact, onion_address_user)
+
+        if error_msg:
+            m_print(error_msg, head=1)
+            print_on_previous_line(reps=5, delay=1)
+
+            if error_msg not in ["Error: Invalid account length.",
+                                 "Error: Account must be in lower case.",
+                                 "Error: Can not add reserved account.",
+                                 "Error: Can not add own account."]:
+                relay_command = UNENCRYPTED_DATAGRAM_HEADER + UNENCRYPTED_ACCOUNT_CHECK + onion_address_contact.encode()
+                queue_to_nc(relay_command, queues[RELAY_PACKET_QUEUE])
+            continue
+
+        return onion_address_contact
+
+
+def remove_contact(user_input:   'UserInput',
+                   window:       'TxWindow',
+                   contact_list: 'ContactList',
+                   group_list:   'GroupList',
+                   settings:     'Settings',
+                   queues:       'QueueDict',
+                   master_key:   'MasterKey'
+                   ) -> None:
     """Remove contact from TFC."""
     if settings.traffic_masking:
-        raise SoftError(
-            "Error: Command is disabled during traffic masking.", head_clear=True
-        )
+        raise SoftError("Error: Command is disabled during traffic masking.", head_clear=True)
 
     try:
         selection = user_input.plaintext.split()[1]
@@ -197,15 +157,11 @@ def remove_contact(
         raise SoftError("Removal of contact aborted.", head=0, delay=1, tail_clear=True)
 
     if selection in contact_list.contact_selectors():
-        onion_pub_key = contact_list.get_contact_by_address_or_nick(
-            selection
-        ).onion_pub_key
+        onion_pub_key = contact_list.get_contact_by_address_or_nick(selection).onion_pub_key
 
     else:
         if validate_onion_addr(selection):
-            raise SoftError(
-                "Error: Invalid selection.", head=0, delay=1, tail_clear=True
-            )
+            raise SoftError("Error: Invalid selection.", head=0, delay=1, tail_clear=True)
         onion_pub_key = onion_address_to_pub_key(selection)
 
     receiver_command = CONTACT_REM + onion_pub_key
@@ -216,9 +172,7 @@ def remove_contact(
 
     queues[KEY_MANAGEMENT_QUEUE].put((KDB_REMOVE_ENTRY_HEADER, onion_pub_key))
 
-    relay_command = (
-        UNENCRYPTED_DATAGRAM_HEADER + UNENCRYPTED_REM_CONTACT + onion_pub_key
-    )
+    relay_command = UNENCRYPTED_DATAGRAM_HEADER + UNENCRYPTED_REM_CONTACT + onion_pub_key
     queue_to_nc(relay_command, queues[RELAY_PACKET_QUEUE])
 
     target = determine_target(selection, onion_pub_key, contact_list)
@@ -229,13 +183,14 @@ def remove_contact(
     check_for_window_deselection(onion_pub_key, window, group_list)
 
 
-def determine_target(
-    selection: str, onion_pub_key: bytes, contact_list: "ContactList"
-) -> str:
+def determine_target(selection:     str,
+                     onion_pub_key: bytes,
+                     contact_list:  'ContactList'
+                     ) -> str:
     """Determine name of the target that will be removed."""
     if onion_pub_key in contact_list.get_list_of_pub_keys():
         contact = contact_list.get_contact_by_pub_key(onion_pub_key)
-        target = f"{contact.nick} ({contact.short_address})"
+        target  = f"{contact.nick} ({contact.short_address})"
         contact_list.remove_contact_by_pub_key(onion_pub_key)
         m_print(f"Removed {target} from contacts.", head=1, tail=1)
     else:
@@ -245,9 +200,10 @@ def determine_target(
     return target
 
 
-def check_for_window_deselection(
-    onion_pub_key: bytes, window: "TxWindow", group_list: "GroupList"
-) -> None:
+def check_for_window_deselection(onion_pub_key: bytes,
+                                 window:        'TxWindow',
+                                 group_list:    'GroupList'
+                                 ) -> None:
     """\
     Check if the window should be deselected after contact is removed.
     """
@@ -268,14 +224,13 @@ def check_for_window_deselection(
                     window.deselect()
 
 
-def change_nick(
-    user_input: "UserInput",
-    window: "TxWindow",
-    contact_list: "ContactList",
-    group_list: "GroupList",
-    settings: "Settings",
-    queues: "QueueDict",
-) -> None:
+def change_nick(user_input:   'UserInput',
+                window:       'TxWindow',
+                contact_list: 'ContactList',
+                group_list:   'GroupList',
+                settings:     'Settings',
+                queues:       'QueueDict'
+                ) -> None:
     """Change nick of contact."""
     try:
         nick = user_input.plaintext.split()[1]
@@ -289,58 +244,55 @@ def change_nick(
         raise SoftError("Error: Window does not have contact.")
 
     onion_pub_key = window.contact.onion_pub_key
-    error_msg = validate_nick(nick, (contact_list, group_list, onion_pub_key))
+    error_msg     = validate_nick(nick, (contact_list, group_list, onion_pub_key))
     if error_msg:
         raise SoftError(error_msg, head_clear=True)
 
     window.contact.nick = nick
-    window.name = nick
+    window.name         = nick
     contact_list.store_contacts()
 
     command = CH_NICKNAME + onion_pub_key + nick.encode()
     queue_command(command, settings, queues)
 
 
-def contact_setting(
-    user_input: "UserInput",
-    window: "TxWindow",
-    contact_list: "ContactList",
-    group_list: "GroupList",
-    settings: "Settings",
-    queues: "QueueDict",
-) -> None:
+def contact_setting(user_input:   'UserInput',
+                    window:       'TxWindow',
+                    contact_list: 'ContactList',
+                    group_list:   'GroupList',
+                    settings:     'Settings',
+                    queues:       'QueueDict'
+                    ) -> None:
     """\
     Change logging, file reception, or notification setting of a group
     or (all) contact(s).
     """
     try:
         parameters = user_input.plaintext.split()
-        cmd_key = parameters[0]
-        cmd_header = {LOGGING: CH_LOGGING, STORE: CH_FILE_RECV, NOTIFY: CH_NOTIFY}[
-            cmd_key
-        ]
+        cmd_key    = parameters[0]
+        cmd_header = {LOGGING: CH_LOGGING,
+                      STORE:   CH_FILE_RECV,
+                      NOTIFY:  CH_NOTIFY}[cmd_key]
 
-        setting, b_value = dict(on=(ENABLE, True), off=(DISABLE, False))[parameters[1]]
+        setting, b_value = dict(on=(ENABLE, True),
+                                off=(DISABLE, False))[parameters[1]]
 
     except (IndexError, KeyError):
         raise SoftError("Error: Invalid command.", head_clear=True)
 
     # If second parameter 'all' is included, apply setting for all contacts and groups
     try:
-        win_uid = b""
+        win_uid = b''
         if parameters[2] == ALL:
             cmd_value = setting.upper()
         else:
             raise SoftError("Error: Invalid command.", head_clear=True)
     except IndexError:
-        win_uid = window.uid
+        win_uid   = window.uid
         cmd_value = setting + win_uid
 
     if win_uid:
-        change_setting_for_selected_contact(
-            cmd_key, b_value, window, contact_list, group_list
-        )
-
+        change_setting_for_selected_contact(cmd_key, b_value, window, contact_list, group_list)
     else:
         change_setting_for_all_contacts(cmd_key, b_value, contact_list, group_list)
 
@@ -356,21 +308,20 @@ def contact_setting(
     queue_command(command, settings, queues)
 
 
-def change_setting_for_selected_contact(
-    cmd_key: str,
-    b_value: bool,
-    window: "TxWindow",
-    contact_list: "ContactList",
-    group_list: "GroupList",
-) -> None:
+def change_setting_for_selected_contact(cmd_key:      str,
+                                        b_value:      bool,
+                                        window:       'TxWindow',
+                                        contact_list: 'ContactList',
+                                        group_list:   'GroupList'
+                                        ) -> None:
     """Change setting for selected contact."""
     if window.type == WIN_TYPE_CONTACT and window.contact is not None:
         if cmd_key == LOGGING:
-            window.contact.log_messages = b_value
+            window.contact.log_messages   = b_value
         if cmd_key == STORE:
             window.contact.file_reception = b_value
         if cmd_key == NOTIFY:
-            window.contact.notifications = b_value
+            window.contact.notifications  = b_value
         contact_list.store_contacts()
 
     if window.type == WIN_TYPE_GROUP and window.group is not None:
@@ -384,24 +335,24 @@ def change_setting_for_selected_contact(
         group_list.store_groups()
 
 
-def change_setting_for_all_contacts(
-    cmd_key: str, b_value: bool, contact_list: "ContactList", group_list: "GroupList"
-) -> None:
-    """Change setting for all contacts."""
+def change_setting_for_all_contacts(cmd_key:      str,
+                                    b_value:      bool,
+                                    contact_list: 'ContactList',
+                                    group_list:   'GroupList'
+                                    ) -> None:
+    """Change settings for all contacts."""
     for contact in contact_list:
         if cmd_key == LOGGING:
-            contact.log_messages = b_value
+            contact.log_messages   = b_value
         if cmd_key == STORE:
             contact.file_reception = b_value
         if cmd_key == NOTIFY:
-            contact.notifications = b_value
-
+            contact.notifications  = b_value
     contact_list.store_contacts()
 
     for group in group_list:
         if cmd_key == LOGGING:
-            group.log_messages = b_value
+            group.log_messages  = b_value
         if cmd_key == NOTIFY:
             group.notifications = b_value
-
     group_list.store_groups()

@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -25,21 +25,12 @@ import time
 import unittest
 
 from multiprocessing import Queue
-from unittest import mock
-from unittest.mock import MagicMock
+from unittest        import mock
+from unittest.mock   import MagicMock
+from typing          import Any
 
-from src.common.statics import (
-    DATA_FLOW,
-    DST_LISTEN_SOCKET,
-    EXIT,
-    EXIT_QUEUE,
-    IDLE,
-    NCDCLR,
-    NCDCRL,
-    RP_LISTEN_SOCKET,
-    SCNCLR,
-    SCNCRL,
-)
+from src.common.statics import (DATA_FLOW, DST_LISTEN_SOCKET, EXIT, EXIT_QUEUE, IDLE,
+                                NCDCLR, NCDCRL, RP_LISTEN_SOCKET, SCNCLR, SCNCRL)
 
 from dd import animate, draw_frame, main, process_arguments, rx_loop, tx_loop
 
@@ -47,111 +38,80 @@ from tests.utils import tear_queue, TFCTestCase
 
 
 class TestDrawFrame(TFCTestCase):
+
     def test_left_to_right_oriented_data_diode_frames(self) -> None:
 
         for argv in [SCNCLR, NCDCRL]:
 
-            self.assert_prints(
-                """\
+            self.assert_prints("""\
 \n\n\n\n\n\n\n\n
                                    Data flow                                    
                                        →                                        
                                  ────╮   ╭────                                  
                                   Tx │ > │ Rx                                   
                                  ────╯   ╰────                                  
-""",
-                draw_frame,
-                argv,
-                DATA_FLOW,
-                high=True,
-            )
+""", draw_frame, argv, DATA_FLOW, high=True)
 
-            self.assert_prints(
-                """\
+            self.assert_prints("""\
 \n\n\n\n\n\n\n\n
                                    Data flow                                    
                                        →                                        
                                  ────╮   ╭────                                  
                                   Tx │   │ Rx                                   
                                  ────╯   ╰────                                  
-""",
-                draw_frame,
-                argv,
-                DATA_FLOW,
-                high=False,
-            )
+""", draw_frame, argv, DATA_FLOW, high=False)
 
-            self.assert_prints(
-                """\
+            self.assert_prints("""\
 \n\n\n\n\n\n\n\n
                                       Idle                                      
                                                                                 
                                  ────╮   ╭────                                  
                                   Tx │   │ Rx                                   
                                  ────╯   ╰────                                  
-""",
-                draw_frame,
-                argv,
-                IDLE,
-            )
+""", draw_frame, argv, IDLE)
 
     def test_right_to_left_oriented_data_diode_frames(self) -> None:
 
         for argv in [SCNCRL, NCDCLR]:
 
-            self.assert_prints(
-                """\
+            self.assert_prints("""\
 \n\n\n\n\n\n\n\n
                                    Data flow                                    
                                        ←                                        
                                  ────╮   ╭────                                  
                                   Rx │ < │ Tx                                   
                                  ────╯   ╰────                                  
-""",
-                draw_frame,
-                argv,
-                DATA_FLOW,
-                high=True,
-            )
+""", draw_frame, argv, DATA_FLOW, high=True)
 
-            self.assert_prints(
-                """\
+            self.assert_prints("""\
 \n\n\n\n\n\n\n\n
                                    Data flow                                    
                                        ←                                        
                                  ────╮   ╭────                                  
                                   Rx │   │ Tx                                   
                                  ────╯   ╰────                                  
-""",
-                draw_frame,
-                argv,
-                DATA_FLOW,
-                high=False,
-            )
+""", draw_frame, argv, DATA_FLOW, high=False)
 
-            self.assert_prints(
-                """\
+            self.assert_prints("""\
 \n\n\n\n\n\n\n\n
                                       Idle                                      
                                                                                 
                                  ────╮   ╭────                                  
                                   Rx │   │ Tx                                   
                                  ────╯   ╰────                                  
-""",
-                draw_frame,
-                argv,
-                IDLE,
-            )
+""", draw_frame, argv, IDLE)
 
 
 class TestAnimate(unittest.TestCase):
-    @mock.patch("time.sleep", return_value=MagicMock)
-    def test_animate(self, _) -> None:
+
+    @mock.patch('time.sleep', return_value=MagicMock)
+    def test_animate(self, _: Any) -> None:
         for arg in [SCNCLR, NCDCLR, SCNCRL, NCDCRL]:
             self.assertIsNone(animate(arg))
 
 
 class TestRxLoop(unittest.TestCase):
+
     def setUp(self) -> None:
         """Pre-test actions."""
         self.queue = Queue()
@@ -160,34 +120,21 @@ class TestRxLoop(unittest.TestCase):
         """Post-test actions."""
         tear_queue(self.queue)
 
-    @mock.patch(
-        "multiprocessing.connection.Listener",
-        return_value=MagicMock(
-            accept=MagicMock(
-                return_value=MagicMock(
-                    recv=MagicMock(
-                        side_effect=[
-                            b"test_data",
-                            b"test_data",
-                            KeyboardInterrupt,
-                            EOFError,
-                        ]
-                    )
-                )
-            )
-        ),
-    )
-    def test_rx_loop(self, _) -> None:
+    @mock.patch('multiprocessing.connection.Listener', return_value=MagicMock(
+        accept=MagicMock(return_value=MagicMock(
+            recv=MagicMock(side_effect=[b'test_data', b'test_data', KeyboardInterrupt, EOFError])))))
+    def test_rx_loop(self, _: Any) -> None:
 
         with self.assertRaises(SystemExit):
             rx_loop(self.queue, RP_LISTEN_SOCKET)
 
         self.assertEqual(self.queue.qsize(), 2)
-        while self.queue.qsize():
-            self.assertEqual(self.queue.get(), b"test_data")
+        while self.queue.qsize() != 0:
+            self.assertEqual(self.queue.get(), b'test_data')
 
 
 class TestTxLoop(unittest.TestCase):
+
     def setUp(self) -> None:
         """Pre-test actions."""
         self.o_sleep = time.sleep
@@ -196,20 +143,16 @@ class TestTxLoop(unittest.TestCase):
         """Post-test actions."""
         time.sleep = self.o_sleep
 
-    @mock.patch("time.sleep", lambda _: None)
-    @mock.patch(
-        "multiprocessing.connection.Client",
-        side_effect=[socket.error, MagicMock(send=MagicMock)],
-    )
-    def test_tx_loop(self, *_) -> None:
+    @mock.patch('time.sleep',                        lambda _: None)
+    @mock.patch('multiprocessing.connection.Client', side_effect=[socket.error, MagicMock(send=MagicMock)])
+    def test_tx_loop(self, *_: Any) -> None:
         # Setup
         queue = Queue()
 
         def queue_delayer() -> None:
             """Place packet to queue after timer runs out."""
             self.o_sleep(0.1)
-            queue.put(b"test_packet")
-
+            queue.put(b'test_packet')
         threading.Thread(target=queue_delayer).start()
 
         # Test
@@ -220,22 +163,24 @@ class TestTxLoop(unittest.TestCase):
 
 
 class TestProcessArguments(unittest.TestCase):
-    def test_invalid_arguments_exit(self, *_) -> None:
-        for argument in ["", "invalid"]:
-            with mock.patch("sys.argv", ["dd.py", argument]):
+
+    def test_invalid_arguments_exit(self, *_: Any) -> None:
+        for argument in ['', 'invalid']:
+            with mock.patch('sys.argv', ['dd.py', argument]):
                 with self.assertRaises(SystemExit):
                     process_arguments()
 
-    def test_valid_arguments(self, *_) -> None:
+    def test_valid_arguments(self, *_: Any) -> None:
         for argument in [SCNCLR, SCNCRL, NCDCLR, NCDCRL]:
-            with mock.patch("sys.argv", ["dd.py", argument]):
+            with mock.patch('sys.argv', ['dd.py', argument]):
                 arg, input_socket, output_socket = process_arguments()
                 self.assertEqual(arg, argument)
-                self.assertIsInstance(input_socket, int)
+                self.assertIsInstance(input_socket,  int)
                 self.assertIsInstance(output_socket, int)
 
 
 class TestMain(unittest.TestCase):
+
     def setUp(self) -> None:
         """Pre-test actions."""
         self.queue = Queue()
@@ -244,9 +189,9 @@ class TestMain(unittest.TestCase):
         """Post-test actions."""
         tear_queue(self.queue)
 
-    @mock.patch("time.sleep", lambda _: None)
-    @mock.patch("sys.argv", ["dd.py", SCNCLR])
-    def test_main(self, *_) -> None:
+    @mock.patch('time.sleep', lambda _: None)
+    @mock.patch('sys.argv',   ['dd.py', SCNCLR])
+    def test_main(self, *_: Any) -> None:
         # Setup
         queues = {EXIT_QUEUE: self.queue}
 
@@ -254,7 +199,6 @@ class TestMain(unittest.TestCase):
             """Place packet to queue after timer runs out."""
             time.sleep(0.1)
             queues[EXIT_QUEUE].put(EXIT)
-
         threading.Thread(target=queue_delayer).start()
 
         # Test
@@ -262,5 +206,5 @@ class TestMain(unittest.TestCase):
             main(queues=queues)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main(exit=False)

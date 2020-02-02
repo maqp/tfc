@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -25,43 +25,22 @@ import typing
 
 from typing import Callable, Iterable, Iterator, List, Sized
 
-from src.common.database import TFCDatabase
+from src.common.database    import TFCDatabase
 from src.common.db_contacts import Contact
-from src.common.encoding import (
-    bool_to_bytes,
-    int_to_bytes,
-    str_to_bytes,
-    onion_address_to_pub_key,
-    b58encode,
-)
-from src.common.encoding import bytes_to_bool, bytes_to_int, bytes_to_str
-from src.common.exceptions import CriticalError
-from src.common.misc import (
-    ensure_dir,
-    get_terminal_width,
-    round_up,
-    separate_header,
-    separate_headers,
-)
-from src.common.misc import split_byte_string
-from src.common.statics import (
-    CONTACT_LIST_INDENT,
-    DIR_USER_DATA,
-    DUMMY_GROUP,
-    DUMMY_MEMBER,
-    ENCODED_BOOLEAN_LENGTH,
-    ENCODED_INTEGER_LENGTH,
-    GROUP_DB_HEADER_LENGTH,
-    GROUP_ID_LENGTH,
-    GROUP_STATIC_LENGTH,
-    ONION_SERVICE_PUBLIC_KEY_LENGTH,
-    PADDED_UTF32_STR_LENGTH,
-)
+from src.common.encoding    import bool_to_bytes, int_to_bytes, str_to_bytes, onion_address_to_pub_key, b58encode
+from src.common.encoding    import bytes_to_bool, bytes_to_int, bytes_to_str
+from src.common.exceptions  import CriticalError
+from src.common.misc        import ensure_dir, get_terminal_width, round_up, separate_header, separate_headers
+from src.common.misc        import split_byte_string
+from src.common.statics     import (CONTACT_LIST_INDENT, DIR_USER_DATA, DUMMY_GROUP, DUMMY_MEMBER,
+                                    ENCODED_BOOLEAN_LENGTH, ENCODED_INTEGER_LENGTH, GROUP_DB_HEADER_LENGTH,
+                                    GROUP_ID_LENGTH, GROUP_STATIC_LENGTH, ONION_SERVICE_PUBLIC_KEY_LENGTH,
+                                    PADDED_UTF32_STR_LENGTH)
 
 if typing.TYPE_CHECKING:
-    from src.common.db_contacts import ContactList
+    from src.common.db_contacts  import ContactList
     from src.common.db_masterkey import MasterKey
-    from src.common.db_settings import Settings
+    from src.common.db_settings  import Settings
 
 
 class Group(Iterable[Contact], Sized):
@@ -116,29 +95,28 @@ class Group(Iterable[Contact], Sized):
                    header.
     """
 
-    def __init__(
-        self,
-        name: str,
-        group_id: bytes,
-        log_messages: bool,
-        notifications: bool,
-        members: List["Contact"],
-        settings: "Settings",
-        store_groups: Callable[..., None],
-    ) -> None:
+    def __init__(self,
+                 name:          str,
+                 group_id:      bytes,
+                 log_messages:  bool,
+                 notifications: bool,
+                 members:       List['Contact'],
+                 settings:      'Settings',
+                 store_groups:  Callable[..., None]
+                 ) -> None:
         """Create a new Group object.
 
         The `self.store_groups` is a reference to the method of the
         parent object GroupList that stores the list of groups into an
         encrypted database.
         """
-        self.name = name
-        self.group_id = group_id
-        self.log_messages = log_messages
+        self.name          = name
+        self.group_id      = group_id
+        self.log_messages  = log_messages
         self.notifications = notifications
-        self.members = members
-        self.settings = settings
-        self.store_groups = store_groups
+        self.members       = members
+        self.settings      = settings
+        self.store_groups  = store_groups
 
     def __iter__(self) -> Iterator[Contact]:
         """Iterate over members (Contact objects) in the Group object."""
@@ -161,27 +139,21 @@ class Group(Iterable[Contact], Sized):
         metadata the ciphertext length of the group database could
         reveal.
         """
-        members = self.get_list_of_member_pub_keys()
-        number_of_dummies = self.settings.max_number_of_group_members - len(
-            self.members
-        )
-        members += number_of_dummies * [onion_address_to_pub_key(DUMMY_MEMBER)]
-        member_bytes = b"".join(members)
+        members           = self.get_list_of_member_pub_keys()
+        number_of_dummies = self.settings.max_number_of_group_members - len(self.members)
+        members          += number_of_dummies * [onion_address_to_pub_key(DUMMY_MEMBER)]
+        member_bytes      = b''.join(members)
 
-        return (
-            str_to_bytes(self.name)
-            + self.group_id
-            + bool_to_bytes(self.log_messages)
-            + bool_to_bytes(self.notifications)
-            + member_bytes
-        )
+        return (str_to_bytes(self.name)
+                + self.group_id
+                + bool_to_bytes(self.log_messages)
+                + bool_to_bytes(self.notifications)
+                + member_bytes)
 
-    def add_members(self, contacts: List["Contact"]) -> None:
+    def add_members(self, contacts: List['Contact']) -> None:
         """Add a list of Contact objects to the group."""
         pre_existing = self.get_list_of_member_pub_keys()
-        self.members.extend(
-            (c for c in contacts if c.onion_pub_key not in pre_existing)
-        )
+        self.members.extend((c for c in contacts if c.onion_pub_key not in pre_existing))
         self.store_groups()
 
     def remove_members(self, pub_keys: List[bytes]) -> bool:
@@ -235,15 +207,17 @@ class GroupList(Iterable[Group], Sized):
     names for making queries to the database.
     """
 
-    def __init__(
-        self, master_key: "MasterKey", settings: "Settings", contact_list: "ContactList"
-    ) -> None:
+    def __init__(self,
+                 master_key:   'MasterKey',
+                 settings:     'Settings',
+                 contact_list: 'ContactList'
+                 ) -> None:
         """Create a new GroupList object."""
-        self.settings = settings
+        self.settings     = settings
         self.contact_list = contact_list
-        self.groups = []  # type: List[Group]
-        self.file_name = f"{DIR_USER_DATA}{settings.software_operation}_groups"
-        self.database = TFCDatabase(self.file_name, master_key)
+        self.groups       = []  # type: List[Group]
+        self.file_name    = f'{DIR_USER_DATA}{settings.software_operation}_groups'
+        self.database     = TFCDatabase(self.file_name, master_key)
 
         ensure_dir(DIR_USER_DATA)
         if os.path.isfile(self.file_name):
@@ -279,10 +253,8 @@ class GroupList(Iterable[Group], Sized):
         The ciphertext includes a 24-byte nonce and a 16-byte tag, so
         the size of the final database is 131572 bytes.
         """
-        pt_bytes = self._generate_group_db_header()
-        pt_bytes += b"".join(
-            [g.serialize_g() for g in (self.groups + self._dummy_groups())]
-        )
+        pt_bytes  = self._generate_group_db_header()
+        pt_bytes += b''.join([g.serialize_g() for g in (self.groups + self._dummy_groups())])
         self.database.store_database(pt_bytes, replace)
 
     def _load_groups(self) -> None:
@@ -303,29 +275,18 @@ class GroupList(Iterable[Group], Sized):
         # Slice and decode headers
         group_db_headers, pt_bytes = separate_header(pt_bytes, GROUP_DB_HEADER_LENGTH)
 
-        (
-            padding_for_group_db,
-            padding_for_members,
-            number_of_groups,
-            members_in_largest_group,
-        ) = list(
-            map(
-                bytes_to_int,
-                split_byte_string(group_db_headers, ENCODED_INTEGER_LENGTH),
-            )
-        )
+        padding_for_group_db, padding_for_members, number_of_groups, members_in_largest_group \
+            = list(map(bytes_to_int, split_byte_string(group_db_headers, ENCODED_INTEGER_LENGTH)))
 
         # Slice dummy groups
-        bytes_per_group = (
-            GROUP_STATIC_LENGTH + padding_for_members * ONION_SERVICE_PUBLIC_KEY_LENGTH
-        )
-        dummy_data_len = (padding_for_group_db - number_of_groups) * bytes_per_group
-        group_data = pt_bytes[:-dummy_data_len]
+        bytes_per_group = GROUP_STATIC_LENGTH + padding_for_members * ONION_SERVICE_PUBLIC_KEY_LENGTH
+        dummy_data_len  = (padding_for_group_db - number_of_groups) * bytes_per_group
+        group_data      = pt_bytes[:-dummy_data_len]
 
         update_db = self._check_db_settings(number_of_groups, members_in_largest_group)
-        blocks = split_byte_string(group_data, item_len=bytes_per_group)
+        blocks    = split_byte_string(group_data, item_len=bytes_per_group)
 
-        all_pub_keys = self.contact_list.get_list_of_pub_keys()
+        all_pub_keys  = self.contact_list.get_list_of_pub_keys()
         dummy_pub_key = onion_address_to_pub_key(DUMMY_MEMBER)
 
         # Deserialize group objects
@@ -333,48 +294,30 @@ class GroupList(Iterable[Group], Sized):
             if len(block) != bytes_per_group:
                 raise CriticalError("Invalid data in group database.")
 
-            (
-                name_bytes,
-                group_id,
-                log_messages_byte,
-                notification_byte,
-                ser_pub_keys,
-            ) = separate_headers(
-                block,
-                [PADDED_UTF32_STR_LENGTH, GROUP_ID_LENGTH]
-                + 2 * [ENCODED_BOOLEAN_LENGTH],
-            )
+            name_bytes, group_id, log_messages_byte, notification_byte, ser_pub_keys \
+                = separate_headers(block, [PADDED_UTF32_STR_LENGTH, GROUP_ID_LENGTH] + 2*[ENCODED_BOOLEAN_LENGTH])
 
-            pub_key_list = split_byte_string(
-                ser_pub_keys, item_len=ONION_SERVICE_PUBLIC_KEY_LENGTH
-            )
+            pub_key_list   = split_byte_string(ser_pub_keys, item_len=ONION_SERVICE_PUBLIC_KEY_LENGTH)
             group_pub_keys = [k for k in pub_key_list if k != dummy_pub_key]
-            group_members = [
-                self.contact_list.get_contact_by_pub_key(k)
-                for k in group_pub_keys
-                if k in all_pub_keys
-            ]
+            group_members  = [self.contact_list.get_contact_by_pub_key(k) for k in group_pub_keys if k in all_pub_keys]
 
-            self.groups.append(
-                Group(
-                    name=bytes_to_str(name_bytes),
-                    group_id=group_id,
-                    log_messages=bytes_to_bool(log_messages_byte),
-                    notifications=bytes_to_bool(notification_byte),
-                    members=group_members,
-                    settings=self.settings,
-                    store_groups=self.store_groups,
-                )
-            )
+            self.groups.append(Group(name         =bytes_to_str(name_bytes),
+                                     group_id     =group_id,
+                                     log_messages =bytes_to_bool(log_messages_byte),
+                                     notifications=bytes_to_bool(notification_byte),
+                                     members      =group_members,
+                                     settings     =self.settings,
+                                     store_groups =self.store_groups))
 
             update_db |= set(all_pub_keys) > set(group_pub_keys)
 
         if update_db:
             self.store_groups()
 
-    def _check_db_settings(
-        self, number_of_actual_groups: int, members_in_largest_group: int
-    ) -> bool:
+    def _check_db_settings(self,
+                           number_of_actual_groups:  int,
+                           members_in_largest_group: int
+                           ) -> bool:
         """\
         Adjust TFC's settings automatically if loaded group database was
         stored using larger database setting values.
@@ -389,9 +332,7 @@ class GroupList(Iterable[Group], Sized):
             update_db = True
 
         if members_in_largest_group > self.settings.max_number_of_group_members:
-            self.settings.max_number_of_group_members = round_up(
-                members_in_largest_group
-            )
+            self.settings.max_number_of_group_members = round_up(members_in_largest_group)
             update_db = True
 
         if update_db:
@@ -429,21 +370,12 @@ class GroupList(Iterable[Group], Sized):
                                       setting (e.g., in cases like the
                                       one described above).
         """
-        return b"".join(
-            list(
-                map(
-                    int_to_bytes,
-                    [
-                        self.settings.max_number_of_groups,
-                        self.settings.max_number_of_group_members,
-                        len(self.groups),
-                        self.largest_group(),
-                    ],
-                )
-            )
-        )
+        return b''.join(list(map(int_to_bytes, [self.settings.max_number_of_groups,
+                                                self.settings.max_number_of_group_members,
+                                                len(self.groups),
+                                                self.largest_group()])))
 
-    def _generate_dummy_group(self) -> "Group":
+    def _generate_dummy_group(self) -> 'Group':
         """Generate a dummy Group object.
 
         The dummy group simplifies the code around the constant length
@@ -452,45 +384,37 @@ class GroupList(Iterable[Group], Sized):
         """
         dummy_member = self.contact_list.generate_dummy_contact()
 
-        return Group(
-            name=DUMMY_GROUP,
-            group_id=bytes(GROUP_ID_LENGTH),
-            log_messages=False,
-            notifications=False,
-            members=self.settings.max_number_of_group_members * [dummy_member],
-            settings=self.settings,
-            store_groups=lambda: None,
-        )
+        return Group(name         =DUMMY_GROUP,
+                     group_id     =bytes(GROUP_ID_LENGTH),
+                     log_messages =False,
+                     notifications=False,
+                     members      =self.settings.max_number_of_group_members * [dummy_member],
+                     settings     =self.settings,
+                     store_groups =lambda: None)
 
     def _dummy_groups(self) -> List[Group]:
         """Generate a proper size list of dummy groups for database padding."""
         number_of_dummies = self.settings.max_number_of_groups - len(self.groups)
-        dummy_group = self._generate_dummy_group()
+        dummy_group       = self._generate_dummy_group()
         return [dummy_group] * number_of_dummies
 
-    def add_group(
-        self,
-        name: str,
-        group_id: bytes,
-        log_messages: bool,
-        notifications: bool,
-        members: List["Contact"],
-    ) -> None:
+    def add_group(self,
+                  name:          str,
+                  group_id:      bytes,
+                  log_messages:  bool,
+                  notifications: bool,
+                  members:       List['Contact']) -> None:
         """Add a new group to `self.groups` and write changes to the database."""
         if self.has_group(name):
             self.remove_group_by_name(name)
 
-        self.groups.append(
-            Group(
-                name,
-                group_id,
-                log_messages,
-                notifications,
-                members,
-                self.settings,
-                self.store_groups,
-            )
-        )
+        self.groups.append(Group(name,
+                                 group_id,
+                                 log_messages,
+                                 notifications,
+                                 members,
+                                 self.settings,
+                                 self.store_groups))
         self.store_groups()
 
     def remove_group_by_name(self, name: str) -> None:
@@ -537,7 +461,7 @@ class GroupList(Iterable[Group], Sized):
         """Return list of human readable (B58 encoded) group IDs."""
         return [b58encode(g.group_id) for g in self.groups]
 
-    def get_group_members(self, group_id: bytes) -> List["Contact"]:
+    def get_group_members(self, group_id: bytes) -> List['Contact']:
         """Return list of group members (Contact objects)."""
         return self.get_group_by_id(group_id).members
 
@@ -562,54 +486,46 @@ class GroupList(Iterable[Group], Sized):
         corresponds to what group, and which contacts are in the group.
         """
         # Initialize columns
-        c1 = ["Group"]
-        c2 = ["Group ID"]
-        c3 = ["Logging "]
-        c4 = ["Notify"]
-        c5 = ["Members"]
+        c1 = ['Group'   ]
+        c2 = ['Group ID']
+        c3 = ['Logging ']
+        c4 = ['Notify'  ]
+        c5 = ['Members' ]
 
         # Populate columns with group data that has only a single line
         for g in self.groups:
             c1.append(g.name)
             c2.append(b58encode(g.group_id))
-            c3.append("Yes" if g.log_messages else "No")
-            c4.append("Yes" if g.notifications else "No")
+            c3.append('Yes' if g.log_messages  else 'No')
+            c4.append('Yes' if g.notifications else 'No')
 
         # Calculate the width of single-line columns
-        c1w, c2w, c3w, c4w = [
-            max(len(v) for v in column) + CONTACT_LIST_INDENT
-            for column in [c1, c2, c3, c4]
-        ]
+        c1w, c2w, c3w, c4w = [max(len(v) for v in column) + CONTACT_LIST_INDENT for column in [c1, c2, c3, c4]]
 
         # Create a wrapper for Members-column
         wrapped_members_line_indent = c1w + c2w + c3w + c4w
-        members_column_width = max(
-            1, get_terminal_width() - wrapped_members_line_indent
-        )
-        wrapper = textwrap.TextWrapper(width=members_column_width)
+        members_column_width        = max(1, get_terminal_width() - wrapped_members_line_indent)
+        wrapper                     = textwrap.TextWrapper(width=members_column_width)
 
         # Populate the Members-column
         for g in self.groups:
             if g.empty():
                 c5.append("<Empty group>\n")
             else:
-                comma_separated_nicks = ", ".join(sorted([m.nick for m in g.members]))
-                members_column_lines = wrapper.fill(comma_separated_nicks).split("\n")
+                comma_separated_nicks = ', '.join(sorted([m.nick for m in g.members]))
+                members_column_lines  = wrapper.fill(comma_separated_nicks).split('\n')
 
-                final_str = members_column_lines[0] + "\n"
+                final_str = members_column_lines[0] + '\n'
                 for line in members_column_lines[1:]:
-                    final_str += wrapped_members_line_indent * " " + line + "\n"
+                    final_str += wrapped_members_line_indent * ' ' + line + '\n'
 
                 c5.append(final_str)
 
         # Align columns by adding whitespace between fields of each line
-        lines = [
-            f"{f1:{c1w}}{f2:{c2w}}{f3:{c3w}}{f4:{c4w}}{f5}"
-            for f1, f2, f3, f4, f5 in zip(c1, c2, c3, c4, c5)
-        ]
+        lines = [f'{f1:{c1w}}{f2:{c2w}}{f3:{c3w}}{f4:{c4w}}{f5}' for f1, f2, f3, f4, f5 in zip(c1, c2, c3, c4, c5)]
 
         # Add a terminal-wide line between the column names and the data
-        lines.insert(1, get_terminal_width() * "─")
+        lines.insert(1, get_terminal_width() * '─')
 
         # Print the group list
-        print("\n".join(lines) + "\n")
+        print('\n'.join(lines) + '\n')

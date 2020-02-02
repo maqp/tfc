@@ -21,19 +21,18 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 
 import unittest
 
-from src.common.word_list import eff_wordlist
+from src.transmitter.window_mock import MockWindow
+
+from tests.mock_classes import create_contact, Contact
+from tests.utils        import nick_to_pub_key
 
 
-class TestWordList(unittest.TestCase):
+class TestMockWindow(unittest.TestCase):
 
-    def test_each_word_is_unique(self) -> None:
-        self.assertEqual(len(eff_wordlist),
-                         len(set(eff_wordlist)))
+    def setUp(self) -> None:
+        """Pre-test actions."""
+        self.window = MockWindow(nick_to_pub_key("Alice"), contacts=[create_contact(n) for n in ['Alice', 'Bob']])
 
-    def test_word_list_length(self) -> None:
-        self.assertEqual(len(eff_wordlist),
-                         7776)
-
-
-if __name__ == '__main__':
-    unittest.main()
+    def test_window_iterates_over_contacts(self) -> None:
+        for c in self.window:
+            self.assertIsInstance(c, Contact)

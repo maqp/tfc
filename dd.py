@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -25,49 +25,27 @@ import sys
 import time
 
 from multiprocessing import Process, Queue
-from typing import Any, Dict, Tuple
+from typing          import Any, Dict, Tuple
 
-from src.common.misc import (
-    get_terminal_height,
-    get_terminal_width,
-    ignored,
-    monitor_processes,
-)
-from src.common.output import clear_screen
-from src.common.statics import (
-    DATA_FLOW,
-    DD_ANIMATION_LENGTH,
-    DD_OFFSET_FROM_CENTER,
-    DST_DD_LISTEN_SOCKET,
-    DST_LISTEN_SOCKET,
-    EXIT_QUEUE,
-    IDLE,
-    LOCALHOST,
-    NC,
-    NCDCLR,
-    NCDCRL,
-    RP_LISTEN_SOCKET,
-    SCNCLR,
-    SCNCRL,
-    SRC_DD_LISTEN_SOCKET,
-)
+from src.common.misc    import get_terminal_height, get_terminal_width, ignored, monitor_processes
+from src.common.output  import clear_screen
+from src.common.statics import (DATA_FLOW, DD_ANIMATION_LENGTH, DD_OFFSET_FROM_CENTER, DST_DD_LISTEN_SOCKET,
+                                DST_LISTEN_SOCKET, EXIT_QUEUE, IDLE, LOCALHOST, NC, NCDCLR, NCDCRL, RP_LISTEN_SOCKET,
+                                SCNCLR, SCNCRL, SRC_DD_LISTEN_SOCKET)
 
 
-def draw_frame(
-    argv: str,  # Arguments for the simulator position/orientation
-    message: str,  # Status message to print
-    high: bool = False,  # Determines the signal's state (high/low)
-) -> None:
+def draw_frame(argv:    str,          # Arguments for the simulator position/orientation
+               message: str,          # Status message to print
+               high:    bool = False  # Determines the signal's state (high/low)
+               ) -> None:
     """Draw a data diode animation frame."""
-    l, indicator, arrow, r = {
-        NCDCLR: ("Rx", "<", "←", "Tx"),
-        SCNCLR: ("Tx", ">", "→", "Rx"),
-        NCDCRL: ("Tx", ">", "→", "Rx"),
-        SCNCRL: ("Rx", "<", "←", "Tx"),
-    }[argv]
+    l, indicator, arrow, r = {NCDCLR: ('Rx', '<', '←', 'Tx'),
+                              SCNCLR: ('Tx', '>', '→', 'Rx'),
+                              NCDCRL: ('Tx', '>', '→', 'Rx'),
+                              SCNCRL: ('Rx', '<', '←', 'Tx')}[argv]
 
-    indicator = indicator if high else " "
-    arrow = arrow if message != IDLE else " "
+    indicator = indicator if high            else ' '
+    arrow     = arrow     if message != IDLE else ' '
 
     terminal_width = get_terminal_width()
 
@@ -75,13 +53,13 @@ def draw_frame(
         """Print string on the center of the screen."""
         print(string.center(terminal_width))
 
-    print("\n" * ((get_terminal_height() // 2) - DD_OFFSET_FROM_CENTER))
+    print('\n' * ((get_terminal_height() // 2) - DD_OFFSET_FROM_CENTER))
 
     c_print(message)
     c_print(arrow)
-    c_print("────╮ " + " " + " ╭────")
+    c_print(  "────╮ " +    ' '    +  " ╭────" )
     c_print(f" {l} │ " + indicator + f" │ {r} ")
-    c_print("────╯ " + " " + " ╰────")
+    c_print(  "────╯ " +    ' '    +  " ╰────" )
 
 
 def animate(argv: str) -> None:
@@ -95,12 +73,11 @@ def animate(argv: str) -> None:
     draw_frame(argv, IDLE)
 
 
-def rx_loop(
-    io_queue: "Queue[Any]",  # Queue through which to push datagrams through
-    input_socket: int,  # Socket number for Transmitter/Relay Program
-) -> None:
+def rx_loop(io_queue:     'Queue[Any]',  # Queue through which to push datagrams through
+            input_socket: int            # Socket number for Transmitter/Relay Program
+            ) -> None:
     """Read datagrams from a transmitting program."""
-    listener = multiprocessing.connection.Listener((LOCALHOST, input_socket))
+    listener  = multiprocessing.connection.Listener((LOCALHOST, input_socket))
     interface = listener.accept()
 
     while True:
@@ -112,12 +89,11 @@ def rx_loop(
             sys.exit(0)
 
 
-def tx_loop(
-    io_queue: "Queue[Any]",  # Queue through which to push datagrams through
-    output_socket: int,  # Socket number for the Relay/Receiver Program
-    argv: str,  # Arguments for the simulator position/orientation
-    unit_test: bool = False,  # Break out from the loop during unit testing
-) -> None:
+def tx_loop(io_queue:      'Queue[Any]',  # Queue through which to push datagrams through
+            output_socket: int,           # Socket number for the Relay/Receiver Program
+            argv:          str,           # Arguments for the simulator position/orientation
+            unit_test:     bool = False   # Break out from the loop during unit testing
+            ) -> None:
     """Send queued datagrams to a receiving program."""
     draw_frame(argv, IDLE)
 
@@ -130,7 +106,7 @@ def tx_loop(
 
     while True:
         with ignored(EOFError, KeyboardInterrupt):
-            while not io_queue.qsize():
+            while io_queue.qsize() == 0:
                 time.sleep(0.01)
             animate(argv)
             interface.send(io_queue.get())
@@ -142,31 +118,27 @@ def tx_loop(
 def process_arguments() -> Tuple[str, int, int]:
     """Load simulator settings from the command line argument."""
     try:
-        argv = str(sys.argv[1])
-        input_socket, output_socket = {
-            SCNCLR: (SRC_DD_LISTEN_SOCKET, RP_LISTEN_SOCKET),
-            SCNCRL: (SRC_DD_LISTEN_SOCKET, RP_LISTEN_SOCKET),
-            NCDCLR: (DST_DD_LISTEN_SOCKET, DST_LISTEN_SOCKET),
-            NCDCRL: (DST_DD_LISTEN_SOCKET, DST_LISTEN_SOCKET),
-        }[argv]
+        argv                        = str(sys.argv[1])
+        input_socket, output_socket = {SCNCLR: (SRC_DD_LISTEN_SOCKET, RP_LISTEN_SOCKET),
+                                       SCNCRL: (SRC_DD_LISTEN_SOCKET, RP_LISTEN_SOCKET),
+                                       NCDCLR: (DST_DD_LISTEN_SOCKET, DST_LISTEN_SOCKET),
+                                       NCDCRL: (DST_DD_LISTEN_SOCKET, DST_LISTEN_SOCKET)}[argv]
 
         return argv, input_socket, output_socket
 
     except (IndexError, KeyError):
         clear_screen()
-        print(
-            f"\nUsage: python3.7 dd.py [OPTION]\n\n"
-            f"\nMandatory arguments"
-            f"\n Argument  Simulate data diode between..."
-            f"\n   {SCNCLR}    Source Computer    and Networked Computer   (left to right)"
-            f"\n   {SCNCRL}    Source Computer    and Networked Computer   (right to left)"
-            f"\n   {NCDCLR}    Networked Computer and Destination Computer (left to right)"
-            f"\n   {NCDCRL}    Networked Computer and Destination Computer (right to left)"
-        )
+        print(f"\nUsage: python3.7 dd.py [OPTION]\n\n"
+              f"\nMandatory arguments"
+              f"\n Argument  Simulate data diode between..."
+              f"\n   {SCNCLR}    Source Computer    and Networked Computer   (left to right)"
+              f"\n   {SCNCRL}    Source Computer    and Networked Computer   (right to left)"
+              f"\n   {NCDCLR}    Networked Computer and Destination Computer (left to right)"
+              f"\n   {NCDCRL}    Networked Computer and Destination Computer (right to left)")
         sys.exit(1)
 
 
-def main(queues: Dict[bytes, "Queue[Any]"]) -> None:
+def main(queues: Dict[bytes, 'Queue[Any]']) -> None:
     """\
     Read the argument from the command line and launch the data diode simulator.
 
@@ -191,11 +163,9 @@ def main(queues: Dict[bytes, "Queue[Any]"]) -> None:
 
     argv, input_socket, output_socket = process_arguments()
 
-    io_queue = Queue()  # type: Queue[Any]
-    process_list = [
-        Process(target=rx_loop, args=(io_queue, input_socket)),
-        Process(target=tx_loop, args=(io_queue, output_socket, argv)),
-    ]
+    io_queue     = Queue()  # type: Queue[Any]
+    process_list = [Process(target=rx_loop, args=(io_queue, input_socket       )),
+                    Process(target=tx_loop, args=(io_queue, output_socket, argv))]
 
     for p in process_list:
         p.start()
@@ -203,5 +173,5 @@ def main(queues: Dict[bytes, "Queue[Any]"]) -> None:
     monitor_processes(process_list, NC, queues, error_exit_code=0)
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == '__main__':  # pragma: no cover
     main({EXIT_QUEUE: Queue()})

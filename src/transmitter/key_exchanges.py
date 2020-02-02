@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -25,81 +25,41 @@ import typing
 
 from typing import Any, Dict
 
-from src.common.crypto import argon2_kdf, blake2b, csprng, encrypt_and_sign, X448
+from src.common.crypto       import argon2_kdf, blake2b, csprng, encrypt_and_sign, X448
 from src.common.db_masterkey import MasterKey
-from src.common.encoding import (
-    bool_to_bytes,
-    int_to_bytes,
-    pub_key_to_short_address,
-    str_to_bytes,
-)
-from src.common.exceptions import SoftError
-from src.common.input import ask_confirmation_code, get_b58_key, nc_bypass_msg, yes
-from src.common.misc import reset_terminal
-from src.common.output import (
-    m_print,
-    phase,
-    print_fingerprint,
-    print_key,
-    print_on_previous_line,
-)
-from src.common.path import ask_path_gui
-from src.common.statics import (
-    ARGON2_PSK_MEMORY_COST,
-    ARGON2_PSK_PARALLELISM,
-    ARGON2_PSK_TIME_COST,
-    B58_PUBLIC_KEY,
-    CONFIRM_CODE_LENGTH,
-    DONE,
-    ECDHE,
-    FINGERPRINT_LENGTH,
-    KDB_ADD_ENTRY_HEADER,
-    KEX_STATUS_HAS_RX_PSK,
-    KEX_STATUS_LOCAL_KEY,
-    KEX_STATUS_NO_RX_PSK,
-    KEX_STATUS_PENDING,
-    KEX_STATUS_UNVERIFIED,
-    KEX_STATUS_VERIFIED,
-    KEY_EX_ECDHE,
-    KEY_EX_PSK_RX,
-    KEY_EX_PSK_TX,
-    KEY_MANAGEMENT_QUEUE,
-    LOCAL_KEY_DATAGRAM_HEADER,
-    LOCAL_KEY_RDY,
-    LOCAL_NICK,
-    LOCAL_PUBKEY,
-    NC_BYPASS_START,
-    NC_BYPASS_STOP,
-    PUBLIC_KEY_DATAGRAM_HEADER,
-    RELAY_PACKET_QUEUE,
-    TFC_PUBLIC_KEY_LENGTH,
-    UNENCRYPTED_DATAGRAM_HEADER,
-    UNENCRYPTED_ONION_SERVICE_DATA,
-    WIN_TYPE_GROUP,
-)
+from src.common.encoding     import bool_to_bytes, int_to_bytes, pub_key_to_short_address, str_to_bytes, b58encode
+from src.common.exceptions   import SoftError
+from src.common.input        import ask_confirmation_code, get_b58_key, nc_bypass_msg, yes
+from src.common.misc         import reset_terminal, split_to_substrings
+from src.common.output       import m_print, phase, print_fingerprint, print_key, print_on_previous_line
+from src.common.path         import ask_path_gui
+from src.common.statics      import (ARGON2_PSK_MEMORY_COST, ARGON2_PSK_PARALLELISM, ARGON2_PSK_TIME_COST,
+                                     B58_PUBLIC_KEY, CONFIRM_CODE_LENGTH, DONE, ECDHE, FINGERPRINT_LENGTH,
+                                     KDB_ADD_ENTRY_HEADER, KEX_STATUS_HAS_RX_PSK, KEX_STATUS_LOCAL_KEY,
+                                     KEX_STATUS_NO_RX_PSK, KEX_STATUS_PENDING, KEX_STATUS_UNVERIFIED,
+                                     KEX_STATUS_VERIFIED, KEY_EX_ECDHE, KEY_EX_PSK_RX, KEY_EX_PSK_TX,
+                                     KEY_MANAGEMENT_QUEUE, LOCAL_KEY_DATAGRAM_HEADER, LOCAL_KEY_RDY, LOCAL_NICK,
+                                     LOCAL_PUBKEY, NC_BYPASS_START, NC_BYPASS_STOP, PUBLIC_KEY_DATAGRAM_HEADER,
+                                     RELAY_PACKET_QUEUE, TFC_PUBLIC_KEY_LENGTH, UNENCRYPTED_DATAGRAM_HEADER,
+                                     UNENCRYPTED_ONION_SERVICE_DATA, UNENCRYPTED_PUBKEY_CHECK, WIN_TYPE_GROUP, ENCODED_B58_KDK_LENGTH)
 
 from src.transmitter.packet import queue_command, queue_to_nc
 
 if typing.TYPE_CHECKING:
-    from multiprocessing import Queue
-    from src.common.db_contacts import Contact, ContactList
-    from src.common.db_onion import OnionService
-    from src.common.db_settings import Settings
-    from src.common.gateway import Gateway
+    from multiprocessing         import Queue
+    from src.common.db_contacts  import Contact, ContactList
+    from src.common.db_onion     import OnionService
+    from src.common.db_settings  import Settings
+    from src.common.gateway      import Gateway
     from src.transmitter.windows import TxWindow
-
     QueueDict = Dict[bytes, Queue[Any]]
 
 
-# Onion Service
-
-
-def export_onion_service_data(
-    contact_list: "ContactList",
-    settings: "Settings",
-    onion_service: "OnionService",
-    gateway: "Gateway",
-) -> None:
+def export_onion_service_data(contact_list:  'ContactList',
+                              settings:      'Settings',
+                              onion_service: 'OnionService',
+                              gateway:       'Gateway'
+                              ) -> None:
     """\
     Send the Tor Onion Service's private key and list of Onion Service
     public keys of contacts to Relay Program on Networked Computer.
@@ -144,59 +104,51 @@ def export_onion_service_data(
     """
     m_print("Onion Service setup", bold=True, head_clear=True, head=1, tail=1)
 
-    pending_contacts = b"".join(contact_list.get_list_of_pending_pub_keys())
-    existing_contacts = b"".join(contact_list.get_list_of_existing_pub_keys())
-    no_pending = int_to_bytes(len(contact_list.get_list_of_pending_pub_keys()))
-    contact_data = no_pending + pending_contacts + existing_contacts
+    pending_contacts  = b''.join(contact_list.get_list_of_pending_pub_keys())
+    existing_contacts = b''.join(contact_list.get_list_of_existing_pub_keys())
+    no_pending        = int_to_bytes(len(contact_list.get_list_of_pending_pub_keys()))
+    contact_data      = no_pending + pending_contacts + existing_contacts
 
-    relay_command = (
-        UNENCRYPTED_DATAGRAM_HEADER
-        + UNENCRYPTED_ONION_SERVICE_DATA
-        + onion_service.onion_private_key
-        + onion_service.conf_code
-        + bool_to_bytes(settings.allow_contact_requests)
-        + contact_data
-    )
+    relay_command = (UNENCRYPTED_DATAGRAM_HEADER
+                     + UNENCRYPTED_ONION_SERVICE_DATA
+                     + onion_service.onion_private_key
+                     + onion_service.conf_code
+                     + bool_to_bytes(settings.allow_contact_requests)
+                     + contact_data)
 
     deliver_onion_service_data(relay_command, onion_service, gateway)
 
 
-def deliver_onion_service_data(
-    relay_command: bytes, onion_service: "OnionService", gateway: "Gateway"
-) -> None:
+def deliver_onion_service_data(relay_command: bytes,
+                               onion_service: 'OnionService',
+                               gateway:       'Gateway'
+                               ) -> None:
     """Send Onion Service data to Replay Program on Networked Computer."""
     gateway.write(relay_command)
     while True:
-        purp_code = ask_confirmation_code("Relay")
+        purp_code = ask_confirmation_code('Relay')
 
         if purp_code == onion_service.conf_code.hex():
             onion_service.is_delivered = True
             onion_service.new_confirmation_code()
             break
 
-        if purp_code == "":
+        if purp_code == '':
             phase("Resending Onion Service data", head=2)
             gateway.write(relay_command)
             phase(DONE)
             print_on_previous_line(reps=5)
 
         else:
-            m_print(
-                [
-                    "Incorrect confirmation code. If Relay Program did not",
-                    "receive Onion Service data, resend it by pressing <Enter>.",
-                ],
-                head=1,
-            )
+            m_print(["Incorrect confirmation code. If Relay Program did not",
+                     "receive Onion Service data, resend it by pressing <Enter>."], head=1)
             print_on_previous_line(reps=5, delay=2)
 
 
-# Local key
-
-
-def new_local_key(
-    contact_list: "ContactList", settings: "Settings", queues: "QueueDict"
-) -> None:
+def new_local_key(contact_list: 'ContactList',
+                  settings:     'Settings',
+                  queues:       'QueueDict'
+                  ) -> None:
     """Run local key exchange protocol.
 
     Local key encrypts commands and data sent from Source Computer to
@@ -230,66 +182,52 @@ def new_local_key(
     """
     try:
         if settings.traffic_masking and contact_list.has_local_contact():
-            raise SoftError(
-                "Error: Command is disabled during traffic masking.", head_clear=True
-            )
+            raise SoftError("Error: Command is disabled during traffic masking.", head_clear=True)
 
         m_print("Local key setup", bold=True, head_clear=True, head=1, tail=1)
 
         if not contact_list.has_local_contact():
             time.sleep(0.5)
 
-        key = csprng()
-        hek = csprng()
-        kek = csprng()
+        key    = csprng()
+        hek    = csprng()
+        kek    = csprng()
         c_code = os.urandom(CONFIRM_CODE_LENGTH)
 
-        local_key_packet = LOCAL_KEY_DATAGRAM_HEADER + encrypt_and_sign(
-            plaintext=key + hek + c_code, key=kek
-        )
+        local_key_packet = LOCAL_KEY_DATAGRAM_HEADER + encrypt_and_sign(plaintext=key + hek + c_code, key=kek)
 
         deliver_local_key(local_key_packet, kek, c_code, settings, queues)
 
         # Add local contact to contact list database
-        contact_list.add_contact(
-            LOCAL_PUBKEY,
-            LOCAL_NICK,
-            bytes(FINGERPRINT_LENGTH),
-            bytes(FINGERPRINT_LENGTH),
-            KEX_STATUS_LOCAL_KEY,
-            False,
-            False,
-            False,
-        )
+        contact_list.add_contact(LOCAL_PUBKEY,
+                                 LOCAL_NICK,
+                                 blake2b(b58encode(kek).encode()),
+                                 bytes(FINGERPRINT_LENGTH),
+                                 KEX_STATUS_LOCAL_KEY,
+                                 False, False, False)
 
         # Add local contact to keyset database
-        queues[KEY_MANAGEMENT_QUEUE].put(
-            (KDB_ADD_ENTRY_HEADER, LOCAL_PUBKEY, key, csprng(), hek, csprng())
-        )
+        queues[KEY_MANAGEMENT_QUEUE].put((KDB_ADD_ENTRY_HEADER,
+                                          LOCAL_PUBKEY,
+                                          key, csprng(),
+                                          hek, csprng()))
 
         # Notify Receiver that confirmation code was successfully entered
         queue_command(LOCAL_KEY_RDY, settings, queues)
 
-        m_print(
-            "Successfully completed the local key exchange.",
-            bold=True,
-            tail_clear=True,
-            delay=1,
-            head=1,
-        )
+        m_print("Successfully completed the local key exchange.", bold=True, tail_clear=True, delay=1, head=1)
         reset_terminal()
 
     except (EOFError, KeyboardInterrupt):
         raise SoftError("Local key setup aborted.", tail_clear=True, delay=1, head=2)
 
 
-def deliver_local_key(
-    local_key_packet: bytes,
-    kek: bytes,
-    c_code: bytes,
-    settings: "Settings",
-    queues: "QueueDict",
-) -> None:
+def deliver_local_key(local_key_packet: bytes,
+                      kek:              bytes,
+                      c_code:           bytes,
+                      settings:         'Settings',
+                      queues:           'QueueDict'
+                      ) -> None:
     """Deliver encrypted local key to Destination Computer."""
     nc_bypass_msg(NC_BYPASS_START, settings)
     queue_to_nc(local_key_packet, queues[RELAY_PACKET_QUEUE])
@@ -306,28 +244,19 @@ def deliver_local_key(
             phase(DONE)
             print_on_previous_line(reps=(9 if settings.local_testing_mode else 10))
         else:
-            m_print(
-                [
-                    "Incorrect confirmation code. If Receiver did not receive",
-                    "the encrypted local key, resend it by pressing <Enter>.",
-                ],
-                head=1,
-            )
-            print_on_previous_line(
-                reps=(9 if settings.local_testing_mode else 10), delay=2
-            )
-
+            m_print(["Incorrect confirmation code. If Receiver did not receive",
+                     "the encrypted local key, resend it by pressing <Enter>."], head=1)
+            print_on_previous_line(reps=(9 if settings.local_testing_mode else 10), delay=2)
 
 # ECDHE
 
 
-def start_key_exchange(
-    onion_pub_key: bytes,  # Public key of contact's v3 Onion Service
-    nick: str,  # Contact's nickname
-    contact_list: "ContactList",  # ContactList object
-    settings: "Settings",  # Settings object
-    queues: "QueueDict",  # Dictionary of multiprocessing queues
-) -> None:
+def start_key_exchange(onion_pub_key: bytes,          # Public key of contact's v3 Onion Service
+                       nick:          str,            # Contact's nickname
+                       contact_list:  'ContactList',  # ContactList object
+                       settings:      'Settings',     # Settings object
+                       queues:        'QueueDict'     # Dictionary of multiprocessing queues
+                       ) -> None:
     """Start X448 key exchange with the recipient.
 
     This function first creates the X448 key pair. It then outputs the
@@ -366,17 +295,12 @@ def start_key_exchange(
         mk = message key    hk = header key
     """
     if not contact_list.has_pub_key(onion_pub_key):
-        contact_list.add_contact(
-            onion_pub_key,
-            nick,
-            bytes(FINGERPRINT_LENGTH),
-            bytes(FINGERPRINT_LENGTH),
-            KEX_STATUS_PENDING,
-            settings.log_messages_by_default,
-            settings.accept_files_by_default,
-            settings.show_notifications_by_default,
-        )
-
+        contact_list.add_contact(onion_pub_key, nick,
+                                 bytes(FINGERPRINT_LENGTH), bytes(FINGERPRINT_LENGTH),
+                                 KEX_STATUS_PENDING,
+                                 settings.log_messages_by_default,
+                                 settings.accept_files_by_default,
+                                 settings.show_notifications_by_default)
     contact = contact_list.get_contact_by_pub_key(onion_pub_key)
 
     # Generate new private key or load cached private key
@@ -386,80 +310,78 @@ def start_key_exchange(
         tfc_private_key_user = contact.tfc_private_key
 
     try:
-        tfc_public_key_user = X448.derive_public_key(tfc_private_key_user)
-        tfc_public_key_contact = exchange_public_keys(
-            onion_pub_key, tfc_public_key_user, contact, settings, queues
-        )
+        tfc_public_key_user    = X448.derive_public_key(tfc_private_key_user)
+        kdk_hash               = contact_list.get_contact_by_pub_key(LOCAL_PUBKEY).tx_fingerprint
+        tfc_public_key_contact = exchange_public_keys(onion_pub_key, tfc_public_key_user, kdk_hash, contact, settings, queues)
 
         validate_contact_public_key(tfc_public_key_contact)
 
         dh_shared_key = X448.shared_key(tfc_private_key_user, tfc_public_key_contact)
 
-        tx_mk, rx_mk, tx_hk, rx_hk, tx_fp, rx_fp = X448.derive_keys(
-            dh_shared_key, tfc_public_key_user, tfc_public_key_contact
-        )
+        tx_mk, rx_mk, tx_hk, rx_hk, tx_fp, rx_fp \
+            = X448.derive_keys(dh_shared_key, tfc_public_key_user, tfc_public_key_contact)
 
-        kex_status = fingerprint_validation(tx_fp, rx_fp)
+        kex_status = validate_contact_fingerprint(tx_fp, rx_fp)
 
-        deliver_contact_data(
-            KEY_EX_ECDHE,
-            nick,
-            onion_pub_key,
-            tx_mk,
-            rx_mk,
-            tx_hk,
-            rx_hk,
-            queues,
-            settings,
-        )
+        deliver_contact_data(KEY_EX_ECDHE, nick, onion_pub_key, tx_mk, rx_mk, tx_hk, rx_hk, queues, settings)
 
         # Store contact data into databases
         contact.tfc_private_key = None
-        contact.tx_fingerprint = tx_fp
-        contact.rx_fingerprint = rx_fp
-        contact.kex_status = kex_status
+        contact.tx_fingerprint  = tx_fp
+        contact.rx_fingerprint  = rx_fp
+        contact.kex_status      = kex_status
         contact_list.store_contacts()
 
-        queues[KEY_MANAGEMENT_QUEUE].put(
-            (KDB_ADD_ENTRY_HEADER, onion_pub_key, tx_mk, rx_mk, tx_hk, rx_hk)
-        )
+        queues[KEY_MANAGEMENT_QUEUE].put((KDB_ADD_ENTRY_HEADER,
+                                          onion_pub_key,
+                                          tx_mk, csprng(),
+                                          tx_hk, csprng()))
 
-        m_print(
-            f"Successfully added {nick}.", bold=True, tail_clear=True, delay=1, head=1
-        )
+        m_print(f"Successfully added {nick}.", bold=True, tail_clear=True, delay=1, head=1)
 
     except (EOFError, KeyboardInterrupt):
         contact.tfc_private_key = tfc_private_key_user
         raise SoftError("Key exchange interrupted.", tail_clear=True, delay=1, head=2)
 
 
-def exchange_public_keys(
-    onion_pub_key: bytes,
-    tfc_public_key_user: bytes,
-    contact: "Contact",
-    settings: "Settings",
-    queues: "QueueDict",
-) -> bytes:
+def exchange_public_keys(onion_pub_key:       bytes,
+                         tfc_public_key_user: bytes,
+                         kdk_hash:            bytes,
+                         contact:             'Contact',
+                         settings:            'Settings',
+                         queues:              'QueueDict',
+                         ) -> bytes:
     """Exchange public keys with contact.
 
     This function outputs the user's public key and waits for user to
     enter the public key of the contact. If the User presses <Enter>,
     the function will resend the users' public key to contact.
     """
+    public_key_packet = PUBLIC_KEY_DATAGRAM_HEADER + onion_pub_key + tfc_public_key_user
+    queue_to_nc(public_key_packet, queues[RELAY_PACKET_QUEUE])
+
     while True:
-        public_key_packet = (
-            PUBLIC_KEY_DATAGRAM_HEADER + onion_pub_key + tfc_public_key_user
-        )
-        queue_to_nc(public_key_packet, queues[RELAY_PACKET_QUEUE])
+        try:
+            tfc_public_key_contact = get_b58_key(B58_PUBLIC_KEY, settings, contact.short_address)
+        except ValueError as invalid_pub_key:
+            invalid_key = str(invalid_pub_key).encode()
 
-        tfc_public_key_contact = get_b58_key(
-            B58_PUBLIC_KEY, settings, contact.short_address
-        )
+            # Do not send packet to Relay Program if the user has for some reason
+            # managed to embed the local key decryption key inside the public key.
+            substrings  = split_to_substrings(invalid_key, ENCODED_B58_KDK_LENGTH)
+            safe_string = not any(blake2b(substring) == kdk_hash for substring in substrings)
 
-        if tfc_public_key_contact != b"":
-            break
+            if safe_string:
+                public_key_packet = (UNENCRYPTED_DATAGRAM_HEADER + UNENCRYPTED_PUBKEY_CHECK + onion_pub_key + invalid_key)
+                queue_to_nc(public_key_packet, queues[RELAY_PACKET_QUEUE])
+            continue
 
-    return tfc_public_key_contact
+        if tfc_public_key_contact == b'':
+            public_key_packet = PUBLIC_KEY_DATAGRAM_HEADER + onion_pub_key + tfc_public_key_user
+            queue_to_nc(public_key_packet, queues[RELAY_PACKET_QUEUE])
+            continue
+
+        return tfc_public_key_contact
 
 
 def validate_contact_public_key(tfc_public_key_contact: bytes) -> None:
@@ -471,34 +393,24 @@ def validate_contact_public_key(tfc_public_key_contact: bytes) -> None:
     `src.common.crypto` module.
     """
     if len(tfc_public_key_contact) != TFC_PUBLIC_KEY_LENGTH:
-        m_print(
-            [
-                "Warning!",
-                "Received invalid size public key.",
-                "Aborting key exchange for your safety.",
-            ],
-            bold=True,
-            tail=1,
-        )
+        m_print(["Warning!",
+                 "Received invalid size public key.",
+                 "Aborting key exchange for your safety."],
+                bold=True, tail=1)
         raise SoftError("Error: Invalid public key length", output=False)
 
     if tfc_public_key_contact == bytes(TFC_PUBLIC_KEY_LENGTH):
         # The public key of contact is zero with negligible probability,
         # therefore we assume such key is malicious and attempts to set
         # the shared key to zero.
-        m_print(
-            [
-                "Warning!",
-                "Received a malicious zero-public key.",
-                "Aborting key exchange for your safety.",
-            ],
-            bold=True,
-            tail=1,
-        )
+        m_print(["Warning!",
+                 "Received a malicious zero-public key.",
+                 "Aborting key exchange for your safety."],
+                bold=True, tail=1)
         raise SoftError("Error: Zero public key", output=False)
 
 
-def fingerprint_validation(tx_fp: bytes, rx_fp: bytes) -> bytes:
+def validate_contact_fingerprint(tx_fp: bytes, rx_fp: bytes) -> bytes:
     """Validate or skip validation of contact fingerprint.
 
     This function prompts the user to verify the fingerprint of the contact.
@@ -507,43 +419,28 @@ def fingerprint_validation(tx_fp: bytes, rx_fp: bytes) -> bytes:
     """
     try:
         if not verify_fingerprints(tx_fp, rx_fp):
-            m_print(
-                [
-                    "Warning!",
-                    "Possible man-in-the-middle attack detected.",
-                    "Aborting key exchange for your safety.",
-                ],
-                bold=True,
-                tail=1,
-            )
+            m_print(["Warning!",
+                     "Possible man-in-the-middle attack detected.",
+                     "Aborting key exchange for your safety."], bold=True, tail=1)
             raise SoftError("Error: Fingerprint mismatch", delay=2.5, output=False)
         kex_status = KEX_STATUS_VERIFIED
 
     except (EOFError, KeyboardInterrupt):
-        m_print(
-            [
-                "Skipping fingerprint verification.",
-                "",
-                "Warning!",
-                "Man-in-the-middle attacks can not be detected",
-                "unless fingerprints are verified! To re-verify",
-                "the contact, use the command '/verify'.",
-                "",
-                "Press <enter> to continue.",
-            ],
-            manual_proceed=True,
-            box=True,
-            head=2,
-            tail=1,
-        )
+        m_print(["Skipping fingerprint verification.",
+                 '', "Warning!",
+                 "Man-in-the-middle attacks can not be detected",
+                 "unless fingerprints are verified! To re-verify",
+                 "the contact, use the command '/verify'.",
+                 '', "Press <enter> to continue."],
+                manual_proceed=True, box=True, head=2, tail=1)
         kex_status = KEX_STATUS_UNVERIFIED
 
     return kex_status
 
 
-def verify_fingerprints(
-    tx_fp: bytes, rx_fp: bytes  # User's fingerprint  # Contact's fingerprint
-) -> bool:  # True if fingerprints match, else False
+def verify_fingerprints(tx_fp: bytes,  # User's fingerprint
+                        rx_fp: bytes   # Contact's fingerprint
+                        ) -> bool:     # True if fingerprints match, else False
     """\
     Verify fingerprints over an authenticated out-of-band channel to
     detect MITM attacks against TFC's key exchange.
@@ -562,16 +459,11 @@ def verify_fingerprints(
     authenticated channel it's possible to verify that the correct key
     was received from the network.
     """
-    m_print(
-        "To verify received public key was not replaced by an attacker "
-        "call the contact over an end-to-end encrypted line, preferably Signal "
-        "(https://signal.org/). Make sure Signal's safety numbers have been "
-        "verified, and then verbally compare the key fingerprints below.",
-        head_clear=True,
-        max_width=49,
-        head=1,
-        tail=1,
-    )
+    m_print("To verify received public key was not replaced by an attacker "
+            "call the contact over an end-to-end encrypted line, preferably Signal "
+            "(https://signal.org/). Make sure Signal's safety numbers have been "
+            "verified, and then verbally compare the key fingerprints below.",
+            head_clear=True, max_width=49, head=1, tail=1)
 
     print_fingerprint(tx_fp, "         Your fingerprint (you read)         ")
     print_fingerprint(rx_fp, "Purported fingerprint for contact (they read)")
@@ -579,22 +471,19 @@ def verify_fingerprints(
     return yes("Is the contact's fingerprint correct?")
 
 
-def deliver_contact_data(
-    header: bytes,  # Key type (x448, PSK)
-    nick: str,  # Contact's nickname
-    onion_pub_key: bytes,  # Public key of contact's v3 Onion Service
-    tx_mk: bytes,  # Message key for outgoing messages
-    rx_mk: bytes,  # Message key for incoming messages
-    tx_hk: bytes,  # Header key for outgoing messages
-    rx_hk: bytes,  # Header key for incoming messages
-    queues: "QueueDict",  # Dictionary of multiprocessing queues
-    settings: "Settings",  # Settings object
-) -> None:
+def deliver_contact_data(header:        bytes,        # Key type (x448, PSK)
+                         nick:          str,          # Contact's nickname
+                         onion_pub_key: bytes,        # Public key of contact's v3 Onion Service
+                         tx_mk:         bytes,        # Message key for outgoing messages
+                         rx_mk:         bytes,        # Message key for incoming messages
+                         tx_hk:         bytes,        # Header key for outgoing messages
+                         rx_hk:         bytes,        # Header key for incoming messages
+                         queues:        'QueueDict',  # Dictionary of multiprocessing queues
+                         settings:      'Settings',   # Settings object
+                         ) -> None:
     """Deliver contact data to Destination Computer."""
-    c_code = blake2b(onion_pub_key, digest_size=CONFIRM_CODE_LENGTH)
-    command = (
-        header + onion_pub_key + tx_mk + rx_mk + tx_hk + rx_hk + str_to_bytes(nick)
-    )
+    c_code  = blake2b(onion_pub_key, digest_size=CONFIRM_CODE_LENGTH)
+    command = (header + onion_pub_key + tx_mk + rx_mk + tx_hk + rx_hk + str_to_bytes(nick))
 
     queue_command(command, settings, queues)
 
@@ -614,17 +503,13 @@ def deliver_contact_data(
             print_on_previous_line(reps=4, delay=2)
 
 
-# PSK
-
-
-def create_pre_shared_key(
-    onion_pub_key: bytes,  # Public key of contact's v3 Onion Service
-    nick: str,  # Nick of contact
-    contact_list: "ContactList",  # Contact list object
-    settings: "Settings",  # Settings object
-    onion_service: "OnionService",  # OnionService object
-    queues: "QueueDict",  # Dictionary of multiprocessing queues
-) -> None:
+def create_pre_shared_key(onion_pub_key: bytes,           # Public key of contact's v3 Onion Service
+                          nick:          str,             # Nick of contact
+                          contact_list:  'ContactList',   # Contact list object
+                          settings:      'Settings',      # Settings object
+                          onion_service: 'OnionService',  # OnionService object
+                          queues:        'QueueDict'      # Dictionary of multiprocessing queues
+                          ) -> None:
     """Generate a new pre-shared key for manual key delivery.
 
     Pre-shared keys offer a low-tech solution against the slowly
@@ -652,76 +537,50 @@ def create_pre_shared_key(
     try:
         tx_mk = csprng()
         tx_hk = csprng()
-        salt = csprng()
+        salt  = csprng()
 
         password = MasterKey.new_password("password for PSK")
 
         phase("Deriving key encryption key", head=2)
-        kek = argon2_kdf(
-            password,
-            salt,
-            ARGON2_PSK_TIME_COST,
-            ARGON2_PSK_MEMORY_COST,
-            ARGON2_PSK_PARALLELISM,
-        )
+        kek = argon2_kdf(password, salt, ARGON2_PSK_TIME_COST, ARGON2_PSK_MEMORY_COST, ARGON2_PSK_PARALLELISM)
         phase(DONE)
 
         ct_tag = encrypt_and_sign(tx_mk + tx_hk, key=kek)
 
-        store_keys_on_removable_drive(
-            ct_tag, salt, nick, onion_pub_key, onion_service, settings
-        )
+        store_keys_on_removable_drive(ct_tag, salt, nick, onion_pub_key, onion_service, settings)
 
-        deliver_contact_data(
-            KEY_EX_PSK_TX,
-            nick,
-            onion_pub_key,
-            tx_mk,
-            csprng(),
-            tx_hk,
-            csprng(),
-            queues,
-            settings,
-        )
+        deliver_contact_data(KEY_EX_PSK_TX, nick, onion_pub_key, tx_mk, csprng(), tx_hk, csprng(), queues, settings)
 
-        contact_list.add_contact(
-            onion_pub_key,
-            nick,
-            bytes(FINGERPRINT_LENGTH),
-            bytes(FINGERPRINT_LENGTH),
-            KEX_STATUS_NO_RX_PSK,
-            settings.log_messages_by_default,
-            settings.accept_files_by_default,
-            settings.show_notifications_by_default,
-        )
+        contact_list.add_contact(onion_pub_key, nick,
+                                 bytes(FINGERPRINT_LENGTH), bytes(FINGERPRINT_LENGTH),
+                                 KEX_STATUS_NO_RX_PSK,
+                                 settings.log_messages_by_default,
+                                 settings.accept_files_by_default,
+                                 settings.show_notifications_by_default)
 
-        queues[KEY_MANAGEMENT_QUEUE].put(
-            (KDB_ADD_ENTRY_HEADER, onion_pub_key, tx_mk, csprng(), tx_hk, csprng())
-        )
+        queues[KEY_MANAGEMENT_QUEUE].put((KDB_ADD_ENTRY_HEADER,
+                                          onion_pub_key,
+                                          tx_mk, csprng(),
+                                          tx_hk, csprng()))
 
-        m_print(
-            f"Successfully added {nick}.", bold=True, tail_clear=True, delay=1, head=1
-        )
+        m_print(f"Successfully added {nick}.", bold=True, tail_clear=True, delay=1, head=1)
 
     except (EOFError, KeyboardInterrupt):
         raise SoftError("PSK generation aborted.", tail_clear=True, delay=1, head=2)
 
 
-def store_keys_on_removable_drive(
-    ct_tag: bytes,  # Encrypted PSK
-    salt: bytes,  # Salt for PSK decryption key derivation
-    nick: str,  # Contact's nickname
-    onion_pub_key: bytes,  # Public key of contact's v3 Onion Service
-    onion_service: "OnionService",  # OnionService object
-    settings: "Settings",  # Settings object
-) -> None:
+def store_keys_on_removable_drive(ct_tag:        bytes,           # Encrypted PSK
+                                  salt:          bytes,           # Salt for PSK decryption key derivation
+                                  nick:          str,             # Contact's nickname
+                                  onion_pub_key: bytes,           # Public key of contact's v3 Onion Service
+                                  onion_service: 'OnionService',  # OnionService object
+                                  settings:      'Settings',      # Settings object
+                                  ) -> None:
     """Store keys for contact on a removable media."""
     while True:
         trunc_addr = pub_key_to_short_address(onion_pub_key)
-        store_d = ask_path_gui(f"Select removable media for {nick}", settings)
-        f_name = (
-            f"{store_d}/{onion_service.user_short_address}.psk - Give to {trunc_addr}"
-        )
+        store_d    = ask_path_gui(f"Select removable media for {nick}", settings)
+        f_name     = f"{store_d}/{onion_service.user_short_address}.psk - Give to {trunc_addr}"
 
         try:
             with open(f_name, "wb+") as f:
@@ -730,50 +589,39 @@ def store_keys_on_removable_drive(
                 os.fsync(f.fileno())
             break
         except PermissionError:
-            m_print(
-                "Error: Did not have permission to write to the directory.", delay=0.5
-            )
+            m_print("Error: Did not have permission to write to the directory.", delay=0.5)
             continue
 
 
-def rxp_load_psk(
-    window: "TxWindow",
-    contact_list: "ContactList",
-    settings: "Settings",
-    queues: "QueueDict",
-) -> None:
+def rxp_load_psk(window:       'TxWindow',
+                 contact_list: 'ContactList',
+                 settings:     'Settings',
+                 queues:       'QueueDict',
+                 ) -> None:
     """Send command to Receiver Program to load PSK for active contact."""
     if settings.traffic_masking:
-        raise SoftError(
-            "Error: Command is disabled during traffic masking.", head_clear=True
-        )
+        raise SoftError("Error: Command is disabled during traffic masking.", head_clear=True)
 
     if window.type == WIN_TYPE_GROUP or window.contact is None:
         raise SoftError("Error: Group is selected.", head_clear=True)
 
     if not contact_list.get_contact_by_pub_key(window.uid).uses_psk():
-        raise SoftError(
-            f"Error: The current key was exchanged with {ECDHE}.", head_clear=True
-        )
+        raise SoftError(f"Error: The current key was exchanged with {ECDHE}.", head_clear=True)
 
-    c_code = blake2b(window.uid, digest_size=CONFIRM_CODE_LENGTH)
+    c_code  = blake2b(window.uid, digest_size=CONFIRM_CODE_LENGTH)
     command = KEY_EX_PSK_RX + c_code + window.uid
     queue_command(command, settings, queues)
 
     while True:
         try:
-            purp_code = ask_confirmation_code("Receiver")
+            purp_code = ask_confirmation_code('Receiver')
             if purp_code == c_code.hex():
                 window.contact.kex_status = KEX_STATUS_HAS_RX_PSK
                 contact_list.store_contacts()
-                raise SoftError(
-                    f"Removed PSK reminder for {window.name}.", tail_clear=True, delay=1
-                )
+                raise SoftError(f"Removed PSK reminder for {window.name}.", tail_clear=True, delay=1)
 
             m_print("Incorrect confirmation code.", head=1)
             print_on_previous_line(reps=4, delay=2)
 
         except (EOFError, KeyboardInterrupt):
-            raise SoftError(
-                "PSK verification aborted.", tail_clear=True, delay=1, head=2
-            )
+            raise SoftError("PSK verification aborted.", tail_clear=True, delay=1, head=2)

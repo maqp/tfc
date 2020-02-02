@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -25,49 +25,31 @@ import typing
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.common.exceptions import SoftError
-from src.common.misc import HideRunTime, ignored
-from src.common.statics import (
-    COMMAND_PACKET_QUEUE,
-    DATAGRAM_HEADER_LENGTH,
-    EXIT,
-    EXIT_QUEUE,
-    KEY_MANAGEMENT_QUEUE,
-    LOG_PACKET_QUEUE,
-    MESSAGE_PACKET_QUEUE,
-    RELAY_PACKET_QUEUE,
-    SENDER_MODE_QUEUE,
-    TM_COMMAND_PACKET_QUEUE,
-    TM_FILE_PACKET_QUEUE,
-    TM_MESSAGE_PACKET_QUEUE,
-    TM_NOISE_COMMAND_QUEUE,
-    TM_NOISE_PACKET_QUEUE,
-    TRAFFIC_MASKING,
-    TRAFFIC_MASKING_QUEUE_CHECK_DELAY,
-    UNENCRYPTED_EXIT_COMMAND,
-    UNENCRYPTED_WIPE_COMMAND,
-    WINDOW_SELECT_QUEUE,
-    WIPE,
-)
+from src.common.misc       import HideRunTime, ignored
+from src.common.statics    import (COMMAND_PACKET_QUEUE, DATAGRAM_HEADER_LENGTH, EXIT, EXIT_QUEUE, KEY_MANAGEMENT_QUEUE,
+                                   LOG_PACKET_QUEUE, MESSAGE_PACKET_QUEUE, RELAY_PACKET_QUEUE, SENDER_MODE_QUEUE,
+                                   TM_COMMAND_PACKET_QUEUE, TM_FILE_PACKET_QUEUE, TM_MESSAGE_PACKET_QUEUE,
+                                   TM_NOISE_COMMAND_QUEUE, TM_NOISE_PACKET_QUEUE, TRAFFIC_MASKING,
+                                   TRAFFIC_MASKING_QUEUE_CHECK_DELAY, UNENCRYPTED_EXIT_COMMAND,
+                                   UNENCRYPTED_WIPE_COMMAND, WINDOW_SELECT_QUEUE, WIPE)
 
 from src.transmitter.packet import send_packet
 
 if typing.TYPE_CHECKING:
-    from multiprocessing import Queue
-    from src.common.db_keys import KeyList
+    from multiprocessing        import Queue
+    from src.common.db_keys     import KeyList
     from src.common.db_settings import Settings
-    from src.common.gateway import Gateway
-
-    QueueDict = Dict[bytes, Queue[Any]]
+    from src.common.gateway     import Gateway
+    QueueDict     = Dict[bytes, Queue[Any]]
     MessageBuffer = Dict[bytes, List[Tuple[bytes, bytes, bool, bool, bytes]]]
 
 
-def sender_loop(
-    queues: "QueueDict",
-    settings: "Settings",
-    gateway: "Gateway",
-    key_list: "KeyList",
-    unit_test: bool = False,
-) -> None:
+def sender_loop(queues:    'QueueDict',
+                settings:  'Settings',
+                gateway:   'Gateway',
+                key_list:  'KeyList',
+                unit_test: bool = False
+                ) -> None:
     """Output packets from queues based on queue priority.
 
     Depending on traffic masking setting adjusted by the user, enable
@@ -79,16 +61,16 @@ def sender_loop(
         if settings.traffic_masking:
             settings = traffic_masking_loop(queues, settings, gateway, key_list)
         else:
-            settings, m_buffer = standard_sender_loop(
-                queues, gateway, key_list, m_buffer
-            )
+            settings, m_buffer = standard_sender_loop(queues, gateway, key_list, m_buffer)
         if unit_test:
             break
 
 
-def traffic_masking_loop(
-    queues: "QueueDict", settings: "Settings", gateway: "Gateway", key_list: "KeyList",
-) -> "Settings":
+def traffic_masking_loop(queues:   'QueueDict',
+                         settings: 'Settings',
+                         gateway:  'Gateway',
+                         key_list: 'KeyList',
+                         ) -> 'Settings':
     """Run Transmitter Program in traffic masking mode.
 
     The traffic masking loop loads assembly packets from a set of queues.
@@ -122,23 +104,23 @@ def traffic_masking_loop(
     reveals to Networked Computer when the user operates the Source
     Computer.
     """
-    ws_queue = queues[WINDOW_SELECT_QUEUE]
-    m_queue = queues[TM_MESSAGE_PACKET_QUEUE]
-    f_queue = queues[TM_FILE_PACKET_QUEUE]
-    c_queue = queues[TM_COMMAND_PACKET_QUEUE]
-    np_queue = queues[TM_NOISE_PACKET_QUEUE]
-    nc_queue = queues[TM_NOISE_COMMAND_QUEUE]
+    ws_queue  = queues[WINDOW_SELECT_QUEUE]
+    m_queue   = queues[TM_MESSAGE_PACKET_QUEUE]
+    f_queue   = queues[TM_FILE_PACKET_QUEUE]
+    c_queue   = queues[TM_COMMAND_PACKET_QUEUE]
+    np_queue  = queues[TM_NOISE_PACKET_QUEUE]
+    nc_queue  = queues[TM_NOISE_COMMAND_QUEUE]
     log_queue = queues[LOG_PACKET_QUEUE]
-    sm_queue = queues[SENDER_MODE_QUEUE]
+    sm_queue  = queues[SENDER_MODE_QUEUE]
 
     while True:
         with ignored(EOFError, KeyboardInterrupt):
-            while not ws_queue.qsize():
+            while ws_queue.qsize() == 0:
                 time.sleep(0.01)
             window_contacts = ws_queue.get()
 
             # Window selection command to Receiver Program.
-            while not c_queue.qsize():
+            while c_queue.qsize() == 0:
                 time.sleep(0.01)
             send_packet(key_list, gateway, log_queue, c_queue.get())
             break
@@ -150,38 +132,22 @@ def traffic_masking_loop(
 
                 # Choosing element from list is constant time.
                 #
-                #         First queue we evaluate: if m_queue has data
-                #         in it, False is evaluated as 0, and we load
-                #         the first nested list. At that point we load
-                #         from m_queue regardless of f_queue state.
-                #                                                 |
-                #                                                 v
-                queue = [[m_queue, m_queue], [f_queue, np_queue]][m_queue.qsize() == 0][
-                    f_queue.qsize() == 0
-                ]  # ^
-                #    |
-                #   Second queue to evaluate. If m_queue has no data but f_queue has,
-                #   the False is evaluated as 0 meaning f_queue (True as 1 and np_queue)
+                #         First queue we evaluate: if m_queue has data                  Second to evaluate. If m_queue
+                #         in it, False is evaluated as 0, and we load                   has no data but f_queue has, the
+                #         the first nested list. At that point we load                  False is evaluated as 0 meaning
+                #         from m_queue regardless of f_queue state.                     f_queue (True as 1 and np_queue)
+                #                                                 |                     |
+                #                                                 v                     v
+                queue = [[m_queue, m_queue], [f_queue, np_queue]][m_queue.qsize() == 0][f_queue.qsize() == 0]
 
                 # Regardless of queue, each .get() returns a tuple with identical
                 # amount of data: 256 bytes long bytestring and two booleans.
-                (
-                    assembly_packet,
-                    log_messages,
-                    _,
-                ) = queue.get()  # type: bytes, bool, bool
+                assembly_packet, log_messages, log_as_ph = queue.get()  # type: bytes, bool, bool
 
             for c in window_contacts:
                 # Message/file assembly packet to window contact.
                 with HideRunTime(settings, delay_type=TRAFFIC_MASKING):
-                    send_packet(
-                        key_list,
-                        gateway,
-                        log_queue,
-                        assembly_packet,
-                        c.onion_pub_key,
-                        log_messages,
-                    )
+                    send_packet(key_list, gateway, log_queue, assembly_packet, c.onion_pub_key, log_messages)
 
                 # Send a command between each assembly packet for each contact.
                 with HideRunTime(settings, delay_type=TRAFFIC_MASKING):
@@ -197,14 +163,12 @@ def traffic_masking_loop(
                     exit_packet_check(queues, gateway)
 
             # If traffic masking has been disabled, wait until queued messages are sent before returning.
-            if sm_queue.qsize() != 0 and all(
-                q.qsize() == 0 for q in (m_queue, f_queue, c_queue)
-            ):
+            if sm_queue.qsize() != 0 and all(q.qsize() == 0 for q in (m_queue, f_queue, c_queue)):
                 settings = sm_queue.get()
                 return settings
 
 
-def exit_packet_check(queues: "QueueDict", gateway: "Gateway") -> None:
+def exit_packet_check(queues: 'QueueDict', gateway: 'Gateway') -> None:
     """Check for unencrypted commands that close TFC.
 
     The relay packet queue is empty until the user is willing to reveal to
@@ -224,12 +188,11 @@ def exit_packet_check(queues: "QueueDict", gateway: "Gateway") -> None:
             queues[EXIT_QUEUE].put(signal)
 
 
-def standard_sender_loop(
-    queues: "QueueDict",
-    gateway: "Gateway",
-    key_list: "KeyList",
-    m_buffer: Optional["MessageBuffer"] = None,
-) -> Tuple["Settings", "MessageBuffer"]:
+def standard_sender_loop(queues:   'QueueDict',
+                         gateway:  'Gateway',
+                         key_list: 'KeyList',
+                         m_buffer: Optional['MessageBuffer'] = None
+                         ) -> Tuple['Settings', 'MessageBuffer']:
     """Run Transmitter program in standard send mode.
 
     The standard sender loop loads assembly packets from a set of queues.
@@ -267,10 +230,10 @@ def standard_sender_loop(
     adds new keys for the contact.
     """
     km_queue = queues[KEY_MANAGEMENT_QUEUE]
-    c_queue = queues[COMMAND_PACKET_QUEUE]
+    c_queue  = queues[COMMAND_PACKET_QUEUE]
     rp_queue = queues[RELAY_PACKET_QUEUE]
     sm_queue = queues[SENDER_MODE_QUEUE]
-    m_queue = queues[MESSAGE_PACKET_QUEUE]
+    m_queue  = queues[MESSAGE_PACKET_QUEUE]
 
     if m_buffer is None:
         m_buffer = dict()
@@ -288,9 +251,7 @@ def standard_sender_loop(
             process_new_message(m_buffer, queues, key_list, gateway)
 
             # If traffic masking has been enabled, switch send mode when all queues are empty.
-            if sm_queue.qsize() != 0 and all(
-                q.qsize() == 0 for q in (km_queue, c_queue, rp_queue, m_queue)
-            ):
+            if sm_queue.qsize() != 0 and all(q.qsize() == 0 for q in (km_queue, c_queue, rp_queue, m_queue)):
                 settings = sm_queue.get()
                 return settings, m_buffer
 
@@ -300,7 +261,7 @@ def standard_sender_loop(
             pass
 
 
-def process_key_management_command(queues: "QueueDict", key_list: "KeyList") -> None:
+def process_key_management_command(queues: 'QueueDict', key_list: 'KeyList') -> None:
     """Process key management command."""
     km_queue = queues[KEY_MANAGEMENT_QUEUE]
 
@@ -309,11 +270,12 @@ def process_key_management_command(queues: "QueueDict", key_list: "KeyList") -> 
         SoftError("Key management command processing complete.", output=False)
 
 
-def process_command(
-    queues: "QueueDict", key_list: "KeyList", gateway: "Gateway"
-) -> None:
+def process_command(queues:   'QueueDict',
+                    key_list: 'KeyList',
+                    gateway:  'Gateway'
+                    ) -> None:
     """Process command."""
-    c_queue = queues[COMMAND_PACKET_QUEUE]
+    c_queue   = queues[COMMAND_PACKET_QUEUE]
     log_queue = queues[LOG_PACKET_QUEUE]
 
     if c_queue.qsize():
@@ -322,7 +284,7 @@ def process_command(
         SoftError("Command processing complete.", output=False)
 
 
-def process_relay_packets(queues: "QueueDict", gateway: "Gateway") -> None:
+def process_relay_packets(queues: 'QueueDict', gateway: 'Gateway') -> None:
     """Process packet to Relay Program on Networked Computer."""
     rp_queue = queues[RELAY_PACKET_QUEUE]
 
@@ -339,35 +301,31 @@ def process_relay_packets(queues: "QueueDict", gateway: "Gateway") -> None:
         SoftError("Relay packet processing complete.", output=False)
 
 
-def process_buffered_messages(
-    m_buffer: "MessageBuffer",
-    queues: "QueueDict",
-    key_list: "KeyList",
-    gateway: "Gateway",
-) -> None:
+def process_buffered_messages(m_buffer: 'MessageBuffer',
+                              queues:   'QueueDict',
+                              key_list: 'KeyList',
+                              gateway:  'Gateway'
+                              ) -> None:
     """Process messages cached in `m_buffer`."""
     log_queue = queues[LOG_PACKET_QUEUE]
 
     for onion_pub_key in m_buffer:
         if key_list.has_keyset(onion_pub_key) and m_buffer[onion_pub_key]:
-            send_packet(
-                key_list, gateway, log_queue, *m_buffer[onion_pub_key].pop(0)[:-1]
-            )
+            send_packet(key_list, gateway, log_queue, *m_buffer[onion_pub_key].pop(0)[:-1])
             raise SoftError("Buffered message processing complete.", output=False)
 
 
-def process_new_message(
-    m_buffer: "MessageBuffer",
-    queues: "QueueDict",
-    key_list: "KeyList",
-    gateway: "Gateway",
-) -> None:
+def process_new_message(m_buffer: 'MessageBuffer',
+                        queues:   'QueueDict',
+                        key_list: 'KeyList',
+                        gateway:  'Gateway'
+                        ) -> None:
     """Process new message in message queue."""
-    m_queue = queues[MESSAGE_PACKET_QUEUE]
+    m_queue   = queues[MESSAGE_PACKET_QUEUE]
     log_queue = queues[LOG_PACKET_QUEUE]
 
     if m_queue.qsize():
-        queue_data = m_queue.get()  # type: Tuple[bytes, bytes, bool, bool, bytes]
+        queue_data    = m_queue.get()  # type: Tuple[bytes, bytes, bool, bool, bytes]
         onion_pub_key = queue_data[1]
 
         if key_list.has_keyset(onion_pub_key):

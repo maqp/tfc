@@ -39,7 +39,7 @@ by the TFC installer.
 
         - The Tor application, Copyright © 2001-2004, Roger Dingledine
                                Copyright © 2004-2006, Roger Dingledine, Nick Mathewson
-                               Copyright © 2007-2019, The Tor Project, Inc.
+                               Copyright © 2007-2020, The Tor Project, Inc.
           (https://torproject.org)
           (See the Tor licence and 3rd party licences at https://gitweb.torproject.org/tor.git/tree/LICENSE)
 
@@ -86,17 +86,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         - The src.common.encoding Base58 implementation, Copyright © 2015, David Keijser
           (https://github.com/keis/base58)
 
-        - The cffi library, Copyright © 2012-2019, Armin Rigo, Maciej Fijalkowski
+        - The cffi library, Copyright © 2012-2020, Armin Rigo, Maciej Fijalkowski
           (https://bitbucket.org/cffi/cffi/overview)
 
         - The Mypy static type checker, Copyright © 2015-2016, Jukka Lehtosalo and contributors
           (https://github.com/python/mypy)
           (See 3rd party licenses at https://github.com/python/mypy/blob/master/LICENSE)
 
-        - The pip package installer, Copyright © 2008-2019, The pip developers (see AUTHORS.txt file)
+        - The pip package installer, Copyright © 2008-2020, The pip developers (see AUTHORS.txt file)
           (https://github.com/pypa/pip)
 
-        - The pytest framework, Copyright © 2004-2019, Holger Krekel and others
+        - The pytest framework, Copyright © 2004-2020, Holger Krekel and others
           (https://github.com/pytest-dev/pytest)
 
         - The pytest-cov plugin, Copyright © 2010, Meme Dough
@@ -108,10 +108,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         - The Setuptools build system, Copyright © 2016, Jason R Coombs <jaraco@jaraco.com>
           (https://github.com/pypa/setuptools)
 
-        - The Six library, Copyright © 2010-2019, Benjamin Peterson
+        - The Six library, Copyright © 2010-2020, Benjamin Peterson
           (https://github.com/benjaminp/six)
 
-        - The urllib3 library, Copyright © 2008-2019, Andrey Petrov and contributors (see CONTRIBUTORS.txt)
+        - The urllib3 library, Copyright © 2008-2020, Andrey Petrov and contributors (see CONTRIBUTORS.txt)
           (https://github.com/urllib3/urllib3)
 
         - The virtualenv tool, Copyright © 2007, Ian Bicking and Contributors
@@ -144,7 +144,7 @@ SOFTWARE.
                                  ISC License
 
         applies to:
-        - The libsodium library, Copyright © 2013-2019, Frank Denis <j at pureftpd dot org>
+        - The libsodium library, Copyright © 2013-2020, Frank Denis <j at pureftpd dot org>
           (https://github.com/jedisct1/libsodium)
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -525,7 +525,7 @@ Public License instead of this License.
  of this license document, but changing it is not allowed.
 
         applies to:
-        - The src.relay.onion Tor class, Copyright © 2014-2019, Micah Lee <micah@micahflee.com>
+        - The src.relay.onion Tor class, Copyright © 2014-2020, Micah Lee <micah@micahflee.com>
           (https://github.com/micahflee/onionshare)
 
         - gnome-terminal, Copyright © Guilherme de S. Pastore <gpastore@gnome.org>,
@@ -2478,7 +2478,7 @@ Library.
                                                Copyright © 2000, BeOpen.com.
                                                All Rights Reserved.
 
-                                               Copyright © 2001-2019, Python Software Foundation.
+                                               Copyright © 2001-2020, Python Software Foundation.
                                                All Rights Reserved.
           (https://www.python.org/)
 

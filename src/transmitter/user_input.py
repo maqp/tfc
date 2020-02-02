@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2019  Markus Ottela
+Copyright (C) 2013-2020  Markus Ottela
 
 This file is part of TFC.
 
@@ -21,21 +21,22 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 
 import typing
 
-from src.common.output import print_on_previous_line
+from src.common.output  import print_on_previous_line
 from src.common.statics import COMMAND, FILE, MESSAGE, WIN_TYPE_GROUP
 
 if typing.TYPE_CHECKING:
-    from src.common.db_settings import Settings
+    from src.common.db_settings  import Settings
     from src.transmitter.windows import TxWindow
 
 
-def process_aliases(plaintext: str, settings: "Settings", window: "TxWindow") -> str:
+def process_aliases(plaintext: str,
+                    settings:  'Settings',
+                    window:    'TxWindow'
+                    ) -> str:
     """Check if plaintext is an alias for another command."""
-    aliases = [
-        (" ", "/unread"),
-        ("  ", "/exit" if settings.double_space_exits else "/clear"),
-        ("//", "/cmd"),
-    ]
+    aliases = [(' ',  '/unread'                                           ),
+               ('  ', '/exit' if settings.double_space_exits else '/clear'),
+               ('//', '/cmd'                                              )]
 
     for a in aliases:
         if plaintext == a[0]:
@@ -49,15 +50,15 @@ def process_aliases(plaintext: str, settings: "Settings", window: "TxWindow") ->
     return plaintext
 
 
-def get_input(window: "TxWindow", settings: "Settings") -> "UserInput":
+def get_input(window: 'TxWindow', settings: 'Settings') -> 'UserInput':
     """Read and process input from the user and determine its type."""
     while True:
         try:
             plaintext = input(f"Msg to {window.type_print} {window.name}: ")
-            if plaintext in ["", "/"]:
+            if plaintext in ['', '/']:
                 raise EOFError
         except (EOFError, KeyboardInterrupt):
-            print("")
+            print('')
             print_on_previous_line()
             continue
 
@@ -66,20 +67,18 @@ def get_input(window: "TxWindow", settings: "Settings") -> "UserInput":
         # Determine plaintext type
         pt_type = MESSAGE
 
-        if plaintext == "/file":
+        if plaintext == '/file':
             pt_type = FILE
 
-        elif plaintext.startswith("/"):
-            plaintext = plaintext[len("/") :]
-            pt_type = COMMAND
+        elif plaintext.startswith('/'):
+            plaintext = plaintext[len('/'):]
+            pt_type   = COMMAND
 
         # Check if the group was empty
         if pt_type in [MESSAGE, FILE] and window.type == WIN_TYPE_GROUP:
             if window.group is not None and window.group.empty():
                 print_on_previous_line()
-                print(
-                    f"Msg to {window.type_print} {window.name}: Error: The group is empty."
-                )
+                print(f"Msg to {window.type_print} {window.name}: Error: The group is empty.")
                 print_on_previous_line(delay=0.5)
                 continue
 
@@ -99,4 +98,4 @@ class UserInput(object):
     def __init__(self, plaintext: str, type_: str) -> None:
         """Create a new UserInput object."""
         self.plaintext = plaintext
-        self.type = type_
+        self.type      = type_
