@@ -38,7 +38,7 @@ class TestFlaskServer(unittest.TestCase):
         url_token_public_key  = X448.derive_public_key(url_token_private_key).hex()
         url_token             = 'a450987345098723459870234509827340598273405983274234098723490285'
         url_token_old         = 'a450987345098723459870234509827340598273405983274234098723490286'
-        url_token_invalid     = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        url_token_invalid     = 'ääääääääääääääääääääääääääääääääääääääääääääääääääääääääääääääää'
         onion_pub_key         = nick_to_pub_key('Alice')
         onion_address         = nick_to_onion_address('Alice')
         packet1               = "packet1"
@@ -47,6 +47,13 @@ class TestFlaskServer(unittest.TestCase):
 
         # Test
         app = flask_server(queues, url_token_public_key, unit_test=True)
+
+        # Test valid URL token returns all queued messages
+        queues[URL_TOKEN_QUEUE].put((onion_pub_key, url_token_old))
+        queues[URL_TOKEN_QUEUE].put((onion_pub_key, url_token))
+        queues[M_TO_FLASK_QUEUE].put((packet1, onion_pub_key))
+        queues[M_TO_FLASK_QUEUE].put((packet2, onion_pub_key))
+        queues[F_TO_FLASK_QUEUE].put((packet3, onion_pub_key))
 
         with app.test_client() as c:
             # Test root domain returns public key of server.
@@ -62,13 +69,6 @@ class TestFlaskServer(unittest.TestCase):
             self.assertEqual(b'', resp.data)
             resp = c.get(f'/{url_token_invalid}/files/')
             self.assertEqual(b'', resp.data)
-
-        # Test valid URL token returns all queued messages
-        queues[URL_TOKEN_QUEUE].put((onion_pub_key, url_token_old))
-        queues[URL_TOKEN_QUEUE].put((onion_pub_key, url_token))
-        queues[M_TO_FLASK_QUEUE].put((packet1, onion_pub_key))
-        queues[M_TO_FLASK_QUEUE].put((packet2, onion_pub_key))
-        queues[F_TO_FLASK_QUEUE].put((packet3, onion_pub_key))
 
         with app.test_client() as c:
             resp = c.get(f'/{url_token}/messages/')

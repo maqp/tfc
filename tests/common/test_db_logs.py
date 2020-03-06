@@ -41,8 +41,8 @@ from src.common.statics     import (CLEAR_ENTIRE_SCREEN, CURSOR_LEFT_UP_CORNER, 
                                     WIN_TYPE_GROUP)
 
 from tests.mock_classes import create_contact, GroupList, MasterKey, RxWindow, Settings
-from tests.utils        import assembly_packet_creator, cd_unit_test, cleanup, group_name_to_group_id, nick_to_pub_key
-from tests.utils        import nick_to_short_address, tear_queues, TFCTestCase, gen_queue_dict
+from tests.utils        import (assembly_packet_creator, cd_unit_test, cleanup, group_name_to_group_id, nick_to_pub_key,
+                                nick_to_short_address, tear_queues, TFCTestCase, gen_queue_dict)
 
 TIMESTAMP_BYTES  = bytes.fromhex('08ceae02')
 STATIC_TIMESTAMP = bytes_to_timestamp(TIMESTAMP_BYTES).strftime('%H:%M:%S.%f')[:-TIMESTAMP_LENGTH]
@@ -68,7 +68,7 @@ class TestLogWriterLoop(unittest.TestCase):
         queues     = gen_queue_dict()
 
         def queue_delayer() -> None:
-            """Place messages to queue one at a time."""
+            """Place messages to the logging queue one at a time."""
             for p in [(nick_to_pub_key('Alice'), M_S_HEADER + bytes(PADDING_LENGTH), False, False, master_key),
                       (None,                     C_S_HEADER + bytes(PADDING_LENGTH), True,  False, master_key),
                       (nick_to_pub_key('Alice'), P_N_HEADER + bytes(PADDING_LENGTH), True,  True,  master_key),
@@ -101,7 +101,7 @@ class TestLogWriterLoop(unittest.TestCase):
         queues[TRAFFIC_MASKING_QUEUE].put(True)
 
         def queue_delayer() -> None:
-            """Place messages to queue one at a time."""
+            """Place messages to the logging queue one at a time."""
             for p in [(nick_to_pub_key('Alice'), M_S_HEADER + bytes(PADDING_LENGTH), False, False, master_key),
                       (None,                     C_S_HEADER + bytes(PADDING_LENGTH), True,  False, master_key),
                       (nick_to_pub_key('Alice'), F_S_HEADER + bytes(PADDING_LENGTH), True,  True,  master_key),
@@ -131,7 +131,7 @@ class TestLogWriterLoop(unittest.TestCase):
         queues     = gen_queue_dict()
 
         def queue_delayer() -> None:
-            """Place messages to queue one at a time."""
+            """Place messages to the logging queue one at a time."""
             for p in [(None,                     C_S_HEADER + bytes(PADDING_LENGTH), True,  False, master_key),
                       (nick_to_pub_key('Alice'), M_S_HEADER + bytes(PADDING_LENGTH), False, False, master_key),
                       (nick_to_pub_key('Alice'), F_S_HEADER + bytes(PADDING_LENGTH), True,  True,  master_key)]:
@@ -139,7 +139,7 @@ class TestLogWriterLoop(unittest.TestCase):
                 queues[LOG_PACKET_QUEUE].put(p)
                 time.sleep(SLEEP_DELAY)
 
-            queues[LOGFILE_MASKING_QUEUE].put(True)  # Start logging noise packets
+            queues[LOGFILE_MASKING_QUEUE].put(True)  # Start logging of noise packets
             time.sleep(SLEEP_DELAY)
 
             for _ in range(2):
@@ -171,7 +171,7 @@ class TestLogWriterLoop(unittest.TestCase):
         noise_tuple = (nick_to_pub_key('Alice'), P_N_HEADER + bytes(PADDING_LENGTH), True, True, master_key)
 
         def queue_delayer() -> None:
-            """Place packets to log into queue after delay."""
+            """Place packets to log into the log queue after delay."""
             for _ in range(5):
                 queues[LOG_PACKET_QUEUE].put(noise_tuple)  # Not logged because logging_state is False by default
                 time.sleep(SLEEP_DELAY)
@@ -267,7 +267,7 @@ class TestAccessHistoryAndPrintLogs(TFCTestCase):
         """Post-test actions."""
         cleanup(self.unit_test_dir)
 
-    def test_missing_log_file_raises_se(self) -> None:
+    def test_missing_log_file_raises_soft_error(self) -> None:
         # Setup
         os.remove(self.log_file)
 
@@ -443,8 +443,8 @@ Log file of message(s) sent to group test_group
                                group=self.group,
                                type_print='group')
 
-        # Add an assembly packet sequence sent to contact Alice in group containing cancel packet.
-        # Access_logs should skip this.
+        # Add an assembly packet sequence sent to contact Alice in group
+        # containing cancel packet. Access_logs should skip this.
         packets = assembly_packet_creator(MESSAGE, self.msg, group_id=group_name_to_group_id('test_group'))
         packets = packets[2:] + [M_C_HEADER + bytes(PADDING_LENGTH)]
         for p in packets:
@@ -461,8 +461,8 @@ Log file of message(s) sent to group test_group
         for p in assembly_packet_creator(MESSAGE, 'This is a short group message', group_id=GROUP_ID_LENGTH * b'1'):
             write_log_entry(p, nick_to_pub_key('Alice'), self.tfc_log_database)
 
-        # Add messages to Alice and Charlie in group.
-        # Add duplicate of outgoing message that should be skipped by access_logs.
+        # Add messages to Alice and Charlie in group. Add duplicate
+        # of outgoing message that should be skipped by access_logs.
         for p in assembly_packet_creator(MESSAGE, self.msg, group_id=group_name_to_group_id('test_group')):
             write_log_entry(p, nick_to_pub_key('Alice'),   self.tfc_log_database)
             write_log_entry(p, nick_to_pub_key('Alice'),   self.tfc_log_database, origin=ORIGIN_CONTACT_HEADER)
@@ -546,7 +546,7 @@ class TestReEncrypt(TFCTestCase):
         """Post-test actions."""
         cleanup(self.unit_test_dir)
 
-    def test_missing_log_database_raises_se(self) -> None:
+    def test_missing_log_database_raises_soft_error(self) -> None:
         # Setup
         os.remove(self.log_file)
 
@@ -632,7 +632,7 @@ class TestRemoveLog(TFCTestCase):
         """Post-test actions."""
         cleanup(self.unit_test_dir)
 
-    def test_missing_log_file_raises_se(self) -> None:
+    def test_missing_log_file_raises_soft_error(self) -> None:
         # Setup
         os.remove(self.file_name)
 

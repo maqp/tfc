@@ -19,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
+import base64
 import hashlib
 import json
 import multiprocessing.connection
@@ -36,15 +37,17 @@ from typing   import Any, Dict, Optional, Tuple, Union
 from serial.serialutil import SerialException
 
 from src.common.exceptions   import CriticalError, graceful_exit, SoftError
-from src.common.input        import yes
-from src.common.misc         import calculate_race_condition_delay, ensure_dir, ignored, get_terminal_width
-from src.common.misc         import separate_trailer
+from src.common.input        import box_input, yes
+from src.common.misc         import (calculate_race_condition_delay, ensure_dir, ignored, get_terminal_width,
+                                     separate_trailer, split_byte_string, validate_ip_address)
 from src.common.output       import m_print, phase, print_on_previous_line
 from src.common.reed_solomon import ReedSolomonError, RSCodec
 from src.common.statics      import (BAUDS_PER_BYTE, DIR_USER_DATA, DONE, DST_DD_LISTEN_SOCKET, DST_LISTEN_SOCKET,
                                      GATEWAY_QUEUE, LOCALHOST, LOCAL_TESTING_PACKET_DELAY, MAX_INT, NC,
+                                     QUBES_DST_LISTEN_SOCKET, QUBES_RX_IP_ADDR_FILE, QUBES_SRC_LISTEN_SOCKET,
                                      PACKET_CHECKSUM_LENGTH, RECEIVER, RELAY, RP_LISTEN_SOCKET, RX,
-                                     SERIAL_RX_MIN_TIMEOUT, SETTINGS_INDENT, SRC_DD_LISTEN_SOCKET, TRANSMITTER, TX)
+                                     SERIAL_RX_MIN_TIMEOUT, SETTINGS_INDENT, SOCKET_BUFFER_SIZE, SRC_DD_LISTEN_SOCKET,
+                                     TRANSMITTER, TX, US_BYTE)
 
 if typing.TYPE_CHECKING:
     from multiprocessing import Queue
@@ -59,9 +62,10 @@ def gateway_loop(queues:    Dict[bytes, 'Queue[Tuple[datetime, bytes]]'],
 
     Also place the current timestamp to queue to be delivered to the
     Receiver Program. The timestamp is used both to notify when the sent
-    message was received by Relay Program, and as part of a commitment
-    scheme: For more information, see the section on "Covert channel
-    based on user interaction" under TFC's Security Design wiki article.
+    message was received by the Relay Program, and as part of a
+    commitment scheme: For more information, see the section on "Covert
+    channel based on user interaction" under TFC's Security Design wiki
+    article.
     """
     queue = queues[GATEWAY_QUEUE]
 
@@ -75,20 +79,23 @@ def gateway_loop(queues:    Dict[bytes, 'Queue[Tuple[datetime, bytes]]'],
 class Gateway(object):
     """\
     Gateway object is a wrapper for interfaces that connect
-    Source/Destination Computer with the Networked computer.
+    Source/Destination Computer with the Networked Computer.
     """
 
     def __init__(self,
                  operation:  str,
                  local_test: bool,
-                 dd_sockets: bool
+                 dd_sockets: bool,
+                 qubes:      bool,
                  ) -> None:
         """Create a new Gateway object."""
-        self.settings  = GatewaySettings(operation, local_test, dd_sockets)
-        self.tx_serial = None  # type: Optional[serial.Serial]
-        self.rx_serial = None  # type: Optional[serial.Serial]
-        self.rx_socket = None  # type: Optional[multiprocessing.connection.Connection]
-        self.tx_socket = None  # type: Optional[multiprocessing.connection.Connection]
+        self.settings   = GatewaySettings(operation, local_test, dd_sockets, qubes)
+        self.tx_serial  = None  # type: Optional[serial.Serial]
+        self.rx_serial  = None  # type: Optional[serial.Serial]
+        self.rx_socket  = None  # type: Optional[multiprocessing.connection.Connection]
+        self.tx_socket  = None  # type: Optional[multiprocessing.connection.Connection]
+        self.txq_socket = None  # type: Optional[socket.socket]
+        self.rxq_socket = None  # type: Optional[socket.socket]
 
         # Initialize Reed-Solomon erasure code handler
         self.rs = RSCodec(2 * self.settings.session_serial_error_correction)
@@ -102,6 +109,11 @@ class Gateway(object):
                 self.client_establish_socket()
             if self.settings.software_operation in [NC, RX]:
                 self.server_establish_socket()
+        elif qubes:
+            if self.settings.software_operation in [TX, NC]:
+                self.qubes_client_establish_socket()
+            if self.settings.software_operation in [NC, RX]:
+                self.qubes_server_establish_socket()
         else:
             self.establish_serial()
 
@@ -141,6 +153,19 @@ class Gateway(object):
         except SerialException:
             raise CriticalError("SerialException. Ensure $USER is in the dialout group by restarting this computer.")
 
+    def write_udp_packet(self, packet: bytes) -> None:
+        """Split packet to smaller parts and transmit them over the socket."""
+        udp_port = QUBES_SRC_LISTEN_SOCKET if self.settings.software_operation == TX else QUBES_DST_LISTEN_SOCKET
+
+        packet  = base64.b85encode(packet)
+        packets = split_byte_string(packet, SOCKET_BUFFER_SIZE)
+
+        if self.txq_socket is not None:
+            for p in packets:
+                self.txq_socket.sendto(p, (self.settings.rx_udp_ip, udp_port))
+                time.sleep(0.000001)
+            self.txq_socket.sendto(US_BYTE, (self.settings.rx_udp_ip, udp_port))
+
     def write(self, orig_packet: bytes) -> None:
         """Add error correction data and output data via socket/serial interface.
 
@@ -157,6 +182,10 @@ class Gateway(object):
                 time.sleep(LOCAL_TESTING_PACKET_DELAY)
             except BrokenPipeError:
                 raise CriticalError("Relay IPC server disconnected.", exit_code=0)
+
+        elif self.txq_socket is not None:
+            self.write_udp_packet(packet)
+
         elif self.tx_serial is not None:
             try:
                 self.tx_serial.write(packet)
@@ -179,6 +208,24 @@ class Gateway(object):
                 pass
             except EOFError:
                 raise CriticalError("Relay IPC client disconnected.", exit_code=0)
+
+    def read_qubes_socket(self) -> bytes:
+        """Read packet from Qubes' socket interface."""
+        if self.rxq_socket is None:
+            raise CriticalError("Socket interface has not been initialized.")
+
+        while True:
+            try:
+                read_buffer = bytearray()
+
+                while True:
+                    read = self.rxq_socket.recv(SOCKET_BUFFER_SIZE)
+                    if read == US_BYTE:
+                        return read_buffer
+                    read_buffer.extend(read)
+
+            except (EOFError, KeyboardInterrupt):
+                pass
 
     def read_serial(self) -> bytes:
         """Read packet from serial interface.
@@ -215,8 +262,11 @@ class Gateway(object):
 
     def read(self) -> bytes:
         """Read data via socket/serial interface."""
-        data = (self.read_socket() if self.settings.local_testing_mode else self.read_serial())
-        return data
+        if self.settings.local_testing_mode:
+            return self.read_socket()
+        if self.settings.qubes:
+            return self.read_qubes_socket()
+        return self.read_serial()
 
     def add_error_correction(self, packet: bytes) -> bytes:
         """Add error correction to packet that will be output.
@@ -230,8 +280,10 @@ class Gateway(object):
 
         If error correction is set to 0, errors are only detected. This
         is done by using a BLAKE2b based, 128-bit checksum.
+
+        If Qubes is used, Reed-Solomon is not used as it only slows down data transfer.
         """
-        if self.settings.session_serial_error_correction:
+        if self.settings.session_serial_error_correction and not self.settings.qubes:
             packet = self.rs.encode(packet)
         else:
             packet = packet + hashlib.blake2b(packet, digest_size=PACKET_CHECKSUM_LENGTH).digest()
@@ -239,7 +291,13 @@ class Gateway(object):
 
     def detect_errors(self, packet: bytes) -> bytes:
         """Handle received packet error detection and/or correction."""
-        if self.settings.session_serial_error_correction:
+        if self.settings.qubes:
+            try:
+                packet = base64.b85decode(packet)
+            except ValueError:
+                raise SoftError("Error: Received packet had invalid Base85 encoding.")
+
+        if self.settings.session_serial_error_correction and not self.settings.qubes:
             try:
                 packet, _ = self.rs.decode(packet)
                 return bytes(packet)
@@ -279,6 +337,30 @@ class Gateway(object):
             if self.settings.built_in_serial_interface in sorted(os.listdir('/dev/')):
                 return f'/dev/{self.settings.built_in_serial_interface}'
             raise CriticalError(f"Error: /dev/{self.settings.built_in_serial_interface} was not found.")
+
+    # Qubes
+
+    def qubes_client_establish_socket(self) -> None:
+        """Establish Qubes socket for outgoing data."""
+        self.txq_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    def qubes_server_establish_socket(self) -> None:
+        """Establish Qubes socket for incoming data."""
+        udp_port = QUBES_SRC_LISTEN_SOCKET if self.settings.software_operation == NC else QUBES_DST_LISTEN_SOCKET
+        self.rxq_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.rxq_socket.bind((self.get_local_ip_addr(), udp_port))
+
+    @staticmethod
+    def get_local_ip_addr() -> str:
+        """Get local IP address of the system."""
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(('192.0.0.8', 1027))
+        except socket.error:
+            raise CriticalError("Socket error")
+        ip_address = s.getsockname()[0]  # type: str
+
+        return ip_address
 
     # Local testing
 
@@ -354,19 +436,20 @@ class GatewaySettings(object):
     unencrypted JSON database.
 
     The reason these settings are in plaintext is it protects the system
-    from inconsistent state of serial settings: Would the user reconfigure
-    their serial settings, and would the setting altering packet to
-    Receiver Program drop, Relay Program could in some situations no
-    longer communicate with the Receiver Program.
+    from an inconsistent serial setting state: Would the user change one
+    or more settings of their serial interfaces, and would the setting
+    adjusting packet to Receiver Program drop, Relay Program could in
+    some situations no longer communicate with the Receiver Program.
 
     Serial interface settings are not sensitive enough to justify the
-    inconvenience of encrypting the setting values.
+    inconveniences that would result from encrypting the setting values.
     """
 
     def __init__(self,
                  operation:  str,
                  local_test: bool,
-                 dd_sockets: bool
+                 dd_sockets: bool,
+                 qubes:      bool
                  ) -> None:
         """Create a new Settings object.
 
@@ -379,11 +462,13 @@ class GatewaySettings(object):
         self.serial_error_correction   = 5
         self.use_serial_usb_adapter    = True
         self.built_in_serial_interface = 'ttyS0'
+        self.rx_udp_ip                 = ''
 
         self.software_operation = operation
         self.local_testing_mode = local_test
         self.data_diode_sockets = dd_sockets
 
+        self.qubes    = qubes
         self.all_keys = list(vars(self).keys())
         self.key_list = self.all_keys[:self.all_keys.index('software_operation')]
         self.defaults = {k: self.__dict__[k] for k in self.key_list}
@@ -428,7 +513,7 @@ class GatewaySettings(object):
 
         Ensure that the serial interface is available before proceeding.
         """
-        if not self.local_testing_mode:
+        if not self.local_testing_mode and not self.qubes:
             name = {TX: TRANSMITTER, NC: RELAY, RX: RECEIVER}[self.software_operation]
 
             self.use_serial_usb_adapter = yes(f"Use USB-to-serial/TTL adapter for {name} Computer?", head=1, tail=1)
@@ -443,6 +528,22 @@ class GatewaySettings(object):
                 if self.built_in_serial_interface not in sorted(os.listdir('/dev/')):
                     m_print(f"Error: Serial interface /dev/{self.built_in_serial_interface} not found.")
                     self.setup()
+
+        if self.qubes and self.software_operation != RX:
+
+            # Check if IP address was stored by the installer.
+            if os.path.isfile(QUBES_RX_IP_ADDR_FILE):
+                cached_ip = open(QUBES_RX_IP_ADDR_FILE).read().strip()
+                os.remove(QUBES_RX_IP_ADDR_FILE)
+
+                if validate_ip_address(cached_ip) == '':
+                    self.rx_udp_ip = cached_ip
+                    return
+
+            # If we reach this point, no cached IP was found, prompt for IP address from the user.
+            rx_device, short = ('Networked', 'NET') if self.software_operation == TX else ('Destination', 'DST')
+            m_print(f"Enter the IP address of the {rx_device} Computer", head=1, tail=1)
+            self.rx_udp_ip = box_input(f"{short} IP-address", expected_len=15, validator=validate_ip_address, tail=1)
 
     def store_settings(self) -> None:
         """Store serial settings in JSON format."""
@@ -484,35 +585,74 @@ class GatewaySettings(object):
     def check_missing_settings(self, json_dict: Any) -> None:
         """Check for missing JSON fields and invalid values."""
         for key in self.key_list:
-            if key not in json_dict:
-                m_print([f"Error: Missing setting '{key}' in '{self.file_name}'.",
-                         f"The value has been set to default ({self.defaults[key]})."], head=1, tail=1)
-                setattr(self, key, self.defaults[key])
+            try:
+                self.check_key_in_key_list(key, json_dict)
+
+                if key == 'serial_baudrate':
+                    self.validate_serial_baudrate(key, json_dict)
+
+                elif key == 'serial_error_correction':
+                    self.validate_serial_error_correction(key, json_dict)
+
+                elif key == 'use_serial_usb_adapter':
+                    self.validate_serial_usb_adapter_value(key, json_dict)
+
+                elif key == 'built_in_serial_interface':
+                    self.validate_serial_interface_value(key, json_dict)
+
+                elif key == 'rx_udp_ip':
+                    json_dict[key] = self.validate_rx_udp_ip_address(key, json_dict)
+
+            except SoftError:
                 continue
-
-            # Closer inspection of each setting value
-            if key == 'serial_baudrate' and json_dict[key] not in serial.Serial().BAUDRATES:
-                self.invalid_setting(key, json_dict)
-                continue
-
-            elif key == 'serial_error_correction' and (not isinstance(json_dict[key], int) or json_dict[key] < 0):
-                self.invalid_setting(key, json_dict)
-                continue
-
-            elif key == 'use_serial_usb_adapter':
-                if not isinstance(json_dict[key], bool):
-                    self.invalid_setting(key, json_dict)
-                    continue
-
-            elif key == 'built_in_serial_interface':
-                if not isinstance(json_dict[key], str):
-                    self.invalid_setting(key, json_dict)
-                    continue
-                if not any(json_dict[key] == f for f in os.listdir('/sys/class/tty')):
-                    self.invalid_setting(key, json_dict)
-                    continue
 
             setattr(self, key, json_dict[key])
+
+    def check_key_in_key_list(self, key: str, json_dict: Any) -> None:
+        """Check if the setting's key value is in the setting dictionary."""
+        if key not in json_dict:
+            m_print([f"Error: Missing setting '{key}' in '{self.file_name}'.",
+                     f"The value has been set to default ({self.defaults[key]})."], head=1, tail=1)
+            setattr(self, key, self.defaults[key])
+            raise SoftError("Missing key", output=False)
+
+    def validate_serial_usb_adapter_value(self, key: str, json_dict: Any) -> None:
+        """Validate the serial usb adapter setting value."""
+        if not isinstance(json_dict[key], bool):
+            self.invalid_setting(key, json_dict)
+            raise SoftError("Invalid value", output=False)
+
+    def validate_serial_baudrate(self, key: str, json_dict: Any) -> None:
+        """Validate the serial baudrate setting value."""
+        if json_dict[key] not in serial.Serial().BAUDRATES:
+            self.invalid_setting(key, json_dict)
+            raise SoftError("Invalid value", output=False)
+
+    def validate_serial_error_correction(self, key: str, json_dict: Any) -> None:
+        """Validate the serial error correction setting value."""
+        if not isinstance(json_dict[key], int) or json_dict[key] < 0:
+            self.invalid_setting(key, json_dict)
+            raise SoftError("Invalid value", output=False)
+
+    def validate_serial_interface_value(self, key: str, json_dict: Any) -> None:
+        """Validate the serial interface setting value."""
+        if not isinstance(json_dict[key], str):
+            self.invalid_setting(key, json_dict)
+            raise SoftError("Invalid value", output=False)
+
+        if not any(json_dict[key] == f for f in os.listdir('/sys/class/tty')):
+            self.invalid_setting(key, json_dict)
+            raise SoftError("Invalid value", output=False)
+
+    def validate_rx_udp_ip_address(self, key: str, json_dict: Any) -> str:
+        """Validate IP address of receiving Qubes VM."""
+        if self.qubes:
+            if not isinstance(json_dict[key], str) or validate_ip_address(json_dict[key]) != '':
+                self.setup()
+                return self.rx_udp_ip
+
+        rx_udp_ip = json_dict[key]  # type: str
+        return rx_udp_ip
 
     def change_setting(self, key: str, value_str: str) -> None:
         """Parse, update and store new setting value."""

@@ -38,8 +38,8 @@ from src.transmitter.packet import split_to_assembly_packets
 from src.receiver.packet import decrypt_assembly_packet, Packet, PacketList
 
 from tests.mock_classes import ContactList, create_contact, KeyList, Settings, WindowList
-from tests.utils        import assembly_packet_creator, cd_unit_test, cleanup, nick_to_pub_key, TFCTestCase
-from tests.utils        import UNDECODABLE_UNICODE
+from tests.utils        import (assembly_packet_creator, cd_unit_test, cleanup, nick_to_pub_key, TFCTestCase,
+                                UNDECODABLE_UNICODE)
 
 
 class TestDecryptAssemblyPacket(TFCTestCase):
@@ -54,7 +54,7 @@ class TestDecryptAssemblyPacket(TFCTestCase):
         self.keyset        = self.key_list.get_keyset(nick_to_pub_key("Alice"))
         self.args          = self.onion_pub_key, self.origin, self.window_list, self.contact_list, self.key_list
 
-    def test_decryption_with_zero_rx_key_raises_se(self) -> None:
+    def test_decryption_with_zero_rx_key_raises_soft_error(self) -> None:
         # Setup
         keyset       = self.key_list.get_keyset(nick_to_pub_key("Alice"))
         keyset.rx_mk = bytes(SYMMETRIC_KEY_LENGTH)
@@ -64,12 +64,12 @@ class TestDecryptAssemblyPacket(TFCTestCase):
         self.assert_se("Warning! Loaded zero-key for packet decryption.",
                        decrypt_assembly_packet, packet, *self.args)
 
-    def test_invalid_harac_ct_raises_se(self) -> None:
+    def test_invalid_harac_ct_raises_soft_error(self) -> None:
         packet = assembly_packet_creator(MESSAGE, payload="Test message", encrypt_packet=True, tamper_harac=True)[0]
         self.assert_se("Warning! Received packet from Alice had an invalid hash ratchet MAC.",
                        decrypt_assembly_packet, packet, *self.args)
 
-    def test_decryption_with_zero_rx_hek_raises_se(self) -> None:
+    def test_decryption_with_zero_rx_hek_raises_soft_error(self) -> None:
         # Setup
         keyset       = self.key_list.get_keyset(nick_to_pub_key("Alice"))
         keyset.rx_hk = bytes(SYMMETRIC_KEY_LENGTH)
@@ -78,7 +78,7 @@ class TestDecryptAssemblyPacket(TFCTestCase):
         # Test
         self.assert_se("Warning! Loaded zero-key for packet decryption.", decrypt_assembly_packet, packet, *self.args)
 
-    def test_expired_harac_raises_se(self) -> None:
+    def test_expired_harac_raises_soft_error(self) -> None:
         # Setup
         self.keyset.rx_harac = 1
 
@@ -93,7 +93,7 @@ class TestDecryptAssemblyPacket(TFCTestCase):
         self.assert_se("Dropped packet from Alice.",
                        decrypt_assembly_packet, packet, *self.args)
 
-    def test_invalid_packet_ct_raises_se(self) -> None:
+    def test_invalid_packet_ct_raises_soft_error(self) -> None:
         packet = assembly_packet_creator(MESSAGE, payload="Test message", encrypt_packet=True, tamper_message=True)[0]
         self.assert_se("Warning! Received packet from Alice had an invalid MAC.",
                        decrypt_assembly_packet, packet, *self.args)
@@ -148,7 +148,7 @@ class TestPacket(TFCTestCase):
         """Post-test actions."""
         cleanup(self.unit_test_dir)
 
-    def test_invalid_assembly_packet_header_raises_se(self) -> None:
+    def test_invalid_assembly_packet_header_raises_soft_error(self) -> None:
         # Setup
         packet   = Packet(self.onion_pub_key, ORIGIN_CONTACT_HEADER, MESSAGE, self.contact, self.settings)
         a_packet = assembly_packet_creator(MESSAGE, payload=self.short_msg, s_header_override=b'i')[0]
@@ -157,7 +157,7 @@ class TestPacket(TFCTestCase):
         self.assert_se("Error: Received packet had an invalid assembly packet header.", packet.add_packet, a_packet)
         self.assertEqual(packet.log_masking_ctr, 1)
 
-    def test_missing_start_packet_raises_se(self) -> None:
+    def test_missing_start_packet_raises_soft_error(self) -> None:
         # Setup
         packet = Packet(self.onion_pub_key, ORIGIN_USER_HEADER, MESSAGE, self.contact, self.settings)
 
@@ -179,7 +179,7 @@ class TestPacket(TFCTestCase):
                          self.whisper_header + PRIVATE_MESSAGE_HEADER + self.short_msg.encode())
         self.assertEqual(packet.log_ct_list, [b'test_ct'])
 
-    def test_compression_error_raises_se(self) -> None:
+    def test_compression_error_raises_soft_error(self) -> None:
         # Setup
         packet      = Packet(self.onion_pub_key, ORIGIN_USER_HEADER, MESSAGE, self.contact, self.settings)
         packet_list = assembly_packet_creator(MESSAGE, self.short_msg, tamper_compression=True)
@@ -203,7 +203,7 @@ class TestPacket(TFCTestCase):
         self.assertEqual(message,  self.whisper_header + PRIVATE_MESSAGE_HEADER + self.msg.encode())
         self.assertEqual(packet.log_ct_list, 3 * [b'test_ct'])
 
-    def test_decryption_error_raises_se(self) -> None:
+    def test_decryption_error_raises_soft_error(self) -> None:
         # Setup
         packet      = Packet(self.onion_pub_key, ORIGIN_USER_HEADER, MESSAGE, self.contact, self.settings)
         packet_list = assembly_packet_creator(MESSAGE, self.msg, tamper_ciphertext=True)
@@ -235,7 +235,7 @@ class TestPacket(TFCTestCase):
         self.assertIsNone(packet.assemble_and_store_file(self.ts, self.onion_pub_key, self.window_list))
         self.assertTrue(os.path.isfile(f'{DIR_RECV_FILES}Alice/testfile.txt.1'))
 
-    def test_short_file_from_user_raises_se(self) -> None:
+    def test_short_file_from_user_raises_soft_error(self) -> None:
         # Setup
         packet  = Packet(self.onion_pub_key, ORIGIN_USER_HEADER, FILE, self.contact, self.settings)
         packets = split_to_assembly_packets(self.short_f_data, FILE)
@@ -245,7 +245,7 @@ class TestPacket(TFCTestCase):
             self.assert_se("Ignored file from the user.", packet.add_packet, p)
         self.assertEqual(packet.log_masking_ctr, 1)
 
-    def test_unauthorized_file_from_contact_raises_se(self) -> None:
+    def test_unauthorized_file_from_contact_raises_soft_error(self) -> None:
         # Setup
         self.contact.file_reception = False
 
@@ -305,7 +305,7 @@ class TestPacket(TFCTestCase):
             self.assert_se("Alert! File reception disabled mid-transfer.", packet.add_packet, p)
         self.assertEqual(packet.log_masking_ctr, len(packet_list))
 
-    def test_long_file_from_user_raises_se(self) -> None:
+    def test_long_file_from_user_raises_soft_error(self) -> None:
         # Setup
         packet      = Packet(self.onion_pub_key, ORIGIN_USER_HEADER, FILE, self.contact, self.settings)
         packet_list = assembly_packet_creator(FILE)
@@ -314,7 +314,7 @@ class TestPacket(TFCTestCase):
         self.assert_se("Ignored file from the user.", packet.add_packet, packet_list[0])
         self.assertEqual(packet.log_masking_ctr, 1)
 
-    def test_unauthorized_long_file_raises_se(self) -> None:
+    def test_unauthorized_long_file_raises_soft_error(self) -> None:
         # Setup
         self.contact.file_reception = False
 
@@ -326,7 +326,7 @@ class TestPacket(TFCTestCase):
                        packet.add_packet, packet_list[0])
         self.assertEqual(packet.log_masking_ctr, 1)
 
-    def test_invalid_long_file_header_raises_se(self) -> None:
+    def test_invalid_long_file_header_raises_soft_error(self) -> None:
         # Setup
         packet      = Packet(self.onion_pub_key, ORIGIN_CONTACT_HEADER, FILE, self.contact, self.settings)
         packet_list = assembly_packet_creator(FILE, file_name=UNDECODABLE_UNICODE)
@@ -390,7 +390,7 @@ class TestPacket(TFCTestCase):
         self.assertEqual(packet.assemble_command_packet(), command)
         self.assertEqual(packet.log_masking_ctr, 0)
 
-    def test_long_command_hash_mismatch_raises_se(self) -> None:
+    def test_long_command_hash_mismatch_raises_soft_error(self) -> None:
         # Setup
         packet      = Packet(LOCAL_ID, ORIGIN_CONTACT_HEADER, COMMAND, self.contact, self.settings)
         packet_list = assembly_packet_creator(COMMAND, os.urandom(500), tamper_cmd_hash=True)
@@ -402,7 +402,7 @@ class TestPacket(TFCTestCase):
         self.assert_se("Error: Received an invalid command.", packet.assemble_command_packet)
         self.assertEqual(packet.log_masking_ctr, 0)
 
-    def test_long_command_compression_error_raises_se(self) -> None:
+    def test_long_command_compression_error_raises_soft_error(self) -> None:
         # Setup
         packet      = Packet(LOCAL_ID, ORIGIN_CONTACT_HEADER, COMMAND, self.contact, self.settings)
         packet_list = assembly_packet_creator(COMMAND, os.urandom(500), tamper_compression=True)

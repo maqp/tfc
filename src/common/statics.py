@@ -21,7 +21,7 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 
 """Program details"""
 TFC         = 'TFC'
-VERSION     = '1.20.02'
+VERSION     = '1.20.03'
 TRANSMITTER = 'Transmitter'
 RECEIVER    = 'Receiver'
 RELAY       = 'Relay'
@@ -502,6 +502,12 @@ DST_DD_LISTEN_SOCKET  = 5007
 DST_LISTEN_SOCKET     = 5008
 DD_ANIMATION_LENGTH   = 16
 DD_OFFSET_FROM_CENTER = 4
+
+# Qubes related
+QUBES_SRC_LISTEN_SOCKET = 2063
+QUBES_DST_LISTEN_SOCKET = 2064
+SOCKET_BUFFER_SIZE      = 4096
+QUBES_RX_IP_ADDR_FILE   = 'rx_ip_addr'
 
 # Field lengths
 ENCODED_BOOLEAN_LENGTH  = 1

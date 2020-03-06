@@ -76,7 +76,7 @@ class TestRxWindow(TFCTestCase):
         self.assertEqual(window.window_contacts[0].onion_pub_key, nick_to_pub_key("Alice"))
         self.assertEqual(window.name, 'test_group')
 
-    def test_invalid_uid_raises_se(self) -> None:
+    def test_invalid_uid_raises_soft_error(self) -> None:
         self.assert_se("Invalid window 'mfqwcylbmfqwcylbmfqwcylbmfqwcylbmfqwcylbmfqwcylbmfqwbfad'.",
                        self.create_window, ONION_SERVICE_PUBLIC_KEY_LENGTH * b'a')
 

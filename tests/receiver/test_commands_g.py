@@ -39,7 +39,7 @@ class TestGroupCreate(TFCTestCase):
         self.window_list = WindowList()
         self.group_id    = group_name_to_group_id('test_group')
 
-    def test_too_many_purp_accounts_raises_se(self) -> None:
+    def test_too_many_purp_accounts_raises_soft_error(self) -> None:
         # Setup
         create_list   = [nick_to_pub_key(str(n)) for n in range(51)]
         cmd_data      = self.group_id + b'test_group' + US_BYTE + b''.join(create_list)
@@ -52,7 +52,7 @@ class TestGroupCreate(TFCTestCase):
         self.assert_se("Error: TFC settings only allow 50 members per group.",
                        group_create, cmd_data, self.ts, self.window_list, contact_list, group_list, self.settings)
 
-    def test_full_group_list_raises_se(self) -> None:
+    def test_full_group_list_raises_soft_error(self) -> None:
         # Setup
         cmd_data     = self.group_id + b'test_group' + US_BYTE + nick_to_pub_key('51')
         group_list   = GroupList(groups=[f"test_group_{n}" for n in range(50)])
@@ -85,7 +85,7 @@ class TestGroupAdd(TFCTestCase):
         self.settings    = Settings()
         self.window_list = WindowList()
 
-    def test_too_large_final_member_list_raises_se(self) -> None:
+    def test_too_large_final_member_list_raises_soft_error(self) -> None:
         # Setup
         group_list    = GroupList(groups=['test_group'])
         contact_list  = ContactList(nicks=[str(n) for n in range(51)])
@@ -97,7 +97,7 @@ class TestGroupAdd(TFCTestCase):
         self.assert_se("Error: TFC settings only allow 50 members per group.",
                        group_add, cmd_data, self.ts, self.window_list, contact_list, group_list, self.settings)
 
-    def test_unknown_group_id_raises_se(self) -> None:
+    def test_unknown_group_id_raises_soft_error(self) -> None:
         # Setup
         group_list   = GroupList(groups=['test_group'])
         contact_list = ContactList(nicks=[str(n) for n in range(21)])
@@ -137,7 +137,7 @@ class TestGroupRemove(TFCTestCase):
         self.group.members = self.contact_list.contacts[:19]
         self.settings      = Settings()
 
-    def test_unknown_group_id_raises_se(self) -> None:
+    def test_unknown_group_id_raises_soft_error(self) -> None:
         # Setup
         group_list   = GroupList(groups=['test_group'])
         contact_list = ContactList(nicks=[str(n) for n in range(21)])
@@ -161,12 +161,12 @@ class TestGroupDelete(TFCTestCase):
         self.window_list = WindowList()
         self.group_list  = GroupList(groups=['test_group'])
 
-    def test_missing_group_raises_se(self) -> None:
+    def test_missing_group_raises_soft_error(self) -> None:
         cmd_data = group_name_to_group_id('test_group2')
         self.assert_se("Error: No group with ID '2e7mHQznTMsP6' found.",
                        group_delete, cmd_data, self.ts, self.window_list, self.group_list)
 
-    def test_unknown_group_id_raises_se(self) -> None:
+    def test_unknown_group_id_raises_soft_error(self) -> None:
         # Setup
         group_list = GroupList(groups=['test_group'])
         cmd_data   = group_name_to_group_id('test_group2')
@@ -193,21 +193,21 @@ class TestGroupRename(TFCTestCase):
         self.contact_list        = ContactList(nicks=['alice'])
         self.args                = self.ts, self.window_list, self.contact_list, self.group_list
 
-    def test_missing_group_id_raises_se(self) -> None:
+    def test_missing_group_id_raises_soft_error(self) -> None:
         # Setup
         cmd_data = group_name_to_group_id('test_group2') + b'new_name'
 
         # Test
         self.assert_se("Error: No group with ID '2e7mHQznTMsP6' found.", group_rename, cmd_data, *self.args)
 
-    def test_invalid_group_name_encoding_raises_se(self) -> None:
+    def test_invalid_group_name_encoding_raises_soft_error(self) -> None:
         # Setup
         cmd_data = group_name_to_group_id('test_group') + b'new_name' + UNDECODABLE_UNICODE
 
         # Test
         self.assert_se("Error: New name for group 'test_group' was invalid.", group_rename, cmd_data, *self.args)
 
-    def test_invalid_group_name_raises_se(self) -> None:
+    def test_invalid_group_name_raises_soft_error(self) -> None:
         # Setup
         cmd_data = group_name_to_group_id('test_group') + b'new_name\x1f'
 

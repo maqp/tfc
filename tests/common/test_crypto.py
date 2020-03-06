@@ -39,8 +39,8 @@ import nacl.utils
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey
 from cryptography.hazmat.primitives.serialization   import Encoding, NoEncryption, PrivateFormat
 
-from src.common.crypto  import argon2_kdf, auth_and_decrypt, blake2b, byte_padding, check_kernel_version, csprng
-from src.common.crypto  import encrypt_and_sign, rm_padding_bytes, X448
+from src.common.crypto  import (argon2_kdf, auth_and_decrypt, blake2b, byte_padding, check_kernel_version, csprng,
+                                encrypt_and_sign, rm_padding_bytes, X448)
 from src.common.statics import (ARGON2_MIN_MEMORY_COST, ARGON2_MIN_PARALLELISM, ARGON2_MIN_TIME_COST,
                                 ARGON2_SALT_LENGTH, BLAKE2_DIGEST_LENGTH, BLAKE2_DIGEST_LENGTH_MAX,
                                 BLAKE2_DIGEST_LENGTH_MIN, BLAKE2_KEY_LENGTH_MAX, BLAKE2_PERSON_LENGTH_MAX,
@@ -125,7 +125,7 @@ class TestBLAKE2bWrapper(unittest.TestCase):
     These tests ensure the BLAKE2b implementation detects invalid
     parameters.
     """
-    
+
     def setUp(self) -> None:
         """Pre-test actions."""
         self.test_string = b'test_string'
@@ -184,7 +184,7 @@ class TestArgon2KDF(unittest.TestCase):
     output of the argon2_cffi library to the output of the command-line
     utility under those input parameters.
 
-     [1] https://tools.ietf.org/html/draft-irtf-cfrg-argon2-03#section-6.3
+     [1] https://tools.ietf.org/html/draft-irtf-cfrg-argon2-09#section-5.3
      [2] https://github.com/P-H-C/phc-winner-argon2#command-line-utility
     """
 
@@ -339,8 +339,8 @@ class TestX448(unittest.TestCase):
 
     The pyca/cryptography library does not provide bindings for the
     OpenSSL's X448 internals, but both KATs are done by OpenSSL tests:
-        https://github.com/openssl/openssl/blob/master/test/curve448_internal_test.c#L654
-        https://github.com/openssl/openssl/blob/master/test/curve448_internal_test.c#L668
+        https://github.com/openssl/openssl/blob/master/test/curve448_internal_test.c#L655
+        https://github.com/openssl/openssl/blob/master/test/curve448_internal_test.c#L669
     """
     sk_alice = bytes.fromhex(
         '9a8f4925d1519f5775cf46b04b5800d4ee9ee8bae8bc5565d498c28d'
@@ -446,23 +446,23 @@ class TestX448(unittest.TestCase):
         self.assertEqual(shared_secret1, blake2b(TestX448.shared_secret))
         self.assertEqual(shared_secret2, blake2b(TestX448.shared_secret))
 
-    def test_non_unique_keys_raise_critical_error(self) -> None:
+    def test_non_unique_subkeys_raise_critical_error(self) -> None:
         # Setup
         shared_key    = os.urandom(SYMMETRIC_KEY_LENGTH)
         tx_public_key = os.urandom(TFC_PUBLIC_KEY_LENGTH)
 
         # Test
         with self.assertRaises(SystemExit):
-            X448.derive_keys(shared_key, tx_public_key, tx_public_key)
+            X448.derive_subkeys(shared_key, tx_public_key, tx_public_key)
 
-    def test_x448_key_derivation(self) -> None:
+    def test_x448_subkey_derivation(self) -> None:
         # Setup
         shared_key    = os.urandom(SYMMETRIC_KEY_LENGTH)
         tx_public_key = os.urandom(TFC_PUBLIC_KEY_LENGTH)
         rx_public_key = os.urandom(TFC_PUBLIC_KEY_LENGTH)
 
         # Test
-        key_set = X448.derive_keys(shared_key, tx_public_key, rx_public_key)
+        key_set = X448.derive_subkeys(shared_key, tx_public_key, rx_public_key)
 
         # Test that correct number of keys were returned
         self.assertEqual(len(key_set), 6)
@@ -486,7 +486,7 @@ class TestXChaCha20Poly1305(unittest.TestCase):
     ciphertext and tag.
 
     IETF test vectors:
-        https://tools.ietf.org/html/draft-irtf-cfrg-xchacha-01#appendix-A.1
+        https://tools.ietf.org/html/draft-irtf-cfrg-xchacha-03#appendix-A.3
 
     Libsodium test vectors:
         Message: https://github.com/jedisct1/libsodium/blob/master/test/default/aead_xchacha20poly1305.c#L22
@@ -500,38 +500,28 @@ class TestXChaCha20Poly1305(unittest.TestCase):
     """
 
     ietf_plaintext = bytes.fromhex(
-        '4c 61 64 69 65 73 20 61 6e 64 20 47 65 6e 74 6c'
-        '65 6d 65 6e 20 6f 66 20 74 68 65 20 63 6c 61 73'
-        '73 20 6f 66 20 27 39 39 3a 20 49 66 20 49 20 63'
-        '6f 75 6c 64 20 6f 66 66 65 72 20 79 6f 75 20 6f'
-        '6e 6c 79 20 6f 6e 65 20 74 69 70 20 66 6f 72 20'
-        '74 68 65 20 66 75 74 75 72 65 2c 20 73 75 6e 73'
-        '63 72 65 65 6e 20 77 6f 75 6c 64 20 62 65 20 69'
-        '74 2e')
+        '4c616469657320616e642047656e746c656d656e206f662074686520636c6173'
+        '73206f66202739393a204966204920636f756c64206f6666657220796f75206f'
+        '6e6c79206f6e652074697020666f7220746865206675747572652c2073756e73'
+        '637265656e20776f756c642062652069742e')
 
     ietf_ad = bytes.fromhex(
-        '50 51 52 53 c0 c1 c2 c3 c4 c5 c6 c7')
+        '50515253c0c1c2c3c4c5c6c7')
 
     ietf_key = bytes.fromhex(
-        '80 81 82 83 84 85 86 87 88 89 8a 8b 8c 8d 8e 8f'
-        '90 91 92 93 94 95 96 97 98 99 9a 9b 9c 9d 9e 9f')
+        '808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f')
 
     ietf_nonce = bytes.fromhex(
-        '40 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f'
-        '50 51 52 53 54 55 56 57')
+        '404142434445464748494a4b4c4d4e4f5051525354555657')
 
     ietf_ciphertext = bytes.fromhex(
-        'bd 6d 17 9d 3e 83 d4 3b 95 76 57 94 93 c0 e9 39'
-        '57 2a 17 00 25 2b fa cc be d2 90 2c 21 39 6c bb'
-        '73 1c 7f 1b 0b 4a a6 44 0b f3 a8 2f 4e da 7e 39'
-        'ae 64 c6 70 8c 54 c2 16 cb 96 b7 2e 12 13 b4 52'
-        '2f 8c 9b a4 0d b5 d9 45 b1 1b 69 b9 82 c1 bb 9e'
-        '3f 3f ac 2b c3 69 48 8f 76 b2 38 35 65 d3 ff f9'
-        '21 f9 66 4c 97 63 7d a9 76 88 12 f6 15 c6 8b 13'
-        'b5 2e')
+        'bd6d179d3e83d43b9576579493c0e939572a1700252bfaccbed2902c21396cbb'
+        '731c7f1b0b4aa6440bf3a82f4eda7e39ae64c6708c54c216cb96b72e1213b452'
+        '2f8c9ba40db5d945b11b69b982c1bb9e3f3fac2bc369488f76b2383565d3fff9'
+        '21f9664c97637da9768812f615c68b13b52e')
 
     ietf_tag = bytes.fromhex(
-        'c0:87:59:24:c1:c7:98:79:47:de:af:d8:78:0a:cf:49'.replace(':', ''))
+        'c0875924c1c7987947deafd8780acf49')
 
     nonce_ct_tag_ietf = ietf_nonce + ietf_ciphertext + ietf_tag
 
@@ -712,7 +702,7 @@ class TestCSPRNG(unittest.TestCase):
         https://github.com/smuellerDD/lrng/tree/master/test
 
     The report on the statistical tests of the LRNG can be found from
-    Chapter 3 (pp.26-48) of the whitepaper:
+    Chapter 3 (pp.30-46) of the white paper:
         https://www.chronox.de/lrng/doc/lrng.pdf
 
     Further analysis of the LRNG can be found from Chapters 4-8
@@ -742,7 +732,7 @@ class TestCSPRNG(unittest.TestCase):
         with self.assertRaises(SystemExit):
             csprng()
 
-    def test_subceeding_hash_function_min_digest_size_raises_critical_error(self) -> None:
+    def test_subceding_hash_function_min_digest_size_raises_critical_error(self) -> None:
         with self.assertRaises(SystemExit):
             csprng(BLAKE2_DIGEST_LENGTH_MIN-1)
 

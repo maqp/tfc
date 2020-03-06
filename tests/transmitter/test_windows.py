@@ -33,8 +33,8 @@ from src.transmitter.windows import select_window, TxWindow
 
 
 from tests.mock_classes import ContactList, create_contact, Gateway, GroupList, OnionService, Settings, UserInput
-from tests.utils        import gen_queue_dict, group_name_to_group_id, nick_to_onion_address, nick_to_pub_key
-from tests.utils        import tear_queues, TFCTestCase, VALID_ECDHE_PUB_KEY
+from tests.utils        import (gen_queue_dict, group_name_to_group_id, nick_to_onion_address, nick_to_pub_key,
+                                tear_queues, TFCTestCase, VALID_ECDHE_PUB_KEY)
 
 
 class TestTxWindow(TFCTestCase):
@@ -72,7 +72,7 @@ class TestTxWindow(TFCTestCase):
         # Test
         self.assertEqual(len(self.window), 2)
 
-    def test_group_window_change_during_traffic_masking_raises_se(self) -> None:
+    def test_group_window_change_during_traffic_masking_raises_soft_error(self) -> None:
         # Setup
         self.settings.traffic_masking = True
         self.window.uid               = 'test_group'
@@ -81,7 +81,7 @@ class TestTxWindow(TFCTestCase):
         self.assert_se("Error: Can't change window during traffic masking.",
                        self.window.select_tx_window, *self.args, selection='test_group_2', cmd=True)
 
-    def test_contact_window_change_during_traffic_masking_raises_se(self) -> None:
+    def test_contact_window_change_during_traffic_masking_raises_soft_error(self) -> None:
         # Setup
         self.settings.traffic_masking = True
         self.window.uid               = nick_to_pub_key("Alice")
@@ -109,7 +109,7 @@ class TestTxWindow(TFCTestCase):
         self.assertIsNone(self.window.select_tx_window(*self.args, selection='test_group', cmd=True))
         self.assertEqual(self.window.uid, group_name_to_group_id('test_group'))
 
-    def test_invalid_selection_raises_se(self) -> None:
+    def test_invalid_selection_raises_soft_error(self) -> None:
         # Setup
         self.window.uid = nick_to_pub_key("Alice")
 
@@ -275,12 +275,12 @@ class TestTxWindow(TFCTestCase):
 
     @mock.patch('time.sleep',     return_value=None)
     @mock.patch('builtins.input', side_effect=['/rm '])
-    def test_missing_account_when_removing_raises_se(self, *_: Any) -> None:
+    def test_missing_account_when_removing_raises_soft_error(self, *_: Any) -> None:
         self.assert_se("Error: No account specified.", self.window.select_tx_window, *self.args)
 
     @mock.patch('time.sleep',     return_value=None)
     @mock.patch('builtins.input', side_effect=['/rm Charlie', 'yes'])
-    def test_unknown_account_when_removing_raises_se(self, *_: Any) -> None:
+    def test_unknown_account_when_removing_raises_soft_error(self, *_: Any) -> None:
         self.assert_se("Error: Unknown contact 'Charlie'.", self.window.select_tx_window, *self.args)
 
     @mock.patch('time.sleep',     return_value=None)
@@ -301,7 +301,7 @@ class TestTxWindow(TFCTestCase):
 
     @mock.patch('time.sleep',     return_value=None)
     @mock.patch('builtins.input', side_effect=['/help'])
-    def test_invalid_command_raises_se(self, *_: Any) -> None:
+    def test_invalid_command_raises_soft_error(self, *_: Any) -> None:
         self.assert_se("Error: Invalid command.", self.window.select_tx_window, *self.args)
 
 
@@ -323,7 +323,7 @@ class TestSelectWindow(TFCTestCase):
         """Post-test actions."""
         tear_queues(self.queues)
 
-    def test_invalid_selection_raises_se(self) -> None:
+    def test_invalid_selection_raises_soft_error(self) -> None:
         # Setup
         self.user_input.plaintext = 'msg'
         self.assert_se("Error: Invalid recipient.", select_window, *self.args)

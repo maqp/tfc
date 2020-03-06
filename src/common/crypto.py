@@ -210,7 +210,7 @@ def argon2_kdf(password:    str,    # Password to derive the key from
      [1] https://github.com/P-H-C/phc-winner-argon2/blob/master/argon2-specs.pdf
      [2] https://password-hashing.net/submissions/specs/Catena-v5.pdf
      [3] https://crypto.stanford.edu/balloon/
-     [4] https://tools.ietf.org/html/draft-irtf-cfrg-argon2-06#section-9.4
+     [4] https://tools.ietf.org/html/draft-irtf-cfrg-argon2-09#section-8.4
      [5] https://github.com/P-H-C/phc-winner-argon2
          https://github.com/hynek/argon2_cffi
     """
@@ -355,14 +355,14 @@ class X448(object):
            fully seeded. This is the same case as with TFC's `csprng()`
            function.
 
-         [1] https://github.com/pyca/cryptography/blob/2.7/src/cryptography/hazmat/primitives/asymmetric/x448.py#L38
-         [2] https://github.com/pyca/cryptography/blob/2.7/src/cryptography/hazmat/backends/openssl/backend.py#L2445
-         [3] https://github.com/pyca/cryptography/blob/2.7/src/cryptography/hazmat/backends/openssl/backend.py#L115
-         [4] https://github.com/pyca/cryptography/blob/2.7/src/cryptography/hazmat/backends/openssl/backend.py#L122
+         [1] https://github.com/pyca/cryptography/blob/2.8/src/cryptography/hazmat/primitives/asymmetric/x448.py#L38
+         [2] https://github.com/pyca/cryptography/blob/2.8/src/cryptography/hazmat/backends/openssl/backend.py#L2483
+         [3] https://github.com/pyca/cryptography/blob/2.8/src/cryptography/hazmat/backends/openssl/backend.py#L118
+         [4] https://github.com/pyca/cryptography/blob/2.8/src/cryptography/hazmat/backends/openssl/backend.py#L125
          [5] https://cryptography.io/en/latest/hazmat/backends/openssl/#activate_osrandom_engine
          [6] https://cryptography.io/en/latest/hazmat/backends/openssl/#os-random-engine
          [7] https://cryptography.io/en/latest/hazmat/backends/openssl/#os-random-sources
-         [8] https://github.com/pyca/cryptography/blob/master/src/_cffi_src/openssl/src/osrandom_engine.c#L391
+         [8] https://github.com/pyca/cryptography/blob/master/src/_cffi_src/openssl/src/osrandom_engine.c#L395
         """
         return X448PrivateKey.generate()
 
@@ -419,11 +419,13 @@ class X448(object):
         return blake2b(shared_secret, digest_size=SYMMETRIC_KEY_LENGTH)
 
     @staticmethod
-    def derive_keys(dh_shared_key:          bytes,
-                    tfc_public_key_user:    bytes,
-                    tfc_public_key_contact: bytes
-                    ) -> Tuple[bytes, bytes, bytes, bytes, bytes, bytes]:
-        """Create domain separated message and header keys and fingerprints from shared key.
+    def derive_subkeys(dh_shared_key:          bytes,
+                       tfc_public_key_user:    bytes,
+                       tfc_public_key_contact: bytes
+                       ) -> Tuple[bytes, bytes, bytes, bytes, bytes, bytes]:
+        """\
+        Create domain separated message and header subkeys and fingerprints
+        from the shared key.
 
         Domain separate unidirectional keys from shared key by using public
         keys as message and the context variable as personalization string.
@@ -451,7 +453,7 @@ class X448(object):
         key_tuple = tx_mk, rx_mk, tx_hk, rx_hk, tx_fp, rx_fp
 
         if len(set(key_tuple)) != len(key_tuple):
-            raise CriticalError("Derived keys were not unique.")
+            raise CriticalError("Derived subkeys were not unique.")
 
         return key_tuple
 
@@ -515,7 +517,7 @@ def encrypt_and_sign(plaintext: bytes,       # Plaintext to encrypt
     tested by TFC unit tests. The testing is done in limited scope by
     using the libsodium and official IETF test vectors.
 
-      [1] https://tools.ietf.org/html/draft-irtf-cfrg-xchacha-01
+      [1] https://tools.ietf.org/html/draft-irtf-cfrg-xchacha-03
       [2] https://tools.ietf.org/html/rfc8439
       [3] https://download.libsodium.org/doc/secret-key_cryptography/aead/chacha20-poly1305/xchacha20-poly1305_construction
       [4] https://cr.yp.to/snuffle/keysizes.pdf
@@ -887,8 +889,8 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
     entropy estimator by 1024 bits.[1; pp.59-60]
 
      [1] https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/LinuxRNG/LinuxRNG_EN.pdf
-     [2] https://github.com/torvalds/linux/blob/master/drivers/char/random.c#L791
-     [3] https://github.com/torvalds/linux/blob/master/drivers/char/random.c#L1032
+     [2] https://github.com/torvalds/linux/blob/master/drivers/char/random.c#L734
+     [3] https://github.com/torvalds/linux/blob/master/drivers/char/random.c#L952
 
     The ChaCha20 DRNG
     =================
@@ -994,10 +996,10 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
 
      [1] https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/LinuxRNG/LinuxRNG_EN.pdf
      [2] https://lkml.org/lkml/2019/5/30/867
-     [3] https://github.com/torvalds/linux/blob/master/drivers/char/random.c#L889
-         https://github.com/torvalds/linux/blob/master/drivers/char/random.c#L1058
-     [4] https://github.com/torvalds/linux/blob/master/lib/chacha.c#L87
-         https://github.com/torvalds/linux/blob/master/drivers/char/random.c#L1064
+     [3] https://github.com/torvalds/linux/blob/master/drivers/char/random.c#L810
+         https://github.com/torvalds/linux/blob/master/drivers/char/random.c#L977
+     [4] https://github.com/torvalds/linux/blob/master/lib/crypto/chacha.c#L89
+         https://github.com/torvalds/linux/blob/master/drivers/char/random.c#L983
 
 
     GETRANDOM and Python

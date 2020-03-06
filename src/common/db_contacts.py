@@ -25,8 +25,8 @@ import typing
 from typing import Iterable, Iterator, List, Optional, Sized
 
 from src.common.database   import TFCDatabase
-from src.common.encoding   import bool_to_bytes, pub_key_to_onion_address, str_to_bytes, pub_key_to_short_address
-from src.common.encoding   import bytes_to_bool, onion_address_to_pub_key, bytes_to_str
+from src.common.encoding   import (bool_to_bytes, pub_key_to_onion_address, str_to_bytes, pub_key_to_short_address,
+                                   bytes_to_bool, onion_address_to_pub_key, bytes_to_str)
 from src.common.exceptions import CriticalError
 from src.common.misc       import ensure_dir, get_terminal_width, separate_headers, split_byte_string
 from src.common.output     import clear_screen
@@ -111,8 +111,8 @@ class Contact(object):
 
       notifications: This setting defines whether, in situations where
                      some other window is active, the Receiver Program
-                     displays a notification about the contact sending a
-                     new message to their window. The setting has no
+                     displays a notification about the contact sending
+                     a new message to their window. The setting has no
                      effect on user's Transmitter Program.
 
     tfc_private_key: This value is an ephemerally stored private key
@@ -139,8 +139,8 @@ class Contact(object):
                  ) -> None:
         """Create a new Contact object.
 
-        `self.short_address` is a truncated version of the account used
-        to identify TFC account in printed messages.
+        `self.short_address` is the truncated version of the account
+        used to identify TFC account in printed messages.
         """
         self.onion_pub_key   = onion_pub_key
         self.nick            = nick
@@ -473,8 +473,7 @@ class ContactList(Iterable[Contact], Sized):
                     KEX_STATUS_UNVERIFIED: f"{ECDHE} (Unverified)",
                     KEX_STATUS_VERIFIED:   f"{ECDHE} (Verified)",
                     KEX_STATUS_NO_RX_PSK:  f"{PSK}  (No contact key)",
-                    KEX_STATUS_HAS_RX_PSK: PSK
-                    }
+                    KEX_STATUS_HAS_RX_PSK: PSK}
 
         # Populate columns with contact data
         for c in self.get_list_of_contacts():

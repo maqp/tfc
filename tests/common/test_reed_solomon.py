@@ -75,66 +75,66 @@ class TestReedSolomon(unittest.TestCase):
         self.assertEqual(dec_enc2, enc)
 
     def test_prim_fcr_basic(self) -> None:
-        nn        = 30
-        kk        = 18
-        tt        = nn - kk
-        rs        = RSCodec(tt, fcr=120, prim=0x187)
-        hexencmsg = ('00faa123555555c000000354064432'
+        nn          = 30
+        kk          = 18
+        tt          = nn - kk
+        rs          = RSCodec(tt, fcr=120, prim=0x187)
+        hex_enc_msg = ('00faa123555555c000000354064432'
                      'c02800fe97c434e1ff5365cf8fafe4')
-        strf      = str
-        encmsg    = bytearray.fromhex(strf(hexencmsg))
-        decmsg    = encmsg[:kk]
-        tem       = rs.encode(decmsg)
-        self.assertEqual(encmsg, tem, msg="encoded does not match expected")
+        strf        = str
+        enc_msg     = bytearray.fromhex(strf(hex_enc_msg))
+        dec_msg     = enc_msg[:kk]
+        tem         = rs.encode(dec_msg)
+        self.assertEqual(enc_msg, tem, msg="encoded does not match expected")
 
         tdm, rtem = rs.decode(tem)
-        self.assertEqual(tdm, decmsg, msg="decoded does not match original")
-        self.assertEqual(rtem, tem, msg="decoded mesecc does not match original")
+        self.assertEqual(tdm, dec_msg, msg="decoded does not match original")
+        self.assertEqual(rtem, tem,    msg="decoded mesecc does not match original")
 
         tem1 = bytearray(tem)  # Clone a copy
 
         # Encoding and decoding intact message seem OK, so test errors
-        numerrs = tt >> 1  # Inject tt/2 errors (expected to recover fully)
-        for i in sample(range(nn), numerrs):  # inject errors in random places
+        num_errs = tt >> 1  # Inject tt/2 errors (expected to recover fully)
+        for i in sample(range(nn), num_errs):  # inject errors in random places
             tem1[i] ^= 0xff  # flip all 8 bits
         tdm, _ = rs.decode(tem1)
-        self.assertEqual(tdm, decmsg, msg="decoded with errors does not match original")
+        self.assertEqual(tdm, dec_msg, msg="decoded with errors does not match original")
 
         tem1 = bytearray(tem)  # Clone another copy
-        numerrs += 1  # Inject tt/2 + 1 errors (expected to fail and detect it)
-        for i in sample(range(nn), numerrs):  # Inject errors in random places
+        num_errs += 1  # Inject tt/2 + 1 errors (expected to fail and detect it)
+        for i in sample(range(nn), num_errs):  # Inject errors in random places
             tem1[i] ^= 0xff  # Flip all 8 bits
         # If this fails, it means excessive errors not detected
         self.assertRaises(ReedSolomonError, rs.decode, tem1)
 
     def test_prim_fcr_long(self) -> None:
-        nn        = 48
-        kk        = 34
-        tt        = nn - kk
-        rs        = RSCodec(tt, fcr=120, prim=0x187)
-        hexencmsg = ('08faa123555555c000000354064432c0280e1b4d090cfc04'
-                     '887400000003500000000e1985ff9c6b33066ca9f43d12e8')
-        strf      = str
-        encmsg    = bytearray.fromhex(strf(hexencmsg))
-        decmsg    = encmsg[:kk]
-        tem       = rs.encode(decmsg)
-        self.assertEqual(encmsg, tem, msg="encoded does not match expected")
+        nn          = 48
+        kk          = 34
+        tt          = nn - kk
+        rs          = RSCodec(tt, fcr=120, prim=0x187)
+        hex_enc_msg = ('08faa123555555c000000354064432c0280e1b4d090cfc04'
+                       '887400000003500000000e1985ff9c6b33066ca9f43d12e8')
+        strf        = str
+        enc_msg     = bytearray.fromhex(strf(hex_enc_msg))
+        dec_msg     = enc_msg[:kk]
+        tem         = rs.encode(dec_msg)
+        self.assertEqual(enc_msg, tem, msg="encoded does not match expected")
 
         tdm, rtem = rs.decode(tem)
-        self.assertEqual(tdm, decmsg, msg="decoded does not match original")
-        self.assertEqual(rtem, tem, msg="decoded mesecc does not match original")
+        self.assertEqual(tdm, dec_msg, msg="decoded does not match original")
+        self.assertEqual(rtem, tem,    msg="decoded mesecc does not match original")
 
         tem1    = bytearray(tem)
-        numerrs = tt >> 1
-        for i in sample(range(nn), numerrs):
+        num_errs = tt >> 1
+        for i in sample(range(nn), num_errs):
             tem1[i] ^= 0xff
         tdm, rtem = rs.decode(tem1)
-        self.assertEqual(tdm, decmsg, msg="decoded with errors does not match original")
-        self.assertEqual(rtem, tem, msg="decoded mesecc with errors does not match original")
+        self.assertEqual(tdm, dec_msg, msg="decoded with errors does not match original")
+        self.assertEqual(rtem, tem,    msg="decoded mesecc with errors does not match original")
 
         tem1     = bytearray(tem)
-        numerrs += 1
-        for i in sample(range(nn), numerrs):
+        num_errs += 1
+        for i in sample(range(nn), num_errs):
             tem1[i] ^= 0xff
         self.assertRaises(ReedSolomonError, rs.decode, tem1)
 

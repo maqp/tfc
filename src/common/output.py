@@ -205,9 +205,9 @@ def print_key(message:    str,                              # Instructive messag
               ) -> None:
     """Print a symmetric key in WIF format.
 
-    If local testing is not enabled, this function adds spacing in the
-    middle of the key, as well as guide letters to help the user keep
-    track of typing progress:
+    If serial-interface based platform is used, this function adds
+    spacing in the middle of the key, as well as guide letters to help
+    the user keep track of typing progress:
 
     Local key encryption keys:
 
@@ -220,7 +220,7 @@ def print_key(message:    str,                              # Instructive messag
         4EcuqaD ddsdsuc gBX2PY2 qR8hReA aeSN2oh JB9w5Cv q6BQjDa PPgzSvW 932aHio sT42SKJ Gu2PpS1 Za3Xrao
     """
     b58key = b58encode(key_bytes, public_key)
-    if settings.local_testing_mode:
+    if settings.local_testing_mode or settings.qubes:
         m_print([message, b58key], box=True)
     else:
         guide, chunk_length = (B58_PUBLIC_KEY_GUIDE, 7) if public_key else (B58_LOCAL_KEY_GUIDE, 3)

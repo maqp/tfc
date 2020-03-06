@@ -41,10 +41,10 @@ class TestFile(TFCTestCase):
         """Post-test actions."""
         cleanup(self.unit_test_dir)
 
-    def test_missing_file_raises_se(self) -> None:
+    def test_missing_file_raises_soft_error(self) -> None:
         self.assert_se("Error: File not found.", File, './testfile.txt', *self.args)
 
-    def test_empty_file_raises_se(self) -> None:
+    def test_empty_file_raises_soft_error(self) -> None:
         # Setup
         with open('testfile.txt', 'wb+') as f:
             f.write(b'')
@@ -52,7 +52,7 @@ class TestFile(TFCTestCase):
         # Test
         self.assert_se("Error: Target file is empty.", File, './testfile.txt', *self.args)
 
-    def test_oversize_filename_raises_se(self) -> None:
+    def test_oversize_filename_raises_soft_error(self) -> None:
         # Setup
         f_name = 250 * 'a' + '.txt'
         with open(f_name, 'wb+') as f:

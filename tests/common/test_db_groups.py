@@ -170,7 +170,7 @@ class TestGroupList(TFCTestCase):
                          + self.settings.max_number_of_groups * self.single_member_data_len
                          + POLY1305_TAG_LENGTH)
 
-        # Reduce setting values from 20 to 10
+        # Reduce group database setting values from 20 to 10
         self.settings.max_number_of_groups        = 10
         self.settings.max_number_of_group_members = 10
 
@@ -244,29 +244,29 @@ class TestGroupList(TFCTestCase):
     def test_add_group(self) -> None:
         members = [create_contact('Laura')]
         self.group_list.add_group('test_group_12', bytes(GROUP_ID_LENGTH), False, False, members)
-        self.group_list.add_group('test_group_12', bytes(GROUP_ID_LENGTH), False, True, members)
+        self.group_list.add_group('test_group_12', bytes(GROUP_ID_LENGTH), False, True,  members)
         self.assertTrue(self.group_list.get_group('test_group_12').notifications)
         self.assertEqual(len(self.group_list), len(self.group_names)+1)
 
     def test_remove_group_by_name(self) -> None:
         self.assertEqual(len(self.group_list), len(self.group_names))
 
-        # Remove non-existing group
+        # Test removing a non-existing group
         self.assertIsNone(self.group_list.remove_group_by_name('test_group_12'))
         self.assertEqual(len(self.group_list), len(self.group_names))
 
-        # Remove existing group
+        # Test removing an existing group
         self.assertIsNone(self.group_list.remove_group_by_name('test_group_11'))
         self.assertEqual(len(self.group_list), len(self.group_names)-1)
 
     def test_remove_group_by_id(self) -> None:
         self.assertEqual(len(self.group_list), len(self.group_names))
 
-        # Remove non-existing group
+        # Test removing a non-existing group
         self.assertIsNone(self.group_list.remove_group_by_id(group_name_to_group_id('test_group_12')))
         self.assertEqual(len(self.group_list), len(self.group_names))
 
-        # Remove existing group
+        # Test removing an existing group
         self.assertIsNone(self.group_list.remove_group_by_id(group_name_to_group_id('test_group_11')))
         self.assertEqual(len(self.group_list), len(self.group_names)-1)
 

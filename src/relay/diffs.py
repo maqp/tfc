@@ -196,34 +196,31 @@ def show_value_diffs(value_type: str,
                      purp_value: str,
                      local_test: bool
                      ) -> None:
-    """Compare purported value with correct value."""
+    """Show differences between purported value and correct value."""
     # Pad with underscores to denote missing chars
     while len(purp_value) < ENCODED_B58_PUB_KEY_LENGTH:
         purp_value += '_'
 
-    replace_l = ''
-    purported = ''
+    rep_arrows = ''
+    purported  = ''
+
     for c1, c2 in zip(purp_value, true_value):
-        if c1 == c2:
-            replace_l += ' '
-            purported += c1
-        else:
-            replace_l += '↓'
-            purported += c1
+        rep_arrows += ' ' if c1 == c2 else '↓'
+        purported  += c1
 
     message_list = [f"Source Computer received an invalid {value_type}.",
                     "See arrows below that point to correct characters."]
 
     if local_test:
-        m_print(message_list + ['', purported, replace_l, true_value], box=True)
+        m_print(message_list + ['', purported, rep_arrows, true_value], box=True)
     else:
         purported  = ' '.join(split_string(purported,  item_len=7))
-        replace_l  = ' '.join(split_string(replace_l,  item_len=7))
+        rep_arrows = ' '.join(split_string(rep_arrows, item_len=7))
         true_value = ' '.join(split_string(true_value, item_len=7))
 
         m_print(message_list + ['',
                                 B58_PUBLIC_KEY_GUIDE,
                                 purported,
-                                replace_l,
+                                rep_arrows,
                                 true_value,
                                 B58_PUBLIC_KEY_GUIDE], box=True)

@@ -30,13 +30,13 @@ from src.common.statics import (COMMAND_PACKET_QUEUE, CONFIRM_CODE_LENGTH, FINGE
                                 KEY_MANAGEMENT_QUEUE, LOCAL_ID, LOG_SETTING_QUEUE, RELAY_PACKET_QUEUE,
                                 TM_COMMAND_PACKET_QUEUE, WIN_TYPE_CONTACT, WIN_TYPE_GROUP)
 
-from src.transmitter.contact import add_new_contact, change_nick, contact_setting, get_onion_address_from_user
-from src.transmitter.contact import remove_contact
+from src.transmitter.contact import (add_new_contact, change_nick, contact_setting, get_onion_address_from_user,
+                                     remove_contact)
 
-from tests.mock_classes import ContactList, create_contact, create_group, Group, GroupList, MasterKey, OnionService
-from tests.mock_classes import Settings, TxWindow, UserInput
-from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, group_name_to_group_id, ignored
-from tests.utils        import nick_to_onion_address, nick_to_pub_key, tear_queues, TFCTestCase, VALID_ECDHE_PUB_KEY
+from tests.mock_classes import (ContactList, create_contact, create_group, Group, GroupList, MasterKey, OnionService,
+                                Settings, TxWindow, UserInput)
+from tests.utils        import (cd_unit_test, cleanup, gen_queue_dict, group_name_to_group_id, ignored,
+                                nick_to_onion_address, nick_to_pub_key, tear_queues, TFCTestCase, VALID_ECDHE_PUB_KEY)
 
 
 class TestAddNewContact(TFCTestCase):
@@ -56,14 +56,14 @@ class TestAddNewContact(TFCTestCase):
             os.remove(f'v4dkh.psk - Give to hpcra')
         tear_queues(self.queues)
 
-    def test_adding_new_contact_during_traffic_masking_raises_se(self) -> None:
+    def test_adding_new_contact_during_traffic_masking_raises_soft_error(self) -> None:
         # Setup
         self.settings.traffic_masking = True
 
         # Test
         self.assert_se("Error: Command is disabled during traffic masking.", add_new_contact, *self.args)
 
-    def test_contact_list_full_raises_se(self) -> None:
+    def test_contact_list_full_raises_soft_error(self) -> None:
         # Setup
         contact_list               = ContactList(nicks=[str(n) for n in range(50)])
         self.contact_list.contacts = contact_list.contacts
@@ -96,7 +96,7 @@ class TestAddNewContact(TFCTestCase):
 
     @mock.patch('time.sleep',     return_value=None)
     @mock.patch('builtins.input', side_effect=KeyboardInterrupt)
-    def test_keyboard_interrupt_raises_se(self, *_: Any) -> None:
+    def test_keyboard_interrupt_raises_soft_error(self, *_: Any) -> None:
         self.assert_se('Contact creation aborted.', add_new_contact, *self.args)
 
 
@@ -147,7 +147,7 @@ class TestRemoveContact(TFCTestCase):
         cleanup(self.unit_test_dir)
         tear_queues(self.queues)
 
-    def test_contact_removal_during_traffic_masking_raises_se(self) -> None:
+    def test_contact_removal_during_traffic_masking_raises_soft_error(self) -> None:
         # Setup
         self.settings.traffic_masking = True
 
@@ -155,13 +155,13 @@ class TestRemoveContact(TFCTestCase):
         self.assert_se("Error: Command is disabled during traffic masking.",
                        remove_contact, UserInput(), None, *self.args)
 
-    def test_missing_account_raises_se(self) -> None:
+    def test_missing_account_raises_soft_error(self) -> None:
         self.assert_se("Error: No account specified.", remove_contact, UserInput('rm '), None, *self.args)
 
     @mock.patch('time.sleep',               return_value=None)
     @mock.patch('shutil.get_terminal_size', return_value=[150, 150])
     @mock.patch('builtins.input',           return_value='Yes')
-    def test_invalid_account_raises_se(self, *_: Any) -> None:
+    def test_invalid_account_raises_soft_error(self, *_: Any) -> None:
         # Setup
         user_input = UserInput(f'rm {nick_to_onion_address("Alice")[:-1]}')
         window     = TxWindow(window_contacts=[self.contact_list.get_contact_by_address_or_nick('Alice')],
@@ -174,7 +174,7 @@ class TestRemoveContact(TFCTestCase):
     @mock.patch('time.sleep',               return_value=None)
     @mock.patch('shutil.get_terminal_size', return_value=[150, 150])
     @mock.patch('builtins.input',           return_value='No')
-    def test_user_abort_raises_se(self, *_: Any) -> None:
+    def test_user_abort_raises_soft_error(self, *_: Any) -> None:
         # Setup
         user_input = UserInput(f'rm {nick_to_onion_address("Alice")}')
 
@@ -264,11 +264,11 @@ class TestChangeNick(TFCTestCase):
         """Post-test actions."""
         tear_queues(self.queues)
 
-    def test_missing_nick_raises_se(self) -> None:
+    def test_missing_nick_raises_soft_error(self) -> None:
         self.assert_se("Error: No nick specified.",
                        change_nick, UserInput("nick "), TxWindow(type=WIN_TYPE_CONTACT), *self.args)
 
-    def test_invalid_nick_raises_se(self) -> None:
+    def test_invalid_nick_raises_soft_error(self) -> None:
         # Setup
         window = TxWindow(type=WIN_TYPE_CONTACT,
                           contact=create_contact('Bob'))
@@ -277,7 +277,7 @@ class TestChangeNick(TFCTestCase):
         self.assert_se("Error: Nick must be printable.",
                        change_nick, UserInput("nick Alice\x01"), window, *self.args)
 
-    def test_no_contact_raises_se(self) -> None:
+    def test_no_contact_raises_soft_error(self) -> None:
         # Setup
         window = TxWindow(type=WIN_TYPE_CONTACT,
                           contact=create_contact('Bob'))
@@ -327,13 +327,13 @@ class TestContactSetting(TFCTestCase):
         """Post-test actions."""
         tear_queues(self.queues)
 
-    def test_invalid_command_raises_se(self) -> None:
+    def test_invalid_command_raises_soft_error(self) -> None:
         self.assert_se("Error: Invalid command.", contact_setting, UserInput('loging on'), None, *self.args)
 
-    def test_missing_parameter_raises_se(self) -> None:
+    def test_missing_parameter_raises_soft_error(self) -> None:
         self.assert_se("Error: Invalid command.", contact_setting, UserInput(''), None, *self.args)
 
-    def test_invalid_extra_parameter_raises_se(self) -> None:
+    def test_invalid_extra_parameter_raises_soft_error(self) -> None:
         self.assert_se("Error: Invalid command.", contact_setting, UserInput('logging on al'), None, *self.args)
 
     def test_enable_logging_for_user(self) -> None:

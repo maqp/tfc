@@ -25,8 +25,8 @@ from datetime import datetime
 from unittest import mock
 from typing   import Any
 
-from src.common.output  import clear_screen, group_management_print, m_print, phase, print_fingerprint, print_key
-from src.common.output  import print_title, print_on_previous_line, print_spacing, rp_print
+from src.common.output  import (clear_screen, group_management_print, m_print, phase, print_fingerprint, print_key,
+                                print_title, print_on_previous_line, print_spacing, rp_print)
 from src.common.statics import (ADDED_MEMBERS, ALREADY_MEMBER, BOLD_ON, CLEAR_ENTIRE_LINE, CLEAR_ENTIRE_SCREEN,
                                 CURSOR_LEFT_UP_CORNER, CURSOR_UP_ONE_LINE, DONE, FINGERPRINT_LENGTH, NEW_GROUP,
                                 NORMAL_TEXT, NOT_IN_GROUP, REMOVED_MEMBERS, RX, SYMMETRIC_KEY_LENGTH, TX,

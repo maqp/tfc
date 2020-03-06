@@ -40,8 +40,8 @@ from src.common.statics    import (ARGON2_SALT_LENGTH, BOLD_ON, CLEAR_ENTIRE_SCR
 from src.receiver.key_exchanges import key_ex_ecdhe, key_ex_psk_rx, key_ex_psk_tx, local_key_rdy, process_local_key
 
 from tests.mock_classes import Contact, ContactList, KeyList, KeySet, Settings, WindowList
-from tests.utils        import cd_unit_test, cleanup, nick_to_short_address, nick_to_pub_key, tear_queue, TFCTestCase
-from tests.utils        import UNDECODABLE_UNICODE
+from tests.utils        import (cd_unit_test, cleanup, nick_to_short_address, nick_to_pub_key, tear_queue, TFCTestCase,
+                                UNDECODABLE_UNICODE)
 
 
 class TestProcessLocalKey(TFCTestCase):
@@ -73,7 +73,7 @@ class TestProcessLocalKey(TFCTestCase):
     @mock.patch('tkinter.Tk',     return_value=MagicMock())
     @mock.patch('time.sleep',     return_value=None)
     @mock.patch('builtins.input', return_value='5KfgdgUvseWfNkoUPWSvxMPNStu5wBBxyjz1zpZtLEjk7ZvwEAT')
-    def test_invalid_decryption_key_raises_se(self, *_: Any) -> None:
+    def test_invalid_decryption_key_raises_soft_error(self, *_: Any) -> None:
         # Setup
         packet                = b''
         self.key_list.keysets = []
@@ -104,7 +104,7 @@ class TestProcessLocalKey(TFCTestCase):
     @mock.patch('tkinter.Tk',     return_value=MagicMock())
     @mock.patch('time.sleep',     return_value=None)
     @mock.patch('builtins.input', side_effect=KeyboardInterrupt)
-    def test_keyboard_interrupt_raises_se(self, *_: Any) -> None:
+    def test_keyboard_interrupt_raises_soft_error(self, *_: Any) -> None:
         # Setup
         self.window_list.active_win = self.window_list.get_window(nick_to_pub_key('Alice'))
 
@@ -115,7 +115,7 @@ class TestProcessLocalKey(TFCTestCase):
     @mock.patch('tkinter.Tk',     return_value=MagicMock())
     @mock.patch('time.sleep',     return_value=None)
     @mock.patch('builtins.input', side_effect=[b58encode(kek), b58encode(kek), b58encode(kek), b58encode(new_kek)])
-    def test_old_local_key_packet_raises_se(self, *_: Any) -> None:
+    def test_old_local_key_packet_raises_soft_error(self, *_: Any) -> None:
         # Setup
         self.key_list.keysets = []
         new_key               = os.urandom(SYMMETRIC_KEY_LENGTH)
@@ -202,7 +202,7 @@ class TestKeyExECDHE(TFCTestCase):
         self.args         = self.packet, self.ts, self.window_list, self.contact_list, self.key_list, self.settings
 
     @mock.patch('time.sleep', return_value=None)
-    def test_invalid_nick_raises_se(self, _: Any) -> None:
+    def test_invalid_nick_raises_soft_error(self, _: Any) -> None:
         self.packet = (nick_to_pub_key("Alice")
                        + SYMMETRIC_KEY_LENGTH * b'\x01'
                        + SYMMETRIC_KEY_LENGTH * b'\x02'
@@ -252,7 +252,7 @@ class TestKeyExPSKTx(TFCTestCase):
         self.args         = self.packet, self.ts, self.window_list, self.contact_list, self.key_list, self.settings
 
     @mock.patch('time.sleep', return_value=None)
-    def test_invalid_nick_raises_se(self, _: Any) -> None:
+    def test_invalid_nick_raises_soft_error(self, _: Any) -> None:
         self.packet = (nick_to_pub_key("Alice")
                        + SYMMETRIC_KEY_LENGTH * b'\x01'
                        + bytes(SYMMETRIC_KEY_LENGTH)
@@ -305,13 +305,13 @@ class TestKeyExPSKRx(TFCTestCase):
         """Post-test actions."""
         cleanup(self.unit_test_dir)
 
-    def test_unknown_account_raises_se(self) -> None:
+    def test_unknown_account_raises_soft_error(self) -> None:
         self.assert_se(f"Error: Unknown account '{nick_to_short_address('Bob')}'.",
                        key_ex_psk_rx, b'\x00' + nick_to_pub_key("Bob"),
                        self.ts, self.window_list, self.contact_list, self.key_list, self.settings)
 
     @mock.patch('builtins.input', return_value=file_name)
-    def test_invalid_psk_data_raises_se(self, _: Any) -> None:
+    def test_invalid_psk_data_raises_soft_error(self, _: Any) -> None:
         # Setup
         with open(self.file_name, 'wb+') as f:
             f.write(os.urandom(135))
@@ -321,7 +321,7 @@ class TestKeyExPSKRx(TFCTestCase):
 
     @mock.patch('time.sleep',     return_value=None)
     @mock.patch('builtins.input', return_value=file_name)
-    def test_permission_error_raises_se(self, *_: Any) -> None:
+    def test_permission_error_raises_soft_error(self, *_: Any) -> None:
         # Setup
         with open(self.file_name, 'wb+') as f:
             f.write(os.urandom(PSK_FILE_SIZE))
@@ -423,7 +423,7 @@ class TestKeyExPSKRx(TFCTestCase):
     @mock.patch('time.sleep',      return_value=None)
     @mock.patch('builtins.input',  side_effect=[file_name, ''])
     @mock.patch('getpass.getpass', side_effect=[KeyboardInterrupt])
-    def test_valid_psk_keyboard_interrupt_raises_se(self, *_: Any) -> None:
+    def test_valid_psk_keyboard_interrupt_raises_soft_error(self, *_: Any) -> None:
         with open(self.file_name, 'wb+') as f:
             f.write(bytes(PSK_FILE_SIZE))
 

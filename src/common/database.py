@@ -64,7 +64,7 @@ class TFCDatabase(object):
             os.fsync(f.fileno())
 
     def verify_file(self, database_name: str) -> bool:
-        """Verify integrity of file content."""
+        """Verify integrity of database content."""
         with open(database_name, 'rb') as f:
             purp_data = f.read()
 

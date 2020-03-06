@@ -113,8 +113,8 @@ class TestSettings(TFCTestCase):
         self.assert_se("Error: Invalid setting value 'True'.",
                        self.settings.change_setting, 'tm_static_delay',                'True', *self.args)
 
-        self.assertIsNone(self.settings.change_setting('traffic_masking',             'True', *self.args))
-        self.assertIsNone(self.settings.change_setting('max_number_of_group_members',  '100', *self.args))
+        self.assertIsNone(self.settings.change_setting('traffic_masking',              'True', *self.args))
+        self.assertIsNone(self.settings.change_setting('max_number_of_group_members',  '100',  *self.args))
 
     @mock.patch('builtins.input', side_effect=['No', 'Yes'])
     def test_validate_key_value_pair(self, _: Any) -> None:

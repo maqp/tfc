@@ -136,11 +136,11 @@ class TestChangeECRatio(TFCTestCase):
         """Pre-test actions."""
         self.gateway = Gateway()
 
-    def test_non_digit_value_raises_se(self) -> None:
+    def test_non_digit_value_raises_soft_error(self) -> None:
         self.assert_se("Error: Received invalid EC ratio value from Transmitter Program.",
                        change_ec_ratio, b'a', self.gateway)
 
-    def test_invalid_digit_value_raises_se(self) -> None:
+    def test_invalid_digit_value_raises_soft_error(self) -> None:
         self.assert_se("Error: Received invalid EC ratio value from Transmitter Program.",
                        change_ec_ratio, b'-1', self.gateway)
 
@@ -155,11 +155,11 @@ class TestChangeBaudrate(TFCTestCase):
         """Pre-test actions."""
         self.gateway = Gateway()
 
-    def test_non_digit_value_raises_se(self) -> None:
+    def test_non_digit_value_raises_soft_error(self) -> None:
         self.assert_se("Error: Received invalid baud rate value from Transmitter Program.",
                        change_baudrate, b'a', self.gateway)
 
-    def test_invalid_digit_value_raises_se(self) -> None:
+    def test_invalid_digit_value_raises_soft_error(self) -> None:
         self.assert_se("Error: Received invalid baud rate value from Transmitter Program.",
                        change_baudrate, b'1300', self.gateway)
 
@@ -216,7 +216,7 @@ class TestAddContact(unittest.TestCase):
     def test_add_contact(self) -> None:
         command = b''.join([nick_to_pub_key('Alice'), nick_to_pub_key('Bob')])
 
-        self.assertIsNone(add_contact(command, True, self.queues))
+        self.assertIsNone(add_contact(command, self.queues, True))
         self.assertEqual(self.queues[CONTACT_MGMT_QUEUE].qsize(), 1)
         for q in [GROUP_MGMT_QUEUE, C_REQ_MGMT_QUEUE]:
             command = self.queues[q].get()

@@ -60,7 +60,7 @@ def log_writer_loop(queues:      Dict[bytes, 'Queue[Any]'],  # Dictionary of que
                     message_log: 'MessageLog',               # MessageLog object
                     unit_test:   bool = False                # True, exits loop when UNIT_TEST_QUEUE is no longer empty.
                     ) -> None:
-    """Write assembly packets to log database.
+    """Write assembly packets to the log database.
 
     When traffic masking is enabled, the fact this loop is run as a
     separate process, means the rate at which `sender_loop` outputs
@@ -84,17 +84,17 @@ def log_writer_loop(queues:      Dict[bytes, 'Queue[Any]'],  # Dictionary of que
             while log_packet_queue.qsize() == 0:
                 time.sleep(0.01)
 
-            traffic_masking, logfile_masking = check_log_setting_queues(traffic_masking,
-                                                                        traffic_masking_queue,
-                                                                        logfile_masking,
-                                                                        logfile_masking_queue)
+            traffic_masking, logfile_masking = check_setting_queues(traffic_masking,
+                                                                    traffic_masking_queue,
+                                                                    logfile_masking,
+                                                                    logfile_masking_queue)
 
             onion_pub_key, assembly_packet, log_messages, log_as_ph, master_key = log_packet_queue.get()
 
-            # Update log database key
+            # Update the log database key
             message_log.database_key = master_key.master_key
 
-            # Detect and ignore commands.
+            # Detect commands and ignore them
             if onion_pub_key is None:
                 continue
 
@@ -135,12 +135,12 @@ def log_writer_loop(queues:      Dict[bytes, 'Queue[Any]'],  # Dictionary of que
                 break
 
 
-def check_log_setting_queues(traffic_masking:       bool,
-                             traffic_masking_queue: 'Queue[Any]',
-                             logfile_masking:       bool,
-                             logfile_masking_queue: 'Queue[Any]'
-                             ) -> Tuple[bool, bool]:
-    """Check for updates to logging settings."""
+def check_setting_queues(traffic_masking:       bool,
+                         traffic_masking_queue: 'Queue[Any]',
+                         logfile_masking:       bool,
+                         logfile_masking_queue: 'Queue[Any]'
+                         ) -> Tuple[bool, bool]:
+    """Check queues for updates to traffic masking and logging settings."""
     if traffic_masking_queue.qsize():
         traffic_masking = traffic_masking_queue.get()
 
@@ -159,10 +159,10 @@ def update_logging_state(assembly_packet:   bytes,
 
     `logging_state` retains the logging setting for noise packets that
     do not know the log setting of the window. To prevent logging of
-    noise packets in situation where logging has been disabled, but no
-    new message assembly packet carrying the logging setting is received,
-    the LOG_SETTING_QUEUE is checked for up-to-date logging setting for
-    every received noise packet.
+    noise packets in a situation where logging has been disabled, but no
+    new message assembly packet carrying the logging setting has been
+    received, the LOG_SETTING_QUEUE is checked for up-to-date logging
+    setting for every received noise packet.
     """
     if assembly_packet[:ASSEMBLY_PACKET_HEADER_LENGTH] == P_N_HEADER:
         if log_setting_queue.qsize():
@@ -181,7 +181,7 @@ def write_log_entry(assembly_packet: bytes,                       # Assembly pac
 
     Logging assembly packets allows reconstruction of conversation while
     protecting metadata about the length of messages alternative log
-    file formats could reveal.
+    file formats could reveal to a physical attacker.
 
     Transmitter Program can only log sent messages. This is not useful
     for recalling conversations but it makes it possible to audit
@@ -335,7 +335,7 @@ def change_log_db_key(old_key:  bytes,
                       new_key:  bytes,
                       settings: 'Settings'
                       ) -> None:
-    """Re-encrypt log database with a new master key."""
+    """Re-encrypt the log database with a new master key."""
     ensure_dir(DIR_USER_DATA)
     file_name = f'{DIR_USER_DATA}{settings.software_operation}_logs'
     temp_name = file_name + TEMP_POSTFIX
@@ -357,7 +357,7 @@ def change_log_db_key(old_key:  bytes,
 
 
 def replace_log_db(settings: 'Settings') -> None:
-    """Replace log database with temp file."""
+    """Replace the log database with the temp file."""
     ensure_dir(DIR_USER_DATA)
     file_name = f'{DIR_USER_DATA}{settings.software_operation}_logs'
     temp_name = file_name + TEMP_POSTFIX
@@ -378,7 +378,7 @@ def remove_logs(contact_list: 'ContactList',
     If the selector is a public key, all messages (both the private
     conversation and any associated group messages) sent to and received
     from the associated contact are removed. If the selector is a group
-    ID, only messages for group determined by that group ID are removed.
+    ID, only messages for the group matching that group ID are removed.
     """
     ensure_dir(DIR_USER_DATA)
     file_name       = f'{DIR_USER_DATA}{settings.software_operation}_logs'

@@ -40,9 +40,14 @@ sudo rm -f /usr/share/pixmaps/tfc.png
 sudo rm -f /usr/share/applications/TFC-Dev.desktop
 sudo rm -f /usr/share/applications/TFC-Local-test.desktop
 sudo rm -f /usr/share/applications/TFC-RP.desktop
+sudo rm -f /usr/share/applications/TFC-RP-Qubes.desktop
 sudo rm -f /usr/share/applications/TFC-RP-Tails.desktop
-sudo rm -f /usr/share/applications/TFC-RxP.desktop
+sudo rm -f /usr/share/applications/TFC-RxP-Qubes.desktop
 sudo rm -f /usr/share/applications/TFC-TxP.desktop
+sudo rm -f /usr/share/applications/TFC-TxP-Qubes.desktop
+sudo rm -f /usr/bin/tfc-transmitter
+sudo rm -f /usr/bin/tfc-receiver
+sudo rm -f /usr/bin/tfc-relay
 sudo rm -rf /opt/tfc/
 
 yn_prompt "Remove user data?" "rm -rf $HOME/tfc/"

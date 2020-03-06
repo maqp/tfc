@@ -24,8 +24,7 @@ import typing
 
 from typing import Any, Dict, List, Tuple, Union
 
-from src.common.encoding   import bytes_to_int, pub_key_to_short_address
-from src.common.encoding   import int_to_bytes, b85encode
+from src.common.encoding   import b85encode, bytes_to_int, int_to_bytes, pub_key_to_short_address
 from src.common.exceptions import SoftError
 from src.common.misc       import ignored, separate_header, split_byte_string
 from src.common.output     import rp_print
@@ -217,7 +216,8 @@ def process_add_or_group_remove_member(ts:                'datetime',
                                        header_str:        str,
                                        group_id:          bytes,
                                        messages_to_flask: 'Queue[Tuple[Union[bytes, str], bytes]]',
-                                       remaining:         List[bytes], removable: List[bytes]
+                                       remaining:         List[bytes],
+                                       removable:         List[bytes]
                                        ) -> None:
     """Process group add or remove member packet."""
     packet_str = header_str + b85encode(group_id + b"".join(removable))

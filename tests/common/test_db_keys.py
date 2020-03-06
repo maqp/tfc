@@ -160,26 +160,26 @@ class TestKeyList(unittest.TestCase):
         new_key              = bytes(SYMMETRIC_KEY_LENGTH)
         self.keylist.keysets = [create_keyset(LOCAL_ID)]
 
-        # Check that KeySet exists and that its keys are different
+        # Check that KeySet exists and that its keys are different from the new ones
         self.assertNotEqual(self.keylist.keysets[0].rx_hk, new_key)
 
-        # Replace existing KeySet
+        # Replace the existing KeySet
         self.assertIsNone(self.keylist.add_keyset(LOCAL_PUBKEY,
                                                   new_key, new_key,
                                                   new_key, new_key))
 
-        # Check that new KeySet replaced the old one
+        # Check that the new KeySet replaced the old one
         self.assertEqual(self.keylist.keysets[0].onion_pub_key, LOCAL_PUBKEY)
         self.assertEqual(self.keylist.keysets[0].rx_hk, new_key)
 
     def test_remove_keyset(self) -> None:
-        # Test KeySet for Bob exists
+        # Test that the KeySet for Bob exists
         self.assertTrue(self.keylist.has_keyset(nick_to_pub_key('Bob')))
 
-        # Remove KeySet for Bob
+        # Remove the KeySet for Bob
         self.assertIsNone(self.keylist.remove_keyset(nick_to_pub_key('Bob')))
 
-        # Test KeySet was removed
+        # Test that the KeySet was removed
         self.assertFalse(self.keylist.has_keyset(nick_to_pub_key('Bob')))
 
     @mock.patch('builtins.input', side_effect=['test_password'])
@@ -190,18 +190,18 @@ class TestKeyList(unittest.TestCase):
         queues      = gen_queue_dict()
 
         def queue_delayer() -> None:
-            """Place packet to queue after timer runs out."""
+            """Place packet to the key management queue after timer runs out."""
             time.sleep(0.1)
             queues[KEY_MANAGEMENT_QUEUE].put(master_key2.master_key)
         threading.Thread(target=queue_delayer).start()
 
-        # Test that new key is different from existing one
+        # Test that the new key is different from the existing one
         self.assertNotEqual(key, self.master_key.master_key)
 
-        # Change master key
+        # Change the master key
         self.assertIsNone(self.keylist.change_master_key(queues))
 
-        # Test that master key has changed
+        # Test that the master key was changed
         self.assertEqual(self.keylist.master_key.master_key, key)
         self.assertEqual(self.keylist.database.database_key, key)
 
@@ -254,20 +254,20 @@ class TestKeyList(unittest.TestCase):
         # Setup
         queues = gen_queue_dict()
 
-        # Test that KeySet for David does not exist
+        # Test that the KeySet for David does not exist
         self.assertFalse(self.keylist.has_keyset(nick_to_pub_key('David')))
 
-        # Test adding KeySet
+        # Test adding the KeySet for David
         self.assertIsNone(self.keylist.manage(queues, KDB_ADD_ENTRY_HEADER, nick_to_pub_key('David'),
                                               bytes(SYMMETRIC_KEY_LENGTH), bytes(SYMMETRIC_KEY_LENGTH),
                                               bytes(SYMMETRIC_KEY_LENGTH), bytes(SYMMETRIC_KEY_LENGTH)))
         self.assertTrue(self.keylist.has_keyset(nick_to_pub_key('David')))
 
-        # Test removing KeySet
+        # Test removing David's KeySet
         self.assertIsNone(self.keylist.manage(queues, KDB_REMOVE_ENTRY_HEADER, nick_to_pub_key('David')))
         self.assertFalse(self.keylist.has_keyset(nick_to_pub_key('David')))
 
-        # Test changing master key
+        # Test changing the master key
         new_key = SYMMETRIC_KEY_LENGTH * b'\x01'
 
         self.assertNotEqual(self.master_key.master_key, new_key)
@@ -278,7 +278,7 @@ class TestKeyList(unittest.TestCase):
         self.assertEqual(self.keylist.master_key.master_key, new_key)
         self.assertEqual(self.keylist.database.database_key, new_key)
 
-        # Test invalid KeyList management command raises Critical Error
+        # Test an invalid KeyList management command raises CriticalError
         with self.assertRaises(SystemExit):
             self.keylist.manage(queues, 'invalid_key', None)
 

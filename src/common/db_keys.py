@@ -27,8 +27,7 @@ from typing import Any, Callable, Dict, List
 
 from src.common.crypto     import blake2b, csprng
 from src.common.database   import TFCDatabase
-from src.common.encoding   import int_to_bytes, onion_address_to_pub_key
-from src.common.encoding   import bytes_to_int
+from src.common.encoding   import bytes_to_int, int_to_bytes, onion_address_to_pub_key
 from src.common.exceptions import CriticalError
 from src.common.misc       import ensure_dir, separate_headers, split_byte_string
 from src.common.statics    import (DIR_USER_DATA, DUMMY_CONTACT, HARAC_LENGTH, INITIAL_HARAC, KDB_ADD_ENTRY_HEADER,
@@ -52,16 +51,16 @@ class KeySet(object):
                    Tor Onion Service address. Used to uniquely identify
                    the KeySet object.
 
-    tx_mk:         Forward secret message key for sent messages.
+    tx_mk:         The forward secret message key for sent messages.
 
-    rx_mk:         Forward secret message key for received messages.
+    rx_mk:         The forward secret message key for received messages.
                    Used only by the Receiver Program.
 
-    tx_hk:         Static header key used to encrypt and sign the hash
+    tx_hk:         The static header key used to encrypt and sign the hash
                    ratchet counter provided along the encrypted
                    assembly packet.
 
-    rx_hk:         Static header key used to authenticate and decrypt
+    rx_hk:         The static header key used to authenticate and decrypt
                    the hash ratchet counter of received messages. Used
                    only by the Receiver Program.
 

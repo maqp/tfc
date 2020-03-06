@@ -28,8 +28,8 @@ from src.common.encoding import b58encode
 from src.common.statics  import (COMMAND_PACKET_QUEUE, GROUP_ID_LENGTH, RELAY_PACKET_QUEUE,
                                  WIN_TYPE_CONTACT, WIN_TYPE_GROUP)
 
-from src.transmitter.commands_g import group_add_member, group_create, group_rm_group, group_rm_member
-from src.transmitter.commands_g import process_group_command, group_rename
+from src.transmitter.commands_g import (group_add_member, group_create, group_rm_group, group_rm_member,
+                                        process_group_command, group_rename)
 
 from tests.mock_classes import create_group, Contact, ContactList, GroupList, MasterKey, Settings, UserInput, TxWindow
 from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, nick_to_pub_key, tear_queues, TFCTestCase
@@ -58,19 +58,19 @@ class TestProcessGroupCommand(TFCTestCase):
         self.assert_se("Error: Command is disabled during traffic masking.",
                        process_group_command, UserInput(), *self.args)
 
-    def test_invalid_command_raises_se(self) -> None:
+    def test_invalid_command_raises_soft_error(self) -> None:
         self.assert_se("Error: Invalid group command.", process_group_command, UserInput('group '), *self.args)
 
-    def test_invalid_command_parameters_raises_se(self) -> None:
+    def test_invalid_command_parameters_raises_soft_error(self) -> None:
         self.assert_se("Error: Invalid group command.", process_group_command, UserInput('group bad'), *self.args)
 
-    def test_missing_group_id_raises_se(self) -> None:
+    def test_missing_group_id_raises_soft_error(self) -> None:
         self.assert_se("Error: No group ID specified.", process_group_command, UserInput('group join '), *self.args)
 
-    def test_invalid_group_id_raises_se(self) -> None:
+    def test_invalid_group_id_raises_soft_error(self) -> None:
         self.assert_se("Error: Invalid group ID.", process_group_command, UserInput('group join invalid'), *self.args)
 
-    def test_missing_name_raises_se(self) -> None:
+    def test_missing_name_raises_soft_error(self) -> None:
         self.assert_se("Error: No group name specified.", process_group_command, UserInput('group create '), *self.args)
 
     @mock.patch('builtins.input', return_value='Yes')
@@ -105,7 +105,7 @@ class TestGroupCreate(TFCTestCase):
         self.group.members = self.contact_list.contacts
         self.account_list  = [nick_to_pub_key(str(n)) for n in range(no_contacts)]
 
-    def test_invalid_group_name_raises_se(self) -> None:
+    def test_invalid_group_name_raises_soft_error(self) -> None:
         # Setup
         self.configure_groups(no_contacts=21)
 
@@ -113,7 +113,7 @@ class TestGroupCreate(TFCTestCase):
         self.assert_se("Error: Group name must be printable.",
                        group_create, 'test_group\x1f', self.account_list, *self.args)
 
-    def test_too_many_purp_accounts_raises_se(self) -> None:
+    def test_too_many_purp_accounts_raises_soft_error(self) -> None:
         # Setup
         self.configure_groups(no_contacts=60)
 
@@ -123,7 +123,7 @@ class TestGroupCreate(TFCTestCase):
                        group_create, 'test_group_50', cl_str,
                        self.contact_list, self.group_list, self.settings, self.queues, self.master_key)
 
-    def test_full_group_list_raises_se(self) -> None:
+    def test_full_group_list_raises_soft_error(self) -> None:
         # Setup
         self.group_list = GroupList(groups=[f"testgroup_{n}" for n in range(50)])
 
@@ -180,7 +180,7 @@ class TestGroupAddMember(TFCTestCase):
     def test_raises_fr_if_specified_group_does_not_exist_and_user_chooses_no(self, *_: Any) -> None:
         self.assert_se("Group creation aborted.", group_add_member, 'test_group', [], *self.args)
 
-    def test_too_large_final_member_list_raises_se(self) -> None:
+    def test_too_large_final_member_list_raises_soft_error(self) -> None:
         # Setup
         contact_list  = ContactList(nicks=[str(n) for n in range(51)])
         group_list    = GroupList(groups=['testgroup'])
@@ -266,18 +266,18 @@ class TestGroupRmGroup(TFCTestCase):
 
     @mock.patch('time.sleep',     return_value=None)
     @mock.patch('builtins.input', return_value='No')
-    def test_cancel_of_remove_raises_se(self, *_: Any) -> None:
+    def test_cancel_of_remove_raises_soft_error(self, *_: Any) -> None:
         self.assert_se("Group removal aborted.", group_rm_group, 'test_group', *self.args)
 
     @mock.patch('builtins.input', return_value='Yes')
-    def test_remove_group_not_on_transmitter_raises_se(self, _: Any) -> None:
+    def test_remove_group_not_on_transmitter_raises_soft_error(self, _: Any) -> None:
         unknown_group_id = b58encode(bytes(GROUP_ID_LENGTH))
         self.assert_se("Transmitter has no group '2dVseX46KS9Sp' to remove.",
                        group_rm_group, unknown_group_id, *self.args)
         self.assertEqual(self.queues[COMMAND_PACKET_QUEUE].qsize(), 2)
 
     @mock.patch('builtins.input', return_value='Yes')
-    def test_invalid_group_id_raises_se(self, _: Any) -> None:
+    def test_invalid_group_id_raises_soft_error(self, _: Any) -> None:
         invalid_group_id = b58encode(bytes(GROUP_ID_LENGTH))[:-1]
         self.assert_se("Error: Invalid group name/ID.", group_rm_group, invalid_group_id, *self.args)
 
@@ -304,14 +304,14 @@ class TestGroupRename(TFCTestCase):
         """Post-test actions."""
         tear_queues(self.queues)
 
-    def test_contact_window_raises_se(self) -> None:
+    def test_contact_window_raises_soft_error(self) -> None:
         # Setup
         self.window.type = WIN_TYPE_CONTACT
 
         # Test
         self.assert_se("Error: Selected window is not a group window.", group_rename, "window", *self.args)
 
-    def test_invalid_group_name_raises_se(self) -> None:
+    def test_invalid_group_name_raises_soft_error(self) -> None:
         # Setup
         self.window.type  = WIN_TYPE_GROUP
         self.window.group = self.group_list.get_group('test_group')

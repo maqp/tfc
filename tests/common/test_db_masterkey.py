@@ -135,15 +135,53 @@ class TestMasterKey(TFCTestCase):
         self.assertIsInstance(master_key.master_key, bytes)
 
     @mock.patch('src.common.db_masterkey.MasterKey.timed_key_derivation',
-                MagicMock(side_effect=        [(KL*b'a',  0.01)]
+                MagicMock(side_effect=      [(KL*b'a',  3.5)]  # Early exit to create the object.
+                                      +     [(KL*b'a',  4.1)]  # Test1: Make key derivation too slow so it returns with time_cost 1
+                                      +     [(KL*b'a',  2.0)]  # Test2: Second key derivation time sentinel
+                                      +     [(KL*b'a',  4.1)]
+                                      +     [(KL*b'a',  0.1)]  # Test3: Complete binary search with search end
+                                      +     [(KL*b'a',  6.0)]
+                                      + 7 * [(KL*b'a',  2.5)]))
+    @mock.patch('os.popen',        return_value=MagicMock(
+        read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemAvailable 10240"])))))
+    @mock.patch('getpass.getpass', side_effect=['generate'])
+    @mock.patch('builtins.input',  side_effect=[''])
+    @mock.patch('os.system',       return_value=None)
+    @mock.patch('time.sleep', return_value=None)
+    def test_determine_time_cost(self, *_: Any) -> None:
+        master_key = MasterKey(self.operation, local_test=True)
+
+        # Test1: Sentinel returns immediately if MAX_KEY_DERIVATION_TIME is exceeded
+        time_cost, kd_time, _ = master_key.determine_time_cost("password", 8*b'salt', memory_cost=512, parallelism=1)
+        self.assertEqual(time_cost, 1)
+        self.assertEqual(kd_time,   4.1)
+
+        # Test2: Second key derivation time sentinel
+        time_cost, kd_time, _ = master_key.determine_time_cost("password", 8 * b'salt', memory_cost=512, parallelism=1)
+        self.assertEqual(time_cost, 2)
+        self.assertEqual(kd_time,   4.1)
+
+        # Test3: Complete binary search with search end
+        time_cost, kd_time, _ = master_key.determine_time_cost("password", 8 * b'salt', memory_cost=512, parallelism=1)
+        self.assertEqual(time_cost, 40)
+        self.assertEqual(kd_time,   2.5)
+
+    @mock.patch('src.common.db_masterkey.MasterKey.timed_key_derivation',
+                MagicMock(side_effect=        [(KL*b'a',  4.1)]
+                                      +       [(KL*b'a',  3.5)]
+                                      +       [(KL*b'a',  0.01)]
                                       + 100 * [(KL*b'b',  5.0)]
                                       +   2 * [(KL*b'a',  2.5)]
-                                      +       [(KL*b'a',  3.0)]))
-    @mock.patch('os.path.isfile',  side_effect=[False, True])
-    @mock.patch('getpass.getpass', side_effect=input_list)
-    @mock.patch('time.sleep',      return_value=None)
-    def test_kd_binary_search(self, *_: Any) -> None:
-        MasterKey(self.operation, local_test=True)
+                                      +       [(KL*b'a',  3.1)]))
+    @mock.patch('os.popen',        return_value=MagicMock(
+        read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemAvailable 10240"])))))
+    @mock.patch('getpass.getpass', side_effect=['generate'])
+    @mock.patch('builtins.input',  side_effect=[''])
+    @mock.patch('os.system',       return_value=None)
+    @mock.patch('time.sleep', return_value=None)
+    def test_determine_memory_cost(self, *_: Any) -> None:
+        master_key = MasterKey(self.operation, local_test=True)
+        master_key.determine_memory_cost("password", 8*b'salt', time_cost=1, memory_cost=1024, parallelism=1)
 
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.01)
     @mock.patch('src.common.db_masterkey.MAX_KEY_DERIVATION_TIME', 0.1)

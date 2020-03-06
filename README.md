@@ -94,15 +94,16 @@ TFC is designed to be used in hardware configuration that provides strong
 [endpoint security](https://en.wikipedia.org/wiki/Endpoint_security).
 This configuration uses three computers per endpoint: Encryption and decryption processes
 are separated from each other onto two isolated computers, the Source Computer, and the 
-Destination Computer. These two systems are are dedicated for TFC. This split 
+Destination Computer. These two devices are are dedicated for TFC. This split 
 [TCB](https://en.wikipedia.org/wiki/Trusted_computing_base)
 interacts with the network via the user's daily computer, called the Networked Computer.
 
-Data moves from the Source Computer to the Networked Computer, and from the Networked 
-Computer to the Destination Computer, unidirectionally. The unidirectionality of data flow 
-is enforced with a free hardware design
+In TFC data moves from the Source Computer to the Networked Computer, and from the Networked 
+Computer to the Destination Computer, unidirectionally. The unidirectionality of data
+flow is enforced, as the data is passed from one device to another only through a free 
+hardware design
 [data diode](https://en.wikipedia.org/wiki/Unidirectional_network), 
-which is connected to the three computers using one USB-cable per computer.
+that is connected to the three computers using one USB-cable per device.
 The Source and Destination Computers are not connected to the Internet, or to any device 
 other than the data diode.
 
@@ -114,8 +115,12 @@ Optical repeater inside the
 [optocouplers](https://en.wikipedia.org/wiki/Opto-isolator)
 of the data diode enforce direction of data transmission with the fundamental laws of 
 physics. This protection is so strong, the certified implementations of data diodes are 
-typically found in critical infrastructure protection and government networks where 
-classification level of data varies between systems.
+typically found in critical infrastructure protection and government networks where the
+classification level of data varies between systems. A data diode might e.g. allow access 
+to a nuclear power plant's safety system readings, while at the same time preventing 
+attackers from exploiting these critical systems. An alternative use case is to allow 
+importing data from less secure systems to ones that contain classified documents that 
+must be protected from exfiltration.
 
 In TFC the hardware data diode ensures that neither of the TCB-halves can be accessed 
 bidirectionally. Since the protection relies on physical limitations of the hardware's
@@ -183,18 +188,39 @@ the Source or Destination Computer, the ciphertexts are of no value to the attac
 [Exfiltration security](https://www.cs.helsinki.fi/u/oottela/wiki/readme/attacks.png)
 
 
+### Qubes-isolated intermediate solution
+
+For some users the
+[APTs](https://en.wikipedia.org/wiki/Advanced_persistent_threat) 
+of the modern world are not part of the threat model, and for others, the 
+requirement of having to build the data diode by themselves is a deal breaker. Yet, for 
+all of them, storing private keys on a networked device is still a security risk.
+
+To meet these users' needs, TFC can also be run in three dedicated 
+[Qubes](https://www.qubes-os.org/)
+virtual machines. With the Qubes configuration, the isolation is provided by the 
+[Xen hypervisor](https://xenproject.org/users/security/), 
+and the unidirectionality of data flow between the VMs is enforced with strict firewall 
+rules. This intermediate isolation mechanism runs on a single computer which means no 
+hardware data diode is needed. 
+
+
 ### Supported Operating Systems
 
 #### Source/Destination Computer
 - Debian 10
 - PureOS 9.0
 - *buntu 19.10
+- LMDE 4
+- Qubes 4 (Debian 10 VM)
 
 #### Networked Computer
 - Tails 4.0
 - Debian 10
 - PureOS 9.0
 - *buntu 19.10
+- LMDE 4
+- Qubes 4 (Debian 10 VM)
 
 
 ### More information
@@ -209,10 +235,9 @@ Hardware Data Diode<Br>
 
 How to use<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[Installation](https://github.com/maqp/tfc/wiki/Installation)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[Launching TFC](https://github.com/maqp/tfc/wiki/Launching-TFC)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[Setup master password](https://github.com/maqp/tfc/wiki/Master-Password)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Master password setup](https://github.com/maqp/tfc/wiki/Master-Password)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[Local key setup](https://github.com/maqp/tfc/wiki/Local-Key-Setup)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[Launch Onion Service](https://github.com/maqp/tfc/wiki/Onion-Service-Setup)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Onion Service setup](https://github.com/maqp/tfc/wiki/Onion-Service-Setup)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[X448 key exchange](https://github.com/maqp/tfc/wiki/X448)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[Pre-shared keys](https://github.com/maqp/tfc/wiki/PSK)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[Commands](https://github.com/maqp/tfc/wiki/Commands)<br>

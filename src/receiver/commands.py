@@ -79,7 +79,7 @@ def process_command(ts:           'datetime',
     header, cmd = separate_header(cmd_packet.assemble_command_packet(), ENCRYPTED_COMMAND_HEADER_LENGTH)
     no          = None
 
-    #    Keyword        Function to run (                                 Parameters                                  )
+    #    Header         Function to run (                                 Parameters                                  )
     #    --------------------------------------------------------------------------------------------------------------
     d = {LOCAL_KEY_RDY: (local_key_rdy,      ts, window_list, contact_list                                            ),
          WIN_ACTIVITY:  (win_activity,           window_list                                                          ),

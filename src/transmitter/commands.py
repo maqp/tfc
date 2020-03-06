@@ -79,7 +79,7 @@ def process_command(user_input:    'UserInput',
     Select function based on the first keyword of the
     issued command, and pass relevant parameters to it.
     """
-    #    Keyword      Function to run         (                                            Parameters                                            )
+    #    Command      Function to run         (                                            Parameters                                            )
     #    -----------------------------------------------------------------------------------------------------------------------------------------
     d = {'about':    (print_about,                                                                                                               ),
          'add':      (add_new_contact,                             contact_list, group_list, settings, queues,             onion_service         ),

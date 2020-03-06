@@ -129,7 +129,7 @@ class TestOutputLoop(unittest.TestCase):
                          tx_pub_key)
             tx_mk, tx_harac = rotate_key(tx_mk, tx_harac)
 
-            # ECDHE keyset for Bob
+            # ECDHE keyset to Bob
             command = (KEY_EX_ECDHE
                        + nick_to_pub_key("Bob")
                        + (4 * SYMMETRIC_KEY_LENGTH * b"a")
@@ -138,7 +138,7 @@ class TestOutputLoop(unittest.TestCase):
             local_key, local_harac = rotate_key(local_key, local_harac)
             o_sleep(test_delay)
 
-            # Message for Bob
+            # Message to Bob
             queue_packet(tx_mk,
                          tx_hk,
                          tx_harac,
@@ -147,7 +147,7 @@ class TestOutputLoop(unittest.TestCase):
             tx_mk, tx_harac = rotate_key(tx_mk, tx_harac)
             o_sleep(test_delay)
 
-            # Enable file reception for Bob
+            # Enable file reception to Bob
             command = CH_FILE_RECV + ENABLE.upper() + US_BYTE
             queue_packet(local_key, tx_hk, local_harac, command)
             o_sleep(test_delay)

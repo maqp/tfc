@@ -63,7 +63,7 @@ class TestAskPathGui(TFCTestCase):
 
     @mock.patch('tkinter.Tk',                         return_value=MagicMock())
     @mock.patch('tkinter.filedialog.askopenfilename', return_value='')
-    def test_no_path_to_file_raises_se(self, *_: Any) -> None:
+    def test_no_path_to_file_raises_soft_error(self, *_: Any) -> None:
         self.assert_se("File selection aborted.", ask_path_gui, 'test message', self.settings, True)
 
     @mock.patch('tkinter.Tk',                      return_value=MagicMock())
@@ -73,7 +73,7 @@ class TestAskPathGui(TFCTestCase):
 
     @mock.patch('tkinter.Tk',                      return_value=MagicMock())
     @mock.patch('tkinter.filedialog.askdirectory', return_value='')
-    def test_no_path_raises_se(self, *_: Any) -> None:
+    def test_no_path_raises_soft_error(self, *_: Any) -> None:
         self.assert_se("Path selection aborted.", ask_path_gui, 'test message', self.settings, False)
 
 

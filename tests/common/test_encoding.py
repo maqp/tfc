@@ -25,10 +25,10 @@ import unittest
 
 from datetime import datetime
 
-from src.common.encoding import b58encode, bool_to_bytes, double_to_bytes, str_to_bytes, int_to_bytes
-from src.common.encoding import b58decode, bytes_to_bool, bytes_to_double, bytes_to_str, bytes_to_int
-from src.common.encoding import onion_address_to_pub_key, unicode_padding, pub_key_to_short_address, b85encode
-from src.common.encoding import pub_key_to_onion_address, rm_padding_str, bytes_to_timestamp, b10encode
+from src.common.encoding import (b58encode, bool_to_bytes, double_to_bytes, str_to_bytes, int_to_bytes,
+                                 b58decode, bytes_to_bool, bytes_to_double, bytes_to_str, bytes_to_int,
+                                 onion_address_to_pub_key, unicode_padding, pub_key_to_short_address, b85encode,
+                                 pub_key_to_onion_address, rm_padding_str, bytes_to_timestamp, b10encode)
 from src.common.statics  import (ENCODED_BOOLEAN_LENGTH, ENCODED_FLOAT_LENGTH, ENCODED_INTEGER_LENGTH,
                                  FINGERPRINT_LENGTH, ONION_SERVICE_PUBLIC_KEY_LENGTH, PADDED_UTF32_STR_LENGTH,
                                  PADDING_LENGTH, SYMMETRIC_KEY_LENGTH, TFC_PUBLIC_KEY_LENGTH, TRUNC_ADDRESS_LENGTH)

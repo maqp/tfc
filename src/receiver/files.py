@@ -93,9 +93,7 @@ def process_assembled_file(ts:            'datetime',    # Timestamp last receiv
     if len(file_key) != SYMMETRIC_KEY_LENGTH:
         raise SoftError("Error: Received file had an invalid key.")
 
-    decrypt_and_store_file(
-        ts, file_ct, file_key, file_name, onion_pub_key, nick, window_list, settings
-    )
+    decrypt_and_store_file(ts, file_ct, file_key, file_name, onion_pub_key, nick, window_list, settings)
 
 
 def decrypt_and_store_file(ts:            'datetime',    # Timestamp of received packet
@@ -146,8 +144,7 @@ def new_file(ts:           'datetime',                             # Timestamp o
     contact = contact_list.get_contact_by_pub_key(onion_pub_key)
 
     if not contact.file_reception:
-        raise SoftError(
-            f"Alert! Discarded file from {contact.nick} as file reception for them is disabled.", bold=True)
+        raise SoftError(f"Alert! Discarded file from {contact.nick} as file reception for them is disabled.", bold=True)
 
     k = onion_pub_key + blake2b(file_ct)  # Dictionary key
 

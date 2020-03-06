@@ -95,15 +95,15 @@ def main() -> None:
     ensure_dir(working_dir)
     os.chdir(working_dir)
 
-    operation, local_test, data_diode_sockets = process_arguments()
+    operation, local_test, data_diode_sockets, qubes = process_arguments()
 
     check_kernel_version()
 
     print_title(operation)
 
     master_key   = MasterKey(              operation, local_test)
-    gateway      = Gateway(                operation, local_test, data_diode_sockets)
-    settings     = Settings(   master_key, operation, local_test)
+    gateway      = Gateway(                operation, local_test, data_diode_sockets, qubes)
+    settings     = Settings(   master_key, operation, local_test,                     qubes)
     contact_list = ContactList(master_key, settings)
     key_list     = KeyList(    master_key, settings)
     group_list   = GroupList(  master_key, settings, contact_list)

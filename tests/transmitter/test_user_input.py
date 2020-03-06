@@ -24,9 +24,11 @@ import unittest
 from unittest import mock
 from typing   import Any
 
-from src.common.statics         import COMMAND, FILE, MESSAGE, WIN_TYPE_CONTACT, WIN_TYPE_GROUP
+from src.common.statics import COMMAND, FILE, MESSAGE, WIN_TYPE_CONTACT, WIN_TYPE_GROUP
+
 from src.transmitter.user_input import get_input, process_aliases, UserInput
-from tests.mock_classes         import create_contact, create_group, Settings, TxWindow
+
+from tests.mock_classes import create_contact, create_group, Settings, TxWindow
 
 
 class TestProcessAliases(unittest.TestCase):

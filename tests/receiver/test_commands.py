@@ -36,14 +36,14 @@ from src.common.statics  import (CH_FILE_RECV, CH_LOGGING, CH_NOTIFY, CLEAR_ENTI
                                  LOCAL_PUBKEY, MESSAGE, ORIGIN_CONTACT_HEADER, PADDING_LENGTH, RESET, RX,
                                  SYMMETRIC_KEY_LENGTH, US_BYTE, WIN_TYPE_CONTACT, WIN_TYPE_GROUP, WIN_UID_FILE, WIPE)
 
+from src.receiver.commands import (ch_contact_s, ch_master_key, ch_nick, ch_setting, contact_rem, exit_tfc, log_command,
+                                   process_command, remove_log, reset_screen, win_activity, win_select, wipe)
 from src.receiver.packet   import PacketList
-from src.receiver.commands import ch_contact_s, ch_master_key, ch_nick, ch_setting, contact_rem, exit_tfc, log_command
-from src.receiver.commands import process_command, remove_log, reset_screen, win_activity, win_select, wipe
 
-from tests.mock_classes import ContactList, Gateway, group_name_to_group_id, GroupList, KeyList, MasterKey
-from tests.mock_classes import nick_to_pub_key, RxWindow, Settings, WindowList
-from tests.utils        import assembly_packet_creator, cd_unit_test, cleanup, ignored, nick_to_short_address
-from tests.utils        import tear_queue, TFCTestCase
+from tests.mock_classes import (ContactList, Gateway, group_name_to_group_id, GroupList, KeyList, MasterKey,
+                                nick_to_pub_key, RxWindow, Settings, WindowList)
+from tests.utils        import (assembly_packet_creator, cd_unit_test, cleanup, ignored, nick_to_short_address,
+                                tear_queue, TFCTestCase)
 
 
 class TestProcessCommand(TFCTestCase):
@@ -71,7 +71,7 @@ class TestProcessCommand(TFCTestCase):
         cleanup(self.unit_test_dir)
         tear_queue(self.exit_queue)
 
-    def test_incomplete_command_raises_se(self) -> None:
+    def test_incomplete_command_raises_soft_error(self) -> None:
         packet = assembly_packet_creator(COMMAND, b'test_command', s_header_override=C_L_HEADER, encrypt_packet=True)[0]
         self.assert_se("Incomplete command.", process_command, self.ts, packet, *self.args)
 
@@ -316,7 +316,7 @@ class TestChMasterKey(TFCTestCase):
     @mock.patch('getpass.getpass', return_value='a')
     @mock.patch('time.sleep',      return_value=None)
     @mock.patch('os.getrandom',    side_effect=KeyboardInterrupt)
-    def test_keyboard_interrupt_raises_se(self, *_) -> None:
+    def test_keyboard_interrupt_raises_soft_error(self, *_) -> None:
         self.assert_se("Error: Invalid password.", ch_master_key, *self.args)
 
 
@@ -332,7 +332,7 @@ class TestChNick(TFCTestCase):
         self.window       = self.window_list.get_window(nick_to_pub_key("Alice"))
         self.window.type  = WIN_TYPE_CONTACT
 
-    def test_unknown_account_raises_se(self) -> None:
+    def test_unknown_account_raises_soft_error(self) -> None:
         # Setup
         cmd_data = nick_to_pub_key("Bob") + b'Bob_'
 
@@ -364,7 +364,7 @@ class TestChSetting(TFCTestCase):
         self.args         = (self.ts, self.window_list, self.contact_list, self.group_list,
                              self.key_list, self.settings, self.gateway)
 
-    def test_invalid_data_raises_se(self) -> None:
+    def test_invalid_data_raises_soft_error(self) -> None:
         # Setup
         self.settings.key_list = ['']
 
@@ -372,7 +372,7 @@ class TestChSetting(TFCTestCase):
         cmd_data = b'setting' + b'True'
         self.assert_se("Error: Received invalid setting data.", ch_setting, cmd_data, *self.args)
 
-    def test_invalid_setting_raises_se(self) -> None:
+    def test_invalid_setting_raises_soft_error(self) -> None:
         # Setup
         self.settings.key_list = ['']
 
@@ -411,7 +411,7 @@ class TestChContactSetting(TFCTestCase):
                                        group_list=self.group_list)
         self.args         = self.ts, self.window_list, self.contact_list, self.group_list
 
-    def test_invalid_window_raises_se(self) -> None:
+    def test_invalid_window_raises_soft_error(self) -> None:
         # Setup
         cmd_data          = ENABLE + nick_to_pub_key("Bob")
         header            = CH_LOGGING
@@ -503,7 +503,7 @@ class TestContactRemove(TFCTestCase):
         """Post-test actions."""
         cleanup(self.unit_test_dir)
 
-    def test_no_contact_raises_se(self) -> None:
+    def test_no_contact_raises_soft_error(self) -> None:
         # Setup
         contact_list = ContactList(nicks=['Alice'])
         group_list   = GroupList(groups=[])

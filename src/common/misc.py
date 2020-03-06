@@ -27,6 +27,7 @@ import math
 import os
 import random
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -60,13 +61,13 @@ def calculate_race_condition_delay(serial_error_correction: int,
     Calculate the delay required to prevent Relay Program race condition.
 
     When Transmitter Program outputs a command to exit or wipe data,
-    Relay program will also receive a copy of the command. If Relay
-    Program acts on the command too early, Receiver Program will not
+    Relay program will also receive a copy of the command. If the Relay
+    Program acts on the command too early, the Receiver Program will not
     receive the exit/wipe command at all.
 
-    This program calculates the delay Transmitter Program should wait
-    before outputting command for Relay Program, to ensure Receiver
-    Program has received the encrypted command.
+    This function calculates the delay Transmitter Program should wait
+    before outputting command to the Relay Program, to ensure the
+    Receiver Program has received its encrypted command.
     """
     rs             = RSCodec(2 * serial_error_correction)
     message_length = PACKET_LENGTH + ONION_ADDRESS_LENGTH
@@ -276,7 +277,7 @@ def power_off_system() -> None:
     os.system(POWEROFF)
 
 
-def process_arguments() -> Tuple[str, bool, bool]:
+def process_arguments() -> Tuple[str, bool, bool, bool]:
     """Load program-specific settings from command line arguments.
 
     The arguments are determined by the desktop entries and in the
@@ -305,10 +306,16 @@ def process_arguments() -> Tuple[str, bool, bool]:
                         dest='data_diode_sockets',
                         help="use data diode simulator sockets during local testing mode")
 
+    parser.add_argument('-q',
+                        action='store_true',
+                        default=False,
+                        dest='qubes',
+                        help="output data as UDP packets. Allows running TFC in qubes")
+
     args      = parser.parse_args()
     operation = RX if args.operation else TX
 
-    return operation, args.local_test, args.data_diode_sockets
+    return operation, args.local_test, args.data_diode_sockets, args.qubes
 
 
 def readable_size(size: int) -> str:
@@ -475,6 +482,15 @@ def validate_group_name(group_name:   str,            # Name of the group
         error_msg = f"Error: Group with name '{group_name}' already exists."
 
     return error_msg
+
+
+def validate_ip_address(ip_address: str, *_: Any) -> str:
+    """Validate the IP address."""
+    try:
+        socket.inet_aton(ip_address)
+        return ''
+    except socket.error:
+        return 'Invalid IP address'
 
 
 def validate_key_exchange(key_ex: str,  # Key exchange selection to validate

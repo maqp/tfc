@@ -322,12 +322,12 @@ class TestContactList(TFCTestCase):
         self.assertFalse(self.contact_list.has_contacts())
 
     def test_has_only_pending_contacts(self) -> None:
-        # Change all to pending
+        # Change all contacts' kex status to pending
         for contact in self.contact_list.get_list_of_contacts():
             contact.kex_status = KEX_STATUS_PENDING
         self.assertTrue(self.contact_list.has_only_pending_contacts())
 
-        # Change one from pending
+        # Change one kex status to unverified
         alice            = self.contact_list.get_contact_by_address_or_nick('Alice')
         alice.kex_status = KEX_STATUS_UNVERIFIED
         self.assertFalse(self.contact_list.has_only_pending_contacts())

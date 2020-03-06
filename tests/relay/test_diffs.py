@@ -107,9 +107,9 @@ class TestPubKeyChecker(unittest.TestCase):
     @mock.patch('shutil.get_terminal_size', return_value=[200, 200])
     def test_pub_key_checker(self, _: Any) -> None:
         # Setup
-        public_key = TFC_PUBLIC_KEY_LENGTH*b'a'
+        public_key         = TFC_PUBLIC_KEY_LENGTH*b'a'
         invalid_public_key = b58encode(public_key, public_key=True)[:-1] + 'a'
-        account = nick_to_pub_key('Bob')
+        account            = nick_to_pub_key('Bob')
 
         for local_test in [True, False]:
             self.queues[PUB_KEY_SEND_QUEUE].put((account,  public_key))

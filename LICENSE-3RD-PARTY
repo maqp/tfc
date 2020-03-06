@@ -80,6 +80,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
                                  MIT License
 
         applies to:
+        - The appdirs library, Copyright (c) 2010 ActiveState Software Inc.
+          (https://github.com/ActiveState/appdirs)
+
         - The Argon2 library, Copyright © 2015, Hynek Schlawack
           (https://github.com/hynek/argon2_cffi)
 
@@ -118,6 +121,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
                                Copyright © 2009, Ian Bicking, The Open Planning Project
                                Copyright © 2011-2016, The virtualenv developers
           (https://github.com/pypa/virtualenv)
+
+        - The zipp library. Copyright © Jason R. Coombs
+          (https://github.com/jaraco/zipp)
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -1210,6 +1216,9 @@ Public License instead of this License.  But first, please read
                         https://www.apache.org/licenses/
 
         applies to:
+        - The importlib_metadata library, Copyright © 2017-2019 Jason R. Coombs, Barry Warsaw
+          (https://gitlab.com/python-devs/importlib_metadata)
+
         - The OpenSSL library, Copyright © 1995-1998, Eric A. Young, Tim J. Hudson
                                Copyright © 1999-2018, The OpenSSL Project
           (https://github.com/openssl/openssl)
@@ -2469,6 +2478,7 @@ Library.
            Copyright © Guido van Rossum <guido@cwi.nl> and others.
 
         applies to:
+
         - The CPython3.7 programming language, Copyright © 1991-1995, Stichting Mathematisch Centrum, Amsterdam.
                                                All Rights Reserved.
 
@@ -2481,6 +2491,9 @@ Library.
                                                Copyright © 2001-2020, Python Software Foundation.
                                                All Rights Reserved.
           (https://www.python.org/)
+
+        - distlib library Copyright © 2020 [Python Packaging Authority Developers]
+          (https://bitbucket.org/pypa/distlib/src/master/)
 
         - The python3-tk library, Copyright © 2006, Matthias Klose
           This package was debianized by Matthias Klose <doko@debian.org> on
@@ -2909,6 +2922,9 @@ OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
              Note: This unlicense is meant only as a description
 
         applies to:
+        - The py-filelock libary by Benedikt Schmitt
+          (https://github.com/benediktschmitt/py-filelock)
+
         - The Reed-Solomon erasure code library by Tomer Filiba, Stephen Larroque
           (https://github.com/lrq3000/reedsolomon/)
           (https://github.com/tomerfiliba/reedsolomon)

@@ -26,8 +26,8 @@ import typing
 from typing import Union
 
 from src.common.database   import TFCDatabase
-from src.common.encoding   import bool_to_bytes, double_to_bytes, int_to_bytes
-from src.common.encoding   import bytes_to_bool, bytes_to_double, bytes_to_int
+from src.common.encoding   import (bool_to_bytes, double_to_bytes, int_to_bytes,
+                                   bytes_to_bool, bytes_to_double, bytes_to_int)
 from src.common.exceptions import CriticalError, SoftError
 from src.common.input      import yes
 from src.common.misc       import ensure_dir, get_terminal_width, round_up
@@ -53,6 +53,7 @@ class Settings(object):
                  master_key: 'MasterKey',  # MasterKey object
                  operation:  str,          # Operation mode of the program (Tx or Rx)
                  local_test: bool,         # Local testing setting from command-line argument
+                 qubes:      bool = False  # Qubes setting from command-line argument
                  ) -> None:
         """Create a new Settings object.
 
@@ -91,6 +92,7 @@ class Settings(object):
         self.master_key         = master_key
         self.software_operation = operation
         self.local_testing_mode = local_test
+        self.qubes              = qubes
 
         self.file_name = f'{DIR_USER_DATA}{operation}_settings'
         self.database  = TFCDatabase(self.file_name, master_key)
@@ -199,7 +201,7 @@ class Settings(object):
         Settings.validate_max_number_of_groups(key, value, group_list)
         Settings.validate_max_number_of_contacts(key, value, contact_list)
         Settings.validate_new_message_notify_duration(key, value)
-        Settings.validate_traffic_maskig_delay(key, value, contact_list)
+        Settings.validate_traffic_masking_delay(key, value, contact_list)
 
     @staticmethod
     def validate_database_limit(key: str, value: 'SettingType') -> None:
@@ -248,10 +250,10 @@ class Settings(object):
             raise SoftError("Error: Too small value for message notify duration.", head_clear=True)
 
     @staticmethod
-    def validate_traffic_maskig_delay(key:          str,
-                                      value:        'SettingType',
-                                      contact_list: 'ContactList'
-                                      ) -> None:
+    def validate_traffic_masking_delay(key:          str,
+                                       value:        'SettingType',
+                                       contact_list: 'ContactList'
+                                       ) -> None:
         """Validate setting value for traffic masking delays."""
         if key in ["tm_static_delay", "tm_random_delay"]:
 

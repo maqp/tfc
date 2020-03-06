@@ -72,7 +72,7 @@ def process_command(command:  bytes,
     """Select function for received Relay Program command."""
     header, command = separate_header(command, UNENCRYPTED_COMMAND_HEADER_LENGTH)
 
-    #             Keyword                            Function to run    (       Parameters        )
+    #             Header                             Function to run    (       Parameters        )
     #             ---------------------------------------------------------------------------------
     function_d = {UNENCRYPTED_SCREEN_CLEAR:         (clear_windows,               gateway,        ),
                   UNENCRYPTED_SCREEN_RESET:         (reset_windows,               gateway,        ),
@@ -81,8 +81,8 @@ def process_command(command:  bytes,
                   UNENCRYPTED_EC_RATIO:             (change_ec_ratio,    command, gateway,        ),
                   UNENCRYPTED_BAUDRATE:             (change_baudrate,    command, gateway,        ),
                   UNENCRYPTED_MANAGE_CONTACT_REQ:   (manage_contact_req, command,           queues),
-                  UNENCRYPTED_ADD_NEW_CONTACT:      (add_contact,        command, False,    queues),
-                  UNENCRYPTED_ADD_EXISTING_CONTACT: (add_contact,        command, True,     queues),
+                  UNENCRYPTED_ADD_NEW_CONTACT:      (add_contact,        command, queues,   False ),
+                  UNENCRYPTED_ADD_EXISTING_CONTACT: (add_contact,        command, queues,   True  ),
                   UNENCRYPTED_REM_CONTACT:          (remove_contact,     command,           queues),
                   UNENCRYPTED_ONION_SERVICE_DATA:   (add_onion_data,     command,           queues),
                   UNENCRYPTED_ACCOUNT_CHECK:        (compare_accounts,   command,           queues),
@@ -185,8 +185,8 @@ def manage_contact_req(command: bytes,
 
 
 def add_contact(command:  bytes,
+                queues:   'QueueDict',
                 existing: bool,
-                queues:   'QueueDict'
                 ) -> None:
     """Add clients to Relay Program.
 
@@ -232,9 +232,9 @@ def add_onion_data(command: bytes, queues: 'QueueDict') -> None:
     existing_public_keys = public_key_list[no_pending:]
 
     for onion_pub_key in pending_public_keys:
-        add_contact(onion_pub_key, False, queues)
+        add_contact(onion_pub_key, queues, existing=False)
     for onion_pub_key in existing_public_keys:
-        add_contact(onion_pub_key, True, queues)
+        add_contact(onion_pub_key, queues, existing=True)
 
     manage_contact_req(allow_req_byte, queues, notify=False)
     queues[ONION_KEY_QUEUE].put((os_private_key, confirmation_code))

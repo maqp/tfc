@@ -303,7 +303,7 @@ class TestTFCUnencryptedDatabase(unittest.TestCase):
         self.assertEqual(self.database.load_database(), data_old)
         self.assertFalse(os.path.isfile(self.database.database_temp))
 
-    def test_load_database_prefers_valid_temp_database(self) -> None:
+    def test_load_database_prioritizes_valid_temp_database(self) -> None:
         # Setup
         data_old        = os.urandom(MASTERKEY_DB_SIZE)
         checksummed_old = data_old + blake2b(data_old)
@@ -432,7 +432,7 @@ class TestMessageLog(unittest.TestCase):
             self.message_log.c.execute(f"""INSERT INTO log_entries (log_entry) VALUES (?)""",
                                        (os.urandom(LOG_ENTRY_LENGTH),))
 
-        # Test that TFC reopens closed database on write
+        # Test closed database is re-opened during write
         data = os.urandom(LOG_ENTRY_LENGTH)
         self.assertIsNone(self.message_log.insert_log_entry(data))
 

@@ -32,19 +32,17 @@ import requests
 
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PublicKey, X448PrivateKey
 
-from src.common.encoding   import b58encode, int_to_bytes, onion_address_to_pub_key, pub_key_to_onion_address
-from src.common.encoding   import pub_key_to_short_address
+from src.common.encoding   import (b58encode, int_to_bytes, onion_address_to_pub_key, pub_key_to_onion_address,
+                                   pub_key_to_short_address)
 from src.common.exceptions import SoftError
 from src.common.misc       import ignored, separate_header, split_byte_string, validate_onion_addr
 from src.common.output     import m_print, print_key, rp_print
-from src.common.statics    import (ACCOUNT_SEND_QUEUE,
-                                   CLIENT_OFFLINE_THRESHOLD, CONTACT_MGMT_QUEUE, CONTACT_REQ_QUEUE, C_REQ_MGMT_QUEUE,
-                                   C_REQ_STATE_QUEUE, DATAGRAM_HEADER_LENGTH, DST_MESSAGE_QUEUE,
-                                   FILE_DATAGRAM_HEADER, GROUP_ID_LENGTH, GROUP_MGMT_QUEUE,
-                                   GROUP_MSG_EXIT_GROUP_HEADER, GROUP_MSG_INVITE_HEADER, GROUP_MSG_JOIN_HEADER,
-                                   GROUP_MSG_MEMBER_ADD_HEADER, GROUP_MSG_MEMBER_REM_HEADER, GROUP_MSG_QUEUE,
-                                   MESSAGE_DATAGRAM_HEADER, ONION_SERVICE_PUBLIC_KEY_LENGTH,
-                                   ORIGIN_CONTACT_HEADER, PUB_KEY_SEND_QUEUE,
+from src.common.statics    import (ACCOUNT_SEND_QUEUE, CLIENT_OFFLINE_THRESHOLD, CONTACT_MGMT_QUEUE, CONTACT_REQ_QUEUE,
+                                   C_REQ_MGMT_QUEUE, C_REQ_STATE_QUEUE, DATAGRAM_HEADER_LENGTH, DST_MESSAGE_QUEUE,
+                                   FILE_DATAGRAM_HEADER, GROUP_ID_LENGTH, GROUP_MGMT_QUEUE, GROUP_MSG_EXIT_GROUP_HEADER,
+                                   GROUP_MSG_INVITE_HEADER, GROUP_MSG_JOIN_HEADER, GROUP_MSG_MEMBER_ADD_HEADER,
+                                   GROUP_MSG_MEMBER_REM_HEADER, GROUP_MSG_QUEUE, MESSAGE_DATAGRAM_HEADER,
+                                   ONION_SERVICE_PUBLIC_KEY_LENGTH, ORIGIN_CONTACT_HEADER, PUB_KEY_SEND_QUEUE,
                                    PUBLIC_KEY_DATAGRAM_HEADER, RELAY_CLIENT_MAX_DELAY, RELAY_CLIENT_MIN_DELAY,
                                    RP_ADD_CONTACT_HEADER, RP_REMOVE_CONTACT_HEADER, TFC_PUBLIC_KEY_LENGTH,
                                    TOR_DATA_QUEUE, UNIT_TEST_QUEUE, URL_TOKEN_LENGTH, URL_TOKEN_QUEUE)
@@ -406,9 +404,9 @@ def process_group_management_message(data:              bytes,
 
 
 def c_req_manager(queues: 'QueueDict', unit_test: bool = False) -> None:
-    """Manage incoming contact requests."""
-    existing_contacts = []  # type: List[bytes]
-    contact_requests  = []  # type: List[bytes]
+    """Manage displayed contact requests."""
+    existing_contacts  = []  # type: List[bytes]
+    displayed_requests = []  # type: List[bytes]
 
     request_queue = queues[CONTACT_REQ_QUEUE]
     contact_queue = queues[C_REQ_MGMT_QUEUE]
@@ -431,7 +429,7 @@ def c_req_manager(queues: 'QueueDict', unit_test: bool = False) -> None:
                 onion_pub_key = onion_address_to_pub_key(purp_onion_address)
                 if onion_pub_key in existing_contacts:
                     continue
-                if onion_pub_key in contact_requests:
+                if onion_pub_key in displayed_requests:
                     continue
 
                 if show_requests:
@@ -439,7 +437,7 @@ def c_req_manager(queues: 'QueueDict', unit_test: bool = False) -> None:
                     m_print([f"{ts} - New contact request from an unknown TFC account:", purp_onion_address], box=True)
                     account_queue.put(purp_onion_address)
 
-                contact_requests.append(onion_pub_key)
+                displayed_requests.append(onion_pub_key)
 
             if unit_test and queues[UNIT_TEST_QUEUE].qsize() != 0:
                 break

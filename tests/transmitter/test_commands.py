@@ -28,9 +28,9 @@ from unittest        import mock
 from unittest.mock   import MagicMock
 from typing          import Any
 
-from src.common.database import TFCDatabase, MessageLog
-from src.common.db_logs  import write_log_entry
-from src.common.encoding import bool_to_bytes
+from src.common.database     import TFCDatabase, MessageLog
+from src.common.db_logs      import write_log_entry
+from src.common.encoding     import bool_to_bytes
 from src.common.db_masterkey import MasterKey as OrigMasterKey
 from src.common.statics      import (BOLD_ON, CLEAR_ENTIRE_SCREEN, COMMAND_PACKET_QUEUE, CURSOR_LEFT_UP_CORNER,
                                      DIR_USER_DATA, KEY_MGMT_ACK_QUEUE, KEX_STATUS_NO_RX_PSK, KEX_STATUS_UNVERIFIED,
@@ -41,16 +41,16 @@ from src.common.statics      import (BOLD_ON, CLEAR_ENTIRE_SCREEN, COMMAND_PACKE
                                      UNENCRYPTED_WIPE_COMMAND, VERSION, WIN_TYPE_CONTACT, WIN_TYPE_GROUP,
                                      KDB_HALT_ACK_HEADER, KDB_M_KEY_CHANGE_HALT_HEADER)
 
-from src.transmitter.commands import change_master_key, change_setting, clear_screens, exit_tfc, log_command
-from src.transmitter.commands import print_about, print_help, print_recipients, print_settings, process_command
-from src.transmitter.commands import remove_log, rxp_display_unread, rxp_show_sys_win, send_onion_service_key, verify
-from src.transmitter.commands import whisper, whois, wipe
+from src.transmitter.commands import (change_master_key, change_setting, clear_screens, exit_tfc, log_command,
+                                      print_about, print_help, print_recipients, print_settings, process_command,
+                                      remove_log, rxp_display_unread, rxp_show_sys_win, send_onion_service_key,
+                                      verify, whisper, whois, wipe)
 from src.transmitter.packet   import split_to_assembly_packets
 
-from tests.mock_classes import ContactList, create_contact, Gateway, GroupList, MasterKey, OnionService, Settings
-from tests.mock_classes import TxWindow, UserInput
-from tests.utils        import assembly_packet_creator, cd_unit_test, cleanup, group_name_to_group_id
-from tests.utils        import gen_queue_dict, nick_to_onion_address, nick_to_pub_key, tear_queues, TFCTestCase
+from tests.mock_classes import (ContactList, create_contact, Gateway, GroupList, MasterKey, OnionService, Settings,
+                                TxWindow, UserInput)
+from tests.utils        import (assembly_packet_creator, cd_unit_test, cleanup, group_name_to_group_id, gen_queue_dict,
+                                nick_to_onion_address, nick_to_pub_key, tear_queues, TFCTestCase)
 
 
 class TestProcessCommand(TFCTestCase):
@@ -268,17 +268,17 @@ class TestLogCommand(TFCTestCase):
                        log_command, UserInput("history"), *self.args)
         self.assertEqual(self.queues[COMMAND_PACKET_QUEUE].qsize(), 1)
 
-    def test_invalid_number_raises_se(self) -> None:
+    def test_invalid_number_raises_soft_error(self) -> None:
         self.assert_se("Error: Invalid number of messages.",
                        log_command, UserInput('history a'), *self.args)
 
-    def test_too_high_number_raises_se(self) -> None:
+    def test_too_high_number_raises_soft_error(self) -> None:
         self.assert_se("Error: Invalid number of messages.",
                        log_command, UserInput('history 94857634985763454345'), *self.args)
 
     @mock.patch('time.sleep',     return_value=None)
     @mock.patch('builtins.input', return_value='No')
-    def test_user_abort_raises_se(self, *_: Any) -> None:
+    def test_user_abort_raises_soft_error(self, *_: Any) -> None:
         self.assert_se("Log file export aborted.",
                        log_command, UserInput('export'), *self.args)
 
@@ -290,7 +290,7 @@ class TestLogCommand(TFCTestCase):
     @mock.patch('time.sleep',                return_value=None)
     @mock.patch('builtins.input',            return_value='Yes')
     @mock.patch('getpass.getpass',           side_effect=['test_password', 'test_password', KeyboardInterrupt])
-    def test_keyboard_interrupt_raises_se(self, *_: Any) -> None:
+    def test_keyboard_interrupt_raises_soft_error(self, *_: Any) -> None:
         self.master_key = OrigMasterKey(operation=TX, local_test=True)
         self.assert_se("Authentication aborted.",
                        log_command, UserInput('export'), *self.args)
@@ -543,12 +543,12 @@ class TestChangeMasterKey(TFCTestCase):
         self.assert_se("Error: Command is disabled during traffic masking.",
                        change_master_key, UserInput(), *self.args)
 
-    def test_missing_target_sys_raises_se(self) -> None:
+    def test_missing_target_sys_raises_soft_error(self) -> None:
         self.assert_se("Error: No target-system ('tx' or 'rx') specified.",
                        change_master_key, UserInput("passwd "), *self.args)
 
     @mock.patch('getpass.getpass', return_value='test_password')
-    def test_invalid_target_sys_raises_se(self, _: Any) -> None:
+    def test_invalid_target_sys_raises_soft_error(self, _: Any) -> None:
         self.assert_se("Error: Invalid target system 't'.",
                        change_master_key, UserInput("passwd t"), *self.args)
 
@@ -557,7 +557,7 @@ class TestChangeMasterKey(TFCTestCase):
     @mock.patch('getpass.getpass', side_effect=['test_password', 'a', 'a'])
     @mock.patch('time.sleep',      return_value=None)
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.01)
-    def test_invalid_response_from_key_db_raises_se(self, *_: Any) -> None:
+    def test_invalid_response_from_key_db_raises_soft_error(self, *_: Any) -> None:
         # Setup
         def mock_sender_loop() -> None:
             """Mock sender loop key management functionality."""
@@ -581,7 +581,7 @@ class TestChangeMasterKey(TFCTestCase):
     @mock.patch('getpass.getpass', side_effect=['test_password', 'a', 'a'])
     @mock.patch('time.sleep',      return_value=None)
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.01)
-    def test_transmitter_command_raises_system_exit_if_key_database_returns_invalid_master_key(self, *_: Any) -> None:
+    def test_transmitter_command_raises_critical_error_if_key_database_returns_invalid_master_key(self, *_: Any) -> None:
         # Setup
         def mock_sender_loop() -> None:
             """Mock sender loop key management functionality."""
@@ -693,7 +693,7 @@ class TestChangeMasterKey(TFCTestCase):
 
     @mock.patch('time.sleep',      return_value=None)
     @mock.patch('getpass.getpass', side_effect=KeyboardInterrupt)
-    def test_keyboard_interrupt_raises_se(self, *_: Any) -> None:
+    def test_keyboard_interrupt_raises_soft_error(self, *_: Any) -> None:
         self.assert_se("Authentication aborted.", change_master_key, UserInput("passwd tx"), *self.args)
 
 
@@ -717,7 +717,7 @@ class TestRemoveLog(TFCTestCase):
         tear_queues(self.queues)
         cleanup(self.unit_test_dir)
 
-    def test_missing_contact_raises_se(self) -> None:
+    def test_missing_contact_raises_soft_error(self) -> None:
         self.assert_se("Error: No contact/group specified.",
                        remove_log, UserInput(''), *self.args)
 
@@ -734,12 +734,12 @@ class TestRemoveLog(TFCTestCase):
 
     @mock.patch('shutil.get_terminal_size', return_value=[150, 150])
     @mock.patch('builtins.input',           return_value='Yes')
-    def test_removal_with_invalid_account_raises_se(self, *_: Any) -> None:
+    def test_removal_with_invalid_account_raises_soft_error(self, *_: Any) -> None:
         self.assert_se("Error: Invalid account.",
                        remove_log, UserInput(f'/rmlogs {nick_to_onion_address("Alice")[:-1] + "a"}'), *self.args)
 
     @mock.patch('builtins.input', return_value='Yes')
-    def test_invalid_group_id_raises_se(self, _: Any) -> None:
+    def test_invalid_group_id_raises_soft_error(self, _: Any) -> None:
         self.assert_se("Error: Invalid group ID.",
                        remove_log, UserInput(f'/rmlogs {group_name_to_group_id("test_group")[:-1] + b"a"}'), *self.args)
 
@@ -788,7 +788,7 @@ class TestRemoveLog(TFCTestCase):
         self.assertEqual(self.queues[COMMAND_PACKET_QUEUE].qsize(), 1)
 
     @mock.patch('builtins.input', return_value='Yes')
-    def test_unknown_selector_raises_se(self, _: Any) -> None:
+    def test_unknown_selector_raises_soft_error(self, _: Any) -> None:
         # Setup
         write_log_entry(M_S_HEADER + PADDING_LENGTH * b'a', nick_to_pub_key("Alice"), self.tfc_log_database)
 
@@ -814,15 +814,15 @@ class TestChangeSetting(TFCTestCase):
         """Post-test actions."""
         tear_queues(self.queues)
 
-    def test_missing_setting_raises_se(self) -> None:
+    def test_missing_setting_raises_soft_error(self) -> None:
         self.assert_se("Error: No setting specified.",
                        change_setting, UserInput('set'), *self.args)
 
-    def test_invalid_setting_raises_se(self) -> None:
+    def test_invalid_setting_raises_soft_error(self) -> None:
         self.assert_se("Error: Invalid setting 'e_correction_ratia'.",
                        change_setting, UserInput("set e_correction_ratia true"), *self.args)
 
-    def test_missing_value_raises_se(self) -> None:
+    def test_missing_value_raises_soft_error(self) -> None:
         self.assert_se("Error: No value for setting specified.",
                        change_setting, UserInput("set serial_error_correction"), *self.args)
 
@@ -1027,11 +1027,11 @@ class TestVerify(TFCTestCase):
         self.window.contact = self.contact
         self.args           = self.window, self.contact_list
 
-    def test_active_group_raises_se(self) -> None:
+    def test_active_group_raises_soft_error(self) -> None:
         self.window.type = WIN_TYPE_GROUP
         self.assert_se("Error: A group is selected.", verify, *self.args)
 
-    def test_psk_raises_se(self) -> None:
+    def test_psk_raises_soft_error(self) -> None:
         self.contact.kex_status = KEX_STATUS_NO_RX_PSK
         self.assert_se("Pre-shared keys have no fingerprints.", verify, *self.args)
 
@@ -1048,7 +1048,7 @@ class TestVerify(TFCTestCase):
 
     @mock.patch('time.sleep',     return_value=None)
     @mock.patch('builtins.input', side_effect=KeyboardInterrupt)
-    def test_keyboard_interrupt_raises_se(self, *_: Any) -> None:
+    def test_keyboard_interrupt_raises_soft_error(self, *_: Any) -> None:
         self.contact.kex_status = KEX_STATUS_VERIFIED
         self.assert_se("Fingerprint verification aborted.", verify, *self.args)
         self.assertEqual(self.contact.kex_status, KEX_STATUS_VERIFIED)
@@ -1066,7 +1066,7 @@ class TestWhisper(TFCTestCase):
         self.queues   = gen_queue_dict()
         self.args     = self.window, self.settings, self.queues
 
-    def test_empty_input_raises_se(self) -> None:
+    def test_empty_input_raises_soft_error(self) -> None:
         self.assert_se("Error: No whisper message specified.",
                        whisper, UserInput("whisper"), *self.args)
 
@@ -1087,10 +1087,10 @@ class TestWhois(TFCTestCase):
         self.group_list   = GroupList(groups=['test_group'])
         self.args         = self.contact_list, self.group_list
 
-    def test_missing_selector_raises_se(self) -> None:
+    def test_missing_selector_raises_soft_error(self) -> None:
         self.assert_se("Error: No account or nick specified.", whois, UserInput("whois"), *self.args)
 
-    def test_unknown_account_raises_se(self) -> None:
+    def test_unknown_account_raises_soft_error(self) -> None:
         self.assert_se("Error: Unknown selector.", whois, UserInput("whois alice"), *self.args)
 
     def test_nick_from_account(self) -> None:
@@ -1132,7 +1132,7 @@ class TestWipe(TFCTestCase):
         self.args     = self.settings, self.queues, self.gateway
 
     @mock.patch('builtins.input', return_value='No')
-    def test_no_raises_se(self, _: Any) -> None:
+    def test_no_raises_soft_error(self, _: Any) -> None:
         self.assert_se("Wipe command aborted.", wipe, *self.args)
 
     @mock.patch('os.system',      return_value=None)

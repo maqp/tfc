@@ -19,8 +19,8 @@ You should have received a copy of the GNU General Public License
 along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
-import hmac
 import logging
+import secrets
 import typing
 
 from io              import BytesIO
@@ -67,7 +67,10 @@ def validate_url_token(purp_url_token: str,
         # True if a matching shared secret was found in pub_key_dict.
         valid_url_token = False
         for url_token in pub_key_dict:
-            valid_url_token |= hmac.compare_digest(purp_url_token, url_token)
+            try:
+                valid_url_token |= secrets.compare_digest(purp_url_token, url_token)
+            except TypeError:
+                valid_url_token |= False
 
     return valid_url_token
 

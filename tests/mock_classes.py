@@ -265,6 +265,7 @@ class Settings(OrigSettings):
         self.master_key         = MasterKey()
         self.software_operation = TX
         self.local_testing_mode = False
+        self.qubes              = False
 
         self.all_keys = list(vars(self).keys())
         self.key_list = self.all_keys[:self.all_keys.index('master_key')]
@@ -303,6 +304,8 @@ class GatewaySettings(OrigGatewaySettings):
         self.software_operation = TX
         self.local_testing_mode = False
         self.data_diode_sockets = False
+
+        self.qubes = False
 
         self.all_keys = list(vars(self).keys())
         self.key_list = self.all_keys[:self.all_keys.index('software_operation')]

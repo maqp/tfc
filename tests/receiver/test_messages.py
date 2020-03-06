@@ -38,8 +38,8 @@ from src.receiver.packet   import PacketList
 from src.receiver.windows  import WindowList
 
 from tests.mock_classes import ContactList, GroupList, KeyList, MasterKey, Settings
-from tests.utils        import assembly_packet_creator, cd_unit_test, cleanup, group_name_to_group_id
-from tests.utils        import nick_to_pub_key, TFCTestCase
+from tests.utils        import (assembly_packet_creator, cd_unit_test, cleanup, group_name_to_group_id,
+                                nick_to_pub_key, TFCTestCase)
 
 
 class TestProcessMessagePacket(TFCTestCase):
@@ -88,7 +88,7 @@ class TestProcessMessagePacket(TFCTestCase):
 
     # Invalid packets
     @mock.patch('time.sleep', return_value=None)
-    def test_invalid_origin_header_raises_se(self, _: Any) -> None:
+    def test_invalid_origin_header_raises_soft_error(self, _: Any) -> None:
         # Setup
         invalid_origin_header = b'e'
         packet = nick_to_pub_key('Alice') + invalid_origin_header + MESSAGE_LENGTH * b'm'
@@ -98,7 +98,7 @@ class TestProcessMessagePacket(TFCTestCase):
                        process_message_packet, self.ts, packet, *self.args)
 
     @mock.patch('time.sleep', return_value=None)
-    def test_masqueraded_command_raises_se(self, _: Any) -> None:
+    def test_masqueraded_command_raises_soft_error(self, _: Any) -> None:
         for origin_header in [ORIGIN_USER_HEADER, ORIGIN_CONTACT_HEADER]:
             # Setup
             packet = LOCAL_PUBKEY + origin_header + MESSAGE_LENGTH * b'm'
@@ -172,7 +172,7 @@ class TestProcessMessagePacket(TFCTestCase):
 
     # File key messages
     @mock.patch('time.sleep', return_value=None)
-    def test_user_origin_raises_se(self, _: Any) -> None:
+    def test_user_origin_raises_soft_error(self, _: Any) -> None:
         assembly_ct_list = assembly_packet_creator(MESSAGE, ' ', origin_header=ORIGIN_USER_HEADER,
                                                    encrypt_packet=True, onion_pub_key=nick_to_pub_key('Alice'),
                                                    message_header=FILE_KEY_HEADER)
@@ -181,7 +181,7 @@ class TestProcessMessagePacket(TFCTestCase):
             self.assert_se("File key message from the user.", process_message_packet, self.ts, p, *self.args)
 
     @mock.patch('time.sleep', return_value=None)
-    def test_invalid_file_key_data_raises_se(self, _: Any) -> None:
+    def test_invalid_file_key_data_raises_soft_error(self, _: Any) -> None:
         assembly_ct_list = assembly_packet_creator(MESSAGE, ' ', origin_header=ORIGIN_CONTACT_HEADER,
                                                    encrypt_packet=True, onion_pub_key=nick_to_pub_key('Alice'),
                                                    message_header=FILE_KEY_HEADER)
@@ -191,7 +191,7 @@ class TestProcessMessagePacket(TFCTestCase):
                            process_message_packet, self.ts, p, *self.args)
 
     @mock.patch('time.sleep', return_value=None)
-    def test_too_large_file_key_data_raises_se(self, _: Any) -> None:
+    def test_too_large_file_key_data_raises_soft_error(self, _: Any) -> None:
         assembly_ct_list = assembly_packet_creator(MESSAGE, base64.b85encode(BLAKE2_DIGEST_LENGTH * b'a'
                                                                              + SYMMETRIC_KEY_LENGTH * b'b'
                                                                              + b'a').decode(),
@@ -216,7 +216,7 @@ class TestProcessMessagePacket(TFCTestCase):
 
     # Group messages
     @mock.patch('time.sleep', return_value=None)
-    def test_invalid_message_header_raises_se(self, _: Any) -> None:
+    def test_invalid_message_header_raises_soft_error(self, _: Any) -> None:
         # Setup
         assembly_ct_list = assembly_packet_creator(MESSAGE, 'test_message', origin_header=ORIGIN_CONTACT_HEADER,
                                                    encrypt_packet=True, onion_pub_key=nick_to_pub_key('Alice'),
@@ -227,7 +227,7 @@ class TestProcessMessagePacket(TFCTestCase):
                        process_message_packet, self.ts, assembly_ct_list[0], *self.args)
 
     @mock.patch('time.sleep', return_value=None)
-    def test_invalid_window_raises_se(self, _: Any) -> None:
+    def test_invalid_window_raises_soft_error(self, _: Any) -> None:
         # Setup
         assembly_ct_list = assembly_packet_creator(MESSAGE, 'test_message', origin_header=ORIGIN_CONTACT_HEADER,
                                                    encrypt_packet=True, onion_pub_key=nick_to_pub_key('Alice'),
@@ -240,7 +240,7 @@ class TestProcessMessagePacket(TFCTestCase):
                        process_message_packet, self.ts, assembly_ct_list[0], *self.args)
 
     @mock.patch('time.sleep', return_value=None)
-    def test_invalid_message_raises_se(self, _: Any) -> None:
+    def test_invalid_message_raises_soft_error(self, _: Any) -> None:
         # Setup
         assembly_ct_list = assembly_packet_creator(MESSAGE, ' ', origin_header=ORIGIN_CONTACT_HEADER,
                                                    encrypt_packet=True, onion_pub_key=nick_to_pub_key('Alice'),
@@ -251,7 +251,7 @@ class TestProcessMessagePacket(TFCTestCase):
                        process_message_packet, self.ts, assembly_ct_list[0], *self.args)
 
     @mock.patch('time.sleep', return_value=None)
-    def test_invalid_whisper_header_raises_se(self, _: Any) -> None:
+    def test_invalid_whisper_header_raises_soft_error(self, _: Any) -> None:
         # Setup
         assembly_ct_list = assembly_packet_creator(MESSAGE, '', origin_header=ORIGIN_CONTACT_HEADER,
                                                    encrypt_packet=True, onion_pub_key=nick_to_pub_key('Alice'),
@@ -262,7 +262,7 @@ class TestProcessMessagePacket(TFCTestCase):
                        process_message_packet, self.ts, assembly_ct_list[0], *self.args)
 
     @mock.patch('time.sleep', return_value=None)
-    def test_contact_not_in_group_raises_se(self, _: Any) -> None:
+    def test_contact_not_in_group_raises_soft_error(self, _: Any) -> None:
         # Setup
 
         assembly_ct_list = assembly_packet_creator(MESSAGE, 'test_message', origin_header=ORIGIN_CONTACT_HEADER,
