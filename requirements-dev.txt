@@ -1,72 +1,74 @@
-# argon2_cffi
-six>=1.14.0
-pycparser>=2.20
+# Sub-dependencies are listed below dependencies
+
+# Argon2 Password Hashing Function (Derives keys that protect persistent user data)
+argon2-cffi>=19.2.0
 cffi>=1.14.0
-argon2_cffi>=19.2.0
+pycparser>=2.20
+six>=1.14.0
 
-# cryptography (pyca)
-cryptography>=2.8
+# cryptography (pyca) (Provides X448 key exchange)
+cryptography>=2.9.2
 
-# Flask
-Werkzeug>=1.0.0
-MarkupSafe>=1.1.1
-Jinja2>=2.11.1
+# Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)
+Flask>=1.1.2
+click>=7.1.1
 itsdangerous>=1.1.0
-click>=7.0
-Flask>=1.1.1
+Jinja2>=2.11.2
+MarkupSafe>=1.1.1
+Werkzeug>=1.0.1
 
-# mypy static type checking tool
-typing-extensions>=3.7.4.1
-typed-ast>=1.4.1
+# mypy (Static type checking tool)
+mypy>=0.770
 mypy-extensions>=0.4.3
-mypy>=0.761
+typed-ast>=1.4.1
+typing-extensions>=3.7.4.2
 
-# PyLama
-pyflakes>=2.1.1
-snowballstemmer>=2.0.0
-pydocstyle>=5.0.2
-pycodestyle>=2.5.0
-mccabe>=0.6.1
+# PyLama (Code audit tool for Python)
 pylama>=7.7.1
+mccabe>=0.6.1
+pycodestyle>=2.5.0
+pydocstyle>=5.0.2
+snowballstemmer>=2.0.0
+pyflakes>=2.2.0
 
-# PyNaCl (pyca)
-setuptools>=45.2.0
+# PyNaCl (pyca) (Handles TCB-side XChaCha20-Poly1305 symmetric encryption and Derives TFC account from Onion Service private key)
 PyNaCl>=1.3.0
 
-# pyserial
+# pySerial (Connects the Source/Destination Computer to the Networked Computer)
 pyserial>=3.4
 
-# PySocks
+# PySocks (Routes Requests library through SOCKS5 proxy making Onion Service connections possible)
 PySocks>=1.7.1
 
-# pytest
-wcwidth>=0.1.8
-py>=1.8.1
-pluggy>=0.13.1
-pyparsing>=2.4.6
-packaging>=20.3
-more-itertools>=8.2.0
-zipp>=3.1.0
-importlib-metadata>=1.5.0
+# pytest (Test framework)
+pytest>=5.4.1
 attrs>=19.3.0
-pytest>=5.3.5
+importlib-metadata>=1.6.0
+zipp>=3.1.0
+more-itertools>=8.2.0
+packaging>=20.3
+pyparsing>=2.4.7
+pluggy>=0.13.1
+py>=1.8.1
+wcwidth>=0.1.9
 
-# pytest-cov
-coverage>=5.0.3
+# pytest-cov (Pytest plugin for measuring coverage)
 pytest-cov>=2.8.1
+coverage>=5.1
 
-# xdist: pytest distributed testing plugin
-pytest-forked>=1.1.3
-apipkg>=1.5
-execnet>=1.7.1
+# xdist (Pytest distributed testing plugin)
 pytest-xdist>=1.31.0
+execnet>=1.7.1
+apipkg>=1.5
+pytest-forked>=1.1.3
 
-# Requests
+# Requests (Connects to the contact's Tor Onion Service)
 requests>=2.23.0
-certifi>=2019.11.28
+certifi>=2020.4.5.1
 chardet>=3.0.4
 idna>=2.9
-urllib3>=1.25.8
+urllib3>=1.25.9
+setuptools>=46.1.3
 
-# Stem
+# Stem (Connects to Tor and manages Onion Services)
 stem>=1.8.0

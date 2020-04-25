@@ -427,6 +427,6 @@ class MasterKey(object):
         try:
             authenticated = self.load_master_key() == self.master_key
         except (EOFError, KeyboardInterrupt):
-            raise SoftError(f"Authentication aborted.", tail_clear=True, head=2, delay=1)
+            raise SoftError("Authentication aborted.", tail_clear=True, head=2, delay=1)
 
         return authenticated

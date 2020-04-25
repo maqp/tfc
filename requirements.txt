@@ -1,20 +1,19 @@
 # Sub-dependencies are listed below dependencies
 
-# Pyserial (Connects the Source/Destination Computer to the Networked Computer)
-pyserial==3.4       --hash=sha512:8333ac2843fd136d5d0d63b527b37866f7d18afc3bb33c4938b63af077492aeb118eb32a89ac78547f14d59a2adb1e5d00728728275de62317da48dadf6cdff9
+# pySerial (Connects the Source/Destination Computer to the Networked Computer)
+pyserial==3.4        --hash=sha512:8333ac2843fd136d5d0d63b527b37866f7d18afc3bb33c4938b63af077492aeb118eb32a89ac78547f14d59a2adb1e5d00728728275de62317da48dadf6cdff9
 
-# Argon2 (Derives keys that protect persistent user data)
-argon2_cffi==19.2.0 --hash=sha512:91c4afc2d0cac14cf4342f198f68afd6477dc5bdf2683476c6f8e253de7b3bdc83b229ce96d0280f656ff33667ab9902c92741b82faee8d8892307cde6199845
-cffi==1.14.0        --hash=sha512:5b315a65fc8f40622ceef35466546620aaca9dd304f5491a845239659b4066469c5fb3f1683c382eb57f8975caf318e5d88852e3dbb049cde193c9189b88c9c0
-pycparser==2.20     --hash=sha512:06dc9cefdcde6b97c96d0452a77db42a629c48ee545edd7ab241763e50e3b3c56d21f9fcce4e206817aa1a597763d948a10ccc73572490d739c89eea7fede0a1
-six==1.14.0         --hash=sha512:a6e7e35921ce8f2f8e79a296ea79a9c3515ff6dd7e777d7892fe4988594f1b3a442a68ffb89cf64530b90a32ceeea00e4ab9069bb697629ab4eb7262c68d1b0f
+# Argon2 Password Hashing Function (Derives keys that protect persistent user data)
+argon2-cffi==19.2.0  --hash=sha512:91c4afc2d0cac14cf4342f198f68afd6477dc5bdf2683476c6f8e253de7b3bdc83b229ce96d0280f656ff33667ab9902c92741b82faee8d8892307cde6199845
+cffi==1.14.0         --hash=sha512:5b315a65fc8f40622ceef35466546620aaca9dd304f5491a845239659b4066469c5fb3f1683c382eb57f8975caf318e5d88852e3dbb049cde193c9189b88c9c0 \
+                     --hash=sha512:af327aaee006c4d76034c6df9ffc2d7dd5d9fface5117007065db2bfef842ade3aae36727ff317c3e7f735facdfb5380e646bcd9615b14acfd2701a84c0d15ec
+pycparser==2.20      --hash=sha512:06dc9cefdcde6b97c96d0452a77db42a629c48ee545edd7ab241763e50e3b3c56d21f9fcce4e206817aa1a597763d948a10ccc73572490d739c89eea7fede0a1
+six==1.14.0          --hash=sha512:a6e7e35921ce8f2f8e79a296ea79a9c3515ff6dd7e777d7892fe4988594f1b3a442a68ffb89cf64530b90a32ceeea00e4ab9069bb697629ab4eb7262c68d1b0f
 
-# PyNaCl (Handles TCB-side XChaCha20-Poly1305 symmetric encryption)
-PyNaCl==1.3.0       --hash=sha512:c4017c38b026a5c531b15839b8d61d1fae9907ba1960c2f97f4cd67fe0827729346d5186a6d6927ba84f64b4cbfdece12b287aa7750a039f4160831be871cea3
-setuptools==45.2.0  --hash=sha512:de1ac45cb52e8a28322048e6a2b95015aa6826c49679349a1b579cb46b95cb2ffd62242c861c2fe3e059c0c55d4fdb4384c51b964ca2634b2843263543f8842a
-# Duplicate sub-dependencies: cffi, pycparser, six
+# cryptography (pyca) (Handles TCB-side X448 key exchange)
+cryptography==2.9.2  --hash=sha512:251d1ce022ac969516e54eae62b383bc113cc023a5459a030fa4c3d3d67c5ff4daa5d23bcf6a334845315ab71532e7aa3db28c882bbfed5260dd1ab01429ca6a \
+                     --hash=sha512:3fd9dbc776bb9ff015b96174aa424d4a33c60df7f2b07a35c16c080bfaca06fe35466b02a8586157979abe15c69354923c44c9ab238b850de8bdb1b45814f0bd
 
-# Cryptography (Handles TCB-side X448 key exchange)
-cryptography==2.8   --hash=sha512:184003c89fee74892de25c3e5ec366faea7a5f1fcca3c82b0d5e5f9f797286671a820ca54da5266d6f879ab342c97e25bce9db366c5fb1178690cd5978d4d622 \
-                    --hash=sha512:d8ddabe127ae8d7330d219e284de68b37fa450a27b4cf05334e9115388295b00148d9861c23b1a2e5ea9df0c33a2d27f3e4b25ce9abd3c334f1979920b19c902
-# Duplicate sub-dependencies: cffi, pycparser, six
+# PyNaCl (pyca) (Handles TCB-side XChaCha20-Poly1305 symmetric encryption)
+PyNaCl==1.3.0        --hash=sha512:c4017c38b026a5c531b15839b8d61d1fae9907ba1960c2f97f4cd67fe0827729346d5186a6d6927ba84f64b4cbfdece12b287aa7750a039f4160831be871cea3
+setuptools==46.1.3   --hash=sha512:24641b46913f15eebdd600405990b6a1a8a40ae3733d05d21e153fad8509284d78b2f297392224d3e52248f23a5b92f154e2458121b94038a4bb603717b77208

@@ -16,4 +16,4 @@
 # You should have received a copy of the GNU General Public License
 # along with TFC. If not, see <https://www.gnu.org/licenses/>.
 
-cd /opt/tfc/ && source venv_tcb/bin/activate && python3.7 tfc.py -q -r
+cd /opt/tfc/ && source venv_tcb/bin/activate && python3 tfc.py -q -r

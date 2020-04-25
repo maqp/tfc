@@ -180,7 +180,7 @@ class RxWindow(Iterable[MsgTuple]):
             # Handle specifiers for messages to inactive window
             if not self.is_active:
                 handle += {WIN_TYPE_GROUP:   f" (group {self.name})",
-                           WIN_TYPE_CONTACT: f" (private message)"}.get(self.type, '')
+                           WIN_TYPE_CONTACT:  " (private message)"}.get(self.type, '')
             if whisper:
                 handle += " (whisper)"
 

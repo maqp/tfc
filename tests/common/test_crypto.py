@@ -83,8 +83,8 @@ class TestBLAKE2b(unittest.TestCase):
             file_data = f.read()
 
         # Verify the SHA256 hash of the test vector file.
-        self.assertEqual(hashlib.sha256(file_data.encode()).hexdigest(),
-                         '82fcb3cabe8ff6e1452849e3b2a26a3631f1e2b51beb62ffb537892d2b3e364f')
+        self.assertEqual('82fcb3cabe8ff6e1452849e3b2a26a3631f1e2b51beb62ffb537892d2b3e364f',
+                         hashlib.sha256(file_data.encode()).hexdigest())
 
         # Parse the test vectors to a list of tuples: [(message1, key1, digest1), (message2, key2, digest2), ...]
         self.test_vectors = []
@@ -202,8 +202,8 @@ class TestArgon2KDF(unittest.TestCase):
         # Verify the SHA256 hash of the zip-file containing the command-line utility.
         with open(file_name, 'rb') as f:
             file_data = f.read()
-        self.assertEqual(hashlib.sha256(file_data).hexdigest(),
-                         '2957db15d320b0970a34be9a6ef984b11b2296b1b1f8b051a47e35035c1bc7cf')
+        self.assertEqual('ff8075cfbca9e9d892ee111c7776688e7edf4abe49c26cc0211a75143f4bf016',
+                         hashlib.sha256(file_data).hexdigest())
 
         # Unzip, compile, and test the command-line utility.
         subprocess.Popen(f'unzip {file_name}', shell=True).wait()

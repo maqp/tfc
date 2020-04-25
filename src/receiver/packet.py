@@ -64,9 +64,9 @@ def process_offset(offset:    int,        # Number of dropped packets
     if offset > HARAC_WARN_THRESHOLD and origin == ORIGIN_CONTACT_HEADER:
         m_print([f"Warning! {offset} packets from {nick} were not received.",
                  f"This might indicate that {offset} most recent packets were ",
-                 f"lost during transmission, or that the contact is attempting ",
-                 f"a DoS attack. You can wait for TFC to attempt to decrypt the ",
-                 "packet, but it might take a very long time or even forever."])
+                  "lost during transmission, or that the contact is attempting ",
+                  "a DoS attack. You can wait for TFC to attempt to decrypt the ",
+                  "packet, but it might take a very long time or even forever."])
 
         if not yes("Proceed with the decryption?", abort=False, tail=1):
             raise SoftError(f"Dropped packet from {nick}.", window=window)

@@ -3,14 +3,14 @@
 ### Tinfoil Chat
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Python 3.7](https://img.shields.io/badge/python-3.7-informational.svg)](https://www.python.org/downloads/release/python-370/)
+[![Python 3.7|3.8](https://img.shields.io/badge/python-3.7%20%7C%C2%A03.8-blue)](https://img.shields.io/badge/python-3.7%20%7C%C2%A03.8-blue)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 [![Build Status](https://travis-ci.org/maqp/tfc.svg?branch=master)](https://travis-ci.org/maqp/tfc) 
 [![Coverage Status](https://coveralls.io/repos/github/maqp/tfc/badge.svg?branch=master)](https://coveralls.io/github/maqp/tfc?branch=master)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/71fa9cc1da424f52a576a04c2722da26)](https://www.codacy.com/manual/maqp/tfc?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=maqp/tfc&amp;utm_campaign=Badge_Grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/maqp/tfc/badge)](https://www.codefactor.io/repository/github/maqp/tfc)
 [![Requirements Status](https://requires.io/github/maqp/tfc/requirements.svg?branch=master)](https://requires.io/github/maqp/tfc/requirements/?branch=master)
-[![Known Vulnerabilities](https://snyk.io/test/github/maqp/tfc/badge.svg)](https://snyk.io/test/github/maqp/tfc)
+[![Snyk Report](https://snyk.io/test/github/maqp/tfc/badge.svg)](https://snyk.io/test/github/maqp/tfc)
 
 Tinfoil Chat (TFC) is a
 [FOSS](https://www.gnu.org/philosophy/free-sw.html)+[FHD](https://www.gnu.org/philosophy/free-hardware-designs.en.html)
@@ -19,7 +19,7 @@ messaging system that relies on high assurance hardware architecture to protect 
 [passive collection](https://en.wikipedia.org/wiki/Upstream_collection), 
 [MITM attacks](https://en.wikipedia.org/wiki/Man-in-the-middle_attack)
 and most importantly,
-[remote key exfiltration](https://www.youtube.com/watch?v=3euYBPlX9LM). 
+[remote key exfiltration](https://en.wikipedia.org/wiki/Data_exfiltration). 
 TFC is designed for people with one of the most complex threat models: organized crime 
 groups and nation state hackers who bypass end-to-end encryption of traditional secure 
 messaging apps by hacking the endpoint.
@@ -210,7 +210,7 @@ hardware data diode is needed.
 #### Source/Destination Computer
 - Debian 10
 - PureOS 9.0
-- *buntu 19.10
+- *buntu 20.04 LTS
 - LMDE 4
 - Qubes 4 (Debian 10 VM)
 
@@ -218,7 +218,7 @@ hardware data diode is needed.
 - Tails 4.0
 - Debian 10
 - PureOS 9.0
-- *buntu 19.10
+- *buntu 20.04 LTS
 - LMDE 4
 - Qubes 4 (Debian 10 VM)
 

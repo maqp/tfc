@@ -21,92 +21,90 @@
 INSTALL_DIR="/opt/tfc"
 
 
+# ----------------------------------------------------------------------------------------
+
 # PIP dependency file names
 
 APPDIRS=appdirs-1.4.3-py2.py3-none-any.whl
 ARGON2_CFFI=argon2_cffi-19.2.0-cp34-abi3-manylinux1_x86_64.whl
-CERTIFI=certifi-2019.11.28-py2.py3-none-any.whl
-CFFI=cffi-1.14.0-cp37-cp37m-manylinux1_x86_64.whl
+CERTIFI=certifi-2020.4.5.1-py2.py3-none-any.whl
+CFFI37=cffi-1.14.0-cp37-cp37m-manylinux1_x86_64.whl
+CFFI38=cffi-1.14.0-cp38-cp38-manylinux1_x86_64.whl
 CHARDET=chardet-3.0.4-py2.py3-none-any.whl
-CLICK=Click-7.0-py2.py3-none-any.whl
-CRYPTOGRAPHY=cryptography-2.8-cp34-abi3-manylinux1_x86_64.whl
+CLICK=click-7.1.1-py2.py3-none-any.whl
+CRYPTOGRAPHY37=cryptography-2.9.2-cp35-abi3-manylinux1_x86_64.whl
+CRYPTOGRAPHY38=cryptography-2.9.2-cp35-abi3-manylinux2010_x86_64.whl
 DISTLIB=distlib-0.3.0.zip
 FILELOCK=filelock-3.0.12-py3-none-any.whl
-FLASK=Flask-1.1.1-py2.py3-none-any.whl
+FLASK=Flask-1.1.2-py2.py3-none-any.whl
 IDNA=idna-2.9-py2.py3-none-any.whl
-IMPORTLIB_METADATA=importlib_metadata-1.5.0-py2.py3-none-any.whl
+IMPORTLIB_METADATA=importlib_metadata-1.6.0-py2.py3-none-any.whl
 ITSDANGEROUS=itsdangerous-1.1.0-py2.py3-none-any.whl
-JINJA2=Jinja2-2.11.1-py2.py3-none-any.whl
+JINJA2=Jinja2-2.11.2-py2.py3-none-any.whl
 MARKUPSAFE=MarkupSafe-1.1.1-cp37-cp37m-manylinux1_x86_64.whl
 PYCPARSER=pycparser-2.20-py2.py3-none-any.whl
 PYNACL=PyNaCl-1.3.0-cp34-abi3-manylinux1_x86_64.whl
 PYSERIAL=pyserial-3.4-py2.py3-none-any.whl
 PYSOCKS=PySocks-1.7.1-py3-none-any.whl
 REQUESTS=requests-2.23.0-py2.py3-none-any.whl
-SETUPTOOLS=setuptools-45.2.0-py3-none-any.whl
+SETUPTOOLS=setuptools-46.1.3-py3-none-any.whl
 SIX=six-1.14.0-py2.py3-none-any.whl
-URLLIB3=urllib3-1.25.8-py2.py3-none-any.whl
-VIRTUALENV=virtualenv-20.0.8-py2.py3-none-any.whl
-WERKZEUG=Werkzeug-1.0.0-py2.py3-none-any.whl
+URLLIB3=urllib3-1.25.9-py2.py3-none-any.whl
+VIRTUALENV=virtualenv-20.0.18-py2.py3-none-any.whl
+WERKZEUG=Werkzeug-1.0.1-py2.py3-none-any.whl
 ZIPP=zipp-3.1.0-py3-none-any.whl
 
 
+# ----------------------------------------------------------------------------------------
+
+# Pinned Tails dependencies
+
+DIGEST_PYSERIAL=8333ac2843fd136d5d0d63b527b37866f7d18afc3bb33c4938b63af077492aeb118eb32a89ac78547f14d59a2adb1e5d00728728275de62317da48dadf6cdff9
+DIGEST_PYSOCKS=313b954102231d038d52ab58f41e3642579be29f827135b8dd92c06acb362effcb0a7fd5f35de9273372b92d9fe29f38381ae44f8b41aa90d2564d6dd07ecd12
+
+# Virtualenv
+DIGEST_ZIPP=89170b91cfdc0ef4d85b5316b484c8d6e01985f19bb9f545b11d648e122392efa68d40c66e056b8998fb69af49f4e18707f783be8d500b8957ce3a885662d27c
+DIGEST_FILELOCK=d13edd50779bca9842694e0da157ca1fdad9d28166771275049f41dea4b8d8466fc5604b610b6ad64552cdf4c1d3cada9977ca37c6b775c4cc92f333709e8ea3
+DIGEST_IMPORTLIB_METADATA=8bf2b8ccbc501526c30115bf417d67440701c3793cec0caa0f778b5216788cc8c58e692bcb818aa34cc4dd6208595345669d710e8ddc5af521532a1b9c7f2837
+DIGEST_SIX=a6e7e35921ce8f2f8e79a296ea79a9c3515ff6dd7e777d7892fe4988594f1b3a442a68ffb89cf64530b90a32ceeea00e4ab9069bb697629ab4eb7262c68d1b0f
+DIGEST_DISTLIB=6f910a9607569c9023a19aee35be15cf8521ec7c07c5d478e6d555a301d024a2ee1db48562707b238a72c631d75d9dc154d38b39ed51746b66c938ac40671e60
+DIGEST_APPDIRS=b79e9fa76eadee595fe47ea7efd35c4cc72f058a9ed16a95cfa4d91a52c330efba50df7a9926900bbced229cca7bbfb05bbf0a8ee1d46bac2362c98ab9a5154d
+DIGEST_VIRTUALENV=7fe96bee57c4336cdeac0e6be512c50717db4d31091c6906a50f2fd622ff290757a109e1fb3b4936e7dbff61e756033990fb7a04d6304473c40e52da2dc97b9e
+
+# Requests
+DIGEST_URLLIB3=b20687b4ce06164c5b932b43c5b758efd864668ee2b60f6cd6ce6c27f0ea16b9d1222ec0c061618fc3f0de362c0f18be95864bd91ecaa73fdfa92bd666fb4378
+DIGEST_IDNA=be96b782728404acec374f446b11811f8e76d5ed42d4673a07e883220f5ba2a099a8124cda5898c3f5da7d92b87b36127e8fd42e9edb240b587a380ed73cce93
+DIGEST_CHARDET=bfae58c8ea19c87cc9c9bf3d0b6146bfdb3630346bd954fe8e9f7da1f09da1fc0d6943ff04802798a665ea3b610ee2d65658ce84fe5a89f9e93625ea396a17f4
+DIGEST_CERTIFI=3fb450a6feba8865cd83ae0d7ba0d60ccc7ba456676e2c1f739058878df2ea9e222c200902e6409fbeee88f9d3825c2074de3531ab2977135efefd793e550e8e
+DIGEST_REQUESTS=98e4c9435434b8f63fc37a21133adbbfeb471bfb8b40d60f04bded5cbe328c14a22527d54ab2a55a81d93110d627bacc26943e55ec338b7bed8708b55e15fff3
+
+# Flask
+DIGEST_WERKZEUG=8f05b3632d00b1a9c3d85f46dccc7eb55c032bc8cc7b688219865487c96127ecccdd44f9724159299d14db98c1951b552b478811d292d93aa2d12817c88c8527
+DIGEST_MARKUPSAFE=69e9b9c9ac4fdf3cfa1a3de23d14964b843989128f8cc6ea58617fc5d6ef937bcc3eae9cb32b5164b5f54b06f96bdff9bc249529f20671cc26adc9e6ce8f6bec
+DIGEST_JINJA2=715456e053af748fd04b7357f61c4fe457f511b4802180b01164b647081c7de30f2d5215de4ed2a6a83cd4241e03bcf0d247ddf13dc3878962539855b80344d2
+DIGEST_ITSDANGEROUS=891c294867f705eb9c66274bd04ac5d93140d6e9beea6cbf9a44e7f9c13c0e2efa3554bdf56620712759a5cd579e112a782d25f3f91ba9419d60b2b4d2bc5b7c
+DIGEST_CLICK=0b0997b10fc6bcb46cd00bc5a2f65a74aae153fa41978413464f2e6ccf1948272181573178ebcf22ded3f94c9a9c37f58339454699b9f72e171b09afe7a1afcf
+DIGEST_FLASK=3bcd417e5b93590944ebdba05ff4ae37aab31aadcda2e4514d8be275d52877191ffbc58d89ea603900afe39264c899fc1e4fd77cd5e24880c03601551d8f1aac
+
+# Cryptography
+DIGEST_PYCPARSER=06dc9cefdcde6b97c96d0452a77db42a629c48ee545edd7ab241763e50e3b3c56d21f9fcce4e206817aa1a597763d948a10ccc73572490d739c89eea7fede0a1
+DIGEST_CFFI=5b315a65fc8f40622ceef35466546620aaca9dd304f5491a845239659b4066469c5fb3f1683c382eb57f8975caf318e5d88852e3dbb049cde193c9189b88c9c0
+DIGEST_CRYPTOGRAPHY=251d1ce022ac969516e54eae62b383bc113cc023a5459a030fa4c3d3d67c5ff4daa5d23bcf6a334845315ab71532e7aa3db28c882bbfed5260dd1ab01429ca6a
+
+# PyNaCl
+DIGEST_SETUPTOOLS=24641b46913f15eebdd600405990b6a1a8a40ae3733d05d21e153fad8509284d78b2f297392224d3e52248f23a5b92f154e2458121b94038a4bb603717b77208
+DIGEST_PYNACL=c4017c38b026a5c531b15839b8d61d1fae9907ba1960c2f97f4cd67fe0827729346d5186a6d6927ba84f64b4cbfdece12b287aa7750a039f4160831be871cea3
+
+
+# ----------------------------------------------------------------------------------------
+
 # Functions with pinned hashes
-
-function verify_tails_dependencies {
-    compare_digest 8333ac2843fd136d5d0d63b527b37866f7d18afc3bb33c4938b63af077492aeb118eb32a89ac78547f14d59a2adb1e5d00728728275de62317da48dadf6cdff9 '' ${PYSERIAL}
-    compare_digest 313b954102231d038d52ab58f41e3642579be29f827135b8dd92c06acb362effcb0a7fd5f35de9273372b92d9fe29f38381ae44f8b41aa90d2564d6dd07ecd12 '' ${PYSOCKS}
-
-    # Virtualenv
-    compare_digest 8b85fa635c5ec51881aed2238f1e9229d6607644995e26e3f9fe6f8bb6313c51f7b290a6ac1347738866626b1b49d08c5622836dfe2a39ae60f697888bcea615 '' ${VIRTUALENV}
-    compare_digest b79e9fa76eadee595fe47ea7efd35c4cc72f058a9ed16a95cfa4d91a52c330efba50df7a9926900bbced229cca7bbfb05bbf0a8ee1d46bac2362c98ab9a5154d '' ${APPDIRS}
-    compare_digest 6f910a9607569c9023a19aee35be15cf8521ec7c07c5d478e6d555a301d024a2ee1db48562707b238a72c631d75d9dc154d38b39ed51746b66c938ac40671e60 '' ${DISTLIB}
-    compare_digest a6e7e35921ce8f2f8e79a296ea79a9c3515ff6dd7e777d7892fe4988594f1b3a442a68ffb89cf64530b90a32ceeea00e4ab9069bb697629ab4eb7262c68d1b0f '' ${SIX}
-    compare_digest 53e51d4b75c1df19fcb6b32e57fa73ffcb00eede86fee7ac9634f02661360538a74d3546b65a641b68ee84c0d78293fe03d09b65cb85359780822b56f813b926 '' ${IMPORTLIB_METADATA}
-    compare_digest d13edd50779bca9842694e0da157ca1fdad9d28166771275049f41dea4b8d8466fc5604b610b6ad64552cdf4c1d3cada9977ca37c6b775c4cc92f333709e8ea3 '' ${FILELOCK}
-    compare_digest 89170b91cfdc0ef4d85b5316b484c8d6e01985f19bb9f545b11d648e122392efa68d40c66e056b8998fb69af49f4e18707f783be8d500b8957ce3a885662d27c '' ${ZIPP}
-
-    # Requests
-    compare_digest f7fd3b54b7c555c0e74eb445e543763d233b5c6f8021ccf46a45d452c334953276d43ecd8f3d0eafefa35103a7d1874e291216fc9a41362eb6f1250a2a670f16 '' ${URLLIB3}
-    compare_digest be96b782728404acec374f446b11811f8e76d5ed42d4673a07e883220f5ba2a099a8124cda5898c3f5da7d92b87b36127e8fd42e9edb240b587a380ed73cce93 '' ${IDNA}
-    compare_digest bfae58c8ea19c87cc9c9bf3d0b6146bfdb3630346bd954fe8e9f7da1f09da1fc0d6943ff04802798a665ea3b610ee2d65658ce84fe5a89f9e93625ea396a17f4 '' ${CHARDET}
-    compare_digest fe5b05c29c1e1d9079150aaea28b09d84f0dd15907e276ccabb314433cfaac948a9615e10d6d01cbd537f99eed8072fbda7cb901e932fbab4f1286ae8c50471b '' ${CERTIFI}
-    compare_digest 98e4c9435434b8f63fc37a21133adbbfeb471bfb8b40d60f04bded5cbe328c14a22527d54ab2a55a81d93110d627bacc26943e55ec338b7bed8708b55e15fff3 '' ${REQUESTS}
-
-    # Flask
-    compare_digest 82a0f1776820d07e929daa60bfa0a3e746464b0f2923376330f8ae5abf535bcb756c7384757b2ff8e0076f299fe85d96ef34b3a8eede21c11df9aba8cc58cb77 '' ${WERKZEUG}
-    compare_digest 69e9b9c9ac4fdf3cfa1a3de23d14964b843989128f8cc6ea58617fc5d6ef937bcc3eae9cb32b5164b5f54b06f96bdff9bc249529f20671cc26adc9e6ce8f6bec '' ${MARKUPSAFE}
-    compare_digest 461bbd517560f1c4dbf7309bdf0cf33b468938fddfa2c3385fab07343269732d8ce68d8827148645113267d48e7d67b03f1663cc64839dd1fcec723ea606aaf4 '' ${JINJA2}
-    compare_digest 891c294867f705eb9c66274bd04ac5d93140d6e9beea6cbf9a44e7f9c13c0e2efa3554bdf56620712759a5cd579e112a782d25f3f91ba9419d60b2b4d2bc5b7c '' ${ITSDANGEROUS}
-    compare_digest 6b30987349df7c45c5f41cff9076ed45b178b444fca1ab1965f4ae33d1631522ce0a2868392c736666e83672b8b20e9503ae9ce5016dce3fa8f77bc8a3674130 '' ${CLICK}
-    compare_digest bd49cb364307569480196289fa61fbb5493e46199620333f67617367278e1f56b20fc0d40fd540bef15642a8065e488c24e97f50535e8ec143875095157d8069 '' ${FLASK}
-
-    # Cryptography
-    compare_digest 06dc9cefdcde6b97c96d0452a77db42a629c48ee545edd7ab241763e50e3b3c56d21f9fcce4e206817aa1a597763d948a10ccc73572490d739c89eea7fede0a1 '' ${PYCPARSER}
-    compare_digest 5b315a65fc8f40622ceef35466546620aaca9dd304f5491a845239659b4066469c5fb3f1683c382eb57f8975caf318e5d88852e3dbb049cde193c9189b88c9c0 '' ${CFFI}
-    compare_digest 184003c89fee74892de25c3e5ec366faea7a5f1fcca3c82b0d5e5f9f797286671a820ca54da5266d6f879ab342c97e25bce9db366c5fb1178690cd5978d4d622 '' ${CRYPTOGRAPHY}
-
-    # PyNaCl
-    compare_digest c4017c38b026a5c531b15839b8d61d1fae9907ba1960c2f97f4cd67fe0827729346d5186a6d6927ba84f64b4cbfdece12b287aa7750a039f4160831be871cea3 '' ${PYNACL}
-}
-
-
-function install_tails_setuptools {
-    # Download setuptools package for Tails, and move it to /opt/tfc so it can't be edited.
-    # Once the package has been authenticated, install it and then remove the install file.
-    torsocks python3.7 -m pip download --no-cache-dir -r "${INSTALL_DIR}/requirements-setuptools.txt" --require-hashes --no-deps -d "${HOME}/"
-    t_sudo mv "$HOME/${SETUPTOOLS}" "${INSTALL_DIR}/"
-    compare_digest de1ac45cb52e8a28322048e6a2b95015aa6826c49679349a1b579cb46b95cb2ffd62242c861c2fe3e059c0c55d4fdb4384c51b964ca2634b2843263543f8842a '' ${SETUPTOOLS}
-    t_sudo python3.7 -m pip install "${INSTALL_DIR}/${SETUPTOOLS}"
-    t_sudo -E rm "${INSTALL_DIR}/${SETUPTOOLS}"
-}
-
 
 function verify_tcb_requirements_files {
     # To minimize the time TCB installer configuration stays online,
     # only the requirements files are authenticated between downloads.
-    compare_digest 1a17cd2aa1c3556c5c0b0fc8bc8d073f593c059a966da337990135022cc55543a8f78b950645425d652da165f5e1c06f2d8402976e0876608bb70c034e16b270 '' requirements.txt
-    compare_digest 0e3795239a17a032372f6d81f6c821f9eceff80a80c0314b21e277840a01c0115fca1ae60a53d0110768add5a17088cc9bc23a7a130f84ebc93d54229be7cfd3 '' requirements-venv.txt
+    compare_digest 6c4696cbcf71411ffbf7c82ea27d0e9b8d6f5958669a752e8560d559a24ee3306b6769eeeb86763b14db62265d22557321e82fb1aeb253d1b99c0a05452000fe '' requirements.txt
+    compare_digest c47ed5481e6b1f477e00424e3203d90e220b6ab297868fa1da1a44402a23a2e3490cf1f87e813ecdb3d7429b861c5cc29586e7259e3e1b57d5147c0b9ad789bf '' requirements-venv.txt
 }
 
 
@@ -116,27 +114,27 @@ function verify_files {
     compare_digest d361e5e8201481c6346ee6a886592c51265112be550d5224f1a7a6e116255c2f1ab8788df579d9b8372ed7bfd19bac4b6e70e00b472642966ab5b319b99a2686 '' LICENSE
     compare_digest 8db25eafc66308f1fe8223c39bc5fb025ae111ebce3eae5601c907fa7a2654f68395af4f355ff0ff03775e79cda8dfccddaf7d68555bfe065d9469ca04a288f9 '' LICENSE-3RD-PARTY
     compare_digest 7cad2202e4cc940627e31577162c38f44022ddb138a51f52d0ac3747e264e065919df2b646020851d8973cc76a2873a72ceabcbe93c39911ebbfa7c867f01675 '' relay.py
-    compare_digest a93162f4b4317c265a5ce46ae2d55370b2d0592d8fa6dccddb9f06cda8a129d8279526aa83aab05600ec17bbefaf5584bb4dd4b771256e84db38192ffc391276 '' requirements-dev.txt
-    compare_digest 1c8505fca5c1191a6aecc28511e5f36c36a137a3fe99cef63500055dc3d85cbf64cdc1cc5d6380a407f22f367e1702a344f66515f3e3bf1f7fa83de0c74be8b0 '' requirements-relay.txt
-    compare_digest 01d022de0db3354da312c8bbefe82f0b032717ea8246186b7cffcd040b25390bd37eea9d9d9a42c199ce8b652bcff750ba37773230a471b43ebd60b468a7a29c '' requirements-relay-tails.txt
-    compare_digest 1432c2f098b1e656a597cbcfcceef00e2cda1897242f2a9316182fffff55bd64ea974534756200ec878741cd8de12b46b4b05a39ed550ad3997d111a6176f16f '' requirements-setuptools.txt
+    compare_digest 5ddc1dbfad32747c743ff769463bc53f0c42bc2d0060f254f7b57bc94297b9d270dee705427c2752a0cc9e13205f5481bfe813541734151ab4d90692bef92aa2 '' requirements-dev.txt
+    compare_digest 6652b1a17e7fc1b15e47e0f482dc85bfb3da3d943a07560ee8a90163eab0dff893a8f5dacc6bf113f467aafe6690b3a92e1c2c53199db2dd234fa2aa2d123806 '' requirements-relay.txt
+    compare_digest a30f20a10939eecb8f826322c8a68288d7e3bde1a6153deeedbfdb1490aad1821ab5072980b247c2f26f5f46a02c661e57d835933879aea2e1bdb1b5221bf982 '' requirements-relay-tails.txt
+    compare_digest 8744a7155fd3c0a9f5e32a82b6ca372d6463569c6963d02872f595c7d3e41884c3f97e66d0bb16be82284f0fad4861f4eb0ac8f51944ebaa751c7aa0e0c4fe84 '' requirements-setuptools.txt
     compare_digest 79f8272a2ab122a48c60630c965cd9d000dcafabf5ee9d69b1c33c58ec321feb17e4654dbbbf783cc8868ccdfe2777d60c6c3fc9ef16f8264d9fcf43724e83c2 '' tfc.png
     compare_digest c746fa981fcdc1b21cbe7117ed186ef7757d120cb96fbe8500b8b5f7f4effebe71360ae5c1cc2bf873818002544d9aeba26990b93723a79c6bbcd647552a7ca0 '' tfc.py
     compare_digest 62f26d2805570ee70fad3a076579a554008e7d9f2c9ff310f3bb5876d361cc03dbae7ab63b144ac215a35f920ac56d359481352805a356479d622ab00da15f7f '' tfc.yml
-    compare_digest e96471894b177d65639a3cc68e85bf609334ecaaa806009467d0e5e45d8ed4fcb4a43b8fce842458e18b0da9362a895948d45109a020a667986998f5c0055294 '' uninstall.sh
+    compare_digest c4d95b0385f474eee4ef8c25c579d5303a14ecbd90258d5cbd9c4d32531cec45008fa5fa0593c1babaeaf446e20b5ff5fcc8c7cc0384790be93e56065dc5dce5 '' uninstall.sh
 
-    compare_digest d4f503df2186db02641f54a545739d90974b6d9d920f76ad7e93fe1a38a68a85c167da6c19f7574d11fbb69e57d563845d174d420c55691bc2cd75a1a72806dc launchers/ terminator-config-local-test
-    compare_digest 7580e185bc1464d83d1aa482a830d4466311fc513287e89362da6a659c6047e7402b7e1096142d3d1865019832b3a67288e10399033598af5692b0a1f9fb892b launchers/ TFC-Local-test.desktop
-    compare_digest 62ada11d5513d2d196184b207a82dd14c7ad78af3f7b43c4de64162c8784c2996fa999f36fc6e2c7f1b823df43497725b05f0b52489e9a9e1d9bddbe2ce7910f launchers/ tfc-qubes-receiver
-    compare_digest 72e04fe07ac400ca70da59d196119db985d9e74b99b0fd735be20a534bd10084287a52aee46c6467703fe5e14609729db229112d53ce3156838c80b4f159df0a launchers/ tfc-qubes-relay
-    compare_digest 89e23c4d9e7d4402d7dde3d905fe0c3a3fd5ff8c09c33033f95d203ae9f1f53fa26d20c913820ff16764e9b6e0d558f8f332f9657b2e92eb77134576e683e1a9 launchers/ tfc-qubes-transmitter
-    compare_digest 09b6eb46542ea3d1c710e05b0259b1b39305e39c1e7565a19726cff74aa91beb0dc5fc1a4e7e5938368ab65467b79de575fce130028403fcdf24800c2c60c4ec launchers/ TFC-RP.desktop
-    compare_digest 85a135377c0bde33e9a2d4c6ac70d04aa96f5a5529930f22a377bbdc4891f75e9edc36ff675c1f32e7490b6073b433d07218afad2a14805785cc9594151e83eb launchers/ TFC-RP-Qubes.desktop
-    compare_digest 09b6eb46542ea3d1c710e05b0259b1b39305e39c1e7565a19726cff74aa91beb0dc5fc1a4e7e5938368ab65467b79de575fce130028403fcdf24800c2c60c4ec launchers/ TFC-RP-Tails.desktop
-    compare_digest c9d8d39b5781f27ae8787eddd5189c03980338bbe2c762cac5a5b0060870a975b5d625ecebdc906b16f411a3adbd3ca2d0b1542b3112506a9599c569feefc477 launchers/ TFC-RxP.desktop
-    compare_digest 6b0c72e448eed95a37d90950167edbffa1063086cf2dc04740dd831c7b9a82a3b3a310c71cc45116d76c568c02e662f46a41d661e638e2c48d2b826ad6d43504 launchers/ TFC-RxP-Qubes.desktop
-    compare_digest 8cc6844e053533b10b51c35e9dd0f5c0e055708b93baa7c93b7ff7c0d5c1e2f7033fd28e2cf6c306e4533fb329d192a95e93655d69407aa8d7377e40180dcd15 launchers/ TFC-TxP.desktop
-    compare_digest 13948e8e5aec162ed457db14a5adbbd18ace5d948c2b9cad157815646b6342cb879fbe002e0b3ae16352e5924786747be05e55c01e7bceb750703e316c3e26ca launchers/ TFC-TxP-Qubes.desktop
+    compare_digest dd2dc76c186e718cd6eb501985f3f8c639d303e44186c5f21ca8e8cf6a25b329c573ca489eda80877be51ccaa6b72b4e763060d0f0f27c0217e8c6b1016d75ca launchers/ terminator-config-local-test
+    compare_digest c89cd512dbbc9f51610b7f0a4d2318536c028afc14db931e38b6a9e644649247f4801cfeff790247f98e94ea8f56029c7b528bc58c860b8ee27239cb76110b20 launchers/ TFC-Local-test.desktop
+    compare_digest fc193b64793fec001365e4c055e0f7894d3993e1a7dbcfd6dc63a8a04a9bb1c28fc455173243f5f7c2385b86b63f122ac6c6fe2c720a9ee92834fa76dbcc1672 launchers/ tfc-qubes-receiver
+    compare_digest 4aeeffde5b6f7d27a44a3ab9b8470b59b357f7532dd3c21de78d8ded0415e0dd49cbb8eb10b5b658a8cf32dbc4afbf2663a9bf1dec0e0ee3c443f4fcb9a2990d launchers/ tfc-qubes-relay
+    compare_digest 4098d69e5632db7a465b03bda89dcd9817aadb903cfc0a1deb76739fbb627fc6abffd092c922c9ee8f6c3368a142c56583d25787219cfe11e37467193e49fa85 launchers/ tfc-qubes-transmitter
+    compare_digest 7b0e03dc1b5cfa6fdb381be094c3a3c172a5dcb4bf6901e89cae7663ff7891f12262f3c8a728766d2f5a5e7e6c4157fabe77da61a066e0c5a38bea64dbf210c7 launchers/ TFC-RP.desktop
+    compare_digest 86a54f1bec8f5b4745906953e9dc4d9f320dedabf30b6ec0524377f646c386250f200f25490dedeffae61d17bdea4d6a333ad934864daf7088fd1f2c5b0de1ea launchers/ TFC-RP-Qubes.desktop
+    compare_digest 7b0e03dc1b5cfa6fdb381be094c3a3c172a5dcb4bf6901e89cae7663ff7891f12262f3c8a728766d2f5a5e7e6c4157fabe77da61a066e0c5a38bea64dbf210c7 launchers/ TFC-RP-Tails.desktop
+    compare_digest 44e283658aff183a62e20d947f0f3dc346d603750699a63cf315c636e28d4e005e0e323b9082a6e0c235114960b05b96b704b4fe92253ab9001fd2646201a200 launchers/ TFC-RxP.desktop
+    compare_digest e6b9346dc11d154beb0e113b197d4c0dce562a9ad37fb4678f7914877ec99e66b08964c52d408f72d28c620bfaf1a2157a6134691b024c770730acd6770a3fb2 launchers/ TFC-RxP-Qubes.desktop
+    compare_digest 53abaefa2678d9054c8f4b617fc4af0f96ded17747c40785a7d09af6a1e52db9521a9698417d2762850c87f7cc4f0055a522ca0b663ccb44992b9b8ae2df6737 launchers/ TFC-TxP.desktop
+    compare_digest 9833e94774e58e63947ed54cc0d984204ae920aec74f9765842facbb8783ad5a38d5e6d23e9bcd7910899be7e21963fa7cd0664cc1dd19a88e8a197c098f8277 launchers/ TFC-TxP-Qubes.desktop
 
     compare_digest 3ee90ee305382d80da801f047a6e58e5b763f9f6bc08dce531d5c620f2748c6bba59a1528eee5d721decb8e724f53b28fc7609f5b20472f679f554b78b5d4cc6 src/ __init__.py
     compare_digest 3ee90ee305382d80da801f047a6e58e5b763f9f6bc08dce531d5c620f2748c6bba59a1528eee5d721decb8e724f53b28fc7609f5b20472f679f554b78b5d4cc6 src/common/ __init__.py
@@ -146,18 +144,18 @@ function verify_files {
     compare_digest 7c0214208857174b43092eaf61d14c16e60d6ebb68ba25b260f84546ce39f1fed8b21aceb58833920c8d939304b313c0ad95c554210ae3d5d0547143f7dd704c src/common/ db_groups.py
     compare_digest c49231429824d8133de7efad667c2bdde694a6c7a2e34e3b015ddb8cf59a150574cdd7099aaad02a4993a1669cd631f5af4cc611fac7d538d3ecd141d9295d0d src/common/ db_keys.py
     compare_digest 04e0c0d53bcfc71476410bbdfcacee2ba3df6d7761d02111aca69a56cac848e4fb0178ee572b181b1a925bd45aae005b31b9e2afcce7416f7bd8c5dad96bc615 src/common/ db_logs.py
-    compare_digest cf7adc70366043d8813a51c9cbeac3931995e4647d11654b2ade98014137d2c2a9938951c00b88e80b24162741a1b37de5514a3ea8ec8e12f044e2549e2bf4ab src/common/ db_masterkey.py
+    compare_digest 74a51a79241cb31cf6e41714f08e10e41e90f827df0503e2b9f2a9cf61738b7b1489fb94631c39c8bb8abd6f7b5d27c68a5ab6d920a1e72f300f8320a993e0c5 src/common/ db_masterkey.py
     compare_digest 325298cd6cb7e68d27681c18f29e635f46222e34015ba3c8fe55e6718e6907b4257bbe12d71fd344b557aff302ae9d7fca2b581b4208e59ac7923e57aca23fe5 src/common/ db_onion.py
     compare_digest 4ef757ba877ee6b74632af3a0d3567c9483a62b9063ec0e7fe7b6abc7e82b490ec52279198f0be22866595dae1948bb1ef9ef556c88b3c320c5316fd59fc0743 src/common/ db_settings.py
     compare_digest 60fb4c922af286307865b29f0cadab53a5a575a9f820cd5ad99ea116c841b54dd1d1be1352bf7c3ab51d2fd223077217bcda1b442d44d2b9f1bf614e15c4a14d src/common/ encoding.py
     compare_digest ccd522408ad2e8e21f01038f5f49b9d82d5288717f1a1acf6cda278c421c05472827ee5928fbf56121c2dfc4f2cc49986e32c493e892bd6ae584be38ba381edd src/common/ exceptions.py
     compare_digest 6a0b92cc259f7f0b4d1b65663ea633cc49590ff3562e1fedb096b59b49eddcbffa5e1892a6a5873a879f13b666192d3986f2c010de2e994ae7f6f6119b49ab60 src/common/ gateway.py
     compare_digest d4021175fba75649fa1b8b65116b0acc98cedccd2a012986037a78e799908329694ee6f4c50617f92f5df279cfe5e719e38cada5f3775a8ea912a541f1dbf438 src/common/ input.py
-    compare_digest 159d192376b243fb48f02449e0db2b5576b4bb46a1c43bd0e7a641ae401e489af668171e4c771005114ac40c7951023b087f32b0d6eec3fa78559ed0a1408a8a src/common/ misc.py
+    compare_digest 8045671a2d180271ea873e91e478a0b3ba766cda195a0755060ba14fb50d089b7007b6134c002e8d25255e47376c2e394c76a7593e68ea45f1cc1f8e109869e9 src/common/ misc.py
     compare_digest 6329bbdc9d24c1342d0996009a8cd4d852d5a800cbf6a582c047c0fc13e6ca9be28251b783325adffca100d2a372616088cedff2441cc103b8c18540828445ef src/common/ output.py
-    compare_digest 08443cfe633bb552d6bb55e48d81423db4a4099f9febc73ec6ee85ee535bc543720f199ac8b600b718e9af7247fb96ef4b9991b0416cf7186fd75a149365dd36 src/common/ path.py
+    compare_digest c96d7cb1b76650a49accc3ea007254e73e2e697895790ff6c14351520f4a7b1baec76d6055e3bddb14a687c0641fd15e361c93737afe7a8924b420ca67c31140 src/common/ path.py
     compare_digest 39e48b0b55f4f1a48bc558f47b5f7c872583f3f3925fd829de28710024b000fcb03799cb36da3a31806143bc3cbb98e5d357a8d62674c23e1e8bf957aece79f6 src/common/ reed_solomon.py
-    compare_digest bf3c4d643b846b9e92d227a25d1ce182aa70430f178f2964f1293b304dbe522a37105ea51f359c4f85a7ee52a75851b58c0b6a41dc6656f2c9b12c5dc2ec4c1d src/common/ statics.py
+    compare_digest 748d7f017b5be5764812bdf2683e2bc4c754ccbd1feb80e20e952c3205d37fe133e891fcf269e3c639eb3fca6d88e1e38c8b2f28748843ded00d3b9e98e31c73 src/common/ statics.py
     compare_digest a57d5525a570a78d15c75e79702289cf8571c1b3c142fae57f32bf3ed8bb784c7f63ce2e805d295b4a505fdeaf9d59094ebe67d8979c92dc11e2534474505b0e src/common/ word_list.py
 
     compare_digest 3ee90ee305382d80da801f047a6e58e5b763f9f6bc08dce531d5c620f2748c6bba59a1528eee5d721decb8e724f53b28fc7609f5b20472f679f554b78b5d4cc6 src/receiver/ __init__.py
@@ -167,9 +165,9 @@ function verify_files {
     compare_digest acfa0b7ac684b5a2747e1db315386ada28cf077c5fbedfc13a89d9912682b5020ae8da98fc65aef7fcbe3e3180184a7f787eba10b5617666bc43f4e4ba40231c src/receiver/ key_exchanges.py
     compare_digest 6ebd6c0638525997949783b7623ce9a78683169e95f572ea65dcec52da150b0473a25e928862cab34eac44b0e0991a0969c5252c03cf4dc8f49d1aa9809b43bd src/receiver/ messages.py
     compare_digest eabe1695cd0fe04346e49ed91b64a11ad74ff60b636333140f9a3c6745b9c408d77aae8f45256b5d74b241324a5d429249b2be6c732205ab729a38049b8631f7 src/receiver/ output_loop.py
-    compare_digest 27494b6be36e574ccabf6783614fa1d210e97ce835c39426ee9c2fcded6836e0773e419ea007044fd7eb7c6fe2f7765fa07cf3e48c483599b90a041cead191e7 src/receiver/ packet.py
+    compare_digest b5f64d5c00681912be163120e465409f015a52b39fd66850d43bf9ee07302370b92b84b145683ad1ffa12d53a79c26477f2b971428aef2bc2882532cc5cbe251 src/receiver/ packet.py
     compare_digest 002c960023393bec10da3de6d9a218c8e2c27da1635fd1a7f99e02a9a28792428a2c0e6cd030d1cc1fac1124c58f397f63d60b7af4c384367a8c293978125539 src/receiver/ receiver_loop.py
-    compare_digest da8ff22a1ece42c780328c84722ae42c2dced69dd87f2fb2d09fd517d3ee98f3777c448922b2b06a5839347e075a5598e6c770a544fdf801e664ba5ad06b684d src/receiver/ windows.py
+    compare_digest fd125c2092c217c74f1e070ba266a807c6bebea54cea2b41488ab4ecc48c91e7f60fbdc16c152704c66916ee06cecdda1a20b8c350d22a1148d83a17f8b414b8 src/receiver/ windows.py
 
     compare_digest 3ee90ee305382d80da801f047a6e58e5b763f9f6bc08dce531d5c620f2748c6bba59a1528eee5d721decb8e724f53b28fc7609f5b20472f679f554b78b5d4cc6 src/relay/ __init__.py
     compare_digest 0ab86ddcfc7a28e7945e302918e384c2570d8b19942bb7c1b300d5913f77b184aae36612819ec85f0ef5b4a3b21d22aa710f218fc229c1317f04a11782e832e5 src/relay/ client.py
@@ -235,6 +233,82 @@ function process_tcb_dependencies {
 }
 
 
+function verify_tails_dependencies {
+    compare_digest ${DIGEST_PYSERIAL} '' ${PYSERIAL}
+    compare_digest ${DIGEST_PYSOCKS}  '' ${PYSOCKS}
+
+    # Virtualenv
+    compare_digest ${DIGEST_ZIPP}               '' ${ZIPP}
+    compare_digest ${DIGEST_FILELOCK}           '' ${FILELOCK}
+    compare_digest ${DIGEST_IMPORTLIB_METADATA} '' ${IMPORTLIB_METADATA}
+    compare_digest ${DIGEST_SIX}                '' ${SIX}
+    compare_digest ${DIGEST_DISTLIB}            '' ${DISTLIB}
+    compare_digest ${DIGEST_APPDIRS}            '' ${APPDIRS}
+    compare_digest ${DIGEST_VIRTUALENV}         '' ${VIRTUALENV}
+
+    # Requests
+    compare_digest ${DIGEST_URLLIB3}  '' ${URLLIB3}
+    compare_digest ${DIGEST_IDNA}     '' ${IDNA}
+    compare_digest ${DIGEST_CHARDET}  '' ${CHARDET}
+    compare_digest ${DIGEST_CERTIFI}  '' ${CERTIFI}
+    compare_digest ${DIGEST_REQUESTS} '' ${REQUESTS}
+
+    # Flask
+    compare_digest ${DIGEST_WERKZEUG}     '' ${WERKZEUG}
+    compare_digest ${DIGEST_MARKUPSAFE}   '' ${MARKUPSAFE}
+    compare_digest ${DIGEST_JINJA2}       '' ${JINJA2}
+    compare_digest ${DIGEST_ITSDANGEROUS} '' ${ITSDANGEROUS}
+    compare_digest ${DIGEST_CLICK}        '' ${CLICK}
+    compare_digest ${DIGEST_FLASK}        '' ${FLASK}
+
+    # Cryptography
+    compare_digest ${DIGEST_PYCPARSER}    '' ${PYCPARSER}
+    compare_digest ${DIGEST_CFFI}         '' ${CFFI37}
+    compare_digest ${DIGEST_CRYPTOGRAPHY} '' ${CRYPTOGRAPHY37}
+
+    # PyNaCl
+    compare_digest ${DIGEST_PYNACL} '' ${PYNACL}
+}
+
+
+function move_tails_dependencies {
+    # Move Tails dependencies in batch.
+    t_sudo mv "$HOME/${PYSERIAL}" "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${PYSOCKS}"  "${INSTALL_DIR}/"
+
+    # Virtualenv
+    t_sudo mv "$HOME/${ZIPP}"               "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${FILELOCK}"           "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${IMPORTLIB_METADATA}" "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${SIX}"                "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${DISTLIB}"            "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${APPDIRS}"            "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${VIRTUALENV}"         "${INSTALL_DIR}/"
+
+    # Requests
+    t_sudo mv "$HOME/${URLLIB3}"  "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${IDNA}"     "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${CHARDET}"  "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${CERTIFI}"  "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${REQUESTS}" "${INSTALL_DIR}/"
+
+    # Flask
+    t_sudo mv "$HOME/${WERKZEUG}"     "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${MARKUPSAFE}"   "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${JINJA2}"       "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${ITSDANGEROUS}" "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${CLICK}"        "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${FLASK}"        "${INSTALL_DIR}/"
+
+    # Cryptography
+    t_sudo mv "$HOME/${PYCPARSER}"      "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${CFFI37}"         "${INSTALL_DIR}/"
+    t_sudo mv "$HOME/${CRYPTOGRAPHY37}" "${INSTALL_DIR}/"
+
+    # PyNaCl
+    t_sudo mv "$HOME/${PYNACL}" "${INSTALL_DIR}/"
+}
+
 function process_tails_dependencies {
     # Manage Tails dependencies in batch.
     t_sudo -E $1 "${INSTALL_DIR}/${PYSERIAL}"
@@ -257,50 +331,22 @@ function process_tails_dependencies {
 
     # Cryptography
     t_sudo -E $1 "${INSTALL_DIR}/${PYCPARSER}"
-    t_sudo -E $1 "${INSTALL_DIR}/${CFFI}"
-    t_sudo -E $1 "${INSTALL_DIR}/${CRYPTOGRAPHY}"
+    t_sudo -E $1 "${INSTALL_DIR}/${CFFI37}"
+    t_sudo -E $1 "${INSTALL_DIR}/${CRYPTOGRAPHY37}"
 
     # PyNaCl
     t_sudo -E $1 "${INSTALL_DIR}/${PYNACL}"
 }
 
 
-function move_tails_dependencies {
-    # Move Tails dependencies in batch.
-    t_sudo mv "$HOME/${PYSERIAL}" "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${PYSOCKS}"  "${INSTALL_DIR}/"
-
-    # Virtualenv
-    t_sudo mv "$HOME/${VIRTUALENV}"         "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${APPDIRS}"            "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${DISTLIB}"            "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${FILELOCK}"           "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${IMPORTLIB_METADATA}" "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${SIX}"                "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${ZIPP}"               "${INSTALL_DIR}/"
-
-    # Requests
-    t_sudo mv "$HOME/${URLLIB3}"  "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${IDNA}"     "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${CHARDET}"  "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${CERTIFI}"  "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${REQUESTS}" "${INSTALL_DIR}/"
-
-    # Flask
-    t_sudo mv "$HOME/${WERKZEUG}"     "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${MARKUPSAFE}"   "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${JINJA2}"       "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${ITSDANGEROUS}" "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${CLICK}"        "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${FLASK}"        "${INSTALL_DIR}/"
-
-    # Cryptography
-    t_sudo mv "$HOME/${PYCPARSER}"    "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${CFFI}"         "${INSTALL_DIR}/"
-    t_sudo mv "$HOME/${CRYPTOGRAPHY}" "${INSTALL_DIR}/"
-
-    # PyNaCl
-    t_sudo mv "$HOME/${PYNACL}" "${INSTALL_DIR}/"
+function install_tails_setuptools {
+    # Download setuptools package for Tails, and move it to /opt/tfc so it can't be edited.
+    # Once the package has been authenticated, install it and then remove the install file.
+    torsocks python3 -m pip download --no-cache-dir -r "${INSTALL_DIR}/requirements-setuptools.txt" --require-hashes --no-deps -d "${HOME}/"
+    t_sudo mv "$HOME/${SETUPTOOLS}" "${INSTALL_DIR}/"
+    compare_digest ${DIGEST_SETUPTOOLS} '' ${SETUPTOOLS}
+    t_sudo python3 -m pip install "${INSTALL_DIR}/${SETUPTOOLS}"
+    t_sudo -E rm "${INSTALL_DIR}/${SETUPTOOLS}"
 }
 
 
@@ -316,7 +362,6 @@ function remove_common_files {
     $1 rm    ${INSTALL_DIR}/install.sh
     $1 rm    ${INSTALL_DIR}/install.sh.asc
     $1 rm    ${INSTALL_DIR}/pubkey.asc
-    $1 rm    ${INSTALL_DIR}/pytest.ini
     $1 rm    ${INSTALL_DIR}/README.md
     $1 rm    ${INSTALL_DIR}/requirements.txt
     $1 rm    ${INSTALL_DIR}/requirements-dev.txt
@@ -346,8 +391,8 @@ function steps_before_network_kill {
     sudo torsocks git clone --depth 1 https://github.com/maqp/tfc.git ${INSTALL_DIR}
 
     verify_tcb_requirements_files
-    sudo torsocks python3.7 -m pip download --no-cache-dir -r "${INSTALL_DIR}/requirements-venv.txt" --require-hashes --no-deps -d ${INSTALL_DIR}/
-    sudo torsocks python3.7 -m pip download --no-cache-dir -r "${INSTALL_DIR}/requirements.txt"      --require-hashes --no-deps -d ${INSTALL_DIR}/
+    sudo torsocks python3 -m pip download --no-cache-dir -r "${INSTALL_DIR}/requirements-venv.txt" --require-hashes --no-deps -d ${INSTALL_DIR}/
+    sudo torsocks python3 -m pip download --no-cache-dir -r "${INSTALL_DIR}/requirements.txt"      --require-hashes --no-deps -d ${INSTALL_DIR}/
 }
 
 
@@ -364,11 +409,11 @@ function install_tcb {
     verify_files
     create_user_data_dir
 
-    process_virtualenv_dependencies "python3.7 -m pip install"
-    sudo python3.7 -m virtualenv  "${INSTALL_DIR}/venv_tcb" --system-site-packages --never-download
+    process_virtualenv_dependencies "python3 -m pip install"
+    sudo python3 -m virtualenv  "${INSTALL_DIR}/venv_tcb" --system-site-packages --never-download
 
     . ${INSTALL_DIR}/venv_tcb/bin/activate
-    process_tcb_dependencies "python3.7 -m pip install"
+    process_tcb_dependencies "python3 -m pip install"
     deactivate
 
     sudo mv ${INSTALL_DIR}/tfc.png                   /usr/share/pixmaps/
@@ -378,11 +423,11 @@ function install_tcb {
     # Remove unnecessary files
     remove_common_files             "sudo"
     process_virtualenv_dependencies "rm"
-    process_tcb_dependencies        "rm"
-    sudo rm -r ${INSTALL_DIR}/src/relay/
-    sudo rm    ${INSTALL_DIR}/dd.py
-    sudo rm    ${INSTALL_DIR}/relay.py
-    sudo rm    ${INSTALL_DIR}/tfc.yml
+    process_tcb_dependencies        "rm -f"
+    sudo rm -r "${INSTALL_DIR}/src/relay/"
+    sudo rm    "${INSTALL_DIR}/dd.py"
+    sudo rm    "${INSTALL_DIR}/relay.py"
+    sudo rm    "${INSTALL_DIR}/tfc.yml"
 
     add_serial_permissions
 
@@ -398,10 +443,10 @@ function install_relay {
     create_user_data_dir
 
     install_virtualenv
-    sudo python3.7 -m virtualenv ${INSTALL_DIR}/venv_relay --system-site-packages
+    sudo python3 -m virtualenv ${INSTALL_DIR}/venv_relay --system-site-packages
 
     . ${INSTALL_DIR}/venv_relay/bin/activate
-    sudo torsocks python3.7 -m pip install -r ${INSTALL_DIR}/requirements-relay.txt --require-hashes --no-deps
+    sudo torsocks python3 -m pip install -r ${INSTALL_DIR}/requirements-relay.txt --require-hashes --no-deps
     deactivate
 
     sudo mv ${INSTALL_DIR}/tfc.png                  /usr/share/pixmaps/
@@ -410,7 +455,7 @@ function install_relay {
     # Remove unnecessary files
     remove_common_files             "sudo"
     process_virtualenv_dependencies "rm"
-    process_tcb_dependencies        "rm"
+    process_tcb_dependencies        "rm -f"
     sudo rm -r "${INSTALL_DIR}/src/receiver/"
     sudo rm -r "${INSTALL_DIR}/src/transmitter/"
     sudo rm    "${INSTALL_DIR}/dd.py"
@@ -446,16 +491,16 @@ function install_relay_tails {
 
     # Tails doesn't allow downloading over PIP to /opt/tfc, so we first download
     # to $HOME, move the files to /opt/tfc, and then perform the hash verification
-    torsocks python3.7 -m pip download --no-cache-dir -r "${INSTALL_DIR}/requirements-venv.txt"        --require-hashes --no-deps -d "${HOME}/"
-    torsocks python3.7 -m pip download --no-cache-dir -r "${INSTALL_DIR}/requirements-relay-tails.txt" --require-hashes --no-deps -d "${HOME}/"
+    torsocks python3 -m pip download --no-cache-dir -r "${INSTALL_DIR}/requirements-venv.txt"        --require-hashes --no-deps -d "${HOME}/"
+    torsocks python3 -m pip download --no-cache-dir -r "${INSTALL_DIR}/requirements-relay-tails.txt" --require-hashes --no-deps -d "${HOME}/"
     move_tails_dependencies
     verify_tails_dependencies
 
-    process_tails_venv_dependencies "python3.7 -m pip install"
-    t_sudo python3.7 -m virtualenv ${INSTALL_DIR}/venv_relay --system-site-packages
+    process_tails_venv_dependencies "python3 -m pip install"
+    t_sudo python3 -m virtualenv ${INSTALL_DIR}/venv_relay --system-site-packages
 
     . ${INSTALL_DIR}/venv_relay/bin/activate
-    process_tails_dependencies "python3.7 -m pip install"
+    process_tails_dependencies "python3 -m pip install"
     deactivate
 
     t_sudo mv ${INSTALL_DIR}/tfc.png                        /usr/share/pixmaps/
@@ -486,11 +531,11 @@ function install_qubes_src {
 
     verify_files
 
-    process_virtualenv_dependencies "python3.7 -m pip install"
-    sudo python3.7 -m virtualenv "${INSTALL_DIR}/venv_tcb" --system-site-packages --never-download
+    process_virtualenv_dependencies "python3 -m pip install"
+    sudo python3 -m virtualenv "${INSTALL_DIR}/venv_tcb" --system-site-packages --never-download
 
     . ${INSTALL_DIR}/venv_tcb/bin/activate
-    process_tcb_dependencies "python3.7 -m pip install"
+    process_tcb_dependencies "python3 -m pip install"
     deactivate
 
     sudo mv ${INSTALL_DIR}/tfc.png                         /usr/share/pixmaps/
@@ -500,11 +545,11 @@ function install_qubes_src {
     # Remove unnecessary files
     remove_common_files             "sudo"
     process_virtualenv_dependencies "rm"
-    process_tcb_dependencies        "rm"
-    sudo rm -r ${INSTALL_DIR}/src/relay/
-    sudo rm    ${INSTALL_DIR}/dd.py
-    sudo rm    ${INSTALL_DIR}/relay.py
-    sudo rm    ${INSTALL_DIR}/tfc.yml
+    process_tcb_dependencies        "rm -f"
+    sudo rm -r "${INSTALL_DIR}/src/relay/"
+    sudo rm    "${INSTALL_DIR}/dd.py"
+    sudo rm    "${INSTALL_DIR}/relay.py"
+    sudo rm    "${INSTALL_DIR}/tfc.yml"
 
     install_complete_qubes
 }
@@ -519,11 +564,11 @@ function install_qubes_dst {
 
     verify_files
 
-    process_virtualenv_dependencies "python3.7 -m pip install"
-    sudo python3.7 -m virtualenv "${INSTALL_DIR}/venv_tcb" --system-site-packages --never-download
+    process_virtualenv_dependencies "python3 -m pip install"
+    sudo python3 -m virtualenv "${INSTALL_DIR}/venv_tcb" --system-site-packages --never-download
 
     . ${INSTALL_DIR}/venv_tcb/bin/activate
-    process_tcb_dependencies "python3.7 -m pip install"
+    process_tcb_dependencies "python3 -m pip install"
     deactivate
 
     sudo mv ${INSTALL_DIR}/tfc.png                         /usr/share/pixmaps/
@@ -533,11 +578,11 @@ function install_qubes_dst {
     # Remove unnecessary files
     remove_common_files             "sudo"
     process_virtualenv_dependencies "rm"
-    process_tcb_dependencies        "rm"
-    sudo rm -r ${INSTALL_DIR}/src/relay/
-    sudo rm    ${INSTALL_DIR}/dd.py
-    sudo rm    ${INSTALL_DIR}/relay.py
-    sudo rm    ${INSTALL_DIR}/tfc.yml
+    process_tcb_dependencies        "rm -f"
+    sudo rm -r "${INSTALL_DIR}/src/relay/"
+    sudo rm    "${INSTALL_DIR}/dd.py"
+    sudo rm    "${INSTALL_DIR}/relay.py"
+    sudo rm    "${INSTALL_DIR}/tfc.yml"
 
     install_complete_qubes
 }
@@ -552,11 +597,11 @@ function install_qubes_net {
 
     verify_files
 
-    process_virtualenv_dependencies "python3.7 -m pip install"
-    sudo python3.7 -m virtualenv ${INSTALL_DIR}/venv_relay --system-site-packages
+    process_virtualenv_dependencies "python3 -m pip install"
+    sudo python3 -m virtualenv ${INSTALL_DIR}/venv_relay --system-site-packages
 
     . ${INSTALL_DIR}/venv_relay/bin/activate
-    sudo torsocks python3.7 -m pip install -r ${INSTALL_DIR}/requirements-relay.txt --require-hashes --no-deps
+    sudo torsocks python3 -m pip install -r ${INSTALL_DIR}/requirements-relay.txt --require-hashes --no-deps
     deactivate
 
     sudo mv ${INSTALL_DIR}/tfc.png                        /usr/share/pixmaps/
@@ -673,11 +718,11 @@ function install_local_test {
     sudo torsocks apt install terminator -y
 
     install_virtualenv
-    sudo python3.7 -m virtualenv ${INSTALL_DIR}/venv_tfc --system-site-packages
+    sudo python3 -m virtualenv ${INSTALL_DIR}/venv_tfc --system-site-packages
 
     . ${INSTALL_DIR}/venv_tfc/bin/activate
-    sudo torsocks python3.7 -m pip install -r ${INSTALL_DIR}/requirements.txt       --require-hashes --no-deps
-    sudo torsocks python3.7 -m pip install -r ${INSTALL_DIR}/requirements-relay.txt --require-hashes --no-deps
+    sudo torsocks python3 -m pip install -r ${INSTALL_DIR}/requirements.txt       --require-hashes --no-deps
+    sudo torsocks python3 -m pip install -r ${INSTALL_DIR}/requirements-relay.txt --require-hashes --no-deps
     deactivate
 
     sudo mv ${INSTALL_DIR}/tfc.png                                /usr/share/pixmaps/
@@ -688,8 +733,8 @@ function install_local_test {
     # Remove unnecessary files
     remove_common_files             "sudo"
     process_virtualenv_dependencies "rm"
-    process_tcb_dependencies        "rm"
-    sudo rm ${INSTALL_DIR}/tfc.yml
+    process_tcb_dependencies        "rm -f"
+    sudo rm "${INSTALL_DIR}/tfc.yml"
 
     install_complete "Installation of TFC for local testing is now complete."
 }
@@ -713,12 +758,12 @@ function install_developer {
 
     torsocks git clone https://github.com/maqp/tfc.git "${HOME}/tfc"
 
-    torsocks python3.7 -m pip install -r "${HOME}/tfc/requirements-venv.txt" --require-hashes --no-deps
+    torsocks python3 -m pip install -r "${HOME}/tfc/requirements-venv.txt" --require-hashes --no-deps
 
-    python3.7 -m virtualenv "${HOME}/tfc/venv_tfc" --system-site-packages
+    python3 -m virtualenv "${HOME}/tfc/venv_tfc" --system-site-packages
 
     . "${HOME}/tfc/venv_tfc/bin/activate"
-    torsocks python3.7 -m pip install -r "${HOME}/tfc/requirements-dev.txt"
+    torsocks python3 -m pip install -r "${HOME}/tfc/requirements-dev.txt"
     deactivate
 
     sudo cp "${HOME}/tfc/tfc.png"                   "/usr/share/pixmaps/"
@@ -817,8 +862,8 @@ function t_sudo {
 function install_virtualenv {
     # Some distros want virtualenv installed as sudo and other don't.
     # Install as both users to improve the chances of compatibility.
-    sudo torsocks python3.7 -m pip install -r ${INSTALL_DIR}/requirements-venv.txt --require-hashes --no-deps
-    torsocks      python3.7 -m pip install -r ${INSTALL_DIR}/requirements-venv.txt --require-hashes --no-deps
+    sudo torsocks python3 -m pip install -r ${INSTALL_DIR}/requirements-venv.txt --require-hashes --no-deps
+    torsocks      python3 -m pip install -r ${INSTALL_DIR}/requirements-venv.txt --require-hashes --no-deps
 }
 
 
@@ -968,9 +1013,9 @@ function arg_error {
     clear
     echo -e "\nUsage: bash install.sh [OPTION]\n"
     echo    "Mandatory arguments"
-    echo    "  tcb      Install Transmitter/Receiver Program (Debian 10 / PureOS 9.0+ *buntu 19.10+ / LMDE 4)"
-    echo    "  relay    Install Relay Program                (Debian 10 / PureOS 9.0+ *buntu 19.10+ / LMDE 4 / Tails 4.0+)"
-    echo -e "  local    Install insecure local testing mode  (Debian 10 / PureOS 9.0+ *buntu 19.10+ / LMDE 4)\n"
+    echo    "  tcb      Install Transmitter/Receiver Program (Debian 10 / PureOS 9.0+ / *buntu 20.04+ / LMDE 4)"
+    echo    "  relay    Install Relay Program                (Debian 10 / PureOS 9.0+ / *buntu 20.04+ / LMDE 4 / Tails 4.0+)"
+    echo -e "  local    Install insecure local testing mode  (Debian 10 / PureOS 9.0+ / *buntu 20.04+ / LMDE 4)\n"
     echo    "  qsrc     Install Transmitter Program          (Qubes 4.0.3)"
     echo    "  qdst     Install Receiver Program             (Qubes 4.0.3)"
     echo -e "  qnet     Install Relay Program                (Qubes 4.0.3)\n"
@@ -1052,12 +1097,29 @@ function sudoer_check {
 }
 
 
+function python_version_check {
+    # Check Python version and select file names based on it.
+    python_minor_version=`python3 -c 'import sys; version=sys.version_info[:3]; print("{1}".format(*version))'`
+
+    if (( ${python_minor_version} == 7 )); then
+        CFFI=${CFFI37}
+        CRYPTOGRAPHY=${CRYPTOGRAPHY37}
+    elif (( ${python_minor_version} == 8 )); then
+        CFFI=${CFFI38}
+        CRYPTOGRAPHY=${CRYPTOGRAPHY38}
+    else
+        exit_with_message "Invalid Python version (3.${python_minor_version}). Only 3.7 and 3.8 are supported."
+    fi
+}
+
+
 # Main routine
 
 set -e
 architecture_check
 root_check
 sudoer_check
+python_version_check
 sudo_pwd=''
 
 case $1 in

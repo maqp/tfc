@@ -60,7 +60,6 @@ class TestGetAccountFromUser(unittest.TestCase):
 
 class TestAccountChecker(unittest.TestCase):
 
-
     def setUp(self) -> None:
         """Pre-test actions."""
         self.queues = gen_queue_dict()
@@ -118,7 +117,6 @@ class TestPubKeyChecker(unittest.TestCase):
             # Test
             self.assertIsNone(pub_key_checker(self.queues, local_test=local_test, unit_test=True))
             self.assertIsNone(pub_key_checker(self.queues, local_test=local_test, unit_test=True))
-
 
 
 class TestShowValueDiffs(TFCTestCase):

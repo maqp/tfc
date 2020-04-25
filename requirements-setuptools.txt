@@ -1,2 +1,1 @@
-# Setuptools (Allows installation of pycparser which is a sub-dependency of the cryptography and PyNaCl packages)
-setuptools==45.2.0  --hash=sha512:de1ac45cb52e8a28322048e6a2b95015aa6826c49679349a1b579cb46b95cb2ffd62242c861c2fe3e059c0c55d4fdb4384c51b964ca2634b2843263543f8842a
+setuptools==46.1.3  --hash=sha512:24641b46913f15eebdd600405990b6a1a8a40ae3733d05d21e153fad8509284d78b2f297392224d3e52248f23a5b92f154e2458121b94038a4bb603717b77208

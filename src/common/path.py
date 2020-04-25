@@ -55,7 +55,7 @@ def ask_path_gui(prompt_msg: str,          # Directory selection prompt
 
         root.destroy()
 
-        if not file_path:
+        if file_path == '()':
             raise SoftError(("File" if get_file else "Path") + " selection aborted.", head_clear=True)
 
         return file_path
