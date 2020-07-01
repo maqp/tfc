@@ -1,5 +1,5 @@
 [Desktop Entry]
-Version=1.20.04
+Version=1.20.07
 Name=TFC-Local-Test-LR
 Comment=Local testing configuration
 Exec=terminator -m -u -g /opt/tfc/terminator-config-local-test -p tfc -l tfc-lr

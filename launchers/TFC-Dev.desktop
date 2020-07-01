@@ -1,5 +1,5 @@
 [Desktop Entry]
-Version=1.20.04
+Version=1.20.07
 Name=TFC-Dev-LR
 Comment=Developer configuration
 Exec=terminator -m -u -g $HOME/tfc/launchers/terminator-config-dev -p tfc -l tfc-lr

@@ -211,14 +211,16 @@ hardware data diode is needed.
 - Debian 10
 - PureOS 9.0
 - *buntu 20.04 LTS
+- Linux Mint 20
 - LMDE 4
 - Qubes 4 (Debian 10 VM)
 
 #### Networked Computer
-- Tails 4.0
+- Tails 4.8
 - Debian 10
 - PureOS 9.0
 - *buntu 20.04 LTS
+- Linux Mint 20
 - LMDE 4
 - Qubes 4 (Debian 10 VM)
 

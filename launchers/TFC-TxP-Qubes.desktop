@@ -1,5 +1,5 @@
 [Desktop Entry]
-Version=1.20.04
+Version=1.20.07
 Name=TFC-Transmitter
 Exec=gnome-terminal --geometry=94x25 -x bash -c "source /opt/tfc/venv_tcb/bin/activate && python3 /opt/tfc/tfc.py -q && deactivate || bash"
 Icon=tfc.png
