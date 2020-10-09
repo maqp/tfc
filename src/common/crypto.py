@@ -331,17 +331,26 @@ class X448(object):
            which then calls the `activate_osrandom_engine()` instance
            method[4].
 
+         [1] https://github.com/pyca/cryptography/blob/3.1.1/src/cryptography/hazmat/primitives/asymmetric/x448.py#L39
+         [2] https://github.com/pyca/cryptography/blob/3.1.1/src/cryptography/hazmat/backends/openssl/backend.py#L2708
+         [3] https://github.com/pyca/cryptography/blob/3.1.1/src/cryptography/hazmat/backends/openssl/backend.py#L222
+         [4] https://github.com/pyca/cryptography/blob/3.1.1/src/cryptography/hazmat/backends/openssl/backend.py#L238
+
+        ---
+
+        If the OpenSSL version is older than 1.1.1d:
+
         3. Calling the `activate_osrandom_engine()` disables the default
            OpenSSL CSPRNG, and activates the pyca/cryptography
            "OS random engine".[5]
 
-        4. Unlike the OpenSSL user-space CSPRNG that only seeds from
+        4. Unlike the old OpenSSL user-space CSPRNG that only seeds from
            /dev/urandom, the OS random engine uses the GETRANDOM(0)
            syscall that sources all of its entropy directly from the
            LRNG's ChaCha20 DRNG. The OS random engine does not suffer
-           from the fork() weakness where forked process is not
+           from the fork-weakness where forked process is not
            automatically reseeded, and it's also safe from issues with
-           OpenSSL CSPRNG initialization.[6]
+           OpenSSL's CSPRNG initialization.[6]
 
         5. The fallback option (/dev/urandom) of OS random engine might
            be problematic on pre-3.17 kernels if the CSPRNG has not been
@@ -355,14 +364,47 @@ class X448(object):
            fully seeded. This is the same case as with TFC's `csprng()`
            function.
 
-         [1] https://github.com/pyca/cryptography/blob/2.8/src/cryptography/hazmat/primitives/asymmetric/x448.py#L38
-         [2] https://github.com/pyca/cryptography/blob/2.8/src/cryptography/hazmat/backends/openssl/backend.py#L2483
-         [3] https://github.com/pyca/cryptography/blob/2.8/src/cryptography/hazmat/backends/openssl/backend.py#L118
-         [4] https://github.com/pyca/cryptography/blob/2.8/src/cryptography/hazmat/backends/openssl/backend.py#L125
          [5] https://cryptography.io/en/latest/hazmat/backends/openssl/#activate_osrandom_engine
          [6] https://cryptography.io/en/latest/hazmat/backends/openssl/#os-random-engine
          [7] https://cryptography.io/en/latest/hazmat/backends/openssl/#os-random-sources
-         [8] https://github.com/pyca/cryptography/blob/master/src/_cffi_src/openssl/src/osrandom_engine.c#L395
+         [8] https://github.com/pyca/cryptography/blob/3.1.1/src/_cffi_src/openssl/src/osrandom_engine.c#L396
+
+        ---
+
+        If the OpenSSL version used is 1.1.1d or newer:
+
+        3. The Backend init method calls[9] the
+           `activate_osrandom_engine` method, which will check[10]
+           whether OS Random Engine is needed, and since with
+           OpenSSL 1.1.1d+ it is not, the condition check will evaluate
+           as `False`, which in turn means the entire method is skipped.
+
+        4. The `generate` method will then call the
+           `backend.x448_generate_key()`[11] which in turn will call
+           the `_evp_pkey_keygen_gc` method[12].
+
+        7. The `_evp_pkey_keygen_gc` calls the `EVP_PKEY_keygen`
+           method[13], that given the context will generate the X448
+           private key.
+
+        8. To quote OpenSSL's change log[14]:
+
+            "On older Linux systems where the getrandom() system call is
+             not available, OpenSSL normally uses the /dev/urandom device
+             for seeding its CSPRNG. Contrary to getrandom(), the
+             /dev/urandom device will not block during early boot when
+             the kernel CSPRNG has not been seeded yet."
+
+           Again, as TFC checks that the kernel version of the OS it's
+           running on is at least 4.17, the entropy source used by
+           OpenSSL is always GETRANDOM(0).
+
+         [9] https://github.com/pyca/cryptography/blob/3.1.1/src/cryptography/hazmat/backends/openssl/backend.py#L238
+        [10] https://github.com/pyca/cryptography/blob/3.1.1/src/cryptography/hazmat/backends/openssl/backend.py#L288
+        [11] https://github.com/pyca/cryptography/blob/3.1.1/src/cryptography/hazmat/primitives/asymmetric/x448.py#L46
+        [12] https://github.com/pyca/cryptography/blob/3.1.1/src/cryptography/hazmat/backends/openssl/backend.py#L2365
+        [13] https://github.com/pyca/cryptography/blob/3.1.1/src/cryptography/hazmat/backends/openssl/backend.py#L2326
+        [14] https://www.openssl.org/news/changelog.html#openssl-111
         """
         return X448PrivateKey.generate()
 

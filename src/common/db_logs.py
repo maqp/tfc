@@ -38,7 +38,7 @@ from src.common.statics    import (ASSEMBLY_PACKET_HEADER_LENGTH, DIR_USER_DATA,
                                    GROUP_MSG_ID_LENGTH, LOGFILE_MASKING_QUEUE, LOG_ENTRY_LENGTH, LOG_PACKET_QUEUE,
                                    LOG_SETTING_QUEUE, MESSAGE, MESSAGE_HEADER_LENGTH, ONION_SERVICE_PUBLIC_KEY_LENGTH,
                                    ORIGIN_HEADER_LENGTH, ORIGIN_USER_HEADER, PLACEHOLDER_DATA, PRIVATE_MESSAGE_HEADER,
-                                   P_N_HEADER, RX, TEMP_POSTFIX, TIMESTAMP_LENGTH, TRAFFIC_MASKING_QUEUE, TX,
+                                   P_N_HEADER, RX, TEMP_SUFFIX, TIMESTAMP_LENGTH, TRAFFIC_MASKING_QUEUE, TX,
                                    UNIT_TEST_QUEUE, WHISPER_FIELD_LENGTH, WIN_TYPE_CONTACT, WIN_TYPE_GROUP)
 
 from src.receiver.packet  import Packet, PacketList
@@ -338,7 +338,7 @@ def change_log_db_key(old_key:  bytes,
     """Re-encrypt the log database with a new master key."""
     ensure_dir(DIR_USER_DATA)
     file_name = f'{DIR_USER_DATA}{settings.software_operation}_logs'
-    temp_name = file_name + TEMP_POSTFIX
+    temp_name = file_name + TEMP_SUFFIX
 
     if not os.path.isfile(file_name):
         raise SoftError("No log database available.")
@@ -360,7 +360,7 @@ def replace_log_db(settings: 'Settings') -> None:
     """Replace the log database with the temp file."""
     ensure_dir(DIR_USER_DATA)
     file_name = f'{DIR_USER_DATA}{settings.software_operation}_logs'
-    temp_name = file_name + TEMP_POSTFIX
+    temp_name = file_name + TEMP_SUFFIX
 
     if os.path.isfile(temp_name):
         os.replace(temp_name, file_name)
@@ -382,7 +382,7 @@ def remove_logs(contact_list: 'ContactList',
     """
     ensure_dir(DIR_USER_DATA)
     file_name       = f'{DIR_USER_DATA}{settings.software_operation}_logs'
-    temp_name       = file_name + TEMP_POSTFIX
+    temp_name       = file_name + TEMP_SUFFIX
     packet_list     = PacketList(settings, contact_list)
     entries_to_keep = []  # type: List[bytes]
     removed         = False

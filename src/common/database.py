@@ -30,7 +30,7 @@ import nacl.exceptions
 from src.common.crypto     import auth_and_decrypt, blake2b, encrypt_and_sign
 from src.common.exceptions import CriticalError
 from src.common.misc       import ensure_dir, separate_trailer
-from src.common.statics    import BLAKE2_DIGEST_LENGTH, DB_WRITE_RETRY_LIMIT, DIR_USER_DATA, TEMP_POSTFIX
+from src.common.statics    import BLAKE2_DIGEST_LENGTH, DB_WRITE_RETRY_LIMIT, DIR_USER_DATA, TEMP_SUFFIX
 
 if typing.TYPE_CHECKING:
     from src.common.db_masterkey import MasterKey
@@ -45,7 +45,7 @@ class TFCDatabase(object):
     def __init__(self, database_name: str, master_key: 'MasterKey') -> None:
         """Initialize TFC database."""
         self.database_name = database_name
-        self.database_temp = database_name + TEMP_POSTFIX
+        self.database_temp = database_name + TEMP_SUFFIX
         self.database_key  = master_key.master_key
 
     @staticmethod
@@ -92,13 +92,15 @@ class TFCDatabase(object):
         ensure_dir(DIR_USER_DATA)
         self.ensure_temp_write(ct_bytes)
 
-        # Replace the original file with a temp file. (`os.replace` is atomic as per
-        # POSIX requirements): https://docs.python.org/3/library/os.html#os.replace
         if replace:
             self.replace_database()
 
     def replace_database(self) -> None:
-        """Replace database with temporary database."""
+        """Replace database with temporary database.
+
+        Replace the original file with a temp file. (`os.replace` is atomic as per
+        POSIX requirements): https://docs.python.org/3/library/os.html#os.replace
+        """
         os.replace(self.database_temp, self.database_name)
 
     def load_database(self) -> bytes:
@@ -114,7 +116,7 @@ class TFCDatabase(object):
         """
         if os.path.isfile(self.database_temp):
             if self.verify_file(self.database_temp):
-                os.replace(self.database_temp, self.database_name)
+                self.replace_database()
             else:
                 # If temp file is not authentic, the file is most likely corrupt, so
                 # we delete it and continue using the old file to ensure atomicity.
@@ -134,7 +136,7 @@ class TFCUnencryptedDatabase(object):
     def __init__(self, database_name: str) -> None:
         """Initialize unencrypted TFC database."""
         self.database_name = database_name
-        self.database_temp = database_name + TEMP_POSTFIX
+        self.database_temp = database_name + TEMP_SUFFIX
 
     @staticmethod
     def write_to_file(file_name: str, data: bytes) -> None:
@@ -173,7 +175,6 @@ class TFCUnencryptedDatabase(object):
         digest of the database content to the database file.
         """
         ensure_dir(DIR_USER_DATA)
-
         self.ensure_temp_write(data + blake2b(data))
 
         # Replace the original file with a temp file. (`os.replace` is atomic as per
@@ -181,7 +182,11 @@ class TFCUnencryptedDatabase(object):
         os.replace(self.database_temp, self.database_name)
 
     def replace_database(self) -> None:
-        """Replace database with temporary database."""
+        """Replace database with temporary database.
+
+        Replace the original file with a temp file. (`os.replace` is atomic as per
+        POSIX requirements): https://docs.python.org/3/library/os.html#os.replace
+        """
         if os.path.isfile(self.database_temp):
             os.replace(self.database_temp, self.database_name)
 
@@ -220,7 +225,7 @@ class MessageLog(object):
     def __init__(self, database_name: str, database_key: bytes) -> None:
         """Create a new MessageLog object."""
         self.database_name = database_name
-        self.database_temp = self.database_name + TEMP_POSTFIX
+        self.database_temp = self.database_name + TEMP_SUFFIX
         self.database_key  = database_key
 
         ensure_dir(DIR_USER_DATA)
@@ -233,9 +238,18 @@ class MessageLog(object):
 
     def __iter__(self) -> Iterator[bytes]:
         """Iterate over encrypted log entries."""
-        for log_entry in self.c.execute("SELECT log_entry FROM log_entries"):
-            plaintext = auth_and_decrypt(log_entry[0], self.database_key, database=self.database_name)
+        for ct_log_entry in self.c.execute("SELECT log_entry FROM log_entries"):
+            plaintext = auth_and_decrypt(ct_log_entry[0], self.database_key, database=self.database_name)
             yield plaintext
+
+    def replace_database(self) -> None:
+        """Replace database with temporary database.
+
+        Replace the original file with a temp file. (`os.replace` is atomic as per
+        POSIX requirements): https://docs.python.org/3/library/os.html#os.replace
+        """
+        if os.path.isfile(self.database_temp):
+            os.replace(self.database_temp, self.database_name)
 
     def verify_file(self, database_name: str) -> bool:
         """Verify integrity of database file content."""
@@ -259,7 +273,7 @@ class MessageLog(object):
         """"Check if temporary log database exists."""
         if os.path.isfile(self.database_temp):
             if self.verify_file(self.database_temp):
-                os.replace(self.database_temp, self.database_name)
+                self.replace_database()
             else:
                 # If temp file failed integrity check, the file is most likely corrupt,
                 # so we delete it and continue using the old file to ensure atomicity.

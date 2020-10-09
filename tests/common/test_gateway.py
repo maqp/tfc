@@ -23,6 +23,8 @@ import base64
 import os
 import unittest
 import socket
+import threading
+import time
 
 from datetime      import datetime
 from unittest      import mock
@@ -35,8 +37,8 @@ from src.common.crypto       import blake2b
 from src.common.gateway      import gateway_loop, Gateway, GatewaySettings
 from src.common.misc         import ensure_dir
 from src.common.reed_solomon import RSCodec
-from src.common.statics      import (DIR_USER_DATA, GATEWAY_QUEUE, NC, PACKET_CHECKSUM_LENGTH, QUBES_RX_IP_ADDR_FILE,
-                                     RX, TX, US_BYTE)
+from src.common.statics      import (BUFFER_FILE_NAME, DIR_USER_DATA, GATEWAY_QUEUE, NC, PACKET_CHECKSUM_LENGTH, RX, TX,
+                                     QUBES_DST_VM_NAME, QUBES_NET_VM_NAME, QUBES_NET_DST_POLICY, QUBES_SRC_NET_POLICY)
 
 from tests.mock_classes import Settings
 from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, tear_queues, TFCTestCase
@@ -279,54 +281,54 @@ class TestGatewaySerial(TFCTestCase):
             gateway.write(b'data')
 
     # Qubes
-    @mock.patch('time.sleep', return_value=None)
-    @mock.patch('socket.socket', MagicMock(return_value=MagicMock(
-        recv=MagicMock(side_effect=[EOFError, b'data', US_BYTE]))))
-    def test_qubes_socket_server(self, *_: Any) -> None:
-        gateway = Gateway(operation=RX, local_test=False, dd_sockets=False, qubes=True)
-        self.assertIsInstance(gateway, Gateway)
-        self.assertEqual(gateway.read(), b'data')
-
-    @mock.patch('time.sleep', return_value=None)
-    @mock.patch('socket.socket', MagicMock(return_value=MagicMock(
-        recv=MagicMock(side_effect=[EOFError, b'data', US_BYTE]))))
-    def test_qubes_socket_server_raises_critical_error_if_interface_is_not_initialized(self, *_: Any) -> None:
+    def test_qubes_read_file(self, *_: Any) -> None:
         # Setup
-        gateway            = Gateway(operation=RX, local_test=False, dd_sockets=False, qubes=True)
-        gateway.rxq_socket = None
+        buffer_file_dir = os.getcwd()
+        ensure_dir(f"{buffer_file_dir}/")
+
+        def packet_delayer() -> None:
+            """Create packets one at a time."""
+            time.sleep(0.1)
+
+            with open(f"{buffer_file_dir}/{BUFFER_FILE_NAME}.invalid", 'wb+') as f:
+                f.write(base64.b85encode(b'data'))
+
+            time.sleep(0.1)
+
+            with open(f"{buffer_file_dir}/{BUFFER_FILE_NAME}.0", 'wb+') as f:
+                f.write(base64.b85encode(b'data'))
+
+        threading.Thread(target=packet_delayer).start()
+
+        gateway = Gateway(operation=RX, local_test=False, dd_sockets=False, qubes=True)
 
         # Test
-        with self.assertRaises(SystemExit):
-            self.assertEqual(gateway.read(), b'data')
+        self.assert_se("No packet was available.", gateway.read, buffer_file_dir)
 
-    @mock.patch('time.sleep', return_value=None)
-    @mock.patch('builtins.input', side_effect=['10.137.0.17'])
-    @mock.patch('socket.socket', MagicMock())
-    def test_qubes_socket_client(self, *_: Any) -> None:
+        time.sleep(0.3)
+
+        self.assertIsInstance(gateway, Gateway)
+        self.assertEqual(gateway.read(buffer_file_dir), b'data')
+
+        # Test invalid packet content is handled
+        with open(f"{buffer_file_dir}/{BUFFER_FILE_NAME}.1", 'wb+') as f:
+            f.write(os.urandom(32))
+        self.assert_se("Error: Received packet had invalid Base85 encoding.", gateway.read, buffer_file_dir)
+
+    @mock.patch('subprocess.Popen')
+    def test_qubes_send_to_networkerVM(self, mock_popen) -> None:
         gateway = Gateway(operation=TX, local_test=False, dd_sockets=False, qubes=True)
         self.assertIsInstance(gateway, Gateway)
         self.assertIsNone(gateway.write(b'data'))
+        mock_popen.assert_called_with(['/usr/bin/qrexec-client-vm', QUBES_NET_VM_NAME, QUBES_SRC_NET_POLICY], stderr=-3, stdin=-1, stdout=-3)
 
-    @mock.patch('time.sleep', return_value=None)
-    @mock.patch('socket.socket', MagicMock())
-    def test_qubes_auto_config_from_file(self, *_: Any) -> None:
-        # Setup
-        test_ip = '10.137.0.17'
-        open(QUBES_RX_IP_ADDR_FILE, 'w+').write(test_ip)
+    @mock.patch('subprocess.Popen')
+    def test_qubes_send_to_destinationVM(self, mock_popen) -> None:
+        gateway = Gateway(operation=NC, local_test=False, dd_sockets=False, qubes=True)
+        self.assertIsInstance(gateway, Gateway)
+        self.assertIsNone(gateway.write(b'data'))
+        mock_popen.assert_called_with(['/usr/bin/qrexec-client-vm', QUBES_DST_VM_NAME, QUBES_NET_DST_POLICY], stderr=-3, stdin=-1, stdout=-3)
 
-        # Test
-        self.assertTrue(os.path.isfile(QUBES_RX_IP_ADDR_FILE))
-        gateway = Gateway(operation=TX, local_test=False, dd_sockets=False, qubes=True)
-        self.assertEqual(gateway.settings.rx_udp_ip, test_ip)
-        self.assertFalse(os.path.isfile(QUBES_RX_IP_ADDR_FILE))
-
-    @mock.patch('time.sleep', return_value=None)
-    @mock.patch('builtins.input', side_effect=['10.137.0.17'])
-    @mock.patch('socket.socket', MagicMock(return_value=MagicMock(connect=MagicMock(side_effect=[socket.error]))))
-    def test_socket_error_raises_critical_error(self, *_: Any) -> None:
-        gateway = Gateway(operation=TX, local_test=False, dd_sockets=False, qubes=True)
-        with self.assertRaises(SystemExit):
-            gateway.get_local_ip_addr()
 
 class TestGatewaySettings(TFCTestCase):
 
@@ -338,8 +340,7 @@ class TestGatewaySettings(TFCTestCase):
     "serial_baudrate": 19200,
     "serial_error_correction": 5,
     "use_serial_usb_adapter": true,
-    "built_in_serial_interface": "ttyS0",
-    "rx_udp_ip": ""
+    "built_in_serial_interface": "ttyS0"
 }"""
 
     def tearDown(self) -> None:
@@ -376,8 +377,7 @@ class TestGatewaySettings(TFCTestCase):
     "serial_baudrate": 9600,
     "serial_error_correction": 1,
     "use_serial_usb_adapter": false,
-    "built_in_serial_interface": "ttyS0",
-    "rx_udp_ip": "10.137.0.17"
+    "built_in_serial_interface": "ttyS0"
 }""")
         # Test
         settings = GatewaySettings(operation=TX, local_test=True, dd_sockets=True, qubes=False)
@@ -385,7 +385,6 @@ class TestGatewaySettings(TFCTestCase):
         self.assertEqual(settings.serial_error_correction,   1)
         self.assertEqual(settings.use_serial_usb_adapter,    False)
         self.assertEqual(settings.built_in_serial_interface, 'ttyS0')
-        self.assertEqual(settings.rx_udp_ip,                 '10.137.0.17')
 
     def test_missing_values_are_set_to_default_and_database_is_overwritten(self) -> None:
         # Setup
@@ -435,8 +434,7 @@ class TestGatewaySettings(TFCTestCase):
     "serial_baudrate": 19201,
     "serial_error_correction": 5,
     "use_serial_usb_adapter": true,
-    "built_in_serial_interface": "ttyS0",
-    "rx_udp_ip": ""
+    "built_in_serial_interface": "ttyS0"
 }""")
         # Test
         settings = GatewaySettings(operation=TX, local_test=True, dd_sockets=True, qubes=False)
@@ -459,8 +457,7 @@ class TestGatewaySettings(TFCTestCase):
     "serial_baudrate": 19200,
     "serial_error_correction": -1,
     "use_serial_usb_adapter": true,
-    "built_in_serial_interface": "ttyS0",
-    "rx_udp_ip": ""
+    "built_in_serial_interface": "ttyS0"
 }""")
         # Test
         settings = GatewaySettings(operation=TX, local_test=True, dd_sockets=True, qubes=False)
@@ -483,8 +480,7 @@ class TestGatewaySettings(TFCTestCase):
     "serial_baudrate": 19200,
     "serial_error_correction": 5,
     "use_serial_usb_adapter": true,
-    "built_in_serial_interface": "does_not_exist",
-    "rx_udp_ip": ""
+    "built_in_serial_interface": "does_not_exist"
 }""")
         # Test
         settings = GatewaySettings(operation=TX, local_test=True, dd_sockets=True, qubes=False)
@@ -498,48 +494,6 @@ class TestGatewaySettings(TFCTestCase):
 
         self.assertEqual(data, self.default_serialized)
 
-    @mock.patch('builtins.input', side_effect=['10.137.0.17'])
-    def test_invalid_rx_udp_ip_is_replaced_with_user_input(self, _) -> None:
-        # Setup
-        ensure_dir(DIR_USER_DATA)
-        with open(f"{DIR_USER_DATA}{TX}_serial_settings.json", 'w+') as f:
-            f.write("""\
-{
-    "serial_baudrate": 19200,
-    "serial_error_correction": 5,
-    "use_serial_usb_adapter": true,
-    "built_in_serial_interface": "ttyS0",
-    "rx_udp_ip": "256.256.256.256"
-}""")
-        # Test
-        settings = GatewaySettings(operation=TX, local_test=True, dd_sockets=True, qubes=True)
-        self.assertEqual(settings.serial_baudrate,           19200)
-        self.assertEqual(settings.serial_error_correction,   5)
-        self.assertEqual(settings.use_serial_usb_adapter,    True)
-        self.assertEqual(settings.built_in_serial_interface, 'ttyS0')
-        self.assertEqual(settings.rx_udp_ip,                 '10.137.0.17')
-
-    @mock.patch('builtins.input', side_effect=['10.137.0.17'])
-    def test_invalid_rx_udp_ip_type_is_replaced_with_user_input(self, _) -> None:
-        # Setup
-        ensure_dir(DIR_USER_DATA)
-        with open(f"{DIR_USER_DATA}{TX}_serial_settings.json", 'w+') as f:
-            f.write("""\
-{
-    "serial_baudrate": 19200,
-    "serial_error_correction": 5,
-    "use_serial_usb_adapter": true,
-    "built_in_serial_interface": "ttyS0",
-    "rx_udp_ip": 5
-}""")
-        # Test
-        settings = GatewaySettings(operation=TX, local_test=True, dd_sockets=True, qubes=True)
-        self.assertEqual(settings.serial_baudrate,           19200)
-        self.assertEqual(settings.serial_error_correction,   5)
-        self.assertEqual(settings.use_serial_usb_adapter,    True)
-        self.assertEqual(settings.built_in_serial_interface, 'ttyS0')
-        self.assertEqual(settings.rx_udp_ip,                 '10.137.0.17')
-
     def test_invalid_type_is_replaced_with_default(self) -> None:
         # Setup
         ensure_dir(DIR_USER_DATA)
@@ -549,8 +503,7 @@ class TestGatewaySettings(TFCTestCase):
     "serial_baudrate": "115200",
     "serial_error_correction": "5",
     "use_serial_usb_adapter": "true",
-    "built_in_serial_interface": true,
-    "rx_udp_ip": ""
+    "built_in_serial_interface": true
 }""")
         # Test
         settings = GatewaySettings(operation=TX, local_test=True, dd_sockets=True, qubes=False)

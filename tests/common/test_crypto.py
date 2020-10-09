@@ -202,7 +202,7 @@ class TestArgon2KDF(unittest.TestCase):
         # Verify the SHA256 hash of the zip-file containing the command-line utility.
         with open(file_name, 'rb') as f:
             file_data = f.read()
-        self.assertEqual('ff8075cfbca9e9d892ee111c7776688e7edf4abe49c26cc0211a75143f4bf016',
+        self.assertEqual('370bc1e1ed0469e5ab77d54a26277bfb711ba9f64658af50c784d961a2bdaca8',
                          hashlib.sha256(file_data).hexdigest())
 
         # Unzip, compile, and test the command-line utility.

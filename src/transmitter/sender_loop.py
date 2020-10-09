@@ -267,7 +267,7 @@ def process_key_management_command(queues: 'QueueDict', key_list: 'KeyList') -> 
 
     if km_queue.qsize():
         key_list.manage(queues, *km_queue.get())
-        SoftError("Key management command processing complete.", output=False)
+        raise SoftError("Key management command processing complete.", output=False)
 
 
 def process_command(queues:   'QueueDict',
@@ -281,7 +281,7 @@ def process_command(queues:   'QueueDict',
     if c_queue.qsize():
         if key_list.has_local_keyset():
             send_packet(key_list, gateway, log_queue, c_queue.get())
-        SoftError("Command processing complete.", output=False)
+        raise SoftError("Command processing complete.", output=False)
 
 
 def process_relay_packets(queues: 'QueueDict', gateway: 'Gateway') -> None:
@@ -298,7 +298,7 @@ def process_relay_packets(queues: 'QueueDict', gateway: 'Gateway') -> None:
             time.sleep(gateway.settings.data_diode_sockets * 1.5)
             signal = WIPE if command == UNENCRYPTED_WIPE_COMMAND else EXIT
             queues[EXIT_QUEUE].put(signal)
-        SoftError("Relay packet processing complete.", output=False)
+        raise SoftError("Relay packet processing complete.", output=False)
 
 
 def process_buffered_messages(m_buffer: 'MessageBuffer',

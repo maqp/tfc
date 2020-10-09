@@ -28,17 +28,17 @@ INSTALL_DIR="/opt/tfc"
 APPDIRS=appdirs-1.4.4-py2.py3-none-any.whl
 ARGON2_CFFI=argon2_cffi-20.1.0-cp35-abi3-manylinux1_x86_64.whl
 CERTIFI=certifi-2020.6.20-py2.py3-none-any.whl
-CFFI37=cffi-1.14.0-cp37-cp37m-manylinux1_x86_64.whl
-CFFI38=cffi-1.14.0-cp38-cp38-manylinux1_x86_64.whl
+CFFI37=cffi-1.14.3-cp37-cp37m-manylinux1_x86_64.whl
+CFFI38=cffi-1.14.3-cp38-cp38-manylinux1_x86_64.whl
 CHARDET=chardet-3.0.4-py2.py3-none-any.whl
 CLICK=click-7.1.2-py2.py3-none-any.whl
-CRYPTOGRAPHY37=cryptography-2.9.2-cp35-abi3-manylinux1_x86_64.whl
-CRYPTOGRAPHY38=cryptography-2.9.2-cp35-abi3-manylinux2010_x86_64.whl
+CRYPTOGRAPHY37=cryptography-3.1.1-cp35-abi3-manylinux1_x86_64.whl
+CRYPTOGRAPHY38=cryptography-3.1.1-cp35-abi3-manylinux2010_x86_64.whl
 DISTLIB=distlib-0.3.1-py2.py3-none-any.whl
 FILELOCK=filelock-3.0.12-py3-none-any.whl
 FLASK=Flask-1.1.2-py2.py3-none-any.whl
 IDNA=idna-2.10-py2.py3-none-any.whl
-IMPORTLIB_METADATA=importlib_metadata-1.7.0-py2.py3-none-any.whl
+IMPORTLIB_METADATA=importlib_metadata-2.0.0-py2.py3-none-any.whl
 ITSDANGEROUS=itsdangerous-1.1.0-py2.py3-none-any.whl
 JINJA2=Jinja2-2.11.2-py2.py3-none-any.whl
 MARKUPSAFE=MarkupSafe-1.1.1-cp37-cp37m-manylinux1_x86_64.whl
@@ -47,12 +47,12 @@ PYNACL=PyNaCl-1.4.0-cp35-abi3-manylinux1_x86_64.whl
 PYSERIAL=pyserial-3.4-py2.py3-none-any.whl
 PYSOCKS=PySocks-1.7.1-py3-none-any.whl
 REQUESTS=requests-2.24.0-py2.py3-none-any.whl
-SETUPTOOLS=setuptools-47.3.1-py3-none-any.whl
+SETUPTOOLS=setuptools-50.3.0-py3-none-any.whl
 SIX=six-1.15.0-py2.py3-none-any.whl
-URLLIB3=urllib3-1.25.9-py2.py3-none-any.whl
-VIRTUALENV=virtualenv-20.0.25-py2.py3-none-any.whl
+URLLIB3=urllib3-1.25.10-py2.py3-none-any.whl
+VIRTUALENV=virtualenv-20.0.33-py2.py3-none-any.whl
 WERKZEUG=Werkzeug-1.0.1-py2.py3-none-any.whl
-ZIPP=zipp-3.1.0-py3-none-any.whl
+ZIPP=zipp-3.3.0-py3-none-any.whl
 
 
 # ----------------------------------------------------------------------------------------
@@ -63,16 +63,16 @@ DIGEST_PYSERIAL=8333ac2843fd136d5d0d63b527b37866f7d18afc3bb33c4938b63af077492aeb
 DIGEST_PYSOCKS=313b954102231d038d52ab58f41e3642579be29f827135b8dd92c06acb362effcb0a7fd5f35de9273372b92d9fe29f38381ae44f8b41aa90d2564d6dd07ecd12
 
 # Virtualenv
-DIGEST_ZIPP=89170b91cfdc0ef4d85b5316b484c8d6e01985f19bb9f545b11d648e122392efa68d40c66e056b8998fb69af49f4e18707f783be8d500b8957ce3a885662d27c
+DIGEST_ZIPP=1c83f8958eb172083a42c3cd0745e0c32def319992dfb227b906a9d0a9fd6f9dd556de49a8a84f76e27b0ebce7abe6a9a7fd12ae532e86898046c68e68d28f11
 DIGEST_FILELOCK=d13edd50779bca9842694e0da157ca1fdad9d28166771275049f41dea4b8d8466fc5604b610b6ad64552cdf4c1d3cada9977ca37c6b775c4cc92f333709e8ea3
-DIGEST_IMPORTLIB_METADATA=7146604e980d7921af3fd89351edba9919e2ff93879676adda7b1c55804b2d4b8cc6fbbd4064b5d03b5bc89a6a968b446f438deeb117412e140a676f05a785f8
+DIGEST_IMPORTLIB_METADATA=09ec4c718781e3ba6ed8024a094081ce530f30c1aa7df8f10729d64f17839bcc35dc3c94218209dbb6d133f3052d33cebe282bf7b53ba9646d1653ce62cdae3b
 DIGEST_SIX=0416d59434623604de755601c919722c2b800042612a2a7b221ecd3ccf556aca3a78f0f926fd640032a3d74d153457628a89c25065dfcdbb96892d5bf7279904
 DIGEST_DISTLIB=ac65d35a5309ec22db5b1e9ab6c20014084feab11e86e81bee6d0bfcc65940dfdcaa2711ac1e98c1ef179b110a4ea03dbaf042b894d3051da9d339c534664e00
 DIGEST_APPDIRS=8e6c1ea544013ea2567cda2d8b8c7b441bc50ac689aa7f95de67e3795aa083e9592c687d74fdbb37f5a75e0beab398fe47df5bced14ee9c204cfe5ecc364ef44
-DIGEST_VIRTUALENV=812cc4b096e4357936d94c0e4f768e943eaf3b5ce1edd5ca309fc4433a3bf03ee7385cdeaf1a277408d250ecf28eb0e1d871da0818cf764d65109be42007e94e
+DIGEST_VIRTUALENV=c15f4b8d4df895ba03ecc19631198584c97e74b3026b7e82207e62d932ea03bb4c5dd36349764c1418021aa6611072a44c9b3166bbf7040cfc5815efba03b2d1
 
 # Requests
-DIGEST_URLLIB3=b20687b4ce06164c5b932b43c5b758efd864668ee2b60f6cd6ce6c27f0ea16b9d1222ec0c061618fc3f0de362c0f18be95864bd91ecaa73fdfa92bd666fb4378
+DIGEST_URLLIB3=b4e88397d5ac77c669c8bf01fdf6a70ec7cc3acbdf69e0113ce9a5cd8394e932e6e153d85c60978917e8bf6e85e15f1a4c7da10d2a10cfa0735884a5861a981d
 DIGEST_IDNA=7b7be129e1a99288aa74a15971377cb17bee1618843c03c8f782e287d0f3ecf3b8f26e3ea736444eb358f1d6079131a7eb291446f3279874eb8e00b624d9471c
 DIGEST_CHARDET=bfae58c8ea19c87cc9c9bf3d0b6146bfdb3630346bd954fe8e9f7da1f09da1fc0d6943ff04802798a665ea3b610ee2d65658ce84fe5a89f9e93625ea396a17f4
 DIGEST_CERTIFI=960f1cbe72443230ecba527b5bc4bb8a45a33feb646b0ad01dcb606b9ec3729d27dff5cfa04655d92efd4dec691d61c62d80f8fd39a82fc21528727eeb5c9991
@@ -88,11 +88,11 @@ DIGEST_FLASK=3bcd417e5b93590944ebdba05ff4ae37aab31aadcda2e4514d8be275d52877191ff
 
 # Cryptography
 DIGEST_PYCPARSER=06dc9cefdcde6b97c96d0452a77db42a629c48ee545edd7ab241763e50e3b3c56d21f9fcce4e206817aa1a597763d948a10ccc73572490d739c89eea7fede0a1
-DIGEST_CFFI=5b315a65fc8f40622ceef35466546620aaca9dd304f5491a845239659b4066469c5fb3f1683c382eb57f8975caf318e5d88852e3dbb049cde193c9189b88c9c0
-DIGEST_CRYPTOGRAPHY=251d1ce022ac969516e54eae62b383bc113cc023a5459a030fa4c3d3d67c5ff4daa5d23bcf6a334845315ab71532e7aa3db28c882bbfed5260dd1ab01429ca6a
+DIGEST_CFFI=d906b00752bce5634b309574a3edd5fbb737cb90df351cedcb7c264f3a5b93e28bdd16af1ff69eeddce745b1ada93d97c0b7fb73e04e6973fd7631850cba5f87
+DIGEST_CRYPTOGRAPHY=3f208fbc6954a3c6e8dc1d1c20ff2c32f4154eac5cbbc4b0c96032cc33be73bfd99081eaba9eb1557b3ffa3dfcb5312f77fff1393bfb50ce2e8df7a8c585f128
 
 # PyNaCl
-DIGEST_SETUPTOOLS=c86448d2348b4f58e3eb4c55f8133675f3a20315ee11e829a55f414c07c05f84afe4991d95625a8f0ed62e924b34bff29fd8e67a6929298ec53f69e6fcc4454b
+DIGEST_SETUPTOOLS=258cdd8b4bd49dcddd0097c2baf93be93dbffb1634ca1a984b5b71f84a0b37a8342c5725a06615bc8f0090c7193f24740db2f5c15a5b9b00f452fe0b14640c1c
 DIGEST_PYNACL=bf1bb46d23419cb375bcf620a37b5e9ce925cb0dd55eadf851a4bbb9039c8846ed13ae33966436a96655ea41ad1fc282f9139a958fd55ea10597fd3859635a2f
 
 
@@ -103,8 +103,8 @@ DIGEST_PYNACL=bf1bb46d23419cb375bcf620a37b5e9ce925cb0dd55eadf851a4bbb9039c8846ed
 function verify_tcb_requirements_files {
     # To minimize the time TCB installer configuration stays online,
     # only the requirements files are authenticated between downloads.
-    compare_digest 01b139e85415cd60125eef077dd7bcac68952f605780ae91d3938dc2c8a80d7b7f06f2066c0d0aed1229ef2c69679f984919313dc4749db434b507902531e061 '' requirements.txt
-    compare_digest 76365ec0eb29cff5afa13079fefd4f69e903138a39a5bc3b6f717b5f33bfee0913bbe784678591c26a6962b0c2768764bf220c296e410259a67154a3ce8da031 '' requirements-venv.txt
+    compare_digest c550ef477416a55e9a73b2661690c4c898038b95cb431dae0682ae79eef8ad5fc6e57bcf2431d388416521b5b7a06ca4c62d95c016868501b97366ef95d5b5a3 '' requirements.txt
+    compare_digest 9698879e51dcf1f20222fe17aa16d6c0bfad35ed434700d573f6de6af62b9572692751640caba8ecd7b2974ad270017312efcc2524af9ec6224e6c4662ee08ff '' requirements-venv.txt
 }
 
 
@@ -114,48 +114,51 @@ function verify_files {
     compare_digest d361e5e8201481c6346ee6a886592c51265112be550d5224f1a7a6e116255c2f1ab8788df579d9b8372ed7bfd19bac4b6e70e00b472642966ab5b319b99a2686 '' LICENSE
     compare_digest 8db25eafc66308f1fe8223c39bc5fb025ae111ebce3eae5601c907fa7a2654f68395af4f355ff0ff03775e79cda8dfccddaf7d68555bfe065d9469ca04a288f9 '' LICENSE-3RD-PARTY
     compare_digest 7cad2202e4cc940627e31577162c38f44022ddb138a51f52d0ac3747e264e065919df2b646020851d8973cc76a2873a72ceabcbe93c39911ebbfa7c867f01675 '' relay.py
-    compare_digest 48d0b6fac48973f2d6a9320b06c1f4cfce017533780ee74033ecbd49313f931ec8b50c385485c4e449394672188ff61ddc0229f8b08823637ad41a46ebcd58e8 '' requirements-dev.txt
-    compare_digest f4c434bbe18373eecc04133352194fbbc49c8d6d7d7a8bec605060421cce06e012a0d25fa0a6a6cfd91d9a30b2cc9369d8d0539209d551505982c8173eba8b54 '' requirements-relay.txt
-    compare_digest 5198d01cbee066ec0a1f0caacd73662ed8e911f8e65da0d7ab0e3ef3ca4563a70e4b0cb73c6d161947c11991bb02f268d9af56c9b55115e16d09c9d4ed6a6ea0 '' requirements-relay-tails.txt
-    compare_digest 20868b92578a7063851f98dbc3dacf0f9c7b317cb2a8f1497594092a9328a996666535ff1698021d8f9de2055c39a8019f565c49453b8400ce8db98897d280c9 '' requirements-setuptools.txt
+    compare_digest 3d504be8d4d516313033ebc27e002f58256bc03c6529b37047755e4d2aaf4946e93eab7b9a980cdb5ba742be2db3fbffc543e54b3d9f4bdefedf6ad4666b15aa '' requirements-dev.txt
+    compare_digest da93ae193d1ea3a248630fa253fccfcda4b7a4549c6e42e5ebef1f9e2bd902da8329b2f1e779cc80740cbb013047d432f84a34be5e0efec7b615621b33db5e61 '' requirements-relay.txt
+    compare_digest 305ef52145c91544e55279d264265dc542aba6ac73e130b3dabe7f43f3518799aae06de10e4e7a1a4c2e80a6cc859f3452ad1e2289f480ef7bebb50a325f988a '' requirements-relay-tails.txt
+    compare_digest 536db4ebff8904cb7403acefae29ce7f681bbfe5d765d0ef61c47b2654102302e16db04b826483e253c3c06aa094bde6e5ffe46180242f3079e19604532b0bd5 '' requirements-setuptools.txt
     compare_digest 79f8272a2ab122a48c60630c965cd9d000dcafabf5ee9d69b1c33c58ec321feb17e4654dbbbf783cc8868ccdfe2777d60c6c3fc9ef16f8264d9fcf43724e83c2 '' tfc.png
     compare_digest c746fa981fcdc1b21cbe7117ed186ef7757d120cb96fbe8500b8b5f7f4effebe71360ae5c1cc2bf873818002544d9aeba26990b93723a79c6bbcd647552a7ca0 '' tfc.py
     compare_digest 62f26d2805570ee70fad3a076579a554008e7d9f2c9ff310f3bb5876d361cc03dbae7ab63b144ac215a35f920ac56d359481352805a356479d622ab00da15f7f '' tfc.yml
     compare_digest c4d95b0385f474eee4ef8c25c579d5303a14ecbd90258d5cbd9c4d32531cec45008fa5fa0593c1babaeaf446e20b5ff5fcc8c7cc0384790be93e56065dc5dce5 '' uninstall.sh
 
     compare_digest dd2dc76c186e718cd6eb501985f3f8c639d303e44186c5f21ca8e8cf6a25b329c573ca489eda80877be51ccaa6b72b4e763060d0f0f27c0217e8c6b1016d75ca launchers/ terminator-config-local-test
-    compare_digest d977069071e05ab3e654ac3f627e43f84d95e705e83b20f87346ae903d9aa578ed7b853e9a5e77f2cd064add6db77327c68a3cab1dae4c702b3a3e0e6c29b230 launchers/ TFC-Local-test.desktop
+    compare_digest 64fca605fff0722677e74f376f18b17d4fe07096294de16042860e91cc055c2ca33037a61aa1a9b9dde33d803b63f595e8d9cc20a5c36e952c145dc9fbb6e528 launchers/ TFC-Local-test.desktop
     compare_digest fc193b64793fec001365e4c055e0f7894d3993e1a7dbcfd6dc63a8a04a9bb1c28fc455173243f5f7c2385b86b63f122ac6c6fe2c720a9ee92834fa76dbcc1672 launchers/ tfc-qubes-receiver
     compare_digest 4aeeffde5b6f7d27a44a3ab9b8470b59b357f7532dd3c21de78d8ded0415e0dd49cbb8eb10b5b658a8cf32dbc4afbf2663a9bf1dec0e0ee3c443f4fcb9a2990d launchers/ tfc-qubes-relay
     compare_digest 4098d69e5632db7a465b03bda89dcd9817aadb903cfc0a1deb76739fbb627fc6abffd092c922c9ee8f6c3368a142c56583d25787219cfe11e37467193e49fa85 launchers/ tfc-qubes-transmitter
-    compare_digest f46cee0d9c768514ab667d6e9d37838c05664bc2d2e27ab8d309827448465365ad53232f318ba24b70bd25c9bb535dfe5267b756c65e9f4152c534b8ad5d9e9d launchers/ TFC-RP.desktop
-    compare_digest 23c819b913a15cde5b6e15d2a93c399f00db0f927e0e3dc49232e8fe9e845c89f1660cf1d9cdb3c6f536071fbd546480bc7df314a95439c0ee3991a70469bc4e launchers/ TFC-RP-Qubes.desktop
-    compare_digest f46cee0d9c768514ab667d6e9d37838c05664bc2d2e27ab8d309827448465365ad53232f318ba24b70bd25c9bb535dfe5267b756c65e9f4152c534b8ad5d9e9d launchers/ TFC-RP-Tails.desktop
-    compare_digest 3a41c64aa8a7d8a3237b87667141f9fd85482b97caf606ea53b37b5f1dd775471eeb6b09e1292dc39018b77a3900a11c02c20d7ec983b8c6aadd3172afe35246 launchers/ TFC-RxP.desktop
-    compare_digest de983c81aeb56701763aec749a1500f3687706fd86be4e7f8c884359a20810ee1aa99fe28beea387527412468aa048375529d88d0c0a9951094daba3931535d1 launchers/ TFC-RxP-Qubes.desktop
-    compare_digest e51703df0106368858832936ef7f5048221ca2b1eb2bc3a41c06e1bfb055f5f9f00a712b1195511f3e7fbbf6c04b22752b3ad54d8ef68c75ebdbd145e310b98a launchers/ TFC-TxP.desktop
-    compare_digest 7dc114d5c6cc94b427a8c99c1bc10763ff5f42f2351d6a4d5058697a4d4d904106fc8f8382ad6d8632289fc9ae2d196aa8a1cc3514cb88dfd12e32ab3501a400 launchers/ TFC-TxP-Qubes.desktop
+    compare_digest 7a2673087fa278749dcc06310a59e9159e101c0ac4faa4003587071b7df732f5b6cde001df71ee01082f099018d3d1acfdb89300361f72852646dc1ea7081fc0 launchers/ TFC-RP.desktop
+    compare_digest 6ac845238824f0ede5b6db6403e9096f0f16050195f179b759cb21249259491363f37b178301ffb50ad1a4919a32a44318c43eae48ac12404de72e33aa672a85 launchers/ TFC-RP-Qubes.desktop
+    compare_digest 7a2673087fa278749dcc06310a59e9159e101c0ac4faa4003587071b7df732f5b6cde001df71ee01082f099018d3d1acfdb89300361f72852646dc1ea7081fc0 launchers/ TFC-RP-Tails.desktop
+    compare_digest 34ee06aee9b471d7823c8c05c6ccf7a99716231aaaee11e1993281e7bfce2617c378594a402768247c482390f26241829ed99d2134912a94b9fae880448951b7 launchers/ TFC-RxP.desktop
+    compare_digest b84115bcbc76753e1702da3eccf81a3fca65cb09d085904c2ec660b9d1a539409d181603ab08c1fef2716d3bb41c686602d9bbe6611f17725eeb6fa52422ac61 launchers/ TFC-RxP-Qubes.desktop
+    compare_digest 6661c1181b0eda5773425849bd58d0118936f9285db295ad998b98c96c8c72e3a8e897e70eea4d06d288bf33bc66548d8774ed5afcb75e4eee7d64b40303b12f launchers/ TFC-TxP.desktop
+    compare_digest 823ec5061fb7d4a4234ce30c0054c8006d63a1ef719f8c41fad8855c8d096fba59139601f73a9e878a18c5f3377b8de1e80a69e735137bb42f7bae9c4360d6af launchers/ TFC-TxP-Qubes.desktop
+
+    compare_digest b5393d094dce97a8e12a36438c56e92da8dc01555aa18a85b138411d18a3e47384a2dc56b184f8d18745db55495d6f2e22e4aa0038a5b2917856a1ba13fca06a qubes/ service.sh
+    compare_digest 070fb411f13dac93a8e11be5a97857f00d05e312f152736f2e9757397bc045cc235212121458c773daf1251e512e37836525dcda394dabc78879e71159f79850 qubes/ writer.py
 
     compare_digest 3ee90ee305382d80da801f047a6e58e5b763f9f6bc08dce531d5c620f2748c6bba59a1528eee5d721decb8e724f53b28fc7609f5b20472f679f554b78b5d4cc6 src/ __init__.py
     compare_digest 3ee90ee305382d80da801f047a6e58e5b763f9f6bc08dce531d5c620f2748c6bba59a1528eee5d721decb8e724f53b28fc7609f5b20472f679f554b78b5d4cc6 src/common/ __init__.py
-    compare_digest f6572b3e2b446405a4af1a1a197787d40bf980f80c19569b33ff503f0b3a312a1e78076ee19095ad149930d7919b9fb468d3937eef44012fd9a926a8bf0658c7 src/common/ crypto.py
-    compare_digest b87ad9321dedc59fd17d1a60866ed061925870156a458861d5c51d5825f8c5562c9a33d8f8d14a46c6b054a6542c8aa5d97c06ce78442f66913e8ab043fa20de src/common/ database.py
+    compare_digest 654cc2aa00b91697c3dc1894c4f7726d151e2c2fc92922aa760008c6f55645129a546e0fa38c39e2c72d10720b7a8d67253bfcddddc01dde4a99fdc40143ffad src/common/ crypto.py
+    compare_digest e1f77d17164d6879695adb0ad9d32c61f7447f36db73e398e161956140a142c40a9972970d89873d2febd4dc1c2b57ddd838eccd3437fa28c83285a0179aeb45 src/common/ database.py
     compare_digest dfef16b30d75bbe270c4b7df1369b3eeb2347b931e7bb3a974965cc916a6ffb20aaa40d14532ecb4a8cabdb71598fb53d86589aa475dbb02030bdf9489d71429 src/common/ db_contacts.py
     compare_digest 7c0214208857174b43092eaf61d14c16e60d6ebb68ba25b260f84546ce39f1fed8b21aceb58833920c8d939304b313c0ad95c554210ae3d5d0547143f7dd704c src/common/ db_groups.py
     compare_digest c49231429824d8133de7efad667c2bdde694a6c7a2e34e3b015ddb8cf59a150574cdd7099aaad02a4993a1669cd631f5af4cc611fac7d538d3ecd141d9295d0d src/common/ db_keys.py
-    compare_digest 04e0c0d53bcfc71476410bbdfcacee2ba3df6d7761d02111aca69a56cac848e4fb0178ee572b181b1a925bd45aae005b31b9e2afcce7416f7bd8c5dad96bc615 src/common/ db_logs.py
+    compare_digest 59affc49355ee6c3be47fde56434142ec87ce49554194744b67fa7f7f9e24e9008fe23ad5ee196b74adc49a1daf555d42762630e44be5b55294f7bd223b77883 src/common/ db_logs.py
     compare_digest 82286a267814ba58fee37477a44ecd87090ce4878535bd98f626ef9b853965f6f18d082109713856ef19c80ec892fc26ad4a5c08775a0a0ca65134a9d3ed86d5 src/common/ db_masterkey.py
     compare_digest 325298cd6cb7e68d27681c18f29e635f46222e34015ba3c8fe55e6718e6907b4257bbe12d71fd344b557aff302ae9d7fca2b581b4208e59ac7923e57aca23fe5 src/common/ db_onion.py
     compare_digest 4ef757ba877ee6b74632af3a0d3567c9483a62b9063ec0e7fe7b6abc7e82b490ec52279198f0be22866595dae1948bb1ef9ef556c88b3c320c5316fd59fc0743 src/common/ db_settings.py
     compare_digest 60fb4c922af286307865b29f0cadab53a5a575a9f820cd5ad99ea116c841b54dd1d1be1352bf7c3ab51d2fd223077217bcda1b442d44d2b9f1bf614e15c4a14d src/common/ encoding.py
     compare_digest ccd522408ad2e8e21f01038f5f49b9d82d5288717f1a1acf6cda278c421c05472827ee5928fbf56121c2dfc4f2cc49986e32c493e892bd6ae584be38ba381edd src/common/ exceptions.py
-    compare_digest 6a0b92cc259f7f0b4d1b65663ea633cc49590ff3562e1fedb096b59b49eddcbffa5e1892a6a5873a879f13b666192d3986f2c010de2e994ae7f6f6119b49ab60 src/common/ gateway.py
+    compare_digest 5a146b3cfee9e703453a25bbbf347a87c3422ccefcd9083697d9ebdcf476b7be725518060fa09ea7ff98757b2b3c0ee687cb7b5c24a9938d6d9f17a7fc00505c src/common/ gateway.py
     compare_digest d4021175fba75649fa1b8b65116b0acc98cedccd2a012986037a78e799908329694ee6f4c50617f92f5df279cfe5e719e38cada5f3775a8ea912a541f1dbf438 src/common/ input.py
     compare_digest 8045671a2d180271ea873e91e478a0b3ba766cda195a0755060ba14fb50d089b7007b6134c002e8d25255e47376c2e394c76a7593e68ea45f1cc1f8e109869e9 src/common/ misc.py
     compare_digest 6329bbdc9d24c1342d0996009a8cd4d852d5a800cbf6a582c047c0fc13e6ca9be28251b783325adffca100d2a372616088cedff2441cc103b8c18540828445ef src/common/ output.py
     compare_digest c96d7cb1b76650a49accc3ea007254e73e2e697895790ff6c14351520f4a7b1baec76d6055e3bddb14a687c0641fd15e361c93737afe7a8924b420ca67c31140 src/common/ path.py
     compare_digest 39e48b0b55f4f1a48bc558f47b5f7c872583f3f3925fd829de28710024b000fcb03799cb36da3a31806143bc3cbb98e5d357a8d62674c23e1e8bf957aece79f6 src/common/ reed_solomon.py
-    compare_digest a047c5e4dde0c5a85917fdaa76800913de90eed983685599c8b1c6376114111e0cd4eaa8dc89069f85f7d01c2926d8a856cc1edc8b672b7c22ad9c19528522cb src/common/ statics.py
+    compare_digest 04127f6615143806cee59140b325021fcccc3852d0f2eb6fda84f55268ddc5f4b22af2120a44b3d17e88024807236c97e1a2b60d7dd2c5abf91c521f32b68796 src/common/ statics.py
     compare_digest a57d5525a570a78d15c75e79702289cf8571c1b3c142fae57f32bf3ed8bb784c7f63ce2e805d295b4a505fdeaf9d59094ebe67d8979c92dc11e2534474505b0e src/common/ word_list.py
 
     compare_digest 3ee90ee305382d80da801f047a6e58e5b763f9f6bc08dce531d5c620f2748c6bba59a1528eee5d721decb8e724f53b28fc7609f5b20472f679f554b78b5d4cc6 src/receiver/ __init__.py
@@ -185,7 +188,7 @@ function verify_files {
     compare_digest 110665f962eb827a9f636cc823837222a7bed4a429d4e10eb90c7bf5ba7bd5900aa1ecc4d4b485927a276d5727e18fe9e78f75ab8bd4ff67f039bb633fe505ec src/transmitter/ input_loop.py
     compare_digest 89407e887d0cba4d993c0ee60412ea1ecfdedd8bbb0c73417bb71847733f85dbe1dab2997f65824ae58b4b5278bb0866a2a04bb8273228ca1bbbc1068eec7c04 src/transmitter/ key_exchanges.py
     compare_digest 766b1efa548f2da49272870fa5f89b8aacdf65b737b908f7064209f2f256c4d4875228ad087ac4957a292a82ed5936a40b9ae7553bfae2eae739f0c4579eb21a src/transmitter/ packet.py
-    compare_digest b8cfc11ae235c8cddbbd4003f8f95504456d9b2d6b6cc09bd538c09132bc737b6f070bdbc8d697e9ddfc5854546575526fa26c813f9f6bff7dc32fcdbb337753 src/transmitter/ sender_loop.py
+    compare_digest 0ed708842241e8b3a76371ea2857f8d6f035424a6a22af097a288d941c37e5d7142d2fa47e4e12cedbf0a06dab94222ff37a00292762660acb0d51f911acfb7a src/transmitter/ sender_loop.py
     compare_digest c102bb337ade562e0d9aedc0910f70f14652e2eba004a632bfb0ba8dddf147ab271d3ae544c4d9f3b2fcd3830646d9ad28255717d017cb91b3463829069360ba src/transmitter/ traffic_masking.py
     compare_digest eb77c6206cab63ffdb47bbcb8b76a55100636d893e234a048221d83e9ce07b76ccfcc93b506d9fb48d6f8823135e5697f3e56aed8e95f23990d8dfc1cece325e src/transmitter/ user_input.py
     compare_digest 489f869176da0040b6f06327544f5eb72863a748a4799c66198a09402df6d54d842e9af27af51faaeed9d0661133eeaebb9918bd1bcd50950c182ba4b1e5fc74 src/transmitter/ window_mock.py
@@ -425,6 +428,7 @@ function install_tcb {
     process_virtualenv_dependencies "rm"
     process_tcb_dependencies        "rm -f"
     sudo rm -r "${INSTALL_DIR}/src/relay/"
+    sudo rm -r "${INSTALL_DIR}/qubes/"
     sudo rm    "${INSTALL_DIR}/dd.py"
     sudo rm    "${INSTALL_DIR}/relay.py"
     sudo rm    "${INSTALL_DIR}/tfc.yml"
@@ -458,6 +462,7 @@ function install_relay {
     process_tcb_dependencies        "rm -f"
     sudo rm -r "${INSTALL_DIR}/src/receiver/"
     sudo rm -r "${INSTALL_DIR}/src/transmitter/"
+    sudo rm -r "${INSTALL_DIR}/qubes/"
     sudo rm    "${INSTALL_DIR}/dd.py"
     sudo rm    "${INSTALL_DIR}/tfc.py"
     sudo rm    "${INSTALL_DIR}/tfc.yml"
@@ -513,6 +518,7 @@ function install_relay_tails {
     process_tails_dependencies      "rm"
     t_sudo rm -r "${INSTALL_DIR}/src/receiver/"
     t_sudo rm -r "${INSTALL_DIR}/src/transmitter/"
+    t_sudo rm -r "${INSTALL_DIR}/qubes/"
     t_sudo rm    "${INSTALL_DIR}/dd.py"
     t_sudo rm    "${INSTALL_DIR}/tfc.py"
 
@@ -527,7 +533,6 @@ function install_qubes_src {
     create_user_data_dir
 
     steps_before_network_kill
-    qubes_src_firewall_config
 
     verify_files
 
@@ -547,6 +552,7 @@ function install_qubes_src {
     process_virtualenv_dependencies "rm"
     process_tcb_dependencies        "rm -f"
     sudo rm -r "${INSTALL_DIR}/src/relay/"
+    sudo rm -r "${INSTALL_DIR}/qubes/"  # Listening service only needed on NET/DST
     sudo rm    "${INSTALL_DIR}/dd.py"
     sudo rm    "${INSTALL_DIR}/relay.py"
     sudo rm    "${INSTALL_DIR}/tfc.yml"
@@ -560,9 +566,13 @@ function install_qubes_dst {
     create_user_data_dir
 
     steps_before_network_kill
-    qubes_dst_firewall_config
 
     verify_files
+
+    # Configure listening service for qrexec RPC
+    sudo ln -sf /opt/tfc/qubes/service.sh /etc/qubes-rpc/tfc.NetworkerDestination
+    sudo chmod a+x /opt/tfc/qubes/writer.py
+    sudo chmod a+x /opt/tfc/qubes/service.sh
 
     process_virtualenv_dependencies "python3 -m pip install"
     sudo python3 -m virtualenv "${INSTALL_DIR}/venv_tcb" --system-site-packages --never-download
@@ -593,9 +603,13 @@ function install_qubes_net {
     create_user_data_dir
 
     steps_before_network_kill
-    qubes_net_firewall_config
 
     verify_files
+
+    # Configure listening service for qrexec RPC
+    sudo ln -sf /opt/tfc/qubes/service.sh /etc/qubes-rpc/tfc.SourceNetworker
+    sudo chmod a+x /opt/tfc/qubes/writer.py
+    sudo chmod a+x /opt/tfc/qubes/service.sh
 
     process_virtualenv_dependencies "python3 -m pip install"
     sudo python3 -m virtualenv ${INSTALL_DIR}/venv_relay --system-site-packages
@@ -611,6 +625,7 @@ function install_qubes_net {
     # Remove unnecessary files
     remove_common_files             "sudo"
     process_virtualenv_dependencies "rm"
+    process_tcb_dependencies        "rm -f"
     sudo rm -r "${INSTALL_DIR}/src/receiver/"
     sudo rm -r "${INSTALL_DIR}/src/transmitter/"
     sudo rm    "${INSTALL_DIR}/dd.py"
@@ -619,92 +634,6 @@ function install_qubes_net {
 
     install_complete_qubes
 }
-
-
-# Qubes firewall configurations
-
-function add_fw_rule {
-    # Add a firewall rule that takes effect immediately
-    sudo ${1}
-
-    # Make the firewall rule persistent
-    echo "${1}" | sudo tee -a /rw/config/rc.local
-}
-
-
-function qubes_src_firewall_config {
-    # Edit Source VM's firewall rules to block all incoming connections,
-    # and to only allow UDP packets to Networked VM's TFC port.
-
-    # Create backup of the current rc.local file (firewall rules)
-    sudo mv /rw/config/rc.local{,.backup."$(date +%Y-%m-%d-%H_%M_%S)"}
-
-    # Add firewall rules that block all incoming/outgoing connections
-    add_fw_rule "iptables --flush"
-    add_fw_rule "iptables -t filter -P INPUT DROP"
-    add_fw_rule "iptables -t filter -P OUTPUT DROP"
-    add_fw_rule "iptables -t filter -P FORWARD DROP"
-
-    src_ip=$(sudo ifconfig eth0 | grep "inet" | cut -d: -f2 | awk '{print $2}')
-    net_ip=$(get_net_ip)
-
-    # Allow export of data to the Networked VM
-    add_fw_rule "iptables -I OUTPUT -s ${src_ip} -d ${net_ip} -p udp --dport 2063 -j ACCEPT"
-    sudo chmod a+x /rw/config/rc.local
-
-    # Store Networked VM IP address so Transmitter Program can configure itself
-    echo ${net_ip} > $HOME/tfc/rx_ip_addr
-}
-
-
-function qubes_dst_firewall_config {
-    # Edit Destination VM's firewall rules to block all outgoing connections,
-    # and to only allow UDP packets from Networked VM to Receiver Programs' port.
-
-    # Create backup of the current rc.local file (firewall rules)
-    sudo mv /rw/config/rc.local{,.backup."$(date +%Y-%m-%d-%H_%M_%S)"}
-
-    # Add firewall rules that block all connections
-    add_fw_rule "iptables --flush"
-    add_fw_rule "iptables -t filter -P INPUT DROP"
-    add_fw_rule "iptables -t filter -P OUTPUT DROP"
-    add_fw_rule "iptables -t filter -P FORWARD DROP"
-
-    net_ip=$(get_net_ip)
-    dst_ip=$(sudo ifconfig eth0 | grep "inet" | cut -d: -f2 | awk '{print $2}')
-
-    # Allow import of data from the Networked VM
-    add_fw_rule "iptables -I INPUT -s ${net_ip} -d ${dst_ip} -p udp --dport 2064 -j ACCEPT"
-    sudo chmod a+x /rw/config/rc.local
-}
-
-
-function qubes_net_firewall_config {
-    # Edit Networked VM's firewall rules to accept UDP
-    # packets from Source VM to the Relay Program's port.
-    net_ip=$(sudo ifconfig eth0 | grep "inet" | cut -d: -f2 | awk '{print $2}')
-    tcb_ips=$(get_tcb_ips)
-    src_ip=$(echo ${tcb_ips} | awk -F "|" '{print $1}')
-    dst_ip=$(echo ${tcb_ips} | awk -F "|" '{print $2}')
-
-    # Store Destination VM IP address so Relay Program can configure itself
-    echo ${dst_ip} > $HOME/tfc/rx_ip_addr
-
-    # Create backup of the current rc.local file (firewall rules)
-    sudo cp /rw/config/rc.local{,.backup."$(date +%Y-%m-%d-%H_%M_%S)"}
-
-    # Add firewall rules
-    add_fw_rule "iptables -t filter -P INPUT DROP"
-    add_fw_rule "iptables -t filter -P OUTPUT ACCEPT"
-    add_fw_rule "iptables -t filter -P FORWARD DROP"
-    add_fw_rule "iptables -I INPUT -s ${src_ip} -d ${net_ip} -p udp --dport 2063 -j ACCEPT"  # 5. Whitelist UDP packets from SRC VM to NET VM's TFC port (2063)
-    add_fw_rule "iptables -I OUTPUT -d ${dst_ip} -p udp ! --dport 2064 -j DROP"              # 4. Blacklist all UDP packets from NET VM to DST VM that don't have destination port 2064
-    add_fw_rule "iptables -I OUTPUT -d ${dst_ip} ! -p udp -j DROP"                           # 3. Blacklist all non-UDP packets from NET VM to DST VM
-    add_fw_rule "iptables -I OUTPUT ! -s ${net_ip} -d ${dst_ip} -j DROP"                     # 2. Blacklist all packets to DST VM that do not originate from NET VM
-    add_fw_rule "iptables -I OUTPUT -d ${src_ip} -p all -j DROP"                             # 1. Blacklist all packets to SRC VM
-    sudo chmod a+x /rw/config/rc.local
-}
-
 
 # Tiling terminal emulator configurations for single OS
 
@@ -734,7 +663,8 @@ function install_local_test {
     remove_common_files             "sudo"
     process_virtualenv_dependencies "rm"
     process_tcb_dependencies        "rm -f"
-    sudo rm "${INSTALL_DIR}/tfc.yml"
+    sudo rm -r "${INSTALL_DIR}/qubes/"
+    sudo rm    "${INSTALL_DIR}/tfc.yml"
 
     install_complete "Installation of TFC for local testing is now complete."
 }
@@ -798,57 +728,6 @@ function compare_digest {
         echo "Expected following hash:"
         echo "${1}"
         exit 1
-    fi
-}
-
-
-function valid_ip() {
-    # Validate an IP-address. (Borrowed from https://www.linuxjournal.com/content/validating-ip-address-bash-script)
-    local ip=$1
-    local valid=1
-
-    if [[ ${ip} =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-        OIFS=$IFS
-        IFS='.'
-        ip=(${ip})
-        IFS=${OIFS}
-        [[ ${ip[0]} -le 255 && ${ip[1]} -le 255 && ${ip[2]} -le 255 && ${ip[3]} -le 255 ]]
-        valid=$?
-    fi
-    return ${valid}
-}
-
-
-function get_net_ip {
-    # Get the IP-address of the Networker VM from the user.
-    ip=$(zenity --entry --title="TFC Installer" --text="Enter the IP-address of the Networked Computer VM:")
-    if valid_ip ${ip}; then
-        echo ${ip}
-        return
-    else
-        zenity --info --title='TFC installer' --text='Error: Invalid IP'
-        get_net_ip
-    fi
-}
-
-
-function get_tcb_ips {
-    # Get the Source and Destination VM IP-addresses from the user.
-    ips=$(zenity --forms \
-    --title="TFC Installer" \
-    --text="Enter the IP-addresses of the TCB VMs" \
-    --add-entry="Source Computer VM IP:" \
-    --add-entry="Destination Computer VM IP:")
-
-    first_ip=$(echo ${ips} | awk -F "|" '{print $1}')
-    second_ip=$(echo ${ips} | awk -F "|" '{print $2}')
-
-    if valid_ip ${first_ip} && valid_ip ${second_ip}; then
-        echo ${ips}
-        return
-    else
-        zenity --info --title='TFC installer' --text='Error: Invalid IP'
-        get_tcb_ips
     fi
 }
 
@@ -1013,9 +892,9 @@ function arg_error {
     clear
     echo -e "\nUsage: bash install.sh [OPTION]\n"
     echo    "Mandatory arguments"
-    echo    "  tcb      Install Transmitter/Receiver Program (Debian 10 / PureOS 9.0+ / *buntu 20.04+ / LMDE 4)"
-    echo    "  relay    Install Relay Program                (Debian 10 / PureOS 9.0+ / *buntu 20.04+ / LMDE 4 / Tails 4.0+)"
-    echo -e "  local    Install insecure local testing mode  (Debian 10 / PureOS 9.0+ / *buntu 20.04+ / LMDE 4)\n"
+    echo    "  tcb      Install Transmitter/Receiver Program (Debian 10 / PureOS 9.0+ / *buntu 20.04+ / LMDE 4 / Mint 20)"
+    echo    "  relay    Install Relay Program                (Debian 10 / PureOS 9.0+ / *buntu 20.04+ / LMDE 4 / Mint 20 / Tails 4.0+)"
+    echo -e "  local    Install insecure local testing mode  (Debian 10 / PureOS 9.0+ / *buntu 20.04+ / LMDE 4 / Mint 20)\n"
     echo    "  qsrc     Install Transmitter Program          (Qubes 4.0.3)"
     echo    "  qdst     Install Receiver Program             (Qubes 4.0.3)"
     echo -e "  qnet     Install Relay Program                (Qubes 4.0.3)\n"
@@ -1101,10 +980,10 @@ function python_version_check {
     # Check Python version and select file names based on it.
     python_minor_version=$(python3 -c 'import sys; version=sys.version_info[:3]; print("{1}".format(*version))')
 
-    if (( ${python_minor_version} == 7 )); then
+    if (( python_minor_version == 7 )); then
         CFFI=${CFFI37}
         CRYPTOGRAPHY=${CRYPTOGRAPHY37}
-    elif (( ${python_minor_version} == 8 )); then
+    elif (( python_minor_version == 8 )); then
         CFFI=${CFFI38}
         CRYPTOGRAPHY=${CRYPTOGRAPHY38}
     else

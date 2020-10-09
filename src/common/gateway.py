@@ -27,6 +27,7 @@ import os
 import os.path
 import serial
 import socket
+import subprocess
 import textwrap
 import time
 import typing
@@ -37,17 +38,17 @@ from typing   import Any, Dict, Optional, Tuple, Union
 from serial.serialutil import SerialException
 
 from src.common.exceptions   import CriticalError, graceful_exit, SoftError
-from src.common.input        import box_input, yes
+from src.common.input        import yes
 from src.common.misc         import (calculate_race_condition_delay, ensure_dir, ignored, get_terminal_width,
-                                     separate_trailer, split_byte_string, validate_ip_address)
+                                     separate_trailer)
 from src.common.output       import m_print, phase, print_on_previous_line
 from src.common.reed_solomon import ReedSolomonError, RSCodec
-from src.common.statics      import (BAUDS_PER_BYTE, DIR_USER_DATA, DONE, DST_DD_LISTEN_SOCKET, DST_LISTEN_SOCKET,
-                                     GATEWAY_QUEUE, LOCALHOST, LOCAL_TESTING_PACKET_DELAY, MAX_INT, NC,
-                                     QUBES_DST_LISTEN_SOCKET, QUBES_RX_IP_ADDR_FILE, QUBES_SRC_LISTEN_SOCKET,
-                                     PACKET_CHECKSUM_LENGTH, RECEIVER, RELAY, RP_LISTEN_SOCKET, RX,
-                                     SERIAL_RX_MIN_TIMEOUT, SETTINGS_INDENT, SOCKET_BUFFER_SIZE, SRC_DD_LISTEN_SOCKET,
-                                     TRANSMITTER, TX, US_BYTE)
+from src.common.statics      import (BAUDS_PER_BYTE, BUFFER_FILE_DIR, BUFFER_FILE_NAME, DIR_USER_DATA, DONE,
+                                     DST_DD_LISTEN_SOCKET, DST_LISTEN_SOCKET, GATEWAY_QUEUE, LOCALHOST,
+                                     LOCAL_TESTING_PACKET_DELAY, MAX_INT, NC, PACKET_CHECKSUM_LENGTH, QUBES_DST_VM_NAME,
+                                     QUBES_NET_DST_POLICY, QUBES_NET_VM_NAME, QUBES_SRC_NET_POLICY, RECEIVER, RELAY,
+                                     RP_LISTEN_SOCKET, RX, SERIAL_RX_MIN_TIMEOUT, SETTINGS_INDENT, SRC_DD_LISTEN_SOCKET,
+                                     TRANSMITTER, TX)
 
 if typing.TYPE_CHECKING:
     from multiprocessing import Queue
@@ -94,8 +95,6 @@ class Gateway(object):
         self.rx_serial  = None  # type: Optional[serial.Serial]
         self.rx_socket  = None  # type: Optional[multiprocessing.connection.Connection]
         self.tx_socket  = None  # type: Optional[multiprocessing.connection.Connection]
-        self.txq_socket = None  # type: Optional[socket.socket]
-        self.rxq_socket = None  # type: Optional[socket.socket]
 
         # Initialize Reed-Solomon erasure code handler
         self.rs = RSCodec(2 * self.settings.session_serial_error_correction)
@@ -109,12 +108,7 @@ class Gateway(object):
                 self.client_establish_socket()
             if self.settings.software_operation in [NC, RX]:
                 self.server_establish_socket()
-        elif qubes:
-            if self.settings.software_operation in [TX, NC]:
-                self.qubes_client_establish_socket()
-            if self.settings.software_operation in [NC, RX]:
-                self.qubes_server_establish_socket()
-        else:
+        elif not self.settings.qubes:
             self.establish_serial()
 
     def establish_serial(self) -> None:
@@ -153,18 +147,22 @@ class Gateway(object):
         except SerialException:
             raise CriticalError("SerialException. Ensure $USER is in the dialout group by restarting this computer.")
 
-    def write_udp_packet(self, packet: bytes) -> None:
-        """Split packet to smaller parts and transmit them over the socket."""
-        udp_port = QUBES_SRC_LISTEN_SOCKET if self.settings.software_operation == TX else QUBES_DST_LISTEN_SOCKET
+    def send_over_qrexec(self, packet: bytes) -> None:
+        """Send packet content over the Qubes qrexec RPC.
 
-        packet  = base64.b85encode(packet)
-        packets = split_byte_string(packet, SOCKET_BUFFER_SIZE)
+        More information at https://www.qubes-os.org/doc/qrexec/
 
-        if self.txq_socket is not None:
-            for p in packets:
-                self.txq_socket.sendto(p, (self.settings.rx_udp_ip, udp_port))
-                time.sleep(0.000001)
-            self.txq_socket.sendto(US_BYTE, (self.settings.rx_udp_ip, udp_port))
+        The packet is encoded with ASCII85 to ensure e.g. 0x0a
+        byte is not interpreted as line feed by the RPC service.
+        """
+        target_vm   = QUBES_NET_VM_NAME    if self.settings.software_operation == TX else QUBES_DST_VM_NAME
+        dom0_policy = QUBES_SRC_NET_POLICY if self.settings.software_operation == TX else QUBES_NET_DST_POLICY
+
+        subprocess.Popen(['/usr/bin/qrexec-client-vm', target_vm, dom0_policy],
+                         stdin=subprocess.PIPE,
+                         stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL
+                         ).communicate(base64.b85encode(packet))
 
     def write(self, orig_packet: bytes) -> None:
         """Add error correction data and output data via socket/serial interface.
@@ -183,8 +181,8 @@ class Gateway(object):
             except BrokenPipeError:
                 raise CriticalError("Relay IPC server disconnected.", exit_code=0)
 
-        elif self.txq_socket is not None:
-            self.write_udp_packet(packet)
+        elif self.settings.qubes:
+            self.send_over_qrexec(packet)
 
         elif self.tx_serial is not None:
             try:
@@ -209,23 +207,36 @@ class Gateway(object):
             except EOFError:
                 raise CriticalError("Relay IPC client disconnected.", exit_code=0)
 
-    def read_qubes_socket(self) -> bytes:
-        """Read packet from Qubes' socket interface."""
-        if self.rxq_socket is None:
-            raise CriticalError("Socket interface has not been initialized.")
+    @staticmethod
+    def read_qubes_buffer_file(buffer_file_dir: str = '') -> bytes:
+        """Read packet from oldest buffer file."""
+        buffer_file_dir = buffer_file_dir if buffer_file_dir else BUFFER_FILE_DIR
 
-        while True:
-            try:
-                read_buffer = bytearray()
+        ensure_dir(f"{buffer_file_dir}/")
 
-                while True:
-                    read = self.rxq_socket.recv(SOCKET_BUFFER_SIZE)
-                    if read == US_BYTE:
-                        return read_buffer
-                    read_buffer.extend(read)
+        while not any([f for f in os.listdir(buffer_file_dir) if f.startswith(BUFFER_FILE_NAME)]):
+            time.sleep(0.001)
 
-            except (EOFError, KeyboardInterrupt):
-                pass
+        tfc_buffer_file_numbers   = [f[(len(BUFFER_FILE_NAME)+len('.')):] for f in os.listdir(buffer_file_dir) if f.startswith(BUFFER_FILE_NAME)]
+        tfc_buffer_file_numbers   = [n for n in tfc_buffer_file_numbers if n.isdigit()]
+        tfc_buffer_files_in_order = [f"{BUFFER_FILE_NAME}.{n}" for n in sorted(tfc_buffer_file_numbers, key=int)]
+
+        try:
+            oldest_buffer_file = tfc_buffer_files_in_order[0]
+        except IndexError:
+            raise SoftError("No packet was available.", output=False)
+
+        with open(f"{buffer_file_dir}/{oldest_buffer_file}", 'rb') as f:
+            packet = f.read()
+
+        try:
+            packet = base64.b85decode(packet)
+        except ValueError:
+            raise SoftError("Error: Received packet had invalid Base85 encoding.")
+
+        os.remove(f"{buffer_file_dir}/{oldest_buffer_file}")
+
+        return packet
 
     def read_serial(self) -> bytes:
         """Read packet from serial interface.
@@ -260,12 +271,12 @@ class Gateway(object):
             except (OSError, SerialException):
                 self.establish_serial()
 
-    def read(self) -> bytes:
+    def read(self, buffer_file_dir: str = '') -> bytes:
         """Read data via socket/serial interface."""
         if self.settings.local_testing_mode:
             return self.read_socket()
         if self.settings.qubes:
-            return self.read_qubes_socket()
+            return self.read_qubes_buffer_file(buffer_file_dir)
         return self.read_serial()
 
     def add_error_correction(self, packet: bytes) -> bytes:
@@ -305,6 +316,7 @@ class Gateway(object):
                 raise SoftError("Error: Reed-Solomon failed to correct errors in the received packet.", bold=True)
         else:
             packet, checksum = separate_trailer(packet, PACKET_CHECKSUM_LENGTH)
+
             if hashlib.blake2b(packet, digest_size=PACKET_CHECKSUM_LENGTH).digest() != checksum:
                 raise SoftError("Warning! Received packet had an invalid checksum.", bold=True)
             return packet
@@ -337,30 +349,6 @@ class Gateway(object):
             if self.settings.built_in_serial_interface in sorted(os.listdir('/dev/')):
                 return f'/dev/{self.settings.built_in_serial_interface}'
             raise CriticalError(f"Error: /dev/{self.settings.built_in_serial_interface} was not found.")
-
-    # Qubes
-
-    def qubes_client_establish_socket(self) -> None:
-        """Establish Qubes socket for outgoing data."""
-        self.txq_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-    def qubes_server_establish_socket(self) -> None:
-        """Establish Qubes socket for incoming data."""
-        udp_port = QUBES_SRC_LISTEN_SOCKET if self.settings.software_operation == NC else QUBES_DST_LISTEN_SOCKET
-        self.rxq_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.rxq_socket.bind((self.get_local_ip_addr(), udp_port))
-
-    @staticmethod
-    def get_local_ip_addr() -> str:
-        """Get local IP address of the system."""
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            s.connect(('192.0.0.8', 1027))
-        except socket.error:
-            raise CriticalError("Socket error")
-        ip_address = s.getsockname()[0]  # type: str
-
-        return ip_address
 
     # Local testing
 
@@ -462,7 +450,6 @@ class GatewaySettings(object):
         self.serial_error_correction   = 5
         self.use_serial_usb_adapter    = True
         self.built_in_serial_interface = 'ttyS0'
-        self.rx_udp_ip                 = ''
 
         self.software_operation = operation
         self.local_testing_mode = local_test
@@ -529,22 +516,6 @@ class GatewaySettings(object):
                     m_print(f"Error: Serial interface /dev/{self.built_in_serial_interface} not found.")
                     self.setup()
 
-        if self.qubes and self.software_operation != RX:
-
-            # Check if IP address was stored by the installer.
-            if os.path.isfile(QUBES_RX_IP_ADDR_FILE):
-                cached_ip = open(QUBES_RX_IP_ADDR_FILE).read().strip()
-                os.remove(QUBES_RX_IP_ADDR_FILE)
-
-                if validate_ip_address(cached_ip) == '':
-                    self.rx_udp_ip = cached_ip
-                    return
-
-            # If we reach this point, no cached IP was found, prompt for IP address from the user.
-            rx_device, short = ('Networked', 'NET') if self.software_operation == TX else ('Destination', 'DST')
-            m_print(f"Enter the IP address of the {rx_device} Computer", head=1, tail=1)
-            self.rx_udp_ip = box_input(f"{short} IP-address", expected_len=15, validator=validate_ip_address, tail=1)
-
     def store_settings(self) -> None:
         """Store serial settings in JSON format."""
         serialized = json.dumps(self, default=(lambda o: {k: self.__dict__[k] for k in self.key_list}), indent=4)
@@ -600,9 +571,6 @@ class GatewaySettings(object):
                 elif key == 'built_in_serial_interface':
                     self.validate_serial_interface_value(key, json_dict)
 
-                elif key == 'rx_udp_ip':
-                    json_dict[key] = self.validate_rx_udp_ip_address(key, json_dict)
-
             except SoftError:
                 continue
 
@@ -643,16 +611,6 @@ class GatewaySettings(object):
         if not any(json_dict[key] == f for f in os.listdir('/sys/class/tty')):
             self.invalid_setting(key, json_dict)
             raise SoftError("Invalid value", output=False)
-
-    def validate_rx_udp_ip_address(self, key: str, json_dict: Any) -> str:
-        """Validate IP address of receiving Qubes VM."""
-        if self.qubes:
-            if not isinstance(json_dict[key], str) or validate_ip_address(json_dict[key]) != '':
-                self.setup()
-                return self.rx_udp_ip
-
-        rx_udp_ip = json_dict[key]  # type: str
-        return rx_udp_ip
 
     def change_setting(self, key: str, value_str: str) -> None:
         """Parse, update and store new setting value."""

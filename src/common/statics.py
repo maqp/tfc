@@ -21,7 +21,7 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 
 """Program details"""
 TFC         = 'TFC'
-VERSION     = '1.20.07'
+VERSION     = '1.20.10'
 TRANSMITTER = 'Transmitter'
 RECEIVER    = 'Receiver'
 RELAY       = 'Relay'
@@ -404,7 +404,7 @@ TRAFFIC_MASKING = 'traffic_masking'
 DIR_USER_DATA  = 'user_data/'
 DIR_RECV_FILES = 'received_files/'
 DIR_TFC        = 'tfc/'
-TEMP_POSTFIX   = '_temp'
+TEMP_SUFFIX    = '_temp'
 
 
 """Key exchange status states"""
@@ -504,10 +504,12 @@ DD_ANIMATION_LENGTH   = 16
 DD_OFFSET_FROM_CENTER = 4
 
 # Qubes related
-QUBES_SRC_LISTEN_SOCKET = 2063
-QUBES_DST_LISTEN_SOCKET = 2064
-SOCKET_BUFFER_SIZE      = 4096
-QUBES_RX_IP_ADDR_FILE   = 'rx_ip_addr'
+QUBES_NET_VM_NAME       = 'TFC-Networker'
+QUBES_DST_VM_NAME       = 'TFC-Destination'
+QUBES_SRC_NET_POLICY    = 'tfc.SourceNetworker'
+QUBES_NET_DST_POLICY    = 'tfc.NetworkerDestination'
+BUFFER_FILE_DIR         = '/home/user/tfc/.buffered_incoming_packets'
+BUFFER_FILE_NAME        = 'buffered_incoming_packet'
 
 # Field lengths
 ENCODED_BOOLEAN_LENGTH  = 1

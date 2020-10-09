@@ -153,7 +153,7 @@ Receiver Program then authenticates, decrypts and processes the received message
 
 When Bob responds, he will type his message to the Transmitter Program on his Source 
 Computer, and after a mirrored process, Alice reads the message from the Receiver Program
-on her Destination Computer.
+on her Destination Computer. All this happens seamlessly and automatically.
 
 
 ### Why keys and plaintexts cannot be exfiltrated
@@ -179,9 +179,11 @@ the data flow constraints introduced by the data diode; To allow key exchanges, 
 elliptic-curve public keys are input manually by the user. 
 
 3. The Networked Computer is designed under the assumption it can be compromised by a
-remote attacker: All sensitive data that passes through the Relay Program is encrypted and 
-signed with no exceptions. Since the attacker is unable to exfiltrate decryption keys from 
-the Source or Destination Computer, the ciphertexts are of no value to the attacker. 
+remote attacker: All sensitive data that passes through the Relay Program is protected by 
+[authenticated encryption](https://en.wikipedia.org/wiki/Authenticated_encryption)
+with no exceptions. Since the attacker is unable to exfiltrate decryption keys from 
+the Source or Destination Computer, the ciphertexts obtained from Networked Computer
+are of no value to the attacker. 
 
 
 ![](https://www.cs.helsinki.fi/u/oottela/wiki/readme/attacks.png)
@@ -208,21 +210,21 @@ hardware data diode is needed.
 ### Supported Operating Systems
 
 #### Source/Destination Computer
-- Debian 10
+- Debian 10.6
 - PureOS 9.0
 - *buntu 20.04 LTS
 - Linux Mint 20
 - LMDE 4
-- Qubes 4 (Debian 10 VM)
+- Qubes 4.0.3 (Debian 10 VM)
 
 #### Networked Computer
-- Tails 4.8
-- Debian 10
+- Tails 4.11
+- Debian 10.6
 - PureOS 9.0
 - *buntu 20.04 LTS
 - Linux Mint 20
 - LMDE 4
-- Qubes 4 (Debian 10 VM)
+- Qubes 4.0.3 (Debian 10 VM)
 
 
 ### More information

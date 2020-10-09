@@ -2,12 +2,12 @@
 
 # Argon2 Password Hashing Function (Derives keys that protect persistent user data)
 argon2-cffi>=20.1.0
-cffi>=1.14.0
+cffi>=1.14.3
 pycparser>=2.20
 six>=1.15.0
 
 # cryptography (pyca) (Provides X448 key exchange)
-cryptography>=2.9.2
+cryptography>=3.1.1
 
 # Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)
 Flask>=1.1.2
@@ -21,13 +21,13 @@ Werkzeug>=1.0.1
 mypy>=0.782
 mypy-extensions>=0.4.3
 typed-ast>=1.4.1
-typing-extensions>=3.7.4.2
+typing-extensions>=3.7.4.3
 
 # PyLama (Code audit tool for Python)
 pylama>=7.7.1
 mccabe>=0.6.1
 pycodestyle>=2.6.0
-pydocstyle>=5.0.2
+pydocstyle>=5.1.1
 snowballstemmer>=2.0.0
 pyflakes>=2.2.0
 
@@ -41,11 +41,11 @@ pyserial>=3.4
 PySocks>=1.7.1
 
 # pytest (Test framework)
-pytest>=5.4.3
-attrs>=19.3.0
-importlib-metadata>=1.7.0
-zipp>=3.1.0
-more-itertools>=8.4.0
+pytest>=6.1.1
+attrs>=20.2.0
+importlib-metadata>=2.0.0
+zipp>=3.3.0
+more-itertools>=8.5.0
 packaging>=20.4
 pyparsing>=2.4.7
 pluggy>=0.13.1
@@ -53,22 +53,22 @@ py>=1.9.0
 wcwidth>=0.2.5
 
 # pytest-cov (Pytest plugin for measuring coverage)
-pytest-cov>=2.10.0
-coverage>=5.1
+pytest-cov>=2.10.1
+coverage>=5.3
 
 # xdist (Pytest distributed testing plugin)
-pytest-xdist>=1.32.0
+pytest-xdist>=2.1.0
 execnet>=1.7.1
 apipkg>=1.5
-pytest-forked>=1.2.0
+pytest-forked>=1.3.0
 
 # Requests (Connects to the contact's Tor Onion Service)
 requests>=2.24.0
 certifi>=2020.6.20
 chardet>=3.0.4
 idna>=2.10
-urllib3>=1.25.9
-setuptools>=47.3.1
+urllib3>=1.25.10
+setuptools>=50.3.0
 
 # Stem (Connects to Tor and manages Onion Services)
 stem>=1.8.0
