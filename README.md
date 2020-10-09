@@ -202,8 +202,7 @@ To meet these users' needs, TFC can also be run in three dedicated
 [Qubes](https://www.qubes-os.org/)
 virtual machines. With the Qubes configuration, the isolation is provided by the 
 [Xen hypervisor](https://xenproject.org/users/security/), 
-and the unidirectionality of data flow between the VMs is enforced with strict firewall 
-rules. This intermediate isolation mechanism runs on a single computer which means no 
+and the unidirectionality of data flow between the VMs is enforced with Qubes' qrexec framework. This intermediate isolation mechanism runs on a single computer which means no 
 hardware data diode is needed. 
 
 
