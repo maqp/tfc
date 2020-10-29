@@ -703,7 +703,7 @@ def csprng(key_length: int = SYMMETRIC_KEY_LENGTH  # Length of the key
 
                 X448 private keys          Other TFC keys
                         ↑                         ↑
-                 OS random engine          BLAKE2b (by TFC)
+                (OS random engine)         BLAKE2b (by TFC)
                         ↑                         ↑
                         └────────┐       ┌────────┘
                                 GETRANDOM()

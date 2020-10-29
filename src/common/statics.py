@@ -21,7 +21,7 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 
 """Program details"""
 TFC         = 'TFC'
-VERSION     = '1.20.10'
+VERSION     = '1.20.11'
 TRANSMITTER = 'Transmitter'
 RECEIVER    = 'Receiver'
 RELAY       = 'Relay'

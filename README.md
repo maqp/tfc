@@ -202,7 +202,8 @@ To meet these users' needs, TFC can also be run in three dedicated
 [Qubes](https://www.qubes-os.org/)
 virtual machines. With the Qubes configuration, the isolation is provided by the 
 [Xen hypervisor](https://xenproject.org/users/security/), 
-and the unidirectionality of data flow between the VMs is enforced with Qubes' qrexec framework. This intermediate isolation mechanism runs on a single computer which means no 
+and the unidirectionality of data flow between the VMs is enforced with Qubes' qrexec 
+framework. This intermediate isolation mechanism runs on a single computer which means no 
 hardware data diode is needed. 
 
 
@@ -211,16 +212,18 @@ hardware data diode is needed.
 #### Source/Destination Computer
 - Debian 10.6
 - PureOS 9.0
-- *buntu 20.04 LTS
+- *buntu 20.04 LTS / 20.10
+- Pop!_OS 20.04 LTS / 20.10
 - Linux Mint 20
 - LMDE 4
 - Qubes 4.0.3 (Debian 10 VM)
 
 #### Networked Computer
-- Tails 4.11
+- Tails 4.12
 - Debian 10.6
 - PureOS 9.0
-- *buntu 20.04 LTS
+- *buntu 20.04 LTS / 20.10
+- Pop!_OS 20.04 LTS / 20.10
 - Linux Mint 20
 - LMDE 4
 - Qubes 4.0.3 (Debian 10 VM)

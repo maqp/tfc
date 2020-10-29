@@ -78,43 +78,39 @@ def main() -> None:
 
 
                                          Relay Program (Networked Computer)
-                    ┏━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━ ━━┓
-                    ┃                                                                         ┃
-                                       (Contact management commands)
-                    ┃  ┌─────────────────────────────┬─────────────────────┐                  ┃
-                       |                             |                     ↓
-                    ┃  |                    ┌─────> relay_command   ┌───> c_req_manager       ┃
-                       |                    │                  │    |
-                    ┃  |                    │   (Onion Service┈│    |┈(Contact requests)      ┃
-                       |                    │     private key) │    |
-                    ┃  |                    │                  ↓    |                         ┃
-                       |                    │            onion_service ───────────────────────────> client on contact's
-                    ┃  |     (Relay Program┈│               ↑                ┊                ┃     Networked Computer
-                       |          commands) │               │┈(Outgoing msg/file/public key)
-                    ┃  |                    │               │                                 ┃
-      Source ───▶|─────(── gateway_loop ─> src_incoming ─> flask_server <─┐
-    Computer        ┃  |                            |                     |                   ┃
-                       |                            |                     |
-                    ┃  |    (Local keys, commands,  |                     |                   ┃
-                       |    and copies of messages)┄|                     |
-                    ┃  |             ┊              ↓                     |                   ┃
- Destination <──|◀─────(────────────────────── dst_outgoing               |
-    Computer        ┃  |                    ┊       ↑                     |                   ┃
-                       ├──> g_msg_manager   ┊       │                     |
-                    ┃  |               ↑    ┊       │                     |                   ┃
-                       |        (Group┈│  (Incoming┈│         (URL token)┈|
-                    ┃  |    management │  messages) │                     |                   ┃
-                       │     messages) │            │                     |
-                    ┃  ↓               │            │                     |                   ┃
-                      client_scheduler │            │                     |
-                    ┃         └──> client ──────────┴─────────────────────┘                   ┃
-                                       ↑
-                    ┃                  │                                                      ┃
-                                       └─────────────────────────────────────────────────────────── flask_server on
-                    ┃                                        ┊                                ┃     contact's Networked
-                                (Incoming message/file/public key/group management message)         Computer
-                    ┃                                                                         ┃
-                    ┗━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━ ━━┛
+                    ┏━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━┓
+                    ┃                  (1: Onion Service private key)                          ┃
+                                       (2: Contact management commands)
+                    ┃  ┌──────────────────────────────┬────────────────────────┬────────────┐  ┃
+                       │                              │                        ↓┈2          │
+                    ┃  │                    ┌─────> relay_command  ┌───> c_req_manager      │  ┃
+                       │                    │                  │   │                        │
+                    ┃  │     (Relay Program┈│   (Onion Service┈│   │                        │  ┃
+                       │      commands)     │    public key)   │   │┈(In: Contact requests) │
+                    ┃  │                    │                  ↓   │       ┊              1┈↓  ┃
+      Source ───▶|─────(── gateway_loop ─> src_incoming ─> flask_server <─────> onion_service <───> client on contact's
+    Computer        ┃  │                            │              ↑       ┊                   ┃     Networked Computer
+                       │   (Local keys, commands,   │              │ (Out: msg/file/pubkey/
+                    ┃  │    and copies of messages)┄│              │  group mgmt message)      ┃
+                       │                            │              │
+                    ┃  │                            ↓              │                           ┃
+ Destination <──|◀─────(────────────────────── dst_outgoing        │
+    Computer        ┃  │                    ┊       ↑              │                           ┃
+                       ├──> g_msg_manager   ┊       │              │
+                    ┃  │               ↑    ┊       │              │                           ┃
+                       │        (Group┈│  (Incoming┈│  (URL token)┈│
+                    ┃  │    management │  messages) │              │                           ┃
+                       │     messages) │            │              │
+                    ┃  ↓┈1,2           │            │              │                           ┃
+                      client_scheduler │            │              │
+                    ┃         └──> client ──────────┴──────────────┘                           ┃
+                                     ↑
+                    ┃                │                                                         ┃
+                                     └───────────────────────────────────────────────────────────> flask_server on
+                    ┃                                        ┊                                 ┃   contact's Networked
+                                (In: message/file/public key/group management message              Computer
+                    ┃            Out: contact request)                                         ┃
+                    ┗━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━  ━━┛
 
 
     The diagram above gives a rough overview of the structure of the

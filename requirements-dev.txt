@@ -7,7 +7,7 @@ pycparser>=2.20
 six>=1.15.0
 
 # cryptography (pyca) (Provides X448 key exchange)
-cryptography>=3.1.1
+cryptography>=3.2.1
 
 # Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)
 Flask>=1.1.2
@@ -18,7 +18,7 @@ MarkupSafe>=1.1.1
 Werkzeug>=1.0.1
 
 # mypy (Static type checking tool)
-mypy>=0.782
+mypy>=0.790
 mypy-extensions>=0.4.3
 typed-ast>=1.4.1
 typing-extensions>=3.7.4.3
@@ -41,10 +41,10 @@ pyserial>=3.4
 PySocks>=1.7.1
 
 # pytest (Test framework)
-pytest>=6.1.1
+pytest>=6.1.2
 attrs>=20.2.0
 importlib-metadata>=2.0.0
-zipp>=3.3.0
+zipp>=3.4.0
 more-itertools>=8.5.0
 packaging>=20.4
 pyparsing>=2.4.7
@@ -67,8 +67,8 @@ requests>=2.24.0
 certifi>=2020.6.20
 chardet>=3.0.4
 idna>=2.10
-urllib3>=1.25.10
-setuptools>=50.3.0
+urllib3>=1.25.11
+setuptools>=50.3.2
 
 # Stem (Connects to Tor and manages Onion Services)
 stem>=1.8.0

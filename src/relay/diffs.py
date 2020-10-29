@@ -56,14 +56,14 @@ class GetAccountFromUser(object):
         self.root.title("Contact account entry")
         self.root.protocol("WM_DELETE_WINDOW", self.dismiss_window)
 
-        self.error_label = tkinter.Label(self.root, text=None)
+        self.error_label = tkinter.Label(self.root, text='')
 
         self.instruction = tkinter.Text(self.root, height=3, width=54)
         self.instruction.tag_configure('center', justify='center')
-        self.instruction.insert('1.0', "Could not determine the account being added.\n"  # type: ignore
+        self.instruction.insert('1.0', "Could not determine the account being added.\n"
                                        "Please paste the account here to see diffs\n"
                                        "or press Cancel to dismiss this prompt.")
-        self.instruction.tag_add('center', '1.0', 'end')  # type: ignore
+        self.instruction.tag_add('center', '1.0', 'end')
         self.instruction.grid(row=0, rowspan=2, columnspan=2)
 
         self.address_entry_box = tkinter.Entry(self.root, width=54)
