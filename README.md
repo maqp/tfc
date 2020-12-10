@@ -164,8 +164,7 @@ to enable bidirectional communication between two users, while at the same time 
 hardware enforced endpoint security: 
 
 1. The Destination Computer uses the classical data diode model. This means it can receive 
-data from the insecure Networked Computer, but is unable to send data back to the Networked 
-Computer. The Receiver Program is designed to function under these constraints. However,
+data from the insecure Networked Computer, but is unable to send data back to the Networked Computer. The Receiver Program is designed to function under these constraints. However,
 even though the program authenticates and validates all incoming data, it is not ruled out 
 malware couldn't still infiltrate the Destination Computer. However, in the event that 
 would happen, the malware would be unable to exfiltrate sensitive keys or plaintexts back 
