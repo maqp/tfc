@@ -5,7 +5,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Python 3.7|3.8](https://img.shields.io/badge/python-3.7%20%7C%C2%A03.8-blue)](https://img.shields.io/badge/python-3.7%20%7C%C2%A03.8-blue)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
-[![Build Status](https://travis-ci.com/maqp/tfc.svg?branch=master)](https://travis-ci.com/maqp/tfc) 
+[![Build Status](https://travis-ci.org/maqp/tfc.svg?branch=master)](https://travis-ci.org/maqp/tfc) 
 [![Coverage Status](https://coveralls.io/repos/github/maqp/tfc/badge.svg?branch=master)](https://coveralls.io/github/maqp/tfc?branch=master)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/71fa9cc1da424f52a576a04c2722da26)](https://www.codacy.com/manual/maqp/tfc?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=maqp/tfc&amp;utm_campaign=Badge_Grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/maqp/tfc/badge)](https://www.codefactor.io/repository/github/maqp/tfc)
@@ -164,8 +164,7 @@ to enable bidirectional communication between two users, while at the same time 
 hardware enforced endpoint security: 
 
 1. The Destination Computer uses the classical data diode model. This means it can receive 
-data from the insecure Networked Computer, but is unable to send data back to the Networked 
-Computer. The Receiver Program is designed to function under these constraints. However,
+data from the insecure Networked Computer, but is unable to send data back to the Networked Computer. The Receiver Program is designed to function under these constraints. However,
 even though the program authenticates and validates all incoming data, it is not ruled out 
 malware couldn't still infiltrate the Destination Computer. However, in the event that 
 would happen, the malware would be unable to exfiltrate sensitive keys or plaintexts back 
