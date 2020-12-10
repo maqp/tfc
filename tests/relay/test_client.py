@@ -262,7 +262,7 @@ class TestGetDataLoop(unittest.TestCase):
         tear_queues(self.queues)
 
     def test_get_data_loop(self) -> None:
-
+        # Setup
         onion_pub_key = bytes(ONION_SERVICE_PUBLIC_KEY_LENGTH)
         settings      = Gateway()
         onion_addr    = pub_key_to_onion_address(bytes(ONION_SERVICE_PUBLIC_KEY_LENGTH))
@@ -270,6 +270,7 @@ class TestGetDataLoop(unittest.TestCase):
         url_token     = TestGetDataLoop.url_token
         session       = TestGetDataLoop.mock_session()
 
+        # Test
         self.assertIsNone(get_data_loop(onion_addr, url_token, short_addr,
                                         onion_pub_key, self.queues, session, settings))
 

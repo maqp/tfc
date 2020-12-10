@@ -29,9 +29,10 @@ from typing   import Any
 
 from src.common.crypto   import blake2b, encrypt_and_sign
 from src.common.encoding import str_to_bytes
+from src.common.misc     import store_unique
 from src.common.statics  import COMPRESSION_LEVEL, DIR_RECV_FILES, ORIGIN_CONTACT_HEADER, SYMMETRIC_KEY_LENGTH, US_BYTE
 
-from src.receiver.files import new_file, process_assembled_file, process_file, store_unique
+from src.receiver.files import new_file, process_assembled_file, process_file
 
 from tests.mock_classes import ContactList, Settings, WindowList
 from tests.utils        import cd_unit_test, cleanup, nick_to_pub_key, TFCTestCase, UNDECODABLE_UNICODE

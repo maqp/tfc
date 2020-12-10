@@ -443,19 +443,19 @@ def change_master_key(user_input:    'UserInput',
     authenticated = master_key.authenticate_action()
 
     if authenticated:
-        # Halt `sender_loop` for the duration of database re-encryption.
-        queues[KEY_MANAGEMENT_QUEUE].put((KDB_M_KEY_CHANGE_HALT_HEADER,))
-        wait_for_key_db_halt(queues)
-
-        # Load old key_list from database file as it's not used on input_loop side.
-        key_list = KeyList(master_key, settings)
-
         # Cache old master key to allow log file re-encryption.
         old_master_key = master_key.master_key[:]
 
         # Create new master key but do not store new master key data into any database.
         new_master_key = master_key.master_key = master_key.new_master_key(replace=False)
         phase("Re-encrypting databases")
+
+        # Halt `sender_loop` for the duration of database re-encryption.
+        queues[KEY_MANAGEMENT_QUEUE].put((KDB_M_KEY_CHANGE_HALT_HEADER,))
+        wait_for_key_db_halt(queues)
+
+        # Load old key_list from database file as it's not used on input_loop side.
+        key_list = KeyList(master_key, settings)
 
         # Update encryption keys for databases
         contact_list.database.database_key  = new_master_key

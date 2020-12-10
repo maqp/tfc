@@ -19,6 +19,8 @@ You should have received a copy of the GNU General Public License
 along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
+import hashlib
+import os
 import threading
 import time
 import unittest
@@ -28,18 +30,20 @@ from unittest import mock
 
 from src.common.encoding     import int_to_bytes
 from src.common.reed_solomon import RSCodec
-from src.common.statics      import (COMMAND_DATAGRAM_HEADER, DST_COMMAND_QUEUE, DST_MESSAGE_QUEUE, EXIT,
-                                     FILE_DATAGRAM_HEADER, F_TO_FLASK_QUEUE, GATEWAY_QUEUE, GROUP_ID_LENGTH,
+from src.common.statics      import (BLAKE2_DIGEST_LENGTH, COMMAND_DATAGRAM_HEADER, DST_COMMAND_QUEUE,
+                                     DST_MESSAGE_QUEUE, EXIT, FILE_DATAGRAM_HEADER, GATEWAY_QUEUE, GROUP_ID_LENGTH,
                                      GROUP_MSG_EXIT_GROUP_HEADER, GROUP_MSG_INVITE_HEADER, GROUP_MSG_JOIN_HEADER,
                                      GROUP_MSG_MEMBER_ADD_HEADER, GROUP_MSG_MEMBER_REM_HEADER,
-                                     LOCAL_KEY_DATAGRAM_HEADER, MESSAGE_DATAGRAM_HEADER, M_TO_FLASK_QUEUE,
-                                     PUBLIC_KEY_DATAGRAM_HEADER, SRC_TO_RELAY_QUEUE, TFC_PUBLIC_KEY_LENGTH,
+                                     LOCAL_KEY_DATAGRAM_HEADER, MESSAGE_DATAGRAM_HEADER, PUBLIC_KEY_DATAGRAM_HEADER,
+                                     RELAY_BUFFER_OUTGOING_F_DIR, RELAY_BUFFER_OUTGOING_FILE,
+                                     RELAY_BUFFER_OUTGOING_M_DIR, RELAY_BUFFER_OUTGOING_MESSAGE, SRC_TO_RELAY_QUEUE,
+                                     SYMMETRIC_KEY_LENGTH, TFC_PUBLIC_KEY_LENGTH, TX_BUF_KEY_QUEUE,
                                      UNENCRYPTED_DATAGRAM_HEADER, UNIT_TEST_QUEUE)
 
-from src.relay.tcb import dst_outgoing, src_incoming
+from src.relay.tcb import dst_outgoing, src_incoming, buffer_to_flask
 
 from tests.mock_classes import Gateway, nick_to_pub_key, Settings
-from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, tear_queues
+from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, tear_queues, TFCTestCase
 
 
 class TestSRCIncoming(unittest.TestCase):
@@ -53,6 +57,7 @@ class TestSRCIncoming(unittest.TestCase):
         self.ts            = datetime.now()
         self.queues        = gen_queue_dict()
         self.args          = self.queues, self.gateway
+        self.queues[TX_BUF_KEY_QUEUE].put(SYMMETRIC_KEY_LENGTH*b'a')
 
     def tearDown(self) -> None:
         """Post-test actions."""
@@ -101,10 +106,10 @@ class TestSRCIncoming(unittest.TestCase):
         # Setup
         packet = self.create_packet(MESSAGE_DATAGRAM_HEADER + 344 * b'a' + nick_to_pub_key('bob'))
         self.queues[GATEWAY_QUEUE].put((self.ts, packet))
+        self.queues[TX_BUF_KEY_QUEUE].put(SYMMETRIC_KEY_LENGTH*b'a')
 
         # Test
         self.assertIsNone(src_incoming(*self.args, unit_test=True))
-        self.assertEqual(self.queues[M_TO_FLASK_QUEUE].qsize(),  1)
         self.assertEqual(self.queues[DST_MESSAGE_QUEUE].qsize(), 1)
 
     def test_public_key_datagram(self) -> None:
@@ -114,7 +119,6 @@ class TestSRCIncoming(unittest.TestCase):
 
         # Test
         self.assertIsNone(src_incoming(*self.args, unit_test=True))
-        self.assertEqual(self.queues[M_TO_FLASK_QUEUE].qsize(), 1)
 
     def test_file_datagram(self) -> None:
         # Setup
@@ -128,7 +132,6 @@ class TestSRCIncoming(unittest.TestCase):
         # Test
         self.assertIsNone(src_incoming(*self.args, unit_test=True))
         self.assertEqual(self.queues[DST_MESSAGE_QUEUE].qsize(), 0)
-        self.assertEqual(self.queues[F_TO_FLASK_QUEUE].qsize(),  2)
 
     def test_group_invitation_datagram(self) -> None:
         # Setup
@@ -141,7 +144,6 @@ class TestSRCIncoming(unittest.TestCase):
         # Test
         self.assertIsNone(src_incoming(*self.args, unit_test=True))
         self.assertEqual(self.queues[DST_MESSAGE_QUEUE].qsize(), 0)
-        self.assertEqual(self.queues[M_TO_FLASK_QUEUE].qsize(),  2)
 
     def test_group_join_datagram(self) -> None:
         # Setup
@@ -154,7 +156,6 @@ class TestSRCIncoming(unittest.TestCase):
         # Test
         self.assertIsNone(src_incoming(*self.args, unit_test=True))
         self.assertEqual(self.queues[DST_MESSAGE_QUEUE].qsize(), 0)
-        self.assertEqual(self.queues[M_TO_FLASK_QUEUE].qsize(),  2)
 
     def test_group_add_datagram(self) -> None:
         # Setup
@@ -168,7 +169,6 @@ class TestSRCIncoming(unittest.TestCase):
         # Test
         self.assertIsNone(src_incoming(*self.args, unit_test=True))
         self.assertEqual(self.queues[DST_MESSAGE_QUEUE].qsize(), 0)
-        self.assertEqual(self.queues[M_TO_FLASK_QUEUE].qsize(),  2)
 
     def test_group_remove_datagram(self) -> None:
         # Setup
@@ -182,7 +182,6 @@ class TestSRCIncoming(unittest.TestCase):
         # Test
         self.assertIsNone(src_incoming(*self.args, unit_test=True))
         self.assertEqual(self.queues[DST_MESSAGE_QUEUE].qsize(), 0)
-        self.assertEqual(self.queues[M_TO_FLASK_QUEUE].qsize(),  2)
 
     def test_group_exit_datagram(self) -> None:
         # Setup
@@ -195,7 +194,59 @@ class TestSRCIncoming(unittest.TestCase):
         # Test
         self.assertIsNone(src_incoming(*self.args, unit_test=True))
         self.assertEqual(self.queues[DST_MESSAGE_QUEUE].qsize(), 0)
-        self.assertEqual(self.queues[M_TO_FLASK_QUEUE].qsize(),  2)
+
+
+class TestBufferToFlask(TFCTestCase):
+
+    def setUp(self) -> None:
+        self.unittest_dir = cd_unit_test()
+
+    def tearDown(self) -> None:
+        cleanup(self.unittest_dir)
+
+    def test_missing_buf_key_raises_soft_error(self) -> None:
+        # Setup
+        packet        = 500 * b'a'
+        onion_pub_key = nick_to_pub_key('Alice')
+        ts            = datetime.now()
+        header        = MESSAGE_DATAGRAM_HEADER
+        buf_key       = None
+
+        # Test
+        self.assert_se("Error: No buffer key available for packet buffering.",
+                       buffer_to_flask, packet, onion_pub_key, ts, header, buf_key, False)
+
+    def test_buffering_of_unique_messages(self) -> None:
+        # Setup
+        packet        = 500 * b'a'
+        onion_pub_key = nick_to_pub_key('Alice')
+        ts            = datetime.now()
+        header        = MESSAGE_DATAGRAM_HEADER
+        buf_key       = SYMMETRIC_KEY_LENGTH * b'a'
+        sub_dir       = hashlib.blake2b(onion_pub_key, key=buf_key, digest_size=BLAKE2_DIGEST_LENGTH).hexdigest()
+        # Test
+        self.assertIsNone(buffer_to_flask(packet, onion_pub_key, ts, header, buf_key, False))
+        self.assertIsNone(buffer_to_flask(packet, onion_pub_key, ts, header, buf_key, False))
+
+        self.assertTrue(os.path.isdir(f"{RELAY_BUFFER_OUTGOING_M_DIR}/{sub_dir}"))
+        self.assertTrue(os.path.isfile(f"{RELAY_BUFFER_OUTGOING_M_DIR}/{sub_dir}/{RELAY_BUFFER_OUTGOING_MESSAGE}.0"))
+        self.assertTrue(os.path.isfile(f"{RELAY_BUFFER_OUTGOING_M_DIR}/{sub_dir}/{RELAY_BUFFER_OUTGOING_MESSAGE}.1"))
+
+    def test_buffering_of_unique_files(self) -> None:
+        # Setup
+        packet        = 500 * b'a'
+        onion_pub_key = nick_to_pub_key('Alice')
+        ts            = datetime.now()
+        header        = MESSAGE_DATAGRAM_HEADER
+        buf_key       = SYMMETRIC_KEY_LENGTH * b'a'
+        sub_dir       = hashlib.blake2b(onion_pub_key, key=buf_key, digest_size=BLAKE2_DIGEST_LENGTH).hexdigest()
+        # Test
+        self.assertIsNone(buffer_to_flask(packet, onion_pub_key, ts, header, buf_key, True))
+        self.assertIsNone(buffer_to_flask(packet, onion_pub_key, ts, header, buf_key, True))
+
+        self.assertTrue(os.path.isdir(f"{RELAY_BUFFER_OUTGOING_F_DIR}/{sub_dir}"))
+        self.assertTrue(os.path.isfile(f"{RELAY_BUFFER_OUTGOING_F_DIR}/{sub_dir}/{RELAY_BUFFER_OUTGOING_FILE}.0"))
+        self.assertTrue(os.path.isfile(f"{RELAY_BUFFER_OUTGOING_F_DIR}/{sub_dir}/{RELAY_BUFFER_OUTGOING_FILE}.1"))
 
 
 class TestDSTOutGoing(unittest.TestCase):

@@ -20,7 +20,6 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
 import base64
-import hashlib
 import time
 import typing
 
@@ -30,8 +29,7 @@ from typing          import Any, Dict, List, Tuple
 
 import requests
 
-from cryptography.hazmat.primitives.asymmetric.x448 import X448PublicKey, X448PrivateKey
-
+from src.common.crypto     import X448
 from src.common.encoding   import (b58encode, int_to_bytes, onion_address_to_pub_key, pub_key_to_onion_address,
                                    pub_key_to_short_address)
 from src.common.exceptions import SoftError
@@ -45,17 +43,18 @@ from src.common.statics    import (ACCOUNT_SEND_QUEUE, CLIENT_OFFLINE_THRESHOLD,
                                    ONION_SERVICE_PUBLIC_KEY_LENGTH, ORIGIN_CONTACT_HEADER, PUB_KEY_SEND_QUEUE,
                                    PUBLIC_KEY_DATAGRAM_HEADER, RELAY_CLIENT_MAX_DELAY, RELAY_CLIENT_MIN_DELAY,
                                    RP_ADD_CONTACT_HEADER, RP_REMOVE_CONTACT_HEADER, TFC_PUBLIC_KEY_LENGTH,
-                                   TOR_DATA_QUEUE, UNIT_TEST_QUEUE, URL_TOKEN_LENGTH, URL_TOKEN_QUEUE)
+                                   TOR_DATA_QUEUE, UNIT_TEST_QUEUE, URL_TOKEN_QUEUE)
 
 if typing.TYPE_CHECKING:
     from src.common.gateway import Gateway
     from requests.sessions  import Session
+    from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey
     QueueDict = Dict[bytes, Queue[Any]]
 
 
 def client_scheduler(queues:                'QueueDict',
                      gateway:               'Gateway',
-                     url_token_private_key: X448PrivateKey,
+                     url_token_private_key: 'X448PrivateKey',
                      unit_test:             bool = False
                      ) -> None:
     """Manage `client` processes."""
@@ -97,7 +96,7 @@ def add_new_client_process(gateway:               'Gateway',
                            proc_dict:             Dict[bytes, Process],
                            queues:                'QueueDict',
                            tor_port:              int,
-                           url_token_private_key: X448PrivateKey
+                           url_token_private_key: 'X448PrivateKey'
                            ) -> None:
     """Add new client process."""
     for onion_pub_key in onion_pub_keys:
@@ -122,7 +121,7 @@ def remove_client_process(onion_pub_keys: List[bytes],
 
 def client(onion_pub_key:         bytes,
            queues:                'QueueDict',
-           url_token_private_key: X448PrivateKey,
+           url_token_private_key: 'X448PrivateKey',
            tor_port:              str,
            gateway:               'Gateway',
            onion_addr_user:       str,
@@ -185,8 +184,7 @@ def update_url_token(url_token_private_key: 'X448PrivateKey',
         if len(public_key) != TFC_PUBLIC_KEY_LENGTH or public_key == bytes(TFC_PUBLIC_KEY_LENGTH):
             raise ValueError
 
-        shared_secret = url_token_private_key.exchange(X448PublicKey.from_public_bytes(public_key))
-        url_token     = hashlib.blake2b(shared_secret, digest_size=URL_TOKEN_LENGTH).hexdigest()
+        url_token = X448.shared_key(url_token_private_key, public_key).hex()
 
         queues[URL_TOKEN_QUEUE].put((onion_pub_key, url_token))  # Update Flask server's URL token for contact
 

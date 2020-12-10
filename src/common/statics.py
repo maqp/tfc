@@ -21,7 +21,7 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 
 """Program details"""
 TFC         = 'TFC'
-VERSION     = '1.20.11'
+VERSION     = '1.20.12'
 TRANSMITTER = 'Transmitter'
 RECEIVER    = 'Receiver'
 RELAY       = 'Relay'
@@ -405,7 +405,7 @@ DIR_USER_DATA  = 'user_data/'
 DIR_RECV_FILES = 'received_files/'
 DIR_TFC        = 'tfc/'
 TEMP_SUFFIX    = '_temp'
-
+DIR_TAILS_PERS = 'Persistent/'
 
 """Key exchange status states"""
 KEX_STATUS_LENGTH     = 1
@@ -445,9 +445,9 @@ WINDOW_SELECT_QUEUE     = b'window_select'
 # Relay
 DST_COMMAND_QUEUE   = b'dst_command'
 DST_MESSAGE_QUEUE   = b'dst_message'
-M_TO_FLASK_QUEUE    = b'm_to_flask'
-F_TO_FLASK_QUEUE    = b'f_to_flask'
 SRC_TO_RELAY_QUEUE  = b'src_to_relay'
+RX_BUF_KEY_QUEUE    = b'rx_buf_key'
+TX_BUF_KEY_QUEUE    = b'tx_buf_key'
 URL_TOKEN_QUEUE     = b'url_token'
 GROUP_MGMT_QUEUE    = b'group_mgmt'
 GROUP_MSG_QUEUE     = b'group_msg'
@@ -504,12 +504,18 @@ DD_ANIMATION_LENGTH   = 16
 DD_OFFSET_FROM_CENTER = 4
 
 # Qubes related
-QUBES_NET_VM_NAME       = 'TFC-Networker'
-QUBES_DST_VM_NAME       = 'TFC-Destination'
-QUBES_SRC_NET_POLICY    = 'tfc.SourceNetworker'
-QUBES_NET_DST_POLICY    = 'tfc.NetworkerDestination'
-BUFFER_FILE_DIR         = '/home/user/tfc/.buffered_incoming_packets'
-BUFFER_FILE_NAME        = 'buffered_incoming_packet'
+QUBES_NET_VM_NAME            = 'TFC-Networker'
+QUBES_DST_VM_NAME            = 'TFC-Destination'
+QUBES_SRC_NET_POLICY         = 'tfc.SourceNetworker'
+QUBES_NET_DST_POLICY         = 'tfc.NetworkerDestination'
+QUBES_BUFFER_INCOMING_DIR    = '.buffered_incoming_packets'
+QUBES_BUFFER_INCOMING_PACKET = 'buffered_incoming_packet'
+
+# Relay Program's ciphertext buffering
+RELAY_BUFFER_OUTGOING_F_DIR   = '.buffered_outgoing_files'
+RELAY_BUFFER_OUTGOING_M_DIR   = '.buffered_outgoing_messages'
+RELAY_BUFFER_OUTGOING_FILE    = 'buffered_file'
+RELAY_BUFFER_OUTGOING_MESSAGE = 'buffered_message'
 
 # Field lengths
 ENCODED_BOOLEAN_LENGTH  = 1
@@ -560,7 +566,6 @@ X448_SHARED_SECRET_LENGTH        = 56
 FINGERPRINT_LENGTH               = 32
 ONION_SERVICE_PRIVATE_KEY_LENGTH = 32
 ONION_SERVICE_PUBLIC_KEY_LENGTH  = 32
-URL_TOKEN_LENGTH                 = 32
 XCHACHA20_NONCE_LENGTH           = 24
 SYMMETRIC_KEY_LENGTH             = 32
 POLY1305_TAG_LENGTH              = 16
@@ -579,6 +584,7 @@ ENCODED_B58_KDK_LENGTH           = 51
 MESSAGE_KEY = b'message_key'
 HEADER_KEY  = b'header_key'
 FINGERPRINT = b'fingerprint'
+BUFFER_KEY  = b'buffer_key'
 
 # Forward secrecy
 INITIAL_HARAC        = 0

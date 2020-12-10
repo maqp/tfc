@@ -25,6 +25,7 @@ import binascii
 import hashlib
 import math
 import os
+import os.path
 import random
 import shutil
 import socket
@@ -270,6 +271,13 @@ def monitor_processes(process_list:       List[Process],
                     if TAILS not in data:
                         shred_databases(software_operation)
                     power_off_system()
+
+
+def platform_is_tails() -> bool:
+    """Return True if Relay Program is running on Tails."""
+    with open('/etc/os-release') as f:
+        data = f.read()
+    return 'TAILS_PRODUCT_NAME="Tails"' in data
 
 
 def power_off_system() -> None:
@@ -560,3 +568,28 @@ def same_contact_check(onion_pub_key: bytes,
             error_msg = ''
 
     return error_msg
+
+
+def store_unique(file_data: bytes,  # File data to store
+                 file_dir:  str,    # Directory to store file
+                 file_name: str     # Preferred name for the file.
+                 ) -> str:
+    """Store file under a unique filename.
+
+    If file exists, add trailing counter .# with value as large as
+    needed to ensure existing file is not overwritten.
+    """
+    ensure_dir(file_dir)
+
+    if os.path.isfile(file_dir + file_name):
+        ctr = 1
+        while os.path.isfile(file_dir + file_name + f'.{ctr}'):
+            ctr += 1
+        file_name += f'.{ctr}'
+
+    with open(file_dir + file_name, 'wb+') as f:
+        f.write(file_data)
+        f.flush()
+        os.fsync(f.fileno())
+
+    return file_name

@@ -19,48 +19,34 @@ You should have received a copy of the GNU General Public License
 along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
+import hashlib
+import os
 import time
 import typing
 
 from typing import Any, Dict, List, Tuple, Union
 
-from src.common.encoding   import b85encode, bytes_to_int, int_to_bytes, pub_key_to_short_address
+from src.common.crypto     import encrypt_and_sign
+from src.common.encoding   import (b85encode, bytes_to_int, int_to_bytes,
+                                   pub_key_to_short_address)
 from src.common.exceptions import SoftError
-from src.common.misc       import ignored, separate_header, split_byte_string
+from src.common.misc       import ensure_dir, ignored, separate_header, split_byte_string
 from src.common.output     import rp_print
-from src.common.statics    import (COMMAND_DATAGRAM_HEADER, DATAGRAM_HEADER_LENGTH, DST_COMMAND_QUEUE,
-                                   DST_MESSAGE_QUEUE, ENCODED_INTEGER_LENGTH, FILE_DATAGRAM_HEADER, F_TO_FLASK_QUEUE,
+from src.common.statics    import (BLAKE2_DIGEST_LENGTH, COMMAND_DATAGRAM_HEADER, DATAGRAM_HEADER_LENGTH, DST_COMMAND_QUEUE,
+                                   DST_MESSAGE_QUEUE, ENCODED_INTEGER_LENGTH, FILE_DATAGRAM_HEADER,
                                    GATEWAY_QUEUE, GROUP_ID_LENGTH, GROUP_MSG_EXIT_GROUP_HEADER, GROUP_MSG_INVITE_HEADER,
                                    GROUP_MSG_JOIN_HEADER, GROUP_MSG_MEMBER_ADD_HEADER, GROUP_MSG_MEMBER_REM_HEADER,
-                                   LOCAL_KEY_DATAGRAM_HEADER, MESSAGE_DATAGRAM_HEADER, M_TO_FLASK_QUEUE,
-                                   ONION_SERVICE_PUBLIC_KEY_LENGTH, ORIGIN_USER_HEADER, PUBLIC_KEY_DATAGRAM_HEADER,
-                                   SRC_TO_RELAY_QUEUE, UNENCRYPTED_DATAGRAM_HEADER, UNIT_TEST_QUEUE)
+                                   LOCAL_KEY_DATAGRAM_HEADER, MESSAGE_DATAGRAM_HEADER, ONION_SERVICE_PUBLIC_KEY_LENGTH,
+                                   ORIGIN_USER_HEADER, PUBLIC_KEY_DATAGRAM_HEADER, RELAY_BUFFER_OUTGOING_F_DIR,
+                                   RELAY_BUFFER_OUTGOING_FILE, RELAY_BUFFER_OUTGOING_M_DIR,
+                                   RELAY_BUFFER_OUTGOING_MESSAGE, SRC_TO_RELAY_QUEUE, TX_BUF_KEY_QUEUE,
+                                   UNENCRYPTED_DATAGRAM_HEADER, UNIT_TEST_QUEUE)
 
 if typing.TYPE_CHECKING:
     from datetime           import datetime
     from multiprocessing    import Queue
     from src.common.gateway import Gateway
     QueueDict = Dict[bytes, Queue[Any]]
-
-
-def queue_to_flask(packet:        Union[bytes, str],
-                   onion_pub_key: bytes,
-                   flask_queue:   'Queue[Tuple[Union[bytes, str], bytes]]',
-                   ts:            'datetime',
-                   header:        bytes
-                   ) -> None:
-    """Put packet to flask queue and print message."""
-    p_type = {MESSAGE_DATAGRAM_HEADER:     'Message  ',
-              PUBLIC_KEY_DATAGRAM_HEADER:  'Pub key  ',
-              FILE_DATAGRAM_HEADER:        'File     ',
-              GROUP_MSG_INVITE_HEADER:     'G invite ',
-              GROUP_MSG_JOIN_HEADER:       'G join   ',
-              GROUP_MSG_MEMBER_ADD_HEADER: 'G add    ',
-              GROUP_MSG_MEMBER_REM_HEADER: 'G remove ',
-              GROUP_MSG_EXIT_GROUP_HEADER: 'G exit   '}[header]
-
-    flask_queue.put((packet, onion_pub_key))
-    rp_print(f"{p_type} to contact {pub_key_to_short_address(onion_pub_key)}", ts)
 
 
 def src_incoming(queues:    'QueueDict',
@@ -71,10 +57,16 @@ def src_incoming(queues:    'QueueDict',
     Redirect datagrams received from Source Computer to appropriate queues.
     """
     commands_to_relay = queues[SRC_TO_RELAY_QUEUE]
-    messages_to_flask = queues[M_TO_FLASK_QUEUE]
+    buf_key_queue     = queues[TX_BUF_KEY_QUEUE]
+
+    buf_key = None
 
     while True:
         with ignored(EOFError, KeyboardInterrupt, SoftError):
+
+            if buf_key is None and buf_key_queue.qsize() > 0:
+                buf_key = buf_key_queue.get()
+
             ts, packet     = load_packet_from_queue(queues, gateway)
             header, packet = separate_header(packet, DATAGRAM_HEADER_LENGTH)
 
@@ -84,18 +76,18 @@ def src_incoming(queues:    'QueueDict',
             elif header in [COMMAND_DATAGRAM_HEADER, LOCAL_KEY_DATAGRAM_HEADER]:
                 process_command_datagram(ts, packet, header, queues)
 
-            elif header in [MESSAGE_DATAGRAM_HEADER, PUBLIC_KEY_DATAGRAM_HEADER]:
-                process_message_datagram(ts, packet, header, queues)
+            elif header in [MESSAGE_DATAGRAM_HEADER, PUBLIC_KEY_DATAGRAM_HEADER] and buf_key is not None:
+                process_message_datagram(ts, packet, header, buf_key, queues)
 
-            elif header == FILE_DATAGRAM_HEADER:
-                process_file_datagram(ts, packet, header, queues)
+            elif header == FILE_DATAGRAM_HEADER and buf_key is not None:
+                process_file_datagram(ts, packet, header, buf_key)
 
             elif header in [GROUP_MSG_INVITE_HEADER,
                             GROUP_MSG_JOIN_HEADER,
                             GROUP_MSG_MEMBER_ADD_HEADER,
                             GROUP_MSG_MEMBER_REM_HEADER,
-                            GROUP_MSG_EXIT_GROUP_HEADER]:
-                process_group_management_message(ts, packet, header, messages_to_flask)
+                            GROUP_MSG_EXIT_GROUP_HEADER] and buf_key is not None:
+                process_group_management_message(ts, packet, header, buf_key)
 
             if unit_test:
                 break
@@ -106,7 +98,7 @@ def load_packet_from_queue(queues:  'QueueDict',
                            ) -> Tuple['datetime', bytes]:
     """Load packet from Source Computer.
 
-    Perform error detection/correction.
+    Perform error detection/correction before returning the packet.
     """
     packets_from_source_computer = queues[GATEWAY_QUEUE]
 
@@ -119,60 +111,59 @@ def load_packet_from_queue(queues:  'QueueDict',
     return ts, packet
 
 
-def process_command_datagram(ts:     'datetime',
-                             packet: bytes,
-                             header: bytes,
-                             queues: 'QueueDict'
+def process_command_datagram(ts:      'datetime',
+                             packet:  bytes,
+                             header:  bytes,
+                             queues:  'QueueDict'
                              ) -> None:
     """Process command datagram."""
-    commands_to_dc = queues[DST_COMMAND_QUEUE]
-    ts_bytes       = int_to_bytes(int(ts.strftime("%Y%m%d%H%M%S%f")[:-4]))
+    commands_to_dst = queues[DST_COMMAND_QUEUE]
+    ts_bytes        = int_to_bytes(int(ts.strftime("%Y%m%d%H%M%S%f")[:-4]))
 
-    commands_to_dc.put(header + ts_bytes + packet)
+    commands_to_dst.put(header + ts_bytes + packet)
 
     p_type = "Command  " if header == COMMAND_DATAGRAM_HEADER else "Local key"
     rp_print(f"{p_type} to local Receiver", ts)
 
 
-def process_message_datagram(ts:     'datetime',
-                             packet: bytes,
-                             header: bytes,
-                             queues: 'QueueDict'
+def process_message_datagram(ts:      'datetime',
+                             packet:  bytes,
+                             header:  bytes,
+                             buf_key: bytes,
+                             queues:  'QueueDict'
                              ) -> None:
-    """Process message and public key datagram."""
-    packets_to_dc     = queues[DST_MESSAGE_QUEUE]
-    messages_to_flask = queues[M_TO_FLASK_QUEUE]
+    """Process message or public key datagram."""
+    packets_to_dst = queues[DST_MESSAGE_QUEUE]
 
     onion_pub_key, payload = separate_header(packet, ONION_SERVICE_PUBLIC_KEY_LENGTH)
     packet_str             = header.decode() + b85encode(payload)
     ts_bytes               = int_to_bytes(int(ts.strftime("%Y%m%d%H%M%S%f")[:-4]))
 
-    queue_to_flask(packet_str, onion_pub_key, messages_to_flask, ts, header)
+    buffer_to_flask(packet_str, onion_pub_key, ts, header, buf_key)
 
     if header == MESSAGE_DATAGRAM_HEADER:
-        packets_to_dc.put(header + ts_bytes + onion_pub_key + ORIGIN_USER_HEADER + payload)
+        packets_to_dst.put(header + ts_bytes + onion_pub_key + ORIGIN_USER_HEADER + payload)
 
 
-def process_file_datagram(ts:     'datetime',
-                          packet: bytes,
-                          header: bytes,
-                          queues: 'QueueDict'
+def process_file_datagram(ts:      'datetime',
+                          packet:  bytes,
+                          header:  bytes,
+                          buf_key: bytes,
                           ) -> None:
     """Process file datagram."""
-    files_to_flask         = queues[F_TO_FLASK_QUEUE]
     no_contacts_b, payload = separate_header(packet, ENCODED_INTEGER_LENGTH)
     no_contacts            = bytes_to_int(no_contacts_b)
     ser_accounts, file_ct  = separate_header(payload, no_contacts * ONION_SERVICE_PUBLIC_KEY_LENGTH)
     pub_keys               = split_byte_string(ser_accounts, item_len=ONION_SERVICE_PUBLIC_KEY_LENGTH)
 
     for onion_pub_key in pub_keys:
-        queue_to_flask(file_ct, onion_pub_key, files_to_flask, ts, header)
+        buffer_to_flask(file_ct, onion_pub_key, ts, header, buf_key, file=True)
 
 
-def process_group_management_message(ts:                'datetime',
-                                     packet:            bytes,
-                                     header:            bytes,
-                                     messages_to_flask: 'Queue[Tuple[Union[bytes, str], bytes]]'
+def process_group_management_message(ts:      'datetime',
+                                     packet:  bytes,
+                                     header:  bytes,
+                                     buf_key: bytes,
                                      ) -> None:
     """Parse and display group management message."""
     header_str       = header.decode()
@@ -183,7 +174,7 @@ def process_group_management_message(ts:                'datetime',
         for onion_pub_key in pub_keys:
             others     = [k for k in pub_keys if k != onion_pub_key]
             packet_str = header_str + b85encode(group_id + b''.join(others))
-            queue_to_flask(packet_str, onion_pub_key, messages_to_flask, ts, header)
+            buffer_to_flask(packet_str, onion_pub_key, ts, header, buf_key)
 
     elif header in [GROUP_MSG_MEMBER_ADD_HEADER, GROUP_MSG_MEMBER_REM_HEADER]:
         first_list_len_b, packet  = separate_header(packet, ENCODED_INTEGER_LENGTH)
@@ -194,49 +185,105 @@ def process_group_management_message(ts:                'datetime',
 
         if header == GROUP_MSG_MEMBER_ADD_HEADER:
 
-            process_add_or_group_remove_member(ts, header, header_str, group_id, messages_to_flask,
-                                               before_adding, new_in_group)
+            process_add_or_group_remove_member(ts, header, buf_key, header_str, group_id, before_adding, new_in_group)
 
             for onion_pub_key in new_in_group:
                 other_new  = [k for k in new_in_group if k != onion_pub_key]
                 packet_str = (GROUP_MSG_INVITE_HEADER.decode()
                               + b85encode(group_id + b''.join(other_new + before_adding)))
-                queue_to_flask(packet_str, onion_pub_key, messages_to_flask, ts, header)
+                buffer_to_flask(packet_str, onion_pub_key, ts, header, buf_key)
 
         elif header == GROUP_MSG_MEMBER_REM_HEADER:
-            process_add_or_group_remove_member(ts, header, header_str, group_id, messages_to_flask,
-                                               remaining, removable)
+            process_add_or_group_remove_member(ts, header, buf_key, header_str, group_id, remaining, removable)
 
     elif header == GROUP_MSG_EXIT_GROUP_HEADER:
-        process_group_exit_header(ts, packet, header, header_str, group_id, messages_to_flask)
+        process_group_exit_header(ts, packet, header, buf_key, header_str, group_id)
 
 
-def process_add_or_group_remove_member(ts:                'datetime',
-                                       header:            bytes,
-                                       header_str:        str,
-                                       group_id:          bytes,
-                                       messages_to_flask: 'Queue[Tuple[Union[bytes, str], bytes]]',
-                                       remaining:         List[bytes],
-                                       removable:         List[bytes]
+def process_add_or_group_remove_member(ts:         'datetime',
+                                       header:     bytes,
+                                       buf_key:    bytes,
+                                       header_str: str,
+                                       group_id:   bytes,
+                                       remaining:  List[bytes],
+                                       removable:  List[bytes]
                                        ) -> None:
     """Process group add or remove member packet."""
     packet_str = header_str + b85encode(group_id + b"".join(removable))
     for onion_pub_key in remaining:
-        queue_to_flask(packet_str, onion_pub_key, messages_to_flask, ts, header)
+        buffer_to_flask(packet_str, onion_pub_key, ts, header, buf_key)
 
 
-def process_group_exit_header(ts:                'datetime',
-                              packet:            bytes,
-                              header:            bytes,
-                              header_str:        str,
-                              group_id:          bytes,
-                              messages_to_flask: 'Queue[Tuple[Union[bytes, str], bytes]]'
+def process_group_exit_header(ts:         'datetime',
+                              packet:     bytes,
+                              header:     bytes,
+                              buf_key:    bytes,
+                              header_str: str,
+                              group_id:   bytes,
                               ) -> None:
     """Process group exit packet."""
     pub_keys   = split_byte_string(packet, ONION_SERVICE_PUBLIC_KEY_LENGTH)
     packet_str = header_str + b85encode(group_id)
     for onion_pub_key in pub_keys:
-        queue_to_flask(packet_str, onion_pub_key, messages_to_flask, ts, header)
+        buffer_to_flask(packet_str, onion_pub_key, ts, header, buf_key)
+
+
+def buffer_to_flask(packet:        Union[bytes, str],
+                    onion_pub_key: bytes,
+                    ts:            'datetime',
+                    header:        bytes,
+                    buf_key:       bytes,
+                    file:          bool = False
+                    ) -> None:
+    """Buffer outgoing datagram for Flask and print message."""
+    p_type = {MESSAGE_DATAGRAM_HEADER:     'Message  ',
+              PUBLIC_KEY_DATAGRAM_HEADER:  'Pub key  ',
+              FILE_DATAGRAM_HEADER:        'File     ',
+              GROUP_MSG_INVITE_HEADER:     'G invite ',
+              GROUP_MSG_JOIN_HEADER:       'G join   ',
+              GROUP_MSG_MEMBER_ADD_HEADER: 'G add    ',
+              GROUP_MSG_MEMBER_REM_HEADER: 'G remove ',
+              GROUP_MSG_EXIT_GROUP_HEADER: 'G exit   '}[header]
+
+    if buf_key is None:
+        raise SoftError("Error: No buffer key available for packet buffering.")
+
+    if isinstance(packet, str):
+        packet = packet.encode()
+
+    file_name = RELAY_BUFFER_OUTGOING_FILE  if file else RELAY_BUFFER_OUTGOING_MESSAGE
+    file_dir  = RELAY_BUFFER_OUTGOING_F_DIR if file else RELAY_BUFFER_OUTGOING_M_DIR
+    sub_dir   = hashlib.blake2b(onion_pub_key, key=buf_key, digest_size=BLAKE2_DIGEST_LENGTH).hexdigest()
+
+    enc_packet = encrypt_and_sign(packet, key=buf_key)
+
+    store_unique(enc_packet, f"{file_dir}/{sub_dir}/", file_name)
+
+    rp_print(f"{p_type} to contact {pub_key_to_short_address(onion_pub_key)}", ts)
+
+
+def store_unique(file_data: bytes,  # File data to store
+                 file_dir:  str,    # Directory to store file
+                 file_name: str,    # Name of the file.
+                 ) -> None:
+    """Store file under a unique filename.
+
+    Add trailing counter .# to ensure buffered packets are read in order.
+    """
+    ensure_dir(file_dir)
+
+    try:
+        file_numbers = [f[(len(file_name) + len('.')):] for f in os.listdir(file_dir) if f.startswith(file_name)]
+        file_numbers = [n for n in file_numbers if n.isdigit()]
+        greatest_num = sorted(file_numbers, key=int)[-1]
+        ctr          = int(greatest_num) + 1
+    except IndexError:
+        ctr = 0
+
+    with open(f"{file_dir}/{file_name}.{ctr}", 'wb+') as f:
+        f.write(file_data)
+        f.flush()
+        os.fsync(f.fileno())
 
 
 def dst_outgoing(queues:    'QueueDict',

@@ -321,7 +321,7 @@ def ch_contact_s(cmd_data:     bytes,
                        DISABLE: ('disabled', False)}[setting.lower()]
 
     if setting.isupper():
-        specifier, status, w_name, w_type = change_setting_for_all_contacts(
+        status, specifier, w_type, w_name = change_setting_for_all_contacts(
             attr, file_cmd, b_value, contact_list, group_list)
 
     else:

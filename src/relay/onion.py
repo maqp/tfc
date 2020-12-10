@@ -40,9 +40,11 @@ from stem.control import Controller
 
 from src.common.encoding   import pub_key_to_onion_address
 from src.common.exceptions import CriticalError
+from src.common.misc       import platform_is_tails
 from src.common.output     import m_print, rp_print
-from src.common.statics    import (EXIT, EXIT_QUEUE, ONION_CLOSE_QUEUE, ONION_KEY_QUEUE,
-                                   ONION_SERVICE_PRIVATE_KEY_LENGTH, TOR_CONTROL_PORT, TOR_DATA_QUEUE, TOR_SOCKS_PORT,
+from src.common.statics    import (BUFFER_KEY, EXIT, EXIT_QUEUE, ONION_CLOSE_QUEUE, ONION_KEY_QUEUE,
+                                   ONION_SERVICE_PRIVATE_KEY_LENGTH, RX_BUF_KEY_QUEUE, SYMMETRIC_KEY_LENGTH,
+                                   TOR_CONTROL_PORT, TOR_DATA_QUEUE, TOR_SOCKS_PORT, TX_BUF_KEY_QUEUE,
                                    USER_ACCOUNT_QUEUE)
 
 if typing.TYPE_CHECKING:
@@ -63,7 +65,7 @@ def get_available_port(min_port: int, max_port: int) -> int:
                 pass
         _, port = temp_sock.getsockname()  # type: str, int
 
-    if Tor.platform_is_tails():
+    if platform_is_tails():
         return TOR_SOCKS_PORT
 
     return port
@@ -76,20 +78,13 @@ class Tor(object):
         self.tor_process = None  # type: Optional[Any]
         self.controller  = None  # type: Optional[Controller]
 
-    @staticmethod
-    def platform_is_tails() -> bool:
-        """Return True if Relay Program is running on Tails."""
-        with open('/etc/os-release') as f:
-            data = f.read()
-        return 'TAILS_PRODUCT_NAME="Tails"' in data
-
     def connect(self, port: int) -> None:
         """Launch Tor as a subprocess.
 
         If TFC is running on top of Tails, do not launch a separate
         instance of Tor.
         """
-        if self.platform_is_tails():
+        if platform_is_tails():
             self.controller = Controller.from_port(port=TOR_CONTROL_PORT)
             self.controller.authenticate()
             return None
@@ -203,6 +198,7 @@ def onion_service(queues: Dict[bytes, 'Queue[Any]']) -> None:
     private_key, c_code = queues[ONION_KEY_QUEUE].get()  # type: bytes, bytes
     public_key_user     = bytes(nacl.signing.SigningKey(seed=private_key).verify_key)
     onion_addr_user     = pub_key_to_onion_address(public_key_user)
+    buffer_key          = hashlib.blake2b(BUFFER_KEY, key=private_key, digest_size=SYMMETRIC_KEY_LENGTH).digest()
 
     try:
         rp_print("Setup  10% - Launching Tor...", bold=True)
@@ -232,6 +228,10 @@ def onion_service(queues: Dict[bytes, 'Queue[Any]']) -> None:
         queues[TOR_DATA_QUEUE].put((tor_port, onion_addr_user))
         queues[USER_ACCOUNT_QUEUE].put(onion_addr_user)
 
+        # Pass buffer key to related processes
+        queues[TX_BUF_KEY_QUEUE].put(buffer_key)
+        queues[RX_BUF_KEY_QUEUE].put(buffer_key)
+
     except (KeyboardInterrupt, stem.SocketClosed):
         tor.stop()
         return
@@ -256,7 +256,7 @@ def monitor_queues(tor:      Tor,
 
             if queues[ONION_CLOSE_QUEUE].qsize() > 0:
                 command = queues[ONION_CLOSE_QUEUE].get()
-                if not tor.platform_is_tails() and command == EXIT and tor.controller is not None:
+                if not platform_is_tails() and command == EXIT and tor.controller is not None:
                     tor.controller.remove_hidden_service(response.service_id)
                     tor.stop()
                 queues[EXIT_QUEUE].put(command)

@@ -37,8 +37,9 @@ from src.common.crypto       import blake2b
 from src.common.gateway      import gateway_loop, Gateway, GatewaySettings
 from src.common.misc         import ensure_dir
 from src.common.reed_solomon import RSCodec
-from src.common.statics      import (BUFFER_FILE_NAME, DIR_USER_DATA, GATEWAY_QUEUE, NC, PACKET_CHECKSUM_LENGTH, RX, TX,
-                                     QUBES_DST_VM_NAME, QUBES_NET_VM_NAME, QUBES_NET_DST_POLICY, QUBES_SRC_NET_POLICY)
+from src.common.statics      import (DIR_USER_DATA, GATEWAY_QUEUE, NC, PACKET_CHECKSUM_LENGTH,
+                                     QUBES_BUFFER_INCOMING_PACKET, QUBES_BUFFER_INCOMING_DIR, QUBES_DST_VM_NAME,
+                                     QUBES_NET_VM_NAME, QUBES_NET_DST_POLICY, QUBES_SRC_NET_POLICY, RX, TX,)
 
 from tests.mock_classes import Settings
 from tests.utils        import cd_unit_test, cleanup, gen_queue_dict, tear_queues, TFCTestCase
@@ -283,37 +284,36 @@ class TestGatewaySerial(TFCTestCase):
     # Qubes
     def test_qubes_read_file(self, *_: Any) -> None:
         # Setup
-        buffer_file_dir = os.getcwd()
-        ensure_dir(f"{buffer_file_dir}/")
+        ensure_dir(f"{QUBES_BUFFER_INCOMING_DIR}/")
 
         def packet_delayer() -> None:
             """Create packets one at a time."""
             time.sleep(0.1)
 
-            with open(f"{buffer_file_dir}/{BUFFER_FILE_NAME}.invalid", 'wb+') as f:
-                f.write(base64.b85encode(b'data'))
+            with open(f"{QUBES_BUFFER_INCOMING_DIR}/{QUBES_BUFFER_INCOMING_PACKET}.invalid", 'wb+') as fp:
+                fp.write(base64.b85encode(b'data'))
 
             time.sleep(0.1)
 
-            with open(f"{buffer_file_dir}/{BUFFER_FILE_NAME}.0", 'wb+') as f:
-                f.write(base64.b85encode(b'data'))
+            with open(f"{QUBES_BUFFER_INCOMING_DIR}/{QUBES_BUFFER_INCOMING_PACKET}.0", 'wb+') as fp:
+                fp.write(base64.b85encode(b'data'))
 
         threading.Thread(target=packet_delayer).start()
 
         gateway = Gateway(operation=RX, local_test=False, dd_sockets=False, qubes=True)
 
         # Test
-        self.assert_se("No packet was available.", gateway.read, buffer_file_dir)
+        self.assert_se("No packet was available.", gateway.read)
 
         time.sleep(0.3)
 
         self.assertIsInstance(gateway, Gateway)
-        self.assertEqual(gateway.read(buffer_file_dir), b'data')
+        self.assertEqual(gateway.read(), b'data')
 
         # Test invalid packet content is handled
-        with open(f"{buffer_file_dir}/{BUFFER_FILE_NAME}.1", 'wb+') as f:
+        with open(f"{QUBES_BUFFER_INCOMING_DIR}/{QUBES_BUFFER_INCOMING_PACKET}.1", 'wb+') as f:
             f.write(os.urandom(32))
-        self.assert_se("Error: Received packet had invalid Base85 encoding.", gateway.read, buffer_file_dir)
+        self.assert_se("Error: Received packet had invalid Base85 encoding.", gateway.read)
 
     @mock.patch('subprocess.Popen')
     def test_qubes_send_to_networkerVM(self, mock_popen) -> None:

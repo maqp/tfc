@@ -25,17 +25,15 @@ import sys
 from multiprocessing import Process, Queue
 from typing          import Any, Dict
 
-from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey
-from cryptography.hazmat.primitives.serialization   import Encoding, PublicFormat
-
+from src.common.crypto  import X448
 from src.common.gateway import Gateway, gateway_loop
-from src.common.misc    import ensure_dir, monitor_processes, process_arguments
+from src.common.misc    import ensure_dir, monitor_processes, platform_is_tails, process_arguments
 from src.common.output  import print_title
 from src.common.statics import (ACCOUNT_CHECK_QUEUE, ACCOUNT_SEND_QUEUE, CONTACT_MGMT_QUEUE, CONTACT_REQ_QUEUE,
-                                C_REQ_MGMT_QUEUE, C_REQ_STATE_QUEUE, DIR_TFC, DST_COMMAND_QUEUE, DST_MESSAGE_QUEUE,
-                                EXIT_QUEUE, F_TO_FLASK_QUEUE, GATEWAY_QUEUE, GUI_INPUT_QUEUE, GROUP_MGMT_QUEUE,
-                                GROUP_MSG_QUEUE, M_TO_FLASK_QUEUE, NC, ONION_CLOSE_QUEUE, PUB_KEY_CHECK_QUEUE,
-                                PUB_KEY_SEND_QUEUE, ONION_KEY_QUEUE, SRC_TO_RELAY_QUEUE, TOR_DATA_QUEUE,
+                                C_REQ_MGMT_QUEUE, C_REQ_STATE_QUEUE, DIR_TAILS_PERS, DIR_TFC, DST_COMMAND_QUEUE,
+                                DST_MESSAGE_QUEUE, EXIT_QUEUE, GATEWAY_QUEUE, GUI_INPUT_QUEUE, GROUP_MGMT_QUEUE,
+                                GROUP_MSG_QUEUE, NC, ONION_CLOSE_QUEUE, PUB_KEY_CHECK_QUEUE, PUB_KEY_SEND_QUEUE,
+                                ONION_KEY_QUEUE, SRC_TO_RELAY_QUEUE, RX_BUF_KEY_QUEUE, TOR_DATA_QUEUE, TX_BUF_KEY_QUEUE,
                                 URL_TOKEN_QUEUE, USER_ACCOUNT_QUEUE)
 
 from src.relay.client   import c_req_manager, client_scheduler, g_msg_manager
@@ -131,7 +129,11 @@ def main() -> None:
     value stays on the Relay Program -- the public value is obtained by
     connecting to the root domain of contact's Onion Service.
     """
-    working_dir = f'{os.getenv("HOME")}/{DIR_TFC}'
+    if platform_is_tails():
+        working_dir = f'{os.getenv("HOME")}/{DIR_TAILS_PERS}{DIR_TFC}'
+    else:
+        working_dir = f'{os.getenv("HOME")}/{DIR_TFC}'
+
     ensure_dir(working_dir)
     os.chdir(working_dir)
 
@@ -141,15 +143,14 @@ def main() -> None:
 
     print_title(NC)
 
-    url_token_private_key = X448PrivateKey.generate()
-    url_token_public_key  = url_token_private_key.public_key().public_bytes(encoding=Encoding.Raw,
-                                                                            format=PublicFormat.Raw).hex()  # type: str
+    url_token_private_key = X448.generate_private_key()
+    url_token_public_key  = X448.derive_public_key(url_token_private_key).hex()
 
     queues = \
         {GATEWAY_QUEUE:       Queue(),  # All     datagrams           from `gateway_loop`          to `src_incoming`
          DST_MESSAGE_QUEUE:   Queue(),  # Message datagrams           from `src_incoming`/`client` to `dst_outgoing`
-         M_TO_FLASK_QUEUE:    Queue(),  # Message/pubkey datagrams    from `src_incoming`          to `flask_server`
-         F_TO_FLASK_QUEUE:    Queue(),  # File datagrams              from `src_incoming`          to `flask_server`
+         TX_BUF_KEY_QUEUE:    Queue(),  # Datagram buffer key         from `onion_service`         to `src_incoming`
+         RX_BUF_KEY_QUEUE:    Queue(),  # Datagram buffer key         from `onion_service`         to `flask_server`
          SRC_TO_RELAY_QUEUE:  Queue(),  # Command datagrams           from `src_incoming`          to `relay_command`
          DST_COMMAND_QUEUE:   Queue(),  # Command datagrams           from `src_incoming`          to `dst_outgoing`
          CONTACT_MGMT_QUEUE:  Queue(),  # Contact management commands from `relay_command`         to `client_scheduler`
@@ -168,7 +169,7 @@ def main() -> None:
          USER_ACCOUNT_QUEUE:  Queue(),  # User's public key           from `onion_service`         to `account_checker`
          PUB_KEY_CHECK_QUEUE: Queue(),  # Typed public keys           from `src_incoming`          to `pub_key_checker`
          PUB_KEY_SEND_QUEUE:  Queue(),  # Received public keys        from `client`                to `pub_key_checker`
-         GUI_INPUT_QUEUE:     Queue()   # User inputs                 from `GUI prompt`            to `account_checker`
+         GUI_INPUT_QUEUE:     Queue()  # User inputs                 from `GUI prompt`            to `account_checker`
          }  # type: Dict[bytes, Queue[Any]]
 
     process_list = [Process(target=gateway_loop,     args=(queues, gateway                       )),

@@ -101,7 +101,8 @@ def account_checker(queues:    'QueueDict',
     """\
     Display diffs between received TFC accounts and accounts
     manually imported to Source Computer."""
-    sys.stdin           = os.fdopen(stdin_fd)
+    if not unit_test:  # pragma: no cover
+        sys.stdin = os.fdopen(stdin_fd)
     account_list        = []  # type: List[str]
     account_check_queue = queues[ACCOUNT_CHECK_QUEUE]
     account_send_queue  = queues[ACCOUNT_SEND_QUEUE]

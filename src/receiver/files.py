@@ -19,7 +19,6 @@ You should have received a copy of the GNU General Public License
 along with TFC. If not, see <https://www.gnu.org/licenses/>.
 """
 
-import os.path
 import typing
 import zlib
 
@@ -30,7 +29,7 @@ import nacl.exceptions
 from src.common.crypto     import auth_and_decrypt, blake2b
 from src.common.encoding   import bytes_to_str
 from src.common.exceptions import SoftError
-from src.common.misc       import decompress, ensure_dir, separate_headers, separate_trailer
+from src.common.misc       import decompress, separate_headers, separate_trailer, store_unique
 from src.common.output     import phase, print_on_previous_line
 from src.common.statics    import (DIR_RECV_FILES, DONE, ONION_SERVICE_PUBLIC_KEY_LENGTH, ORIGIN_HEADER_LENGTH,
                                    PADDED_UTF32_STR_LENGTH, SYMMETRIC_KEY_LENGTH, US_BYTE)
@@ -40,31 +39,6 @@ if typing.TYPE_CHECKING:
     from src.common.db_contacts import ContactList
     from src.common.db_settings import Settings
     from src.receiver.windows   import WindowList
-
-
-def store_unique(file_data: bytes,  # File data to store
-                 file_dir:  str,    # Directory to store file
-                 file_name: str     # Preferred name for the file.
-                 ) -> str:
-    """Store file under a unique filename.
-
-    If file exists, add trailing counter .# with value as large as
-    needed to ensure existing file is not overwritten.
-    """
-    ensure_dir(file_dir)
-
-    if os.path.isfile(file_dir + file_name):
-        ctr = 1
-        while os.path.isfile(file_dir + file_name + f'.{ctr}'):
-            ctr += 1
-        file_name += f'.{ctr}'
-
-    with open(file_dir + file_name, 'wb+') as f:
-        f.write(file_data)
-        f.flush()
-        os.fsync(f.fileno())
-
-    return file_name
 
 
 def process_assembled_file(ts:            'datetime',    # Timestamp last received packet

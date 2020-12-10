@@ -43,12 +43,12 @@ from src.common.misc         import (calculate_race_condition_delay, ensure_dir,
                                      separate_trailer)
 from src.common.output       import m_print, phase, print_on_previous_line
 from src.common.reed_solomon import ReedSolomonError, RSCodec
-from src.common.statics      import (BAUDS_PER_BYTE, BUFFER_FILE_DIR, BUFFER_FILE_NAME, DIR_USER_DATA, DONE,
-                                     DST_DD_LISTEN_SOCKET, DST_LISTEN_SOCKET, GATEWAY_QUEUE, LOCALHOST,
-                                     LOCAL_TESTING_PACKET_DELAY, MAX_INT, NC, PACKET_CHECKSUM_LENGTH, QUBES_DST_VM_NAME,
-                                     QUBES_NET_DST_POLICY, QUBES_NET_VM_NAME, QUBES_SRC_NET_POLICY, RECEIVER, RELAY,
-                                     RP_LISTEN_SOCKET, RX, SERIAL_RX_MIN_TIMEOUT, SETTINGS_INDENT, SRC_DD_LISTEN_SOCKET,
-                                     TRANSMITTER, TX)
+from src.common.statics      import (BAUDS_PER_BYTE, DIR_USER_DATA, DONE, DST_DD_LISTEN_SOCKET, DST_LISTEN_SOCKET,
+                                     GATEWAY_QUEUE, LOCALHOST, LOCAL_TESTING_PACKET_DELAY, MAX_INT, NC,
+                                     PACKET_CHECKSUM_LENGTH, QUBES_BUFFER_INCOMING_DIR, QUBES_BUFFER_INCOMING_PACKET,
+                                     QUBES_DST_VM_NAME, QUBES_NET_DST_POLICY, QUBES_NET_VM_NAME, QUBES_SRC_NET_POLICY,
+                                     RECEIVER, RELAY, RP_LISTEN_SOCKET, RX, SERIAL_RX_MIN_TIMEOUT, SETTINGS_INDENT,
+                                     SRC_DD_LISTEN_SOCKET, TRANSMITTER, TX)
 
 if typing.TYPE_CHECKING:
     from multiprocessing import Queue
@@ -208,25 +208,25 @@ class Gateway(object):
                 raise CriticalError("Relay IPC client disconnected.", exit_code=0)
 
     @staticmethod
-    def read_qubes_buffer_file(buffer_file_dir: str = '') -> bytes:
+    def read_qubes_buffer_file() -> bytes:
         """Read packet from oldest buffer file."""
-        buffer_file_dir = buffer_file_dir if buffer_file_dir else BUFFER_FILE_DIR
 
-        ensure_dir(f"{buffer_file_dir}/")
+        ensure_dir(f"{QUBES_BUFFER_INCOMING_DIR}/")
 
-        while not any([f for f in os.listdir(buffer_file_dir) if f.startswith(BUFFER_FILE_NAME)]):
+        while not any([f for f in os.listdir(QUBES_BUFFER_INCOMING_DIR) if f.startswith(QUBES_BUFFER_INCOMING_PACKET)]):
             time.sleep(0.001)
 
-        tfc_buffer_file_numbers   = [f[(len(BUFFER_FILE_NAME)+len('.')):] for f in os.listdir(buffer_file_dir) if f.startswith(BUFFER_FILE_NAME)]
-        tfc_buffer_file_numbers   = [n for n in tfc_buffer_file_numbers if n.isdigit()]
-        tfc_buffer_files_in_order = [f"{BUFFER_FILE_NAME}.{n}" for n in sorted(tfc_buffer_file_numbers, key=int)]
+        buffer_file_numbers   = [f[(len(QUBES_BUFFER_INCOMING_PACKET) + len('.')):]
+                                 for f in os.listdir(QUBES_BUFFER_INCOMING_DIR) if f.startswith(QUBES_BUFFER_INCOMING_PACKET)]
+        buffer_file_numbers   = [n for n in buffer_file_numbers if n.isdigit()]
+        buffer_files_in_order = [f"{QUBES_BUFFER_INCOMING_PACKET}.{n}" for n in sorted(buffer_file_numbers, key=int)]
 
         try:
-            oldest_buffer_file = tfc_buffer_files_in_order[0]
+            oldest_buffer_file = buffer_files_in_order[0]
         except IndexError:
             raise SoftError("No packet was available.", output=False)
 
-        with open(f"{buffer_file_dir}/{oldest_buffer_file}", 'rb') as f:
+        with open(f"{QUBES_BUFFER_INCOMING_DIR}/{oldest_buffer_file}", 'rb') as f:
             packet = f.read()
 
         try:
@@ -234,7 +234,7 @@ class Gateway(object):
         except ValueError:
             raise SoftError("Error: Received packet had invalid Base85 encoding.")
 
-        os.remove(f"{buffer_file_dir}/{oldest_buffer_file}")
+        os.remove(f"{QUBES_BUFFER_INCOMING_DIR}/{oldest_buffer_file}")
 
         return packet
 
@@ -271,12 +271,12 @@ class Gateway(object):
             except (OSError, SerialException):
                 self.establish_serial()
 
-    def read(self, buffer_file_dir: str = '') -> bytes:
+    def read(self) -> bytes:
         """Read data via socket/serial interface."""
         if self.settings.local_testing_mode:
             return self.read_socket()
         if self.settings.qubes:
-            return self.read_qubes_buffer_file(buffer_file_dir)
+            return self.read_qubes_buffer_file()
         return self.read_serial()
 
     def add_error_correction(self, packet: bytes) -> bytes:
