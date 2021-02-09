@@ -11,7 +11,7 @@ pycparser==2.20      --hash=sha512:06dc9cefdcde6b97c96d0452a77db42a629c48ee545ed
 six==1.15.0          --hash=sha512:0416d59434623604de755601c919722c2b800042612a2a7b221ecd3ccf556aca3a78f0f926fd640032a3d74d153457628a89c25065dfcdbb96892d5bf7279904
 
 # cryptography (pyca) (Handles TCB-side X448 key exchange)
-cryptography==3.3.1  --hash=sha512:499005344fbb0d756b1810f763668c00a53d4f69ccc0c83d66a49504fff6c4f54d97580280c9b15b7df2df8c36729ebb27f5dda58215ade7ca462d77f1dc96a9 \
+cryptography==3.3.2  --hash=sha512:499005344fbb0d756b1810f763668c00a53d4f69ccc0c83d66a49504fff6c4f54d97580280c9b15b7df2df8c36729ebb27f5dda58215ade7ca462d77f1dc96a9 \
                      --hash=sha512:bb5c71cf7e1f6c5198c669b5ea700d98188dec75b2ae692a95617b1cb2c4a204d0a0f78d9834f7b3556a9127be17c0a2e5b44d6a9e7984aff68456032e4a24b5
 
 # PyNaCl (pyca) (Handles TCB-side XChaCha20-Poly1305 symmetric encryption)
