@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2020  Markus Ottela
+Copyright (C) 2013-2021  Markus Ottela
 
 This file is part of TFC.
 
@@ -114,8 +114,8 @@ class TxWindow(Iterable[Contact], Sized):
 
         if self.contact_list.has_only_pending_contacts():
             print("\n'/connect'   sends Onion Service/contact data to Relay"
-                  "\n'/add'       adds another contact."
-                  "\n'/rm <Nick>' removes an existing contact.\n")
+                  "\n'/add'       adds another contact"
+                  "\n'/rm <Nick>' removes an existing contact\n")
 
         selection = input("Select recipient: ").strip()
 

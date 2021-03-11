@@ -3,7 +3,7 @@
 ### Tinfoil Chat
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Python 3.7|3.8](https://img.shields.io/badge/python-3.7%20%7C%C2%A03.8-blue)](https://img.shields.io/badge/python-3.7%20%7C%C2%A03.8-blue)
+[![Python 3.7|3.8|3.9](https://img.shields.io/badge/Python-3.7%20%7C%203.8%20%7C%203.9-blue)](https://img.shields.io/badge/Python-3.7%20%7C%203.8%20%7C%203.9-blue)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 [![Build Status](https://travis-ci.org/maqp/tfc.svg?branch=master)](https://travis-ci.org/maqp/tfc) 
 [![Coverage Status](https://coveralls.io/repos/github/maqp/tfc/badge.svg?branch=master)](https://coveralls.io/github/maqp/tfc?branch=master)
@@ -164,7 +164,8 @@ to enable bidirectional communication between two users, while at the same time 
 hardware enforced endpoint security: 
 
 1. The Destination Computer uses the classical data diode model. This means it can receive 
-data from the insecure Networked Computer, but is unable to send data back to the Networked Computer. The Receiver Program is designed to function under these constraints. However,
+data from the insecure Networked Computer, but is unable to send data back to the Networked 
+Computer. The Receiver Program is designed to function under these constraints. However,
 even though the program authenticates and validates all incoming data, it is not ruled out 
 malware couldn't still infiltrate the Destination Computer. However, in the event that 
 would happen, the malware would be unable to exfiltrate sensitive keys or plaintexts back 
@@ -213,19 +214,19 @@ hardware data diode is needed.
 - PureOS 9.0
 - *buntu 20.04 LTS / 20.10
 - Pop!_OS 20.04 LTS / 20.10
-- Linux Mint 20
+- Linux Mint 20.1
 - LMDE 4
-- Qubes 4.0.3 (Debian 10 VM)
+- Qubes 4.0.4 (Debian 10 VM)
 
 #### Networked Computer
-- Tails 4.13
+- Tails 4.16
 - Debian 10.7
 - PureOS 9.0
 - *buntu 20.04 LTS / 20.10
 - Pop!_OS 20.04 LTS / 20.10
-- Linux Mint 20
+- Linux Mint 20.1
 - LMDE 4
-- Qubes 4.0.3 (Debian 10 VM)
+- Qubes 4.0.4 (Debian 10 VM)
 
 
 ### More information

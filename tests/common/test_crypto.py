@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2020  Markus Ottela
+Copyright (C) 2013-2021  Markus Ottela
 
 This file is part of TFC.
 
@@ -202,7 +202,7 @@ class TestArgon2KDF(unittest.TestCase):
         # Verify the SHA256 hash of the zip-file containing the command-line utility.
         with open(file_name, 'rb') as f:
             file_data = f.read()
-        self.assertEqual('370bc1e1ed0469e5ab77d54a26277bfb711ba9f64658af50c784d961a2bdaca8',
+        self.assertEqual('617d60fbdd7fc7ef5ad919b0899dbdfaed9da45f2e24b37ea0b992c4a03733e3',
                          hashlib.sha256(file_data).hexdigest())
 
         # Unzip, compile, and test the command-line utility.

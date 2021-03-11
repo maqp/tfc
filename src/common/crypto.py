@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2020  Markus Ottela
+Copyright (C) 2013-2021  Markus Ottela
 
 This file is part of TFC.
 
@@ -210,7 +210,7 @@ def argon2_kdf(password:    str,    # Password to derive the key from
      [1] https://github.com/P-H-C/phc-winner-argon2/blob/master/argon2-specs.pdf
      [2] https://password-hashing.net/submissions/specs/Catena-v5.pdf
      [3] https://crypto.stanford.edu/balloon/
-     [4] https://tools.ietf.org/html/draft-irtf-cfrg-argon2-09#section-8.4
+     [4] https://tools.ietf.org/html/draft-irtf-cfrg-argon2-12#section-7.4
      [5] https://github.com/P-H-C/phc-winner-argon2
          https://github.com/hynek/argon2_cffi
     """

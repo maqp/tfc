@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2020  Markus Ottela
+Copyright (C) 2013-2021  Markus Ottela
 
 This file is part of TFC.
 
@@ -459,7 +459,7 @@ def verify_fingerprints(tx_fp: bytes,  # User's fingerprint
     authenticated channel it's possible to verify that the correct key
     was received from the network.
     """
-    m_print("To verify received public key was not replaced by an attacker "
+    m_print("To verify received public key was not replaced by an attacker, "
             "call the contact over an end-to-end encrypted line, preferably Signal "
             "(https://signal.org/). Make sure Signal's safety numbers have been "
             "verified, and then verbally compare the key fingerprints below.",
