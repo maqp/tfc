@@ -7,7 +7,7 @@ pycparser>=2.20
 six>=1.15.0
 
 # cryptography (pyca) (Provides X448 key exchange)
-cryptography>=3.4.6
+cryptography>=3.4.7
 
 # Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)
 Flask>=1.1.2
@@ -26,10 +26,10 @@ typing-extensions>=3.7.4.3
 # PyLama (Code audit tool for Python)
 pylama>=7.7.1
 mccabe>=0.6.1
-pycodestyle>=2.6.0
-pydocstyle>=5.1.1
+pycodestyle>=2.7.0
+pydocstyle>=6.0.0
 snowballstemmer>=2.1.0
-pyflakes>=2.2.0
+pyflakes>=2.3.1
 
 # PyNaCl (pyca) (Handles TCB-side XChaCha20-Poly1305 symmetric encryption and Derives TFC account from Onion Service private key)
 PyNaCl>=1.4.0
@@ -43,7 +43,7 @@ PySocks>=1.7.1
 # pytest (Test framework)
 pytest>=6.2.2
 attrs>=20.3.0
-importlib-metadata>=3.7.2
+importlib-metadata>=3.9.0
 zipp>=3.4.1
 more-itertools>=8.7.0
 packaging>=20.9
@@ -67,8 +67,8 @@ requests>=2.25.1
 certifi>=2020.12.5
 chardet>=4.0.0
 idna==2.10
-urllib3>=1.26.3
-setuptools>=54.1.1
+urllib3>=1.26.4
+setuptools>=54.2.0
 
 # Stem (Connects to Tor and manages Onion Services)
 stem>=1.8.0
