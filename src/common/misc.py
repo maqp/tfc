@@ -292,7 +292,7 @@ def process_arguments() -> Tuple[str, bool, bool, bool]:
     Terminator configuration file for local testing. The descriptions
     here are provided for the sake of completeness.
     """
-    parser = argparse.ArgumentParser(f'python3.7 {sys.argv[0]}',
+    parser = argparse.ArgumentParser(f'python3 {sys.argv[0]}',
                                      usage='%(prog)s [OPTION]',
                                      epilog='Full documentation at: <https://github.com/maqp/tfc/wiki>')
 

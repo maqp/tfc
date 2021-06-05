@@ -128,7 +128,7 @@ def process_arguments() -> Tuple[str, int, int]:
 
     except (IndexError, KeyError):
         clear_screen()
-        print(f"\nUsage: python3.7 dd.py [OPTION]\n\n"
+        print(f"\nUsage: python3 dd.py [OPTION]\n\n"
               f"\nMandatory arguments"
               f"\n Argument  Simulate data diode between..."
               f"\n   {SCNCLR}    Source Computer    and Networked Computer   (left to right)"

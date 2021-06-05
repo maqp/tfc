@@ -210,19 +210,19 @@ hardware data diode is needed.
 ### Supported Operating Systems
 
 #### Source/Destination Computer
-- Debian 10.7
+- Debian 10.9
 - PureOS 9.0
-- *buntu 20.04 LTS / 20.10
+- *buntu 20.04 LTS / 21.04
 - Pop!_OS 20.04 LTS / 20.10
 - Linux Mint 20.1
 - LMDE 4
 - Qubes 4.0.4 (Debian 10 VM)
 
 #### Networked Computer
-- Tails 4.16
-- Debian 10.7
+- Tails 4.19
+- Debian 10.9
 - PureOS 9.0
-- *buntu 20.04 LTS / 20.10
+- *buntu 20.04 LTS / 21.04
 - Pop!_OS 20.04 LTS / 20.10
 - Linux Mint 20.1
 - LMDE 4
