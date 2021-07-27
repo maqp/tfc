@@ -1,8 +1,8 @@
 # Sub-dependencies are listed below dependencies
 
 # Virtual environment (Used to create an isolated Python environment for TFC dependencies)
-virtualenv==20.5.0                        --hash=sha512:9544cb9c724908736ab3307ec15a69f1b8c65b5100795ec3ff7305b5843d2b640e1f732dd86e47c00840ffe7c4e9418b5f2ef974accf314f8518877eff59c096 \
-                                          --hash=sha512:4a35cdfdfa05012c11112099813956cfe2b2c0117fefde240aa679529e9802e76c91c99651766cf6ead1162c8e2333a39ce22cbf6cb98f75bb494d336eb53d20
+virtualenv==20.6.0                        --hash=sha512:e8226423cf793c60a6942c99cd6205491cbf3407903062b7c55ff72d65b940d8e6afe1eb7f9c227730b5115375a4f0aafa61d2a268669b0ad77013b3670c5e21 \
+                                          --hash=sha512:7eff570f407a4986336d5a34bdcab1621d953aa6900d41962a85a5a44d7b68d378cda4a1bc1ddbfbc468580e051a98c37be17b0a52babbb00166718a987a591c
 appdirs==1.4.4                            --hash=sha512:8e6c1ea544013ea2567cda2d8b8c7b441bc50ac689aa7f95de67e3795aa083e9592c687d74fdbb37f5a75e0beab398fe47df5bced14ee9c204cfe5ecc364ef44 \
                                           --hash=sha512:8b0cdd9fd471d45b186aa47607691cf378dabd3edc7b7026a57bd6d6f57698e86f440818a5e23ba4288b35d6bb8cb6eb0106eae8aab09d8863ee15025d300883
 backports.entry-points-selectable==1.1.0  --hash=sha512:3e1bb8c596b7e8de24eaa4a7360fc691ee2fcd8d106488a988c88ba18fd3d2bd2f4bf05aa88c24e855ffedceb1f0c7c2699556a214d7d7903e91ba5c30e1e8e2 \
@@ -15,8 +15,8 @@ importlib-metadata==4.6.1                 --hash=sha512:c76ec90905eddddfd93570e3
                                           --hash=sha512:2a0bcef3d49de00a1013eac48f1ce020cb89ab895f5e4a1673b46a1ad8f84515148eff33608847331de8ee05d7e10040e128b2c887065d3ca16d0bd338c761c0
 zipp==3.5.0                               --hash=sha512:2ecd0a9966ae5e0ebc2bf98dde4c2d6cb4eb8f466b4480b37f727f74ee8ea65da5b6b626a0e5adcb38fe55d4d02bcd420fd7752560e696cd917f3514d40ef5fd \
                                           --hash=sha512:676d7e9a7fde386b57a213975121aba015461453f0809a97d39d030b06918a4c54ba1cad21877ddf007560941ae285883098d81d5e6f17eb4636379345b4513d
-platformdirs==2.0.2                       --hash=sha512:29ff2d998481bfe985e62a88d10fa1a055f7a05b46ffa7cafddc0fda6ddab958726e58d4669e107ab647a8916fb9be86141ad0d100945894885cbebad7ab06f3 \
-                                          --hash=sha512:a342167cf10959b04535060dfffc11df42e046cfcf75c83c0eaa45ba314a864ff715f0764efd65aee5a404f39fe3c80a9f0fde6adf91b95cba7f508d01d09ab3
+platformdirs==2.1.0                       --hash=sha512:dab7b1646428982eb867a56c56d284612e91ef24ae82bd09212ac8cf86e2d42a572af0813c19c3a41c224ee4356d3dc531d2e5a8ab9b47fed999ec27c4664eb4 \
+                                          --hash=sha512:88a4feb7cee7d1e5b216ff34af3f29be9358d3e7697a1269732770fa734b1d83f919eff8baafa8e3a6cbf38f80a4903ccc0523288e6b56b3f1b4b0d681ffd004
 typing-extensions==3.10.0.0               --hash=sha512:c6ee39f76e2f8f10eaeb05b16a3d9bfeba541ec3ca1644a6e72ff5c28d11c98468bba758c0f8c4c10ad2e6ade714bd4de9c15def25f9c62b23ac20eea9724540 \
                                           --hash=sha512:cfefc92eeab267f030c8834759c2d9a021b70730cae1abd0695cceddd860a3ca1b2aa1dc25f558ee2acf23d9f662503ccb149ad85c8e48f0b66af6fee418077e \
                                           --hash=sha512:1c262aedb092d506bcd90d033a640fa6e1f9131f95eafb77d30ed21ff7d6b0f492b6092d3523ecb773bc54904679e0fa1aa8c3b4af62d77f1a7e6fe5fd6cb10c

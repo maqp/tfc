@@ -66,10 +66,10 @@ pytest-forked>=1.3.0
 # Requests (Connects to the contact's Tor Onion Service)
 requests>=2.26.0
 certifi>=2021.5.30
-charset-normalizer>=2.0.1
+charset-normalizer>=2.0.3
 idna>=3.2
 urllib3>=1.26.6
-setuptools>=57.1.0
+setuptools>=57.4.0
 
 # Stem (Connects to Tor and manages Onion Services)
 stem>=1.8.0
