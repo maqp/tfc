@@ -144,9 +144,9 @@ dependency_hashes['zipp-3.5.0.tar.gz']='676d7e9a7fde386b57a213975121aba015461453
 # as the dependency filename).
 
 pre_packages=("pip" "setuptools")
-virtualenv_packages=("zipp" "filelock" "importlib_metadata" "six" "distlib" "appdirs" "typing_extensions" "virtualenv")
+virtualenv_packages=("zipp" "backports.entry_points_selectable" "filelock" "importlib_metadata" "six" "distlib" "appdirs" "platformdirs" "typing_extensions" "virtualenv")
 tcb_packages=("pycparser" "cffi" "setuptools" "argon2" "PyNaCl" "cryptography" "pyserial")
-requests_packages=("urllib3" "idna" "chardet" "certifi" "requests")
+requests_packages=("urllib3" "idna" "charset_normalizer" "certifi" "requests")
 flask_packages=("Werkzeug" "MarkupSafe" "Jinja2" "itsdangerous" "click" "Flask")
 tails_packages=("pyserial" "PySocks" "pycparser" "cffi" "cryptography" "PyNaCl" "argon2")
 tails_packages+=("${requests_packages[@]}" "${flask_packages[@]}")
@@ -193,17 +193,17 @@ function verify_files {
     compare_digest 524e2809046cf0d91caa970a6aa7399c86dbf746ab2b5ab1d3002730ee78f02a6e748221511e4fc98f795f19ff8249070ffe11a2eb521dc1f82ede4fad4e4264 '' uninstall.sh
 
     compare_digest dd2dc76c186e718cd6eb501985f3f8c639d303e44186c5f21ca8e8cf6a25b329c573ca489eda80877be51ccaa6b72b4e763060d0f0f27c0217e8c6b1016d75ca launchers/ terminator-config-local-test
-    compare_digest 7685930aef519ea76b093873909596402875bef64b9f1f18d72d77a5089791734080f52b3c25650dda9335b17360d62ce76ad3751ee8cdee50329af23afe75ec launchers/ TFC-Local-test.desktop
+    compare_digest ea949f90e570807c4f0ddc792273d3a0315179b34346bc376b34414b89c476726bbe3924d90611b819f92028afbbbf753df99c11966819e6bd0e9a68419155e1 launchers/ TFC-Local-test.desktop
     compare_digest 0a4ca9d76912d27cdea4f36b7334ab561eca2b056eef24ff3b1484cb5dd56c5d79e68145402dbf40c87d4a86340cadeeeadf63a8c3774b89921906a1df603c25 launchers/ tfc-qubes-receiver
     compare_digest a8257a49bc5b9c76ab7a228b69d518e7f7ef338cbf4ebe3df64e99d96d7939130b9005b35c962542e5427ae00c1f2623c06a357614a3122d0a3b161e5d59bb0b launchers/ tfc-qubes-relay
     compare_digest b8a7b0614924e000495c1a4f380c5fd772e85ed93b58b8762c1b1f54381730ef3ec1fd7c7bc0541ef6ce9d857402f2153c8abb9c4b05ee2e57630fcf53ef3c35 launchers/ tfc-qubes-transmitter
-    compare_digest 2042803172de9e8f9dfac313ea31de0c6dbe66364f94d8d5458f084efcefc3eb762f7f8cb395b5c5b4dcb39c38d37822185aeaeb91bb8d51e3cdf66252bed305 launchers/ TFC-RP.desktop
-    compare_digest 54a9be69c6859b392d51ff5e33f164c41d38d0d06a20697d700f44ddc470d58e4c0d6db23463ca4ad2f3fa47ad7883cb25c8dc4e0350199628d58d5a4de42fc1 launchers/ TFC-RP-Qubes.desktop
-    compare_digest 2042803172de9e8f9dfac313ea31de0c6dbe66364f94d8d5458f084efcefc3eb762f7f8cb395b5c5b4dcb39c38d37822185aeaeb91bb8d51e3cdf66252bed305 launchers/ TFC-RP-Tails.desktop
-    compare_digest 05489c644799e13632bb79ab0085634ccd36c2d8620b1703ec73990fed753d6df82301e66dd71f59f57795eea6048dc60aaa994d6f7247411c81d575334dd6ce launchers/ TFC-RxP.desktop
-    compare_digest 703e94113c7b9c32f767e9546e902e21737707031254a841ab8e71e050383a4bad6c0ec4f46cd28794988a83443873fb6e0e54fab0693e34020be9b2d77cb400 launchers/ TFC-RxP-Qubes.desktop
-    compare_digest 0fc83bde92615f2c4b8c542e47b3d01ae96ea5e6aaa0fa5b44ae51d9bff46573b9bc01641d0eb238177e65bcd41dc95416d22a32cd9f8894bac5482869fa1a3d launchers/ TFC-TxP.desktop
-    compare_digest cb4cf7f307d0e4b781edf39cb03a3108200ed957b00b7331e01f25eadb253634cb431cfac18e35aa2ddb82a4727801eb81072c0000fdcb6102c74a92ccc52921 launchers/ TFC-TxP-Qubes.desktop
+    compare_digest 1e7c2366cf664a6b8817f29b74f9e07f22298a4ba3c11d3220caa59ddbbdb9bf2b5891ac3aa77515b394d3db3b2803cea1df0228061ac4d9e570223ec80a2a4e launchers/ TFC-RP.desktop
+    compare_digest b233470d27831414e086465b34d318ee7c6b8dccb3fea8c123513e46305e7c11c8dea42a5ad6f89d79da8afc8932ce2731489cce45ade14e48fc87f43b0ab3f1 launchers/ TFC-RP-Qubes.desktop
+    compare_digest 1e7c2366cf664a6b8817f29b74f9e07f22298a4ba3c11d3220caa59ddbbdb9bf2b5891ac3aa77515b394d3db3b2803cea1df0228061ac4d9e570223ec80a2a4e launchers/ TFC-RP-Tails.desktop
+    compare_digest 246c89370234d5a74ad6a414a552d52991e9fa490205191dd8e62f006cf32a30cbbeda5c9f0949d04df6eb490f49a84195a07ac23c0169eca9d65a1016d90d57 launchers/ TFC-RxP.desktop
+    compare_digest 683b6e50f6547cd5ea6a5de4ef9f4348ca5591f091adc8c082cfd957afbebadd6b18c9d46963932dcfe8abf97352f550cab346dad78afadcb0a0354049bce145 launchers/ TFC-RxP-Qubes.desktop
+    compare_digest 4483f3712bd379e4dd1138aaf58b67811c573bd3eaece6cfc96dab4e2ea7b226060ed3768044a028b5833797bdbbefc71c72e5c03049bea24987e3507e91537d launchers/ TFC-TxP.desktop
+    compare_digest c213335685e3aa7266c6475a6bd19231a3abf6ab34ddb081bdd03ad28bd287219a5337ab4f8927bd80a970ef47ef096b95b6a3a4debd689fdefc4bb8cc212dd9 launchers/ TFC-TxP-Qubes.desktop
 
     compare_digest aea3558d9f2855e79b715e92147411d9ddc9ea43617ad2418497466d82fc749f2cb7b1278c87bfd4a93e334cdaac24c66b2a8d95c33adc5e3c4081365d0c2d23 qubes/ service.sh
     compare_digest 8929de27a32f001f5bb73070868b5e5c8bc9ad74afad63b27ce4ffe946dc0b81e83a178ea7ed752d79be53f9ce84343175b18f0254482dac377c8143ad56a3c4 qubes/ writer.py
@@ -227,7 +227,7 @@ function verify_files {
     compare_digest f23e5b4618a63ea2161707b53131c5ad894fd53d2d3481cc874e02d63eca7043d6010edd601298d38a16e86104acc59fc80d0fe89a9693084709365b188b3c7b src/common/ output.py
     compare_digest 83dce0462374789f04d16d47e05cfb9aa5a9ce1e0bb0e280706d0c6f291a2bf680ffe83481b22b28f89d39345f07065c847135620726b29da7c22b349a3aa06b src/common/ path.py
     compare_digest 39e48b0b55f4f1a48bc558f47b5f7c872583f3f3925fd829de28710024b000fcb03799cb36da3a31806143bc3cbb98e5d357a8d62674c23e1e8bf957aece79f6 src/common/ reed_solomon.py
-    compare_digest 43b2728180899f1e14ce384a1c1f397a77a721819bf3ef144aa97fb39968e16820e8d82200d7f52ab2827f613a482af99f56d234561953efb1803aba91812315 src/common/ statics.py
+    compare_digest 859ce28fc37faaf19ac721f6231713cbb6eee0c350d9827d57ebc071c5f771d4a1adaf0213a7aef8dabdd28eca4f9a14f8023cce23b6dad1f76926ebe70b85c0 src/common/ statics.py
     compare_digest 6b80a369e1bd3bb72b58b309f4559d47201d16ae1cc02f2da0184c4bfb7d086a28d3575e031b78dd7d4d720b1ee2a948412daa83d95ca540e57d07ba59aadd6a src/common/ word_list.py
 
     compare_digest 895b722c3cea8f5aa1d4bbcf228cfefc93882098ea35473d205d839cca70bd234f6786dd2ac8004ef854ec7b5e3a3aeaa7c55ccf3797ccb8dcbe530a4f64642c src/receiver/ __init__.py
