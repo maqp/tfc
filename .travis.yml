@@ -2,12 +2,14 @@ language: python
 
 python:
   - '3.7'
+  - '3.8'
+  - '3.9'
 
-dist: xenial
-sudo: required
+dist: focal
+sudo: true
 
 before_install:
-  - echo "deb https://deb.torproject.org/torproject.org xenial main" | sudo tee -a /etc/apt/sources.list.d/torproject.list
+  - echo "deb https://deb.torproject.org/torproject.org focal main" | sudo tee -a /etc/apt/sources.list.d/torproject.list
   - wget -O - -o /dev/null https://deb.torproject.org/torproject.org/A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89.asc | gpg --import
   - gpg --export A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89 | sudo apt-key add -
   - sudo apt update

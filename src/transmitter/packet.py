@@ -226,7 +226,7 @@ def send_file(path:     str,
     6) Chuck uploads the CT'|ID to Bob's Networked Computer and replaces
        the interdicted CT|ID with it.
 
-    7) When Bob' Receiver Program receives the automated key delivery
+    7) When Bob's Receiver Program receives the automated key delivery
        message from Alice, his Receiver program uses the bundled ID to
        identify the key is for CT'.
 

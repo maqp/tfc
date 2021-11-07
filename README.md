@@ -167,9 +167,9 @@ hardware enforced endpoint security:
 data from the insecure Networked Computer, but is unable to send data back to the Networked 
 Computer. The Receiver Program is designed to function under these constraints. However,
 even though the program authenticates and validates all incoming data, it is not ruled out 
-malware couldn't still infiltrate the Destination Computer. However, in the event that 
-would happen, the malware would be unable to exfiltrate sensitive keys or plaintexts back 
-to the Networked Computer, as the data diode prevents all outbound traffic.
+malware couldn't still infiltrate the Destination Computer. In the event that would happen, 
+the malware would be unable to exfiltrate sensitive keys or plaintexts back to the Networked 
+Computer, as the data diode prevents all outbound traffic.
 
 2. The Source Computer uses the alternative data diode model. This means it can output
 encrypted data to the insecure Networked Computer without having to worry about being
@@ -210,22 +210,24 @@ hardware data diode is needed.
 ### Supported Operating Systems
 
 #### Source/Destination Computer
-- Debian 10.10
-- PureOS 9.0
-- *buntu 20.04 LTS / 21.04
+- Debian 11
+- PureOS 10.0
+- *buntu 20.04 LTS / 21.10
 - Pop!_OS 20.04 LTS / 21.04
 - Linux Mint 20.2
 - LMDE 4
+- Zorin OS 16
 - Qubes 4.0.4 (Debian 10 VM)
 
 #### Networked Computer
-- Tails 4.20
-- Debian 10.10
-- PureOS 9.0
-- *buntu 20.04 LTS / 21.04
+- Tails 4.24
+- Debian 11
+- PureOS 10.0
+- *buntu 20.04 LTS / 21.10
 - Pop!_OS 20.04 LTS / 21.04
 - Linux Mint 20.2
 - LMDE 4
+- Zorin OS 16
 - Qubes 4.0.4 (Debian 10 VM)
 
 

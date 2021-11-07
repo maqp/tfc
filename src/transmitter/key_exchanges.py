@@ -123,7 +123,7 @@ def deliver_onion_service_data(relay_command: bytes,
                                onion_service: 'OnionService',
                                gateway:       'Gateway'
                                ) -> None:
-    """Send Onion Service data to Replay Program on Networked Computer."""
+    """Send Onion Service data to Relay Program on Networked Computer."""
     gateway.write(relay_command)
     while True:
         purp_code = ask_confirmation_code('Relay')

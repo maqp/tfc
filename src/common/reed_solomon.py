@@ -702,7 +702,8 @@ def gf_poly_neg(poly: List[int]) -> List[int]:
 def gf_poly_div(dividend: bytearray,
                 divisor:  Union[bytearray, List[int]]
                 ) -> Tuple[bytearray, bytearray]:
-    """Fast polynomial division by using Extended Synthetic Division and
+    """\
+    Fast polynomial division by using Extended Synthetic Division and
     optimized for GF(2^p) computations (doesn't work with standard
     polynomials outside of this Galois Field).
 
