@@ -16,10 +16,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - uses: szenius/set-timezone@v1.0
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+          timezoneLinux: "Europe/Helsinki"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
