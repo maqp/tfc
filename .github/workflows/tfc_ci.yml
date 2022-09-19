@@ -37,6 +37,26 @@ jobs:
       - name: Unit Tests Receiver
         run: |
           py.test --cov=src tests/receiver
+      - name: test_commands_g.py
+        run: py.test --cov=src tests/receiver/test_commands_g.py
+      - name: test_commands.py
+        run: py.test --cov=src tests/receiver/test_commands.py
+      - name: test_files.py
+        run: py.test --cov=src tests/receiver/test_files.py
+      - name: test_key_exchanges.py
+        run: py.test --cov=src tests/receiver/test_key_exchanges.py
+      - name: test_messages.py
+        run: py.test --cov=src tests/receiver/test_messages.py
+      - name: test_output_loop.py
+        run: py.test --cov=src tests/receiver/test_output_loop.py
+      - name: test_packet.py
+        run: py.test --cov=src tests/receiver/test_packet.py
+      - name: test_receiver_loop.py
+        run: py.test --cov=src tests/receiver/test_receiver_loop.py
+      - name: test_windows.py
+        run: py.test --cov=src tests/receiver/test_windows.py
+
+
       - name: Unit Tests Relay
         run: |
           py.test --cov=src tests/relay
