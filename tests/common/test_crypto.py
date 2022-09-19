@@ -208,8 +208,8 @@ class TestArgon2KDF(unittest.TestCase):
         # Unzip, compile, and test the command-line utility.
         subprocess.Popen(f'unzip {file_name}', shell=True).wait()
         os.chdir('phc-winner-argon2-master/')
-        subprocess.Popen('make',      shell=True).wait()
-        subprocess.Popen('make test', shell=True).wait()
+        subprocess.Popen(f'/usr/bin/make',      shell=True).wait()
+        subprocess.Popen('/usr/bin/make test', shell=True).wait()
 
     def tearDown(self) -> None:
         """Post-test actions."""
