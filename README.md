@@ -3,7 +3,7 @@
 ### Tinfoil Chat
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Python 3.9](https://img.shields.io/badge/Python-3.9-blue)](https://img.shields.io/badge/Python-3.9-blue)
+[![Python 3.9|3.10](https://img.shields.io/badge/Python-3.9%20%7C%203.10-blue)](https://img.shields.io/badge/Python-3.9%20%7C%203.10-blue)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 [![Build Status](https://travis-ci.com/tfctesting/tfc.svg?branch=master)](https://travis-ci.com/tfctesting/tfc) 
 [![Coverage Status](https://coveralls.io/repos/github/tfctesting/tfc/badge.svg?branch=master)](https://coveralls.io/github/tfctesting/tfc?branch=master)
