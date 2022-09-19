@@ -3,14 +3,17 @@
 ### Tinfoil Chat
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Python 3.7|3.8|3.9](https://img.shields.io/badge/Python-3.7%20%7C%203.8%20%7C%203.9-blue)](https://img.shields.io/badge/Python-3.7%20%7C%203.8%20%7C%203.9-blue)
+[![Python 3.9](https://img.shields.io/badge/Python-3.9-blue)](https://img.shields.io/badge/Python-3.9-blue)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
-[![Build Status](https://travis-ci.org/maqp/tfc.svg?branch=master)](https://travis-ci.org/maqp/tfc) 
-[![Coverage Status](https://coveralls.io/repos/github/maqp/tfc/badge.svg?branch=master)](https://coveralls.io/github/maqp/tfc?branch=master)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/71fa9cc1da424f52a576a04c2722da26)](https://www.codacy.com/manual/maqp/tfc?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=maqp/tfc&amp;utm_campaign=Badge_Grade)
-[![CodeFactor](https://www.codefactor.io/repository/github/maqp/tfc/badge)](https://www.codefactor.io/repository/github/maqp/tfc)
-[![Requirements Status](https://requires.io/github/maqp/tfc/requirements.svg?branch=master)](https://requires.io/github/maqp/tfc/requirements/?branch=master)
-[![Snyk Report](https://snyk.io/test/github/maqp/tfc/badge.svg)](https://snyk.io/test/github/maqp/tfc)
+[![Build Status](https://travis-ci.com/tfctesting/tfc.svg?branch=master)](https://travis-ci.com/tfctesting/tfc) 
+[![Coverage Status](https://coveralls.io/repos/github/tfctesting/tfc/badge.svg?branch=master)](https://coveralls.io/github/tfctesting/tfc?branch=master)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/4a3de2a3691f44029d9c779a01b912e1)](https://www.codacy.com/manual/tfctesting/tfc?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=tfctesting/tfc&amp;utm_campaign=Badge_Grade)
+[![CodeFactor](https://www.codefactor.io/repository/github/tfctesting/tfc/badge)](https://www.codefactor.io/repository/github/tfctesting/tfc)
+[![Requirements Status](https://requires.io/github/tfctesting/tfc/requirements.svg?branch=master)](https://requires.io/github/tfctesting/tfc/requirements/?branch=master)
+[![Snyk Report](https://snyk.io/test/github/tfctesting/tfc/badge.svg)](https://snyk.io/test/github/tfctesting/tfc) 
+
+# THIS IS TFC's PUBLIC TESTING BRANCH. THE CODE HOSTED HERE IS NOT STABLE AND IT IS SIGNED WITH AN INSECURELY STORED KEY!
+# DO NOT USE THIS CODE FOR ANYTHING SERIOUS. USE THE [MASTER BRANCH](https://github.com/maqp/tfc/tree/master) INSTEAD!
 
 Tinfoil Chat (TFC) is a
 [FOSS](https://www.gnu.org/philosophy/free-sw.html)+[FHD](https://www.gnu.org/philosophy/free-hardware-designs.en.html)

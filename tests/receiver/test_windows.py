@@ -1,9 +1,9 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2021  Markus Ottela
+Copyright (C) 2013-2022  Markus Ottela
 
 This file is part of TFC.
 
@@ -522,12 +522,12 @@ testfile.txt    100.0KB    Bob       50.00%
                                                                         WIN_UID_FILE,
                                                                         WIN_UID_COMMAND]]
 
-        # Test existing window
+        # Test an existing window
         self.assertTrue(self.window_list.has_window(group_name_to_group_id('test_group')))
         window = self.window_list.get_window(       group_name_to_group_id('test_group'))
         self.assertEqual(window.uid,                group_name_to_group_id('test_group'))
 
-        # Test non-existing window
+        # Test a non-existing window
         self.assertFalse(self.window_list.has_window(group_name_to_group_id('test_group2')))
         window2 = self.window_list.get_window(       group_name_to_group_id('test_group2'))
         self.assertEqual(window2.uid,                group_name_to_group_id('test_group2'))
