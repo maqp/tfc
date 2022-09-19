@@ -31,7 +31,18 @@ jobs:
           pip install pytest pytest-cov pyyaml coveralls
           pip install -r requirements-dev.txt
           export TZ=Europe/Helsinki
-      - name: Run unit tests
+      - name: Unit Tests Common
         run: |
-          python3 -m unittest tests/transmitter/test_windows.py
-          py.test --cov=src tests/
+          py.test --cov=src tests/common
+      - name: Unit Tests Receiver
+        run: |
+          py.test --cov=src tests/receiver
+      - name: Unit Tests Relay
+        run: |
+          py.test --cov=src tests/relay
+      - name: Unit Tests Transmitter
+        run: |
+          py.test --cov=src tests/transmitter
+      - name: Unit Tests Other
+        run: |
+          py.test --cov=src tests/test_dd.py
