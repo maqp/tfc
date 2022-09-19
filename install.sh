@@ -301,7 +301,7 @@ function verify_files {
 
 function c_echo {
     # Justify printed text to the center of the terminal.
-    printf "%*s\n" "$(( ( $(echo "${1}" | wc -c) + 80 ) / 2 ))" "${1}"
+    printf "%*s\n" "$(( ( $("${#1}" | wc -c) + 80 ) / 2 ))" "${1}"
 }
 
 
@@ -486,7 +486,7 @@ function remove_packages() {
     for dependency in "${dependency_list[@]}"; do
 
         # Find file that starts with the dependency name
-        dep_file_name=$(ls "${INSTALL_DIR}" | grep "^${dependency}")
+        dep_file_name=$(ls "${INSTALL_DIR}/${dependency}*")
 
         # Delete the file
         if [[ ${sudo_pwd} ]]; then
@@ -566,7 +566,7 @@ function add_serial_permissions {
     sudo adduser "${USER}" dialout
 
     # Add temporary permissions for serial interfaces until reboot
-    arr=($(ls /sys/class/tty | grep USB)) || true
+    mapfile -t arr < <(ls /sys/class/tty | grep USB) || true
     for i in "${arr[@]}"; do
         sudo chmod 666 "/dev/${i}"
     done
@@ -994,7 +994,7 @@ function sudoer_check {
     # Check that the user who launched the installer is on the sudoers list.
 
     # Tails allows sudo without the user `amnesia` being on sudoers list.
-    if ! [[ "$(lsb_release -a 2>/dev/null | grep Tails)" ]]; then
+    if ! lsb_release -a 2>/dev/null | grep -q Tails; then
         return
     fi
 

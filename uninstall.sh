@@ -19,7 +19,7 @@
 
 function yn_prompt {
     echo "${1} (Y/N): "
-    read -s -n 1 REPLY
+    read -r -s -n 1 REPLY
 
     if [[ $REPLY =~ ^[Yy]$ ]]
     then
