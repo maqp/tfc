@@ -398,7 +398,8 @@ function steps_before_network_kill {
     sudo torsocks apt update
     sudo torsocks apt install git gnome-terminal libssl-dev python3-pip python3-tk net-tools -y
     sudo torsocks git clone https://github.com/maqp/tfc.git ${INSTALL_DIR}
-    git checkout development
+    cd ${INSTALL_DIR}
+    sudo git checkout development
 
     verify_tcb_requirements_files
     sudo torsocks python3 -m pip install  -r "${INSTALL_DIR}/requirements-pre.txt"  --require-hashes --no-deps --no-cache-dir
@@ -717,6 +718,7 @@ function install_relay_tails {
     VENV_NAME="venv_relay"
 
     torsocks git clone https://github.com/maqp/tfc.git "${HOME}/tfc"
+    cd "${HOME}/tfc"
     git checkout development
     t_sudo mv "${HOME}/tfc/" "${INSTALL_DIR}/"
     t_sudo chown -R root ${INSTALL_DIR}/
@@ -939,6 +941,7 @@ function install_developer {
     sudo torsocks apt install git libssl-dev python3-pip python3-tk terminator -y
 
     torsocks git clone https://github.com/maqp/tfc.git "${HOME}/tfc"
+    cd "${HOME}/tfc"
     git checkout development
 
     torsocks python3 -m pip install -r "${HOME}/tfc/requirements-venv.txt" --require-hashes --no-deps
