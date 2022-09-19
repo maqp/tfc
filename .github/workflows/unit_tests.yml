@@ -30,6 +30,16 @@ jobs:
           sudo apt install python3-setuptools python3-tk tor -y
           pip install pytest pytest-cov pyyaml coveralls
           pip install -r requirements-dev.txt
+          
+          curl https://keybase.io/codecovsecurity/pgp_keys.asc | gpg --no-default-keyring --keyring trustedkeys.gpg --import # One-time step
+          curl -Os https://uploader.codecov.io/latest/linux/codecov
+          curl -Os https://uploader.codecov.io/latest/linux/codecov.SHA256SUM
+          curl -Os https://uploader.codecov.io/latest/linux/codecov.SHA256SUM.sig
+          gpgv codecov.SHA256SUM.sig codecov.SHA256SUM
+          shasum -a 256 -c codecov.SHA256SUM
+          chmod +x codecov
+          ./codecov -t ${{ secrets.CODECOV_TOKEN }}
+
       - name: Unit Tests
         run: |
           py.test --cov=src --cov-report=xml tests/
