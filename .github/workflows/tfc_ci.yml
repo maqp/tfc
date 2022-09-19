@@ -30,33 +30,6 @@ jobs:
           sudo apt install python3-setuptools python3-tk tor -y
           pip install pytest pytest-cov pyyaml coveralls
           pip install -r requirements-dev.txt
-          export TZ=Europe/Helsinki
-      - name: test_commands_g.py
-        run: py.test --cov=src tests/receiver/test_commands_g.py
-      - name: test_commands.py
-        run: py.test --cov=src tests/receiver/test_commands.py
-      - name: test_files.py
-        run: py.test --cov=src tests/receiver/test_files.py
-      - name: test_key_exchanges.py
-        run: py.test --cov=src tests/receiver/test_key_exchanges.py
-      - name: test_messages.py
-        run: py.test --cov=src tests/receiver/test_messages.py
-      - name: test_output_loop.py
-        run: py.test --cov=src tests/receiver/test_output_loop.py
-      - name: test_packet.py
-        run: py.test --cov=src tests/receiver/test_packet.py
-      - name: test_receiver_loop.py
-        run: py.test --cov=src tests/receiver/test_receiver_loop.py
-      - name: test_windows.py
-        run: py.test --cov=src tests/receiver/test_windows.py
-
-
-      - name: Unit Tests Relay
+      - name: Unit Tests
         run: |
-          py.test --cov=src tests/relay
-      - name: Unit Tests Transmitter
-        run: |
-          py.test --cov=src tests/transmitter
-      - name: Unit Tests Other
-        run: |
-          py.test --cov=src tests/test_dd.py
+          py.test --cov=src tests/
