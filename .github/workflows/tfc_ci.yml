@@ -34,4 +34,4 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Run unit tests
         run: |
-          py.test --cov=src tests/
+          python3 -m unittest tests/receiver/test_windows.py
