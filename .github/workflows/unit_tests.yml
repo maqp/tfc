@@ -47,3 +47,4 @@ jobs:
           name: codecov-umbrella
           path_to_write_report: ./coverage/codecov_report.txt
           verbose: true
+          version: "v0.1.15"
