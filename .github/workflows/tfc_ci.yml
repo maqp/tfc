@@ -33,4 +33,5 @@ jobs:
           export TZ=Europe/Helsinki
       - name: Run unit tests
         run: |
+          python3 -m unittest tests/transmitter/test_windows.py
           py.test --cov=src tests/
