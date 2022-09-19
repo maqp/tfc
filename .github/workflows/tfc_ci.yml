@@ -31,12 +31,6 @@ jobs:
           pip install pytest pytest-cov pyyaml coveralls
           pip install -r requirements-dev.txt
           export TZ=Europe/Helsinki
-      - name: Unit Tests Common
-        run: |
-          py.test --cov=src tests/common
-      - name: Unit Tests Receiver
-        run: |
-          py.test --cov=src tests/receiver
       - name: test_commands_g.py
         run: py.test --cov=src tests/receiver/test_commands_g.py
       - name: test_commands.py
