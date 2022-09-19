@@ -21,7 +21,7 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 
 import unittest
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing   import Any
 from unittest import mock
 
@@ -45,7 +45,7 @@ class TestRxWindow(TFCTestCase):
         self.group_list   = GroupList(groups=['test_group', 'test_group2'])
         self.settings     = Settings()
         self.packet_list  = PacketList()
-        self.ts           = datetime.fromtimestamp(1502750000)
+        self.ts           = datetime.fromtimestamp(1502750000, tz=timezone.utc)
         self.time         = self.ts.strftime('%H:%M:%S.%f')[:-4]
 
         group         = self.group_list.get_group('test_group')
@@ -262,7 +262,7 @@ class TestRxWindow(TFCTestCase):
     def test_print_to_active_window_no_date_change(self) -> None:
         # Setup
         window                 = self.create_window(nick_to_pub_key("Alice"))
-        window.previous_msg_ts = datetime.fromtimestamp(1502750000)
+        window.previous_msg_ts = datetime.fromtimestamp(1502750000, tz=timezone.utc)
         window.is_active       = True
         window.handle_dict     = {nick_to_pub_key("Bob"): 'Bob'}
         window.settings        = Settings(new_message_notify_preview=False)
@@ -275,7 +275,7 @@ class TestRxWindow(TFCTestCase):
     def test_print_to_active_window_with_date_change_and_whisper(self) -> None:
         # Setup
         window                 = self.create_window(nick_to_pub_key("Alice"))
-        window.previous_msg_ts = datetime.fromtimestamp(1501750000)
+        window.previous_msg_ts = datetime.fromtimestamp(1501650000, tz=timezone.utc)
         window.is_active       = True
         window.handle_dict     = {nick_to_pub_key("Bob"): 'Bob'}
         window.settings        = Settings(new_message_notify_preview=False)
@@ -284,14 +284,14 @@ class TestRxWindow(TFCTestCase):
 
         # Test
         self.assert_prints(f"""\
-{BOLD_ON}00:00 -!- Day changed to 2017-08-15{NORMAL_TEXT}
+{BOLD_ON}00:00 -!- Day changed to 2017-08-14{NORMAL_TEXT}
 {BOLD_ON}{self.time} Bob (whisper): {NORMAL_TEXT}Hi Alice
 """, window.print, msg_tuple)
 
     def test_print_to_active_window_with_date_change_and_whisper_empty_message(self) -> None:
         # Setup
         window                 = self.create_window(nick_to_pub_key("Alice"))
-        window.previous_msg_ts = datetime.fromtimestamp(1501750000)
+        window.previous_msg_ts = datetime.fromtimestamp(1501650000, tz=timezone.utc)
         window.is_active       = True
         window.handle_dict     = {nick_to_pub_key("Bob"): 'Bob'}
         window.settings        = Settings(new_message_notify_preview=False)
@@ -299,7 +299,7 @@ class TestRxWindow(TFCTestCase):
 
         # Test
         self.assert_prints(f"""\
-{BOLD_ON}00:00 -!- Day changed to 2017-08-15{NORMAL_TEXT}
+{BOLD_ON}00:00 -!- Day changed to 2017-08-14{NORMAL_TEXT}
 {BOLD_ON}{self.time} Bob (whisper): {NORMAL_TEXT}
 """, window.print, msg_tuple)
 
