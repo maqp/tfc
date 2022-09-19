@@ -6,7 +6,7 @@
 [![Python 3.9|3.10](https://img.shields.io/badge/Python-3.9%20%7C%203.10-blue)](https://img.shields.io/badge/Python-3.9%20%7C%203.10-blue)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 [![Unit Tests](https://github.com/maqp/tfc/actions/workflows/unit_tests.yml/badge.svg?branch=development)](https://github.com/maqp/tfc/actions/workflows/unit_tests.yml)
-[![Coverage Status](https://coveralls.io/repos/github/maqp/tfc/badge.svg?branch=master)](https://coveralls.io/github/maqp/tfc?branch=master)
+[![codecov](https://codecov.io/gh/maqp/tfc/branch/development/graph/badge.svg?token=RJv2hFFdnR)](https://codecov.io/gh/maqp/tfc)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/4a3de2a3691f44029d9c779a01b912e1)](https://www.codacy.com/manual/maqp/tfc?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=maqp/tfc&amp;utm_campaign=Badge_Grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/maqp/tfc/badge)](https://www.codefactor.io/repository/github/maqp/tfc)
 [![Requirements Status](https://requires.io/github/maqp/tfc/requirements.svg?branch=development)](https://requires.io/github/maqp/tfc/requirements/?branch=development)
