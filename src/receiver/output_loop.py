@@ -108,6 +108,7 @@ def output_loop(queues:       Dict[bytes, 'Queue[Any]'],
             time.sleep(0.01)
 
             if unit_test and queues[UNIT_TEST_QUEUE].qsize() != 0:
+                sys.stdin.close()
                 break
 
         except (KeyError, KeyboardInterrupt, SoftError):
