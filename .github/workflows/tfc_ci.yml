@@ -32,6 +32,7 @@ jobs:
           sudo apt install python3-setuptools python3-tk tor -y
           pip install pytest pytest-cov pyyaml coveralls
           pip install -r requirements-dev.txt
+          export TZ=Europe/Helsinki
       - name: Run unit tests
         run: |
           python3 -m unittest tests/receiver/test_windows.py
