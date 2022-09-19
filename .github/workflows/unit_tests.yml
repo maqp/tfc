@@ -32,7 +32,7 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Unit Tests
         run: |
-          py.test --cov=src tests/
+          py.test --cov=src --cov-report=xml tests/
 
 #      - uses: actions/checkout@master
       - uses: codecov/codecov-action@v3
