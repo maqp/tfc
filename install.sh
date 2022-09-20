@@ -798,7 +798,8 @@ function install_qubes_src {
     verify_files
 
     install_packages_as_root "${virtualenv_packages[@]}"
-    sudo python3 -m virtualenv "${INSTALL_DIR}/${VENV_NAME}" --system-site-packages --never-download --always-copy
+    export DEB_PYTHON_INSTALL_LAYOUT='deb'
+    sudo -E python3 -m virtualenv "${INSTALL_DIR}/${VENV_NAME}" --system-site-packages --never-download --always-copy
 
     . ${INSTALL_DIR}/${VENV_NAME}/bin/activate
     install_to_venv "${tcb_packages[@]}"
@@ -838,7 +839,8 @@ function install_qubes_dst {
     sudo chmod a+x /opt/tfc/qubes/service.sh
 
     install_packages_as_root "${virtualenv_packages[@]}"
-    sudo python3 -m virtualenv "${INSTALL_DIR}/${VENV_NAME}" --system-site-packages --never-download --always-copy
+    export DEB_PYTHON_INSTALL_LAYOUT='deb'
+    sudo -E python3 -m virtualenv "${INSTALL_DIR}/${VENV_NAME}" --system-site-packages --never-download --always-copy
 
     . ${INSTALL_DIR}/${VENV_NAME}/bin/activate
     install_to_venv "${tcb_packages[@]}"
@@ -877,7 +879,8 @@ function install_qubes_net {
     sudo chmod a+x /opt/tfc/qubes/service.sh
 
     install_packages_as_root "${virtualenv_packages[@]}"
-    sudo python3 -m virtualenv ${INSTALL_DIR}/${VENV_NAME} --system-site-packages --always-copy
+    export DEB_PYTHON_INSTALL_LAYOUT='deb'
+    sudo -E python3 -m virtualenv ${INSTALL_DIR}/${VENV_NAME} --system-site-packages --always-copy
 
     . ${INSTALL_DIR}/${VENV_NAME}/bin/activate
     sudo torsocks ${INSTALL_DIR}/${VENV_NAME}/bin/pip3 install -r ${INSTALL_DIR}/requirements-relay.txt --require-hashes --no-deps
