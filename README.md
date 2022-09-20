@@ -215,23 +215,23 @@ hardware data diode is needed.
 #### Source/Destination Computer
 - Debian 11
 - PureOS 10.0
-- *buntu 20.04 LTS / 21.10
-- Pop!_OS 20.04 LTS / 21.04
-- Linux Mint 20.2
-- LMDE 4
-- Zorin OS 16
-- Qubes 4.0.4 (Debian 10 VM)
+- *buntu 22.04 LTS / 22.10
+- Pop!_OS 22.04 LTS
+- Linux Mint 21
+- LMDE 5
+- Zorin OS 16.1
+- Qubes 4.1.1 (Debian 11 VM)
 
 #### Networked Computer
-- Tails 4.24
+- Tails 5.4
 - Debian 11
 - PureOS 10.0
-- *buntu 20.04 LTS / 21.10
-- Pop!_OS 20.04 LTS / 21.04
-- Linux Mint 20.2
-- LMDE 4
-- Zorin OS 16
-- Qubes 4.0.4 (Debian 10 VM)
+- *buntu 22.04 LTS / 22.10
+- Pop!_OS 22.04 LTS
+- Linux Mint 21
+- LMDE 5
+- Zorin OS 16.1
+- Qubes 4.1.1 (Debian 11 VM)
 
 
 ### More information

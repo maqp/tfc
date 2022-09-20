@@ -528,11 +528,8 @@ function install_virtualenv {
     # Some distros want virtualenv installed as sudo and other don't.
     # Install as both users to improve the chances of compatibility.
 
-    # Temporary fix for pypa/virtualenv issue #2350
-    export DEB_PYTHON_INSTALL_LAYOUT='deb'
-
-    sudo -E torsocks python3 -m pip install -r ${INSTALL_DIR}/requirements-venv.txt --require-hashes --no-deps
-    torsocks         python3 -m pip install -r ${INSTALL_DIR}/requirements-venv.txt --require-hashes --no-deps
+    sudo torsocks python3 -m pip install -r ${INSTALL_DIR}/requirements-venv.txt --require-hashes --no-deps
+    torsocks      python3 -m pip install -r ${INSTALL_DIR}/requirements-venv.txt --require-hashes --no-deps
 }
 
 
@@ -631,7 +628,10 @@ function install_tcb {
     VENV_NAME="venv_tcb"
 
     install_packages_as_root "${virtualenv_packages[@]}"
-    sudo python3 -m virtualenv "${INSTALL_DIR}/${VENV_NAME}" --system-site-packages --never-download --always-copy
+
+    # Temporary fix for pypa/virtualenv issue #2350
+    export DEB_PYTHON_INSTALL_LAYOUT='deb'
+    sudo -E python3 -m virtualenv "${INSTALL_DIR}/${VENV_NAME}" --system-site-packages --never-download --always-copy
 
     . ${INSTALL_DIR}/${VENV_NAME}/bin/activate
     install_to_venv "${tcb_packages[@]}"
@@ -667,7 +667,9 @@ function install_relay {
     VENV_NAME="venv_relay"
 
     install_virtualenv
-    sudo python3 -m virtualenv ${INSTALL_DIR}/${VENV_NAME} --system-site-packages --always-copy
+    # Temporary fix for pypa/virtualenv issue #2350
+    export DEB_PYTHON_INSTALL_LAYOUT='deb'
+    sudo -E python3 -m virtualenv ${INSTALL_DIR}/${VENV_NAME} --system-site-packages --always-copy
 
     . ${INSTALL_DIR}/${VENV_NAME}/bin/activate
     sudo torsocks ${INSTALL_DIR}/${VENV_NAME}/bin/pip3 install -r ${INSTALL_DIR}/requirements-relay.txt --require-hashes --no-deps
@@ -903,7 +905,9 @@ function install_local_test {
     sudo torsocks apt install terminator -y
 
     install_virtualenv
-    sudo python3 -m virtualenv ${INSTALL_DIR}/${VENV_NAME} --system-site-packages --always-copy
+    # Temporary fix for pypa/virtualenv issue #2350
+    export DEB_PYTHON_INSTALL_LAYOUT='deb'
+    sudo -E python3 -m virtualenv ${INSTALL_DIR}/${VENV_NAME} --system-site-packages --always-copy
 
     . ${INSTALL_DIR}/${VENV_NAME}/bin/activate
     sudo torsocks ${INSTALL_DIR}/${VENV_NAME}/bin/pip3 install -r ${INSTALL_DIR}/requirements.txt       --require-hashes --no-deps
@@ -950,6 +954,8 @@ function install_developer {
 
     torsocks python3 -m pip install -r "${HOME}/tfc/requirements-venv.txt" --require-hashes --no-deps
 
+    # Temporary fix for pypa/virtualenv issue #2350
+    export DEB_PYTHON_INSTALL_LAYOUT='deb'
     python3 -m virtualenv "${HOME}/tfc/${VENV_NAME}" --system-site-packages --always-copy
 
     . "${HOME}/tfc/${VENV_NAME}/bin/activate"
@@ -979,12 +985,12 @@ function arg_error {
     clear
     echo -e "\nUsage: bash install.sh [OPTION]\n"
     echo    "Mandatory arguments"
-    echo    "  tcb      Install Transmitter/Receiver Program (Debian 10 / PureOS 9.0+ / *buntu 20.04+ / LMDE 4 / Mint 20.2)"
-    echo    "  relay    Install Relay Program                (Debian 10 / PureOS 9.0+ / *buntu 20.04+ / LMDE 4 / Mint 20.2 / Tails 4.20+)"
-    echo -e "  local    Install insecure local testing mode  (Debian 10 / PureOS 9.0+ / *buntu 20.04+ / LMDE 4 / Mint 20.2)\n"
-    echo    "  qsrc     Install Transmitter Program          (Qubes 4.0.4)"
-    echo    "  qdst     Install Receiver Program             (Qubes 4.0.4)"
-    echo -e "  qnet     Install Relay Program                (Qubes 4.0.4)\n"
+    echo    "  tcb      Install Transmitter/Receiver Program (Debian 11 / PureOS 10.0 / *buntu 22.04 / LMDE 5 / Mint 21)"
+    echo    "  relay    Install Relay Program                (Debian 11 / PureOS 10.0 / *buntu 22.04 / LMDE 5 / Mint 21 / Tails 5.4)"
+    echo -e "  local    Install insecure local testing mode  (Debian 11 / PureOS 10.0 / *buntu 22.04 / LMDE 5 / Mint 21)\n"
+    echo    "  qsrc     Install Transmitter Program          (Qubes 4.1.1)"
+    echo    "  qdst     Install Receiver Program             (Qubes 4.1.1)"
+    echo -e "  qnet     Install Relay Program                (Qubes 4.1.1)\n"
     exit 1
 }
 
