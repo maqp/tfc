@@ -2,12 +2,13 @@
 
 # Argon2 Password Hashing Function (Derives keys that protect persistent user data)
 argon2-cffi>=21.3.0
-cffi>=1.15.1
+argon2-cffi-bindings>=21.2.0
 pycparser>=2.21
-six>=1.16.0
+cffi>=1.15.1
 
 # cryptography (pyca) (Provides X448 key exchange)
 cryptography>=38.0.1
+six>=1.16.0
 
 # Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)
 Flask>=2.2.2
