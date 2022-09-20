@@ -408,16 +408,16 @@ function steps_before_network_kill {
     check_rm_existing_installation
 
     wait_for_tor
-    sudo torsocks -i apt update
-    sudo torsocks -i apt install git gnome-terminal libssl-dev python3-pip python3-tk net-tools -y
-    sudo torsocks -i git clone https://github.com/maqp/tfc.git ${INSTALL_DIR}
+    sudo torsocks apt update
+    sudo torsocks apt install git gnome-terminal libssl-dev python3-pip python3-tk net-tools -y
+    sudo torsocks git clone https://github.com/maqp/tfc.git ${INSTALL_DIR}
     cd ${INSTALL_DIR}
     sudo git checkout development
 
     verify_tcb_requirements_files
-    sudo torsocks -i python3 -m pip install  -r "${INSTALL_DIR}/requirements-pre.txt"  --require-hashes --no-deps --no-cache-dir
-    sudo torsocks -i python3 -m pip download -r "${INSTALL_DIR}/requirements-venv.txt" --require-hashes --no-deps --no-cache-dir -d ${INSTALL_DIR}/
-    sudo torsocks -i python3 -m pip download -r "${INSTALL_DIR}/requirements.txt"      --require-hashes --no-deps --no-cache-dir -d ${INSTALL_DIR}/
+    sudo torsocks python3 -m pip install  -r "${INSTALL_DIR}/requirements-pre.txt"  --require-hashes --no-deps --no-cache-dir
+    sudo torsocks python3 -m pip download -r "${INSTALL_DIR}/requirements-venv.txt" --require-hashes --no-deps --no-cache-dir -d ${INSTALL_DIR}/
+    sudo torsocks python3 -m pip download -r "${INSTALL_DIR}/requirements.txt"      --require-hashes --no-deps --no-cache-dir -d ${INSTALL_DIR}/
 }
 
 
@@ -539,8 +539,8 @@ function remove_common_files {
 function install_virtualenv {
     # Some distros want virtualenv installed as sudo and other don't.
     # Install as both users to improve the chances of compatibility.
-    sudo torsocks -i python3 -m pip install -r ${INSTALL_DIR}/requirements-venv.txt --require-hashes --no-deps
-    torsocks -i      python3 -m pip install -r ${INSTALL_DIR}/requirements-venv.txt --require-hashes --no-deps
+    sudo torsocks python3 -m pip install -r ${INSTALL_DIR}/requirements-venv.txt --require-hashes --no-deps
+    torsocks      python3 -m pip install -r ${INSTALL_DIR}/requirements-venv.txt --require-hashes --no-deps
 }
 
 
@@ -683,7 +683,7 @@ function install_relay {
     sudo -E python3 -m virtualenv ${INSTALL_DIR}/${VENV_NAME} --system-site-packages --always-copy
 
     . ${INSTALL_DIR}/${VENV_NAME}/bin/activate
-    sudo torsocks -i ${INSTALL_DIR}/${VENV_NAME}/bin/pip3 install -r ${INSTALL_DIR}/requirements-relay.txt --require-hashes --no-deps
+    sudo torsocks ${INSTALL_DIR}/${VENV_NAME}/bin/pip3 install -r ${INSTALL_DIR}/requirements-relay.txt --require-hashes --no-deps
     deactivate
 
     sudo mv ${INSTALL_DIR}/tfc.png                  /usr/share/pixmaps/
@@ -734,7 +734,7 @@ function install_relay_tails {
 
     VENV_NAME="venv_relay"
 
-    torsocks -i git clone https://github.com/maqp/tfc.git "${HOME}/tfc"
+    torsocks git clone https://github.com/maqp/tfc.git "${HOME}/tfc"
     cd "${HOME}/tfc"
     git checkout development
     t_sudo mv "${HOME}/tfc/" "${INSTALL_DIR}/"
@@ -747,12 +747,12 @@ function install_relay_tails {
     # to $HOME, move the files to /opt/tfc, and then perform the hash verification
 
     # Install prerequisites before downloading other packages: This ensures pip accepts manylinux2014 wheels
-    torsocks -i python3 -m pip download -r "${INSTALL_DIR}/requirements-pre.txt"   --require-hashes --no-deps --no-cache-dir -d "${HOME}/"
+    torsocks python3 -m pip download -r "${INSTALL_DIR}/requirements-pre.txt"   --require-hashes --no-deps --no-cache-dir -d "${HOME}/"
     verify_packages "${pre_packages[@]}"
     install_packages_as_root "${pre_packages[@]}"
 
-    torsocks -i python3 -m pip download -r "${INSTALL_DIR}/requirements-venv.txt"        --require-hashes --no-deps --no-cache-dir -d "${HOME}/"
-    torsocks -i python3 -m pip download -r "${INSTALL_DIR}/requirements-relay-tails.txt" --require-hashes --no-deps --no-cache-dir -d "${HOME}/"
+    torsocks python3 -m pip download -r "${INSTALL_DIR}/requirements-venv.txt"        --require-hashes --no-deps --no-cache-dir -d "${HOME}/"
+    torsocks python3 -m pip download -r "${INSTALL_DIR}/requirements-relay-tails.txt" --require-hashes --no-deps --no-cache-dir -d "${HOME}/"
 
     verify_packages "${virtualenv_packages[@]}"
     verify_packages "${tails_packages[@]}"
@@ -880,7 +880,7 @@ function install_qubes_net {
     sudo python3 -m virtualenv ${INSTALL_DIR}/${VENV_NAME} --system-site-packages --always-copy
 
     . ${INSTALL_DIR}/${VENV_NAME}/bin/activate
-    sudo torsocks -i ${INSTALL_DIR}/${VENV_NAME}/bin/pip3 install -r ${INSTALL_DIR}/requirements-relay.txt --require-hashes --no-deps
+    sudo torsocks ${INSTALL_DIR}/${VENV_NAME}/bin/pip3 install -r ${INSTALL_DIR}/requirements-relay.txt --require-hashes --no-deps
     deactivate
 
     sudo mv ${INSTALL_DIR}/tfc.png                        /usr/share/pixmaps/
@@ -913,7 +913,7 @@ function install_local_test {
 
     VENV_NAME="venv_tfc"
 
-    sudo torsocks -i apt install terminator -y
+    sudo torsocks apt install terminator -y
 
     install_virtualenv
     # Temporary fix for pypa/virtualenv issue #2350
@@ -921,8 +921,8 @@ function install_local_test {
     sudo -E python3 -m virtualenv ${INSTALL_DIR}/${VENV_NAME} --system-site-packages --always-copy
 
     . ${INSTALL_DIR}/${VENV_NAME}/bin/activate
-    sudo torsocks -i ${INSTALL_DIR}/${VENV_NAME}/bin/pip3 install -r ${INSTALL_DIR}/requirements.txt       --require-hashes --no-deps
-    sudo torsocks -i ${INSTALL_DIR}/${VENV_NAME}/bin/pip3 install -r ${INSTALL_DIR}/requirements-relay.txt --require-hashes --no-deps
+    sudo torsocks ${INSTALL_DIR}/${VENV_NAME}/bin/pip3 install -r ${INSTALL_DIR}/requirements.txt       --require-hashes --no-deps
+    sudo torsocks ${INSTALL_DIR}/${VENV_NAME}/bin/pip3 install -r ${INSTALL_DIR}/requirements-relay.txt --require-hashes --no-deps
     deactivate
 
     sudo mv ${INSTALL_DIR}/tfc.png                                /usr/share/pixmaps/
@@ -957,21 +957,21 @@ function install_developer {
 
     VENV_NAME="venv_tfc"
 
-    sudo torsocks -i apt update
-    sudo torsocks -i apt install git libssl-dev python3-pip python3-tk terminator -y
+    sudo torsocks apt update
+    sudo torsocks apt install git libssl-dev python3-pip python3-tk terminator -y
 
-    torsocks -i git clone https://github.com/maqp/tfc.git "${HOME}/tfc"
+    torsocks git clone https://github.com/maqp/tfc.git "${HOME}/tfc"
     cd "${HOME}/tfc"
     git checkout development
 
-    torsocks -i python3 -m pip install -r "${HOME}/tfc/requirements-venv.txt" --require-hashes --no-deps
+    torsocks python3 -m pip install -r "${HOME}/tfc/requirements-venv.txt" --require-hashes --no-deps
 
     # Temporary fix for pypa/virtualenv issue #2350
     export DEB_PYTHON_INSTALL_LAYOUT='deb'
     python3 -m virtualenv "${HOME}/tfc/${VENV_NAME}" --system-site-packages --always-copy
 
     . "${HOME}/tfc/${VENV_NAME}/bin/activate"
-    torsocks -i "${HOME}/tfc/${VENV_NAME}/bin/pip3" install -r "${HOME}/tfc/requirements-dev.txt"
+    torsocks "${HOME}/tfc/${VENV_NAME}/bin/pip3" install -r "${HOME}/tfc/requirements-dev.txt"
     deactivate
 
     sudo cp "${HOME}/tfc/tfc.png"                   "/usr/share/pixmaps/"
@@ -1051,9 +1051,9 @@ function test_installer {
 }
 
 function wait_for_tor {
-    # Wait until torsocks connects properly to GitHub
+    # Wait until Torsocks connects properly to GitHub
     c_echo "Waiting for Tor..."
-    until torsocks wget -q https://raw.githubusercontent.com; do
+    until torsocks wget -T 10 -q https://raw.githubusercontent.com; do
         sleep 1
     done
 }
