@@ -407,6 +407,7 @@ function steps_before_network_kill {
     dpkg_check
     check_rm_existing_installation
 
+    wait_for_tor
     sudo torsocks -i -d apt update
     sudo torsocks -i -d apt install git gnome-terminal libssl-dev python3-pip python3-tk net-tools -y
     sudo torsocks -i -d git clone https://github.com/maqp/tfc.git ${INSTALL_DIR}
@@ -951,6 +952,7 @@ function install_developer {
     # install configuration, or preferably use the Qubes configuration.
     dpkg_check
 
+    wait_for_tor
     create_user_data_dir
 
     VENV_NAME="venv_tfc"
@@ -1046,6 +1048,14 @@ function test_installer {
     INSTALL_DIR='.'
     verify_tcb_requirements_files
     verify_files
+}
+
+function wait_for_tor {
+    # Wait until torsocks connects properly to GitHub
+    c_echo "Waiting for Tor..."
+    until torsocks curl -s https://raw.githubusercontent.com; do
+        sleep 1
+    done
 }
 
 
