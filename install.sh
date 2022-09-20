@@ -314,9 +314,8 @@ function verify_files {
 
 function c_echo {
     # Justify printed text to the center of the terminal.
-    printf "%*s\n" "$(( ( $("${#1}" | wc -c) + 80 ) / 2 ))" "${1}"
+    printf "%*s\n" "$(( ( $(echo "${1}" | wc -c) + 80 ) / 2 ))" "${1}"
 }
-
 
 function exit_with_message {
     # Print error message and exit the installer with flag 1.
