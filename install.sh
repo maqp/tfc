@@ -488,7 +488,7 @@ function remove_packages() {
     for dependency in "${dependency_list[@]}"; do
 
         # Find file that starts with the dependency name
-        dep_file_name=$(ls "${INSTALL_DIR}/${dependency}*")
+        dep_file_name=$(ls "${INSTALL_DIR}" | grep "^${dependency}")
 
         # Delete the file
         if [[ ${sudo_pwd} ]]; then
@@ -527,7 +527,6 @@ function remove_common_files {
 function install_virtualenv {
     # Some distros want virtualenv installed as sudo and other don't.
     # Install as both users to improve the chances of compatibility.
-
     sudo torsocks python3 -m pip install -r ${INSTALL_DIR}/requirements-venv.txt --require-hashes --no-deps
     torsocks      python3 -m pip install -r ${INSTALL_DIR}/requirements-venv.txt --require-hashes --no-deps
 }
