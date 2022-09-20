@@ -189,10 +189,10 @@ dependency_hashes['zipp-3.8.1.tar.gz']='05639feb20c7e8d3480ce17a52115a85bb2f0706
 
 pre_packages=("pip" "setuptools")
 virtualenv_packages=("zipp" "backports.entry_points_selectable" "filelock" "importlib_metadata" "six" "distlib" "appdirs" "platformdirs" "typing_extensions" "virtualenv")
-tcb_packages=("pycparser" "cffi" "setuptools" "argon2" "PyNaCl" "cryptography" "pyserial")
+tcb_packages=("pycparser" "cffi" "setuptools" "argon2_cffi_bindings" "argon2_cffi" "PyNaCl" "cryptography" "pyserial")
 requests_packages=("urllib3" "idna" "charset_normalizer" "certifi" "requests")
 flask_packages=("Werkzeug" "MarkupSafe" "Jinja2" "itsdangerous" "click" "Flask")
-tails_packages=("pyserial" "PySocks" "pycparser" "cffi" "cryptography" "PyNaCl" "argon2")
+tails_packages=("pyserial" "PySocks" "pycparser" "cffi" "cryptography" "PyNaCl" "argon2_cffi_bindings" "argon2_cffi")
 tails_packages+=("${requests_packages[@]}" "${flask_packages[@]}")
 
 # ----------------------------------------------------------------------------------------
