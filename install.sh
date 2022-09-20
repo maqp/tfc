@@ -507,7 +507,6 @@ function remove_common_files {
     $1 rm -r ${INSTALL_DIR}/launchers/
     $1 rm -r ${INSTALL_DIR}/tests/
     $1 rm    ${INSTALL_DIR}/.coveragerc
-    $1 rm    ${INSTALL_DIR}/.travis.yml
     $1 rm    ${INSTALL_DIR}/install.sh
     $1 rm    ${INSTALL_DIR}/install.sh.asc
     $1 rm    ${INSTALL_DIR}/pubkey.asc
