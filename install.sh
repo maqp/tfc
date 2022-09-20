@@ -527,6 +527,10 @@ function remove_common_files {
 function install_virtualenv {
     # Some distros want virtualenv installed as sudo and other don't.
     # Install as both users to improve the chances of compatibility.
+
+    # Temporary fix for pypa/virtualenv issue #2350
+    export DEB_PYTHON_INSTALL_LAYOUT='deb'
+
     sudo torsocks python3 -m pip install -r ${INSTALL_DIR}/requirements-venv.txt --require-hashes --no-deps
     torsocks      python3 -m pip install -r ${INSTALL_DIR}/requirements-venv.txt --require-hashes --no-deps
 }
