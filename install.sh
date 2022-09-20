@@ -1053,7 +1053,7 @@ function test_installer {
 function wait_for_tor {
     # Wait until torsocks connects properly to GitHub
     c_echo "Waiting for Tor..."
-    until torsocks curl -s https://raw.githubusercontent.com; do
+    until torsocks wget -q https://raw.githubusercontent.com; do
         sleep 1
     done
 }
