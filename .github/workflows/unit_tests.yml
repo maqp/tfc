@@ -1,0 +1,48 @@
+name: Unit Tests
+
+on:
+  push:
+    branches: [ "master", "development" ]
+  pull_request:
+    branches: [ "master", "development" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          echo "deb https://deb.torproject.org/torproject.org focal main" | sudo tee -a /etc/apt/sources.list.d/torproject.list
+          wget -O - -o /dev/null https://deb.torproject.org/torproject.org/A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89.asc | gpg --import
+          gpg --export A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89 | sudo apt-key add -
+          sudo apt update
+          sudo apt install python3-setuptools python3-tk tor -y
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov pyyaml coveralls
+          pip install -r requirements-dev.txt
+
+      - name: Unit Tests
+        run: |
+          py.test --cov=src --cov-report=xml tests/
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          directory: ./coverage/reports/
+          env_vars: OS,PYTHON
+          fail_ci_if_error: true
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          path_to_write_report: ./coverage/codecov_report.txt
+          verbose: true

@@ -1,9 +1,9 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2021  Markus Ottela
+Copyright (C) 2013-2022  Markus Ottela
 
 This file is part of TFC.
 
@@ -145,7 +145,7 @@ class TestSettings(TFCTestCase):
         self.assertIsNone(self.settings.validate_key_value_pair("tm_static_delay",     1, *self.args))
 
     @mock.patch('shutil.get_terminal_size', return_value=(64, 64))
-    def test_too_narrow_terminal_raises_fr_when_printing_settings(self, _: Any) -> None:
+    def test_too_narrow_terminal_raises_soft_error_when_printing_settings(self, _: Any) -> None:
         # Test
         self.assert_se("Error: Screen width is too small.", self.settings.print_settings)
 

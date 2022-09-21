@@ -1,9 +1,9 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2021  Markus Ottela
+Copyright (C) 2013-2022  Markus Ottela
 
 This file is part of TFC.
 
@@ -270,7 +270,7 @@ class TestPacket(TFCTestCase):
         self.assertIsNone(packet.assemble_and_store_file(self.ts, self.onion_pub_key, self.window_list))
         self.assertEqual(os.path.getsize(f'{DIR_RECV_FILES}Alice/test_file.txt'), 10000)
 
-    def test_disabled_file_reception_raises_fr_with_append_packet(self) -> None:
+    def test_disabled_file_reception_raises_soft_error_with_append_packet(self) -> None:
         # Setup
         packet             = Packet(self.onion_pub_key, ORIGIN_CONTACT_HEADER, FILE, self.contact, self.settings)
         packet.long_active = True
@@ -289,7 +289,7 @@ class TestPacket(TFCTestCase):
 
         self.assertEqual(packet.log_masking_ctr, len(packet_list))
 
-    def test_disabled_file_reception_raises_fr_with_end_packet(self) -> None:
+    def test_disabled_file_reception_raises_soft_error_with_end_packet(self) -> None:
         # Setup
         packet             = Packet(self.onion_pub_key, ORIGIN_CONTACT_HEADER, FILE, self.contact, self.settings)
         packet.long_active = True

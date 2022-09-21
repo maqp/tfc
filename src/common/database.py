@@ -1,9 +1,9 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2021  Markus Ottela
+Copyright (C) 2013-2022  Markus Ottela
 
 This file is part of TFC.
 
@@ -270,7 +270,7 @@ class MessageLog(object):
         return True
 
     def check_for_temp_database(self) -> None:
-        """"Check if temporary log database exists."""
+        """Check if temporary log database exists."""
         if os.path.isfile(self.database_temp):
             if self.verify_file(self.database_temp):
                 self.replace_database()

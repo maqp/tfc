@@ -1,9 +1,9 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2021  Markus Ottela
+Copyright (C) 2013-2022  Markus Ottela
 
 This file is part of TFC.
 
@@ -80,7 +80,9 @@ class MasterKey(object):
 
     def get_available_memory(self) -> int:
         """Return the amount of available memory in the system."""
-        fields    = os.popen("/bin/cat /proc/meminfo").read().splitlines()
+        with open('/proc/meminfo') as f:
+            fields = f.read().splitlines()
+
         field     = [f for f in fields if f.startswith("MemAvailable")][0]
         mem_avail = int(field.split()[1])
 

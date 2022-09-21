@@ -1,9 +1,9 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2021  Markus Ottela
+Copyright (C) 2013-2022  Markus Ottela
 
 This file is part of TFC.
 
@@ -313,7 +313,7 @@ class TestReceiverLoadPSK(TFCTestCase):
         """Post-test actions."""
         tear_queues(self.queues)
 
-    def test_raises_fr_when_traffic_masking_is_enabled(self) -> None:
+    def test_raises_soft_error_when_traffic_masking_is_enabled(self) -> None:
         # Setup
         self.settings.traffic_masking = True
 

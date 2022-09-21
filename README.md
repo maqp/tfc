@@ -3,14 +3,14 @@
 ### Tinfoil Chat
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Python 3.7|3.8|3.9](https://img.shields.io/badge/Python-3.7%20%7C%203.8%20%7C%203.9-blue)](https://img.shields.io/badge/Python-3.7%20%7C%203.8%20%7C%203.9-blue)
+[![Python 3.9|3.10](https://img.shields.io/badge/Python-3.9%20%7C%203.10-blue)](https://img.shields.io/badge/Python-3.9%20%7C%203.10-blue)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
-[![Build Status](https://travis-ci.org/maqp/tfc.svg?branch=master)](https://travis-ci.org/maqp/tfc) 
-[![Coverage Status](https://coveralls.io/repos/github/maqp/tfc/badge.svg?branch=master)](https://coveralls.io/github/maqp/tfc?branch=master)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/71fa9cc1da424f52a576a04c2722da26)](https://www.codacy.com/manual/maqp/tfc?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=maqp/tfc&amp;utm_campaign=Badge_Grade)
+[![Unit Tests](https://github.com/maqp/tfc/actions/workflows/unit_tests.yml/badge.svg?branch=master)](https://github.com/maqp/tfc/actions/workflows/unit_tests.yml)
+[![codecov](https://codecov.io/gh/maqp/tfc/branch/master/graph/badge.svg?token=RJv2hFFdnR)](https://codecov.io/gh/maqp/tfc)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/4a3de2a3691f44029d9c779a01b912e1)](https://www.codacy.com/manual/maqp/tfc?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=maqp/tfc&amp;utm_campaign=Badge_Grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/maqp/tfc/badge)](https://www.codefactor.io/repository/github/maqp/tfc)
 [![Requirements Status](https://requires.io/github/maqp/tfc/requirements.svg?branch=master)](https://requires.io/github/maqp/tfc/requirements/?branch=master)
-[![Snyk Report](https://snyk.io/test/github/maqp/tfc/badge.svg)](https://snyk.io/test/github/maqp/tfc)
+[![Snyk Report](https://snyk.io/test/github/maqp/tfc/badge.svg)](https://snyk.io/test/github/maqp/tfc) 
 
 Tinfoil Chat (TFC) is a
 [FOSS](https://www.gnu.org/philosophy/free-sw.html)+[FHD](https://www.gnu.org/philosophy/free-hardware-designs.en.html)
@@ -94,7 +94,7 @@ TFC is designed to be used in hardware configuration that provides strong
 [endpoint security](https://en.wikipedia.org/wiki/Endpoint_security).
 This configuration uses three computers per endpoint: Encryption and decryption processes
 are separated from each other onto two isolated computers, the Source Computer, and the 
-Destination Computer. These two devices are are dedicated for TFC. This split 
+Destination Computer. These two devices are dedicated for TFC. This split 
 [TCB](https://en.wikipedia.org/wiki/Trusted_computing_base)
 interacts with the network via the user's daily computer, called the Networked Computer.
 
@@ -173,10 +173,10 @@ Computer, as the data diode prevents all outbound traffic.
 
 2. The Source Computer uses the alternative data diode model. This means it can output
 encrypted data to the insecure Networked Computer without having to worry about being
-compromised: The data diode protects the Source Computer from all attacks by physically
-preventing all inbound traffic. The Transmitter Program is also designed to work under
-the data flow constraints introduced by the data diode; To allow key exchanges, the short 
-elliptic-curve public keys are input manually by the user. 
+compromised. The data diode lacks the hardware that would allow transmission of data to the 
+Source Computer, which protects the Source Computer from all remote attacks. The Transmitter 
+Program is also designed to work under the data flow constraints introduced by the data diode; 
+To allow key exchanges, the short elliptic-curve public keys are input manually by the user. 
 
 3. The Networked Computer is designed under the assumption it can be compromised by a
 remote attacker: All sensitive data that passes through the Relay Program is protected by 
@@ -195,16 +195,16 @@ are of no value to the attacker.
 For some users the
 [APTs](https://en.wikipedia.org/wiki/Advanced_persistent_threat) 
 of the modern world are not part of the threat model, and for others, the 
-requirement of having to build the data diode by themselves is a deal breaker. Yet, for 
+requirement of having to build the data diode by themselves is a deal-breaker. Yet, for 
 all of them, storing private keys on a networked device is still a security risk.
 
 To meet these users' needs, TFC can also be run in three dedicated 
 [Qubes](https://www.qubes-os.org/)
 virtual machines. With the Qubes configuration, the isolation is provided by the 
 [Xen hypervisor](https://xenproject.org/users/security/), 
-and the unidirectionality of data flow between the VMs is enforced with Qubes' qrexec 
-framework. This intermediate isolation mechanism runs on a single computer which means no 
-hardware data diode is needed. 
+and the unidirectionality of data flow between the VMs is enforced with Qubes' 
+[qrexec framework](https://www.qubes-os.org/doc/qrexec/). 
+This intermediate isolation mechanism runs on a single computer which means no hardware data diode is needed. 
 
 
 ### Supported Operating Systems
@@ -212,23 +212,23 @@ hardware data diode is needed.
 #### Source/Destination Computer
 - Debian 11
 - PureOS 10.0
-- *buntu 20.04 LTS / 21.10
-- Pop!_OS 20.04 LTS / 21.04
-- Linux Mint 20.2
-- LMDE 4
-- Zorin OS 16
-- Qubes 4.0.4 (Debian 10 VM)
+- *buntu 22.04 LTS
+- Pop!_OS 22.04 LTS
+- Linux Mint 21
+- LMDE 5
+- Zorin OS 16.1
+- Qubes 4.1.1 (Debian 11 VM)
 
 #### Networked Computer
-- Tails 4.24
+- Tails 5.5
 - Debian 11
 - PureOS 10.0
-- *buntu 20.04 LTS / 21.10
-- Pop!_OS 20.04 LTS / 21.04
-- Linux Mint 20.2
-- LMDE 4
-- Zorin OS 16
-- Qubes 4.0.4 (Debian 10 VM)
+- *buntu 22.04 LTS
+- Pop!_OS 22.04 LTS
+- Linux Mint 21
+- LMDE 5
+- Zorin OS 16.1
+- Qubes 4.1.1 (Debian 11 VM)
 
 
 ### More information

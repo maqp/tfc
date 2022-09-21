@@ -1,9 +1,9 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2021  Markus Ottela
+Copyright (C) 2013-2022  Markus Ottela
 
 This file is part of TFC.
 
@@ -208,8 +208,8 @@ class TestArgon2KDF(unittest.TestCase):
         # Unzip, compile, and test the command-line utility.
         subprocess.Popen(f'unzip {file_name}', shell=True).wait()
         os.chdir('phc-winner-argon2-master/')
-        subprocess.Popen('make',      shell=True).wait()
-        subprocess.Popen('make test', shell=True).wait()
+        subprocess.Popen(f'/usr/bin/make',      shell=True).wait()
+        subprocess.Popen('/usr/bin/make test', shell=True).wait()
 
     def tearDown(self) -> None:
         """Post-test actions."""

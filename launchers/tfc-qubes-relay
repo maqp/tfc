@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # TFC - Onion-routed, endpoint secure messaging system
-# Copyright (C) 2013-2021  Markus Ottela
+# Copyright (C) 2013-2022  Markus Ottela
 #
 # This file is part of TFC.
 #

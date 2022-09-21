@@ -1,9 +1,9 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2021  Markus Ottela
+Copyright (C) 2013-2022  Markus Ottela
 
 This file is part of TFC.
 
@@ -100,7 +100,7 @@ class File(object):
 
     @staticmethod
     def process_file_data(data: bytes) -> bytes:
-        """Compress, encrypt and encode file data.
+        """Compress and encrypt file data.
 
         Compress file to reduce data transmission time. Add an inner
         layer of encryption to provide sender-based control over partial

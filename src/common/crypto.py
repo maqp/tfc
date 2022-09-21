@@ -1,9 +1,9 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2021  Markus Ottela
+Copyright (C) 2013-2022  Markus Ottela
 
 This file is part of TFC.
 
@@ -639,8 +639,8 @@ def byte_padding(bytestring: bytes  # Bytestring to be padded
     flow confidentiality: During traffic masking, TFC will output a
     constant stream of padded packets at constant intervals that hides
     metadata about message length (i.e., the adversary won't be able to
-    distinguish when transmission of packet or series of packets starts
-    and stops), as well as the type (message/file) of transferred data.
+    distinguish when transmission of packet or series of packets begins
+    and ends), as well as the type (message/file) of transferred data.
 
     TFC uses the PKCS #7 padding scheme described in RFC 2315 and RFC 5652:
         https://tools.ietf.org/html/rfc2315#section-10.3

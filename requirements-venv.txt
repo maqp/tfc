@@ -1,24 +1,23 @@
 # Sub-dependencies are listed below dependencies
 
 # Virtual environment (Used to create an isolated Python environment for TFC dependencies)
-virtualenv==20.10.0                       --hash=sha512:70e97f27d3bc48f5f4de78257dc6dd36c98b80b3a65e40a84946a3ba882585ac69ec5f7982617f37da66a4cb2f288b52a2daa54a465f747e8300f0fb08b396d9 \
-                                          --hash=sha512:df940aa29801a39d39be46d3518a99e93efb2113650abf81d00b4545183ec6806823ce8b754c5a3c951cb64e941944421046c709ed3de6a925489e5ac1988d48
+virtualenv==20.16.5                       --hash=sha512:629c0a0071fd1b80998bd538a0b5af8dfca8567ac1999c65c177a72838197e4ecb98156789f7cda24e3ade4aced1363f9968c86f3c5a34e74c5ee2bcfc541841 \
+                                          --hash=sha512:2d4f96057eb8fea5da07126bbc656306b8ebc2db1c82a84b784fcb82cd1959a571dc1f016dead9561e1d073a8b06e10f2e225d6484b363b960adaa64239826d3
 appdirs==1.4.4                            --hash=sha512:8e6c1ea544013ea2567cda2d8b8c7b441bc50ac689aa7f95de67e3795aa083e9592c687d74fdbb37f5a75e0beab398fe47df5bced14ee9c204cfe5ecc364ef44 \
                                           --hash=sha512:8b0cdd9fd471d45b186aa47607691cf378dabd3edc7b7026a57bd6d6f57698e86f440818a5e23ba4288b35d6bb8cb6eb0106eae8aab09d8863ee15025d300883
-backports.entry-points-selectable==1.1.0  --hash=sha512:3e1bb8c596b7e8de24eaa4a7360fc691ee2fcd8d106488a988c88ba18fd3d2bd2f4bf05aa88c24e855ffedceb1f0c7c2699556a214d7d7903e91ba5c30e1e8e2 \
-                                          --hash=sha512:86c794899cac2f916b36388fd071a619ef27743ac94f0bb058e6157d02481109088ed7891c7775c2f859b92150315acce9052b04ae000363c54af052fbf50ea7
-distlib==0.3.3                            --hash=sha512:5dac94cf28e93820cd26093f63607a538e38f9e8fe8e45a8989e01694d98bf855e1ad9499296dab31401bd62943c01fe15fe87f2c30114fbccef974e98b6c6b5 \
-                                          --hash=sha512:834ed7314b2c3aecaaa833a275aac9ae72feb27e62c4e712b30bb5ac526bd38d18756d51ca8c95015953dac7f0cfd7e60382c0a7bdf330d8a01602ccb7344f0d
-filelock==3.3.2                           --hash=sha512:b53f12a19fa34afb999de4f2db84098c1ec5aa1624c45d1a0225b351ea8aea64895c525a56c9472575cb7e2bbf939718f5e6e0d667c24f6ed94c4900c8d4d361 \
-                                          --hash=sha512:632b3c0f17c1c41f6d355e9599f1ddaeee51997f3b8679a2bae06dd55c6b27f65ac447813ecb6a128dd3882af21d3abfecfe94a74509a467d9cb99665fb7a7e2
-importlib-metadata==4.8.1                 --hash=sha512:e818691aef3cc566da0e031d588832be7a5b1b5ccffd9240cf8c1b1cf50efc3ee252048f9ce92d5d22d8510e80fb3b7dd91d4cdcfc2678ced1f1671b68bedab7 \
-                                          --hash=sha512:ad9ab435d4a49a12c9440d1d53cfc835fd889fee032db6ad1dded59b6e453f26ef97bca303e22d945124295ec7c50fa55837a13e7790dea01562a1724571f9fe
-zipp==3.6.0                               --hash=sha512:c57fd39f44fb6a3a38556a20e58d54c7820774c509b2f730488f607ee4be014a544c11e948c0226c75c7447b69c9b3e2d9708481cb5bdc5464486c0eed1e0bf4 \
-                                          --hash=sha512:8e21b0a757ed9ebddeca43d3e4b64549dc4e59f781704626b0b2b0a117752b84798a0484cceedd4684ee0459643df4d0f479e64a143c8d9337d2b66951a7b227
-platformdirs==2.4.0                       --hash=sha512:346835df30c4314e3434493067e5c5c0e795eec6311220bf4b89311ac4d40e81d25ebffd8b1fe4b9cf116965c8c8011892b03926cbea324209e5971d1243d83e \
-                                          --hash=sha512:476f69a1bf91468f2d0285178adabf2f9fccc9abdb084008a7cce46535b1cc2e903511f8d02e03494ad9d26ccba81a0cce8e87e491ce3264582b01f6c93a2c7b
-typing-extensions==3.10.0.2               --hash=sha512:71bcad371e66df0cc3dbf2e59d26cbdab47da5bee76779dbfe25201bbb910b91595a9f8d08e6b6761fffd523b9f59d83ab2c3d6f9000968e1ae5bcb9f4a821c3 \
-                                          --hash=sha512:3f530426108369c946b6df76d7120cbbfba65d167059a21e9f88862433ce61cb84390f186c4110afe28ebe0f0cdcb9d95a95d3c008246ac0f578e03fb1496e0d \
-                                          --hash=sha512:171ada56758fb04328a2cafefe80b70fbf166f2d799406883df642927964925ca73f04d0646661cd4fd016dfb5e1856b84f362e3b404c27b368ca06a09cf87db
+backports.entry-points-selectable==1.1.1  --hash=sha512:d3f78a1f0f119cd6d582ace247739554662243609ea608b697e156f4f7a65f8e201fd0372b84553b8e762ac4f7e0141bb40cf117fdd1efc08c299b5a7bc9f0bd \
+                                          --hash=sha512:117f177ef150350c0befe84c6737d7e35044b1559529dd98c5c4b8341d5f68d975cc088a9e0c50025913725172237026385c374dac9941e2e52bf5f4724a461c
+distlib==0.3.6                            --hash=sha512:7046ad8707013371b68a805fb437e7f29d883694d6870012f2db197f8bdf472aa262d5e549852c4dbccbd5af5cb0a402d60f8cad845e43df9429a2c437e28187 \
+                                          --hash=sha512:27f3a59f9175a92befb9a65a66cd0b8eb65185dab6fa13ef94e85ca69c2bc1b7281ce1522601034007cb98677ba9237a46224df4adc70ed966db7e131e073636
+filelock==3.8.0                           --hash=sha512:50b2529305be50e9f1e1faf3a2d38133f65d71b15aed767b167b48350487fd4d83cb03e1a6b460362d34b6d5a8fcf2014162d8626ae513a4a068e804a63d3894 \
+                                          --hash=sha512:95fb4d420a316199a658e20f385d5eec9db9398a78803cad581f73efb136d2935308a04b1bcf6cebd71a8601f72d006a491937664ec0b70904c305c5796a4bf1
+importlib-metadata==4.12.0                --hash=sha512:8cef31711b7b3f1e078cc223e1a579764aa5d52af47a4344f212d030655e8cf6b2d6f01eab73fbfb7457e4ad5bc9d3f3fd21f6f5f706cbb463c65b4d8b0ac25a \
+                                          --hash=sha512:a7e3b8876665880a42bab885014199eed90efafcb386b89fddf62f3a6dbf51b192a0b9d208a40fd1f8b6db9d1bf80cf6d6753c1073196daa54dffa22a627443f
+zipp==3.8.1                               --hash=sha512:d81c4259c49bc8f67440d74fab51f488dedc518591b63231699f5c9d6ce2c5f7fa56a4ee2d44dc4fadddce0dc72781af7c8a018a0d95bcdf52ba3985d834d034 \
+                                          --hash=sha512:05639feb20c7e8d3480ce17a52115a85bb2f0706ee0c1b15589b7556bb914ef30a1a34fa743217694b753bb5e72095c90fab7dfee85f2dbf461347322acb4d2e
+platformdirs==2.5.2                       --hash=sha512:61784584b6d51d775a11e13123803202e04531ef455801943ef9b27c1ed8e9c3c9fb51f70954e4ab17cf0647b45778dd7587b645561edd6252359faf4d2a1a15 \
+                                          --hash=sha512:b0b0dee3ac4176e64f302b3d34e253b2e33784160051b9dafb563962e597df75f2c9f714c050d5bdeb1769a1f56c2878a47e9a42361596e287ae7b2afe870370
+typing-extensions==4.3.0                  --hash=sha512:6538edf5912e90287ea02716bad89efab407becb7c96cab8d01606e8a8f7e2418e5c7ca80943357c2b09411954e011f8505497fac5f2fc99f2ae611432d799bf \
+                                          --hash=sha512:69e4a393aaaaa45d20f32027cc35c77a950bf1f9b82f0eb2906a4b466eb319b867b5f53c0afc71ca613817d7e37d305fe73c50e93b1d4b389fdb8f1e4d5f8535
 six==1.16.0                               --hash=sha512:656b010ed36d7486c07891c0247c7258faf0d1a68c5fb0a35db9c5b670eb712d5e470b023ffd568d7617e0ae77340820397014790d14fda4d13593fa2bd1c76f \
                                           --hash=sha512:076fe31c8f03b0b52ff44346759c7dc8317da0972403b84dfe5898179f55acdba6c78827e0f8a53ff20afe8b76432c6fe0d655a75c24259d9acbaa4d9e8015c0

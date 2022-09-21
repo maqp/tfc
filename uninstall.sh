@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # TFC - Onion-routed, endpoint secure messaging system
-# Copyright (C) 2013-2021  Markus Ottela
+# Copyright (C) 2013-2022  Markus Ottela
 #
 # This file is part of TFC.
 #
@@ -19,7 +19,7 @@
 
 function yn_prompt {
     echo "${1} (Y/N): "
-    read -s -n 1 REPLY
+    read -r -s -n 1 REPLY
 
     if [[ $REPLY =~ ^[Yy]$ ]]
     then

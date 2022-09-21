@@ -1,9 +1,9 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2021  Markus Ottela
+Copyright (C) 2013-2022  Markus Ottela
 
 This file is part of TFC.
 
@@ -50,7 +50,7 @@ class TestProcessGroupCommand(TFCTestCase):
         """Post-test actions."""
         tear_queues(self.queues)
 
-    def test_raises_fr_when_traffic_masking_is_enabled(self) -> None:
+    def test_raises_soft_error_when_traffic_masking_is_enabled(self) -> None:
         # Setup
         self.settings.traffic_masking = True
 
@@ -177,7 +177,7 @@ class TestGroupAddMember(TFCTestCase):
 
     @mock.patch('time.sleep',     return_value=None)
     @mock.patch('builtins.input', return_value='No')
-    def test_raises_fr_if_specified_group_does_not_exist_and_user_chooses_no(self, *_: Any) -> None:
+    def test_raises_soft_error_if_specified_group_does_not_exist_and_user_chooses_no(self, *_: Any) -> None:
         self.assert_se("Group creation aborted.", group_add_member, 'test_group', [], *self.args)
 
     def test_too_large_final_member_list_raises_soft_error(self) -> None:

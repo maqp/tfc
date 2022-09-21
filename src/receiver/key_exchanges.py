@@ -1,9 +1,9 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2021  Markus Ottela
+Copyright (C) 2013-2022  Markus Ottela
 
 This file is part of TFC.
 
@@ -66,8 +66,8 @@ def protect_kdk(kdk: bytes) -> None:
     root.withdraw()
 
     try:
-        if root.clipboard_get() == b58encode(kdk):  # type: ignore
-            root.clipboard_clear()  # type: ignore
+        if root.clipboard_get() == b58encode(kdk):
+            root.clipboard_clear()
     except tkinter.TclError:
         pass
 
