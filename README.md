@@ -215,7 +215,7 @@ This intermediate isolation mechanism runs on a single computer which means no h
 #### Source/Destination Computer
 - Debian 11
 - PureOS 10.0
-- *buntu 22.04 LTS / 22.10
+- *buntu 22.04 LTS
 - Pop!_OS 22.04 LTS
 - Linux Mint 21
 - LMDE 5
@@ -226,7 +226,7 @@ This intermediate isolation mechanism runs on a single computer which means no h
 - Tails 5.4
 - Debian 11
 - PureOS 10.0
-- *buntu 22.04 LTS / 22.10
+- *buntu 22.04 LTS
 - Pop!_OS 22.04 LTS
 - Linux Mint 21
 - LMDE 5
