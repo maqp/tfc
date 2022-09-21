@@ -3,11 +3,11 @@
 ### Tinfoil Chat
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Python 3.9|3.10](https://img.shields.io/badge/Python-3.9%20%7C%203.10-blue)](https://img.shields.io/badge/Python-3.9%20%7C%203.10-blue)
+[![Python 3.9|3.10](https://img.shields.io/badge/Python-3.9%20%7C%203.10-blue)](https://python.org)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 [![Unit Tests](https://github.com/maqp/tfc/actions/workflows/unit_tests.yml/badge.svg?branch=master)](https://github.com/maqp/tfc/actions/workflows/unit_tests.yml)
 [![codecov](https://codecov.io/gh/maqp/tfc/branch/master/graph/badge.svg?token=RJv2hFFdnR)](https://codecov.io/gh/maqp/tfc)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/4a3de2a3691f44029d9c779a01b912e1)](https://www.codacy.com/manual/maqp/tfc?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=maqp/tfc&amp;utm_campaign=Badge_Grade)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/71fa9cc1da424f52a576a04c2722da26)](https://www.codacy.com/gh/maqp/tfc/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=maqp/tfc&amp;utm_campaign=Badge_Grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/maqp/tfc/badge)](https://www.codefactor.io/repository/github/maqp/tfc)
 [![Requirements Status](https://requires.io/github/maqp/tfc/requirements.svg?branch=master)](https://requires.io/github/maqp/tfc/requirements/?branch=master)
 [![Snyk Report](https://snyk.io/test/github/maqp/tfc/badge.svg)](https://snyk.io/test/github/maqp/tfc) 
