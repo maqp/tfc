@@ -64,7 +64,7 @@ def store_unique(file_data: bytes,  # File data to store
 def main() -> None:
     """Store data from STDIN to unique file for Relay/Receiver Program.
 
-    To prevent adversaries from delivering malicious binaries on DestinationVM,
+    To prevent adversaries from delivering malicious binaries to DestinationVM,
     this utility encodes received raw bytes with Base85, that is decoded by the
     Receiver Program prior to further authentication.
     """

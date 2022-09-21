@@ -590,7 +590,7 @@ class TestGatewaySettings(TFCTestCase):
         self.assertIsNone(settings.validate_key_value_pair("use_serial_usb_adapter", True))
 
     @mock.patch('shutil.get_terminal_size', return_value=(64, 64))
-    def test_too_narrow_terminal_raises_fr_when_printing_settings(self, _: Any) -> None:
+    def test_too_narrow_terminal_raises_soft_error_when_printing_settings(self, _: Any) -> None:
         settings = GatewaySettings(operation=TX, local_test=True, dd_sockets=True, qubes=False)
         self.assert_se("Error: Screen width is too small.", settings.print_settings)
 

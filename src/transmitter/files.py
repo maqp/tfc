@@ -100,7 +100,7 @@ class File(object):
 
     @staticmethod
     def process_file_data(data: bytes) -> bytes:
-        """Compress, encrypt and encode file data.
+        """Compress and encrypt file data.
 
         Compress file to reduce data transmission time. Add an inner
         layer of encryption to provide sender-based control over partial

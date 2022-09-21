@@ -270,7 +270,7 @@ class MessageLog(object):
         return True
 
     def check_for_temp_database(self) -> None:
-        """"Check if temporary log database exists."""
+        """Check if temporary log database exists."""
         if os.path.isfile(self.database_temp):
             if self.verify_file(self.database_temp):
                 self.replace_database()

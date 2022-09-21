@@ -535,7 +535,7 @@ class TestChangeMasterKey(TFCTestCase):
         cleanup(self.unit_test_dir)
         tear_queues(self.queues)
 
-    def test_raises_fr_during_traffic_masking(self) -> None:
+    def test_raises_soft_error_during_traffic_masking(self) -> None:
         # Setup
         self.settings.traffic_masking = True
 

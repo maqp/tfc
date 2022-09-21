@@ -66,8 +66,8 @@ def protect_kdk(kdk: bytes) -> None:
     root.withdraw()
 
     try:
-        if root.clipboard_get() == b58encode(kdk):  # type: ignore
-            root.clipboard_clear()  # type: ignore
+        if root.clipboard_get() == b58encode(kdk):
+            root.clipboard_clear()
     except tkinter.TclError:
         pass
 

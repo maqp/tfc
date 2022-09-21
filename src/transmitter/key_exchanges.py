@@ -75,7 +75,7 @@ def export_onion_service_data(contact_list:  'ContactList',
     to create the symmetric keys that protect the messages. That private
     key is never exported to the Networked Computer.
 
-    Access to this key does not give any to user any information other
+    Access to this key does not give to any user any information other
     than the v3 Onion Address. However, if they have compromised Relay
     Program to gain access to the key, they can see its public part
     anyway.

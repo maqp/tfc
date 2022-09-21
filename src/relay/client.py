@@ -285,7 +285,7 @@ def check_for_files(url_token:     str,
                     session:       'Session',
                     queues:        'QueueDict'
                     ) -> None:
-    """See if a file is available from contact.."""
+    """See if a file is available from contact."""
     try:
         file_data = session.get(f"http://{onion_addr}.onion/{url_token}/files", stream=True).content
         if file_data:
@@ -338,7 +338,7 @@ def g_msg_manager(queues: 'QueueDict', unit_test: bool = False) -> None:
     is received, existing contacts are displayed under "known contacts",
     and non-existing contacts are displayed under "unknown contacts".
     """
-    existing_contacts = []  # type: List[bytes]
+    existing_contacts      = []  # type: List[bytes]
     group_management_queue = queues[GROUP_MGMT_QUEUE]
 
     while True:

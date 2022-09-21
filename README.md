@@ -97,7 +97,7 @@ TFC is designed to be used in hardware configuration that provides strong
 [endpoint security](https://en.wikipedia.org/wiki/Endpoint_security).
 This configuration uses three computers per endpoint: Encryption and decryption processes
 are separated from each other onto two isolated computers, the Source Computer, and the 
-Destination Computer. These two devices are are dedicated for TFC. This split 
+Destination Computer. These two devices are dedicated for TFC. This split 
 [TCB](https://en.wikipedia.org/wiki/Trusted_computing_base)
 interacts with the network via the user's daily computer, called the Networked Computer.
 
@@ -176,10 +176,10 @@ Computer, as the data diode prevents all outbound traffic.
 
 2. The Source Computer uses the alternative data diode model. This means it can output
 encrypted data to the insecure Networked Computer without having to worry about being
-compromised: The data diode protects the Source Computer from all attacks by physically
-preventing all inbound traffic. The Transmitter Program is also designed to work under
-the data flow constraints introduced by the data diode; To allow key exchanges, the short 
-elliptic-curve public keys are input manually by the user. 
+compromised. The data diode lacks the hardware that would allow transmission of data to the 
+Source Computer, which protects the Source Computer from all remote attacks. The Transmitter 
+Program is also designed to work under the data flow constraints introduced by the data diode; 
+To allow key exchanges, the short elliptic-curve public keys are input manually by the user. 
 
 3. The Networked Computer is designed under the assumption it can be compromised by a
 remote attacker: All sensitive data that passes through the Relay Program is protected by 
@@ -198,16 +198,16 @@ are of no value to the attacker.
 For some users the
 [APTs](https://en.wikipedia.org/wiki/Advanced_persistent_threat) 
 of the modern world are not part of the threat model, and for others, the 
-requirement of having to build the data diode by themselves is a deal breaker. Yet, for 
+requirement of having to build the data diode by themselves is a deal-breaker. Yet, for 
 all of them, storing private keys on a networked device is still a security risk.
 
 To meet these users' needs, TFC can also be run in three dedicated 
 [Qubes](https://www.qubes-os.org/)
 virtual machines. With the Qubes configuration, the isolation is provided by the 
 [Xen hypervisor](https://xenproject.org/users/security/), 
-and the unidirectionality of data flow between the VMs is enforced with Qubes' qrexec 
-framework. This intermediate isolation mechanism runs on a single computer which means no 
-hardware data diode is needed. 
+and the unidirectionality of data flow between the VMs is enforced with Qubes' 
+[qrexec framework](https://www.qubes-os.org/doc/qrexec/). 
+This intermediate isolation mechanism runs on a single computer which means no hardware data diode is needed. 
 
 
 ### Supported Operating Systems
