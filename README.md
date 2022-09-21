@@ -223,7 +223,7 @@ This intermediate isolation mechanism runs on a single computer which means no h
 - Qubes 4.1.1 (Debian 11 VM)
 
 #### Networked Computer
-- Tails 5.4
+- Tails 5.5
 - Debian 11
 - PureOS 10.0
 - *buntu 22.04 LTS
