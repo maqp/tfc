@@ -517,6 +517,7 @@ function remove_packages() {
 function remove_common_files {
     # Remove files that become unnecessary after installation.
     $1 rm -r ${INSTALL_DIR}/.git/
+    $1 rm -r ${INSTALL_DIR}/.github/
     $1 rm -r ${INSTALL_DIR}/launchers/
     $1 rm -r ${INSTALL_DIR}/tests/
     $1 rm    ${INSTALL_DIR}/.coveragerc
