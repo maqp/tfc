@@ -72,7 +72,10 @@ def gateway_loop(queues:    Dict[bytes, 'Queue[Tuple[datetime, bytes]]'],
 
     while True:
         with ignored(EOFError, KeyboardInterrupt):
-            queue.put((datetime.now(), gateway.read()))
+            if gateway.test_run:
+                time.sleep(0.1)
+            else:
+                queue.put((datetime.now(), gateway.read()))
             if unit_test:
                 break
 
@@ -96,6 +99,7 @@ class Gateway(object):
         self.rx_serial  = None  # type: Optional[serial.Serial]
         self.rx_socket  = None  # type: Optional[multiprocessing.connection.Connection]
         self.tx_socket  = None  # type: Optional[multiprocessing.connection.Connection]
+        self.test_run   = test_run
 
         # Initialize Reed-Solomon erasure code handler
         self.rs = RSCodec(2 * self.settings.session_serial_error_correction)
@@ -109,7 +113,7 @@ class Gateway(object):
                 self.client_establish_socket()
             if self.settings.software_operation in [NC, RX]:
                 self.server_establish_socket()
-        elif not self.settings.qubes and not test_run:
+        elif not self.settings.qubes and not self.test_run:
             self.establish_serial()
 
     def establish_serial(self) -> None:
