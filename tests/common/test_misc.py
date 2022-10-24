@@ -276,6 +276,7 @@ class TestProcessArguments(unittest.TestCase):
                 self.local_test         = True
                 self.data_diode_sockets = True
                 self.qubes              = False
+                self.test_run           = False
 
         class MockParser(object):
             """MockParse object."""
@@ -299,7 +300,7 @@ class TestProcessArguments(unittest.TestCase):
         argparse.ArgumentParser = self.o_argparse
 
     def test_process_arguments(self) -> None:
-        self.assertEqual(process_arguments(), (RX, True, True, False))
+        self.assertEqual(process_arguments(), (RX, True, True, False, False))
 
 
 class TestReadableSize(unittest.TestCase):

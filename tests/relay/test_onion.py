@@ -106,7 +106,7 @@ class TestOnionService(unittest.TestCase):
         queues[ONION_KEY_QUEUE].put((bytes(ONION_SERVICE_PRIVATE_KEY_LENGTH), b'\x01'))
 
         # Test
-        self.assertIsNone(onion_service(queues))
+        self.assertIsNone(onion_service(queues, False))
 
         # Teardown
         tear_queues(queues)
@@ -131,7 +131,34 @@ class TestOnionService(unittest.TestCase):
 
         # Test
         with mock.patch("time.sleep", return_value=None):
-            self.assertIsNone(onion_service(queues))
+            self.assertIsNone(onion_service(queues, False))
+
+        port, address = queues[TOR_DATA_QUEUE].get()
+        self.assertIsInstance(port, int)
+        self.assertEqual(validate_onion_addr(address), '')
+        self.assertEqual(queues[EXIT_QUEUE].get(), EXIT)
+
+        # Teardown
+        tear_queues(queues)
+
+    @mock.patch('shlex.split',                              return_value=['NOTICE', 'BOOTSTRAP', 'PROGRESS=100',
+                                                                          'TAG=done', 'SUMMARY=Done'])
+    @mock.patch('stem.control.Controller.from_socket_file', return_value=MagicMock())
+    @mock.patch('stem.process.launch_tor_with_config',      return_value=MagicMock())
+    def test_test_run(self, *_: Any) -> None:
+        # Setup
+        queues = gen_queue_dict()
+
+        def queue_delayer() -> None:
+            """Place Onion Service data into queue after delay."""
+            time.sleep(0.5)
+            queues[ONION_CLOSE_QUEUE].put(EXIT)
+
+        threading.Thread(target=queue_delayer).start()
+
+        # Test
+        with mock.patch("time.sleep", return_value=None):
+            self.assertIsNone(onion_service(queues, True))
 
         port, address = queues[TOR_DATA_QUEUE].get()
         self.assertIsInstance(port, int)
@@ -153,7 +180,7 @@ class TestOnionService(unittest.TestCase):
         queues[ONION_KEY_QUEUE].put((bytes(ONION_SERVICE_PRIVATE_KEY_LENGTH), b'\x01'))
 
         # Test
-        self.assertIsNone(onion_service(queues))
+        self.assertIsNone(onion_service(queues, False))
 
         # Teardown
         tear_queues(queues)
@@ -172,7 +199,7 @@ class TestOnionService(unittest.TestCase):
         queues[ONION_KEY_QUEUE].put((bytes(ONION_SERVICE_PRIVATE_KEY_LENGTH), b'\x01'))
 
         # Test
-        self.assertIsNone(onion_service(queues))
+        self.assertIsNone(onion_service(queues, False))
 
         # Teardown
         tear_queues(queues)
@@ -198,7 +225,7 @@ class TestOnionService(unittest.TestCase):
 
         # Test
         with self.assertRaises(SystemExit):
-            onion_service(queues)
+            onion_service(queues, False)
 
         # Teardown
         tear_queues(queues)
