@@ -88,6 +88,7 @@ class Gateway(object):
                  local_test: bool,
                  dd_sockets: bool,
                  qubes:      bool,
+                 test_run:   bool = False
                  ) -> None:
         """Create a new Gateway object."""
         self.settings   = GatewaySettings(operation, local_test, dd_sockets, qubes)
@@ -108,7 +109,7 @@ class Gateway(object):
                 self.client_establish_socket()
             if self.settings.software_operation in [NC, RX]:
                 self.server_establish_socket()
-        elif not self.settings.qubes:
+        elif not self.settings.qubes and not test_run:
             self.establish_serial()
 
     def establish_serial(self) -> None:
