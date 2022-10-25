@@ -95,7 +95,7 @@ def main() -> None:
     ensure_dir(working_dir)
     os.chdir(working_dir)
 
-    operation, local_test, data_diode_sockets, qubes = process_arguments()
+    operation, local_test, data_diode_sockets, qubes, _ = process_arguments()
 
     check_kernel_version()
 

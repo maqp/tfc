@@ -1,6 +1,6 @@
 ---
 - apparmor-profiles:
-    - '/usr/bin/python3.7'
+    - '/opt/tfc/venv_relay/bin/python3.9'
   users:
     - 'amnesia'
   commands:

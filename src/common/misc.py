@@ -285,7 +285,7 @@ def power_off_system() -> None:
     os.system(POWEROFF)
 
 
-def process_arguments() -> Tuple[str, bool, bool, bool]:
+def process_arguments() -> Tuple[str, bool, bool, bool, bool]:
     """Load program-specific settings from command line arguments.
 
     The arguments are determined by the desktop entries and in the
@@ -318,12 +318,18 @@ def process_arguments() -> Tuple[str, bool, bool, bool]:
                         action='store_true',
                         default=False,
                         dest='qubes',
-                        help="output data as UDP packets. Allows running TFC in qubes")
+                        help="exchange packets via qrexec RPC. Allows running TFC in qubes")
+
+    parser.add_argument('-t',
+                        action='store_true',
+                        default=False,
+                        dest='test_run',
+                        help="Spin random test Onion Service. Used to test Relay Program functions properly.")
 
     args      = parser.parse_args()
     operation = RX if args.operation else TX
 
-    return operation, args.local_test, args.data_diode_sockets, args.qubes
+    return operation, args.local_test, args.data_diode_sockets, args.qubes, args.test_run
 
 
 def readable_size(size: int) -> str:

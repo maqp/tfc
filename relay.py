@@ -137,9 +137,9 @@ def main() -> None:
     ensure_dir(working_dir)
     os.chdir(working_dir)
 
-    _, local_test, data_diode_sockets, qubes = process_arguments()
+    _, local_test, data_diode_sockets, qubes, test_run = process_arguments()
 
-    gateway = Gateway(NC, local_test, data_diode_sockets, qubes)
+    gateway = Gateway(NC, local_test, data_diode_sockets, qubes, test_run)
 
     print_title(NC)
 
@@ -169,7 +169,7 @@ def main() -> None:
          USER_ACCOUNT_QUEUE:  Queue(),  # User's public key           from `onion_service`         to `account_checker`
          PUB_KEY_CHECK_QUEUE: Queue(),  # Typed public keys           from `src_incoming`          to `pub_key_checker`
          PUB_KEY_SEND_QUEUE:  Queue(),  # Received public keys        from `client`                to `pub_key_checker`
-         GUI_INPUT_QUEUE:     Queue()  # User inputs                 from `GUI prompt`            to `account_checker`
+         GUI_INPUT_QUEUE:     Queue()   # User inputs                 from `GUI prompt`            to `account_checker`
          }  # type: Dict[bytes, Queue[Any]]
 
     process_list = [Process(target=gateway_loop,     args=(queues, gateway                       )),
@@ -179,7 +179,7 @@ def main() -> None:
                     Process(target=g_msg_manager,    args=(queues,                               )),
                     Process(target=c_req_manager,    args=(queues,                               )),
                     Process(target=flask_server,     args=(queues,          url_token_public_key )),
-                    Process(target=onion_service,    args=(queues,                               )),
+                    Process(target=onion_service,    args=(queues,          test_run             )),
                     Process(target=relay_command,    args=(queues, gateway,                      )),
                     Process(target=account_checker,  args=(queues,          sys.stdin.fileno()   )),
                     Process(target=pub_key_checker,  args=(queues,          local_test           ))]

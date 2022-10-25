@@ -67,6 +67,13 @@ class TestGatewayLoop(unittest.TestCase):
         self.assertIsInstance(data[0], datetime)
         self.assertEqual(data[1], 'message')
 
+    @mock.patch('multiprocessing.connection.Listener',
+                return_value=MagicMock(accept=lambda: MagicMock(recv=MagicMock(return_value='message'))))
+    def test_test_run(self, _: Any) -> None:
+        gateway = Gateway(operation=RX, local_test=True, dd_sockets=False, qubes=False, test_run=True)
+        self.assertIsNone(gateway_loop(self.queues, gateway, unit_test=True))
+        self.assertEqual(self.queues[GATEWAY_QUEUE].qsize(), 0)
+
 
 class TestGatewaySerial(TFCTestCase):
 
