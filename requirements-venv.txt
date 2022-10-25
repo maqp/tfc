@@ -1,8 +1,8 @@
 # Sub-dependencies are listed below dependencies
 
 # Virtual environment (Used to create an isolated Python environment for TFC dependencies)
-virtualenv==20.16.5                       --hash=sha512:629c0a0071fd1b80998bd538a0b5af8dfca8567ac1999c65c177a72838197e4ecb98156789f7cda24e3ade4aced1363f9968c86f3c5a34e74c5ee2bcfc541841 \
-                                          --hash=sha512:2d4f96057eb8fea5da07126bbc656306b8ebc2db1c82a84b784fcb82cd1959a571dc1f016dead9561e1d073a8b06e10f2e225d6484b363b960adaa64239826d3
+virtualenv==20.16.6                       --hash=sha512:14866a3e6a5086032f10ff08d28cb7cb6f0b6cae28eea0e0ee2d0386396c159886861562722dc41366683748169a1d17217407e5448b5fcefde49634129a9223 \
+                                          --hash=sha512:24ca5038cc4e9cd72cf99a8bd4b96bda10cdc8deae2e6e7a0bef5000fd8fbeda87c4fda21aeb3b109a3763e47e0a7c7a5f383914a1bb1edcd8ed6791117d91cb
 appdirs==1.4.4                            --hash=sha512:8e6c1ea544013ea2567cda2d8b8c7b441bc50ac689aa7f95de67e3795aa083e9592c687d74fdbb37f5a75e0beab398fe47df5bced14ee9c204cfe5ecc364ef44 \
                                           --hash=sha512:8b0cdd9fd471d45b186aa47607691cf378dabd3edc7b7026a57bd6d6f57698e86f440818a5e23ba4288b35d6bb8cb6eb0106eae8aab09d8863ee15025d300883
 backports.entry-points-selectable==1.2.0  --hash=sha512:758fa1b7ef45b8ebbbfb39996678a3edc5081d2fc6732afc7de790065d5a8e0611b466b93972ae53852d96eb3e62647e9f6f1aea5cf88dcfbde0a7c77557de6d \

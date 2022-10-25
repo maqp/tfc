@@ -46,7 +46,7 @@ from tests.utils        import (assembly_packet_creator, cd_unit_test, cleanup, 
 
 TIMESTAMP_BYTES  = bytes.fromhex('08ceae02')
 STATIC_TIMESTAMP = bytes_to_timestamp(TIMESTAMP_BYTES).strftime('%H:%M:%S.%f')[:-TIMESTAMP_LENGTH]
-SLEEP_DELAY      = 0.02
+SLEEP_DELAY      = 0.04
 
 
 class TestLogWriterLoop(unittest.TestCase):
