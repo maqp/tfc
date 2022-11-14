@@ -88,24 +88,24 @@ dependency_hashes['charset_normalizer-2.1.1-py3-none-any.whl']='fe2f3ae5d3c011b3
 dependency_hashes['charset-normalizer-2.1.1.tar.gz']='f52abab683ebda4100d67ec6ee0349713baee453a742d60a1356f405c5ce2c3b4d850b0891527f08f92fa1217d59c46d6b181dc4ff1b962ce60d9c5ef8c913d1'
 dependency_hashes['click-8.1.3-py3-none-any.whl']='ce7e25725b3edfd0f336f3ebc8ace3977539f0d063f3439c4a1af517263cc1058cd9c0f687819ba319811dd0f376148372444dbaf082797d1dfe2c1c1c856dfb'
 dependency_hashes['click-8.1.3.tar.gz']='be5b0c8b72ef7c10854f31406668ca4d6f826381deff10bb6a87a406166c09af97e2165f1327094d96abade15efb872892af37f20fdbc855b659cb2c7bd2f2c5'
-dependency_hashes['cryptography-38.0.1-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.manylinux_2_24_aarch64.whl']='9a91653297faf00869d17ac92efd423bfa26336a67bde586c95400cf0c3b4583eb12b1df53bec2e9163647e54a84a4daf2a7acc4c11573f29bfaca83a238bf93'
-dependency_hashes['cryptography-38.0.1-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl']='617dbbc09da7d84e94df2d4e1f3594094dda123eff42a2712ee29a2a79475daaf9b8a2b68763f274c1595c2212bc295c26035f5c56502e5f7d7ef9884400af83'
-dependency_hashes['cryptography-38.0.1-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl']='f248ed841d5c291c853d6861217476f30b060bde8d243feb3ad76a544a1c69a287e4e10a54ac839414012a0abff3c75a7b1e1ac07ed995cd99c1c6e06c00c354'
-dependency_hashes['cryptography-38.0.1-cp36-abi3-manylinux_2_24_x86_64.whl']='960879ce1d3d6b74dcf64f0770b26d990edd20cc5e79f1fbc010ed587c1a8d102188b2b404b240b2b265ef16078812f18d0a318e574e7fd6a64db367e7e6f63c'
-dependency_hashes['cryptography-38.0.1-cp36-abi3-manylinux_2_28_aarch64.whl']='cde1e7217b822a5bd1043b1c5cd86490f95a554c45d7ff345b2cdd0fed92c251980a1b2c06beaacee572e32d797b6a4eb1dc30206cf41c03cf1f21335669a501'
-dependency_hashes['cryptography-38.0.1-cp36-abi3-manylinux_2_28_x86_64.whl']='605e2c1ddf74ef72957791722e36e04a6127906219ce00d982cac7e91397b4e7eb71ea19e2dab8d48983db4b0d0a5c743131e716560cce5f067043365a1a84a4'
-dependency_hashes['cryptography-38.0.1-cp36-abi3-musllinux_1_1_aarch64.whl']='85eafa04591b2267cb6cbce9d422278c5613b39253e37a762a9939054fe8dcb431760578b6833fe7fef5304548ace32e36c0bc1d1fb4c49b446f4a0412d8cc77'
-dependency_hashes['cryptography-38.0.1-cp36-abi3-musllinux_1_1_x86_64.whl']='6f7535dd9028e9fabb09c1a0820238a1871f5b6d8424373b64403c680cb5d6227a8f079109e814a366bbf13552eeef974b58d004f6a31f2a8c9da228c16bda64'
-dependency_hashes['cryptography-38.0.1-pp37-pypy37_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl']='072285023be38da6db37d1d7b142bc34aff80f852879ae4f605ebb355ea25cb6c2a7f0d4b94a4546954413fa7553b28bb47771f825f2af37867757d1146763b3'
-dependency_hashes['cryptography-38.0.1-pp37-pypy37_pp73-manylinux_2_24_x86_64.whl']='a254fea024f528d43d1f78b0a52b33882a6facffd760bf1246e5ea430e749bd1fc3703c01bc26e5cbd682cc3b5d6ce8b58d77ea6adf624bb9ea7d75101714f3b'
-dependency_hashes['cryptography-38.0.1-pp37-pypy37_pp73-manylinux_2_28_x86_64.whl']='e88f97582b22fe60d9ce2ae1e66114acbc1504d5363a009f1257ac288e2ce840b4acc01594f49e37bd831c397f1f3c79f1a41657c67d585dff1b9bde9753de97'
-dependency_hashes['cryptography-38.0.1-pp38-pypy38_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl']='3fe51ca3af63ec077c5d2957fd1e566ec82f92c6808ff94658c0e9d4acab168ec3a5c4e2aeefeb0330f1b1add711857de4df7cb68b1c813d1d4490edbed49017'
-dependency_hashes['cryptography-38.0.1-pp38-pypy38_pp73-manylinux_2_24_x86_64.whl']='437026a6f0126fef74b7c3bdb1c2bebb38642dcf2314dcf55607bed574001b25d6f04d68de37fb09f51aa02c5ba9d623e6374f692ba30aa06f60c0d8470a82bd'
-dependency_hashes['cryptography-38.0.1-pp38-pypy38_pp73-manylinux_2_28_x86_64.whl']='c3bd52ea954dc7f04a74448aa984cb7c32e40b5a16db053bd7a30c35d66d27b6011b843fe72fa90a6ec5052eb93ba0944fa12044d5411b2a039b060994b4ebed'
-dependency_hashes['cryptography-38.0.1-pp39-pypy39_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl']='a12a61d786d2865956d166b5a35dd541bc9274dd95764489ed8a61167df880ea3e373c6ad9cc9e7c56302c9611224542f73d96162ee0f0ee4507195a0f2ecaa8'
-dependency_hashes['cryptography-38.0.1-pp39-pypy39_pp73-manylinux_2_24_x86_64.whl']='896a24cfa4ce30f1981175c342fd7538942a34c62ccf053959215808746d1cd486b8e833076be380941e81c9a8ef5436b05ec953782e7bdacadc5c23c967dc79'
-dependency_hashes['cryptography-38.0.1-pp39-pypy39_pp73-manylinux_2_28_x86_64.whl']='fd36ff7ffa504cc7bd880e104922fde45072a2d3f61f185f4baa20a3a32f6316cbb777852c6cf62284e7e684d150502fc468c63de8d0afdbf2a400ca45fbaf4b'
-dependency_hashes['cryptography-38.0.1.tar.gz']='a0e9eb645888a74e01377c0ed79427d066a50d10a9b628828195e82b7ee44ff59866f3659f2028541856bba818340c404e00061645c2676bc63f8ece42fd511e'
+dependency_hashes['cryptography-38.0.3-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.manylinux_2_24_aarch64.whl']='7c1786877272f522f1e8115d6e68006d5b2999dbc06e20a96a84923c385ead9aaaba483a8ccc0c956162279cc6675aad5e987024e6ba6e57190b28b049ba712a'
+dependency_hashes['cryptography-38.0.3-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl']='ecbdf1bf7395fff92daca9207fb72912e28d5d1b10dbedfabeb35ee6f205d1b5f579e546e61e2cb9a6ee0f1a4d1229d10224ceb7efed8b771d8848d90c1ddcd0'
+dependency_hashes['cryptography-38.0.3-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl']='6bd8bf28831e4aeaef0aca82193c297cc5b4381ed0739fb367ec511c6cbb02291ba964410aea13517eb52bfcd4fc6cd68f839954e7a863adabc750a9e05c8c60'
+dependency_hashes['cryptography-38.0.3-cp36-abi3-manylinux_2_24_x86_64.whl']='b185ffc114b60e48c140c96b3e2ed88d3d17554dbc69bf8f1f633ad55e61184de70e0aa4a8a81a0332adfd3f8c6c5cba70eb730cf2eab6693070f4d5d0a1b426'
+dependency_hashes['cryptography-38.0.3-cp36-abi3-manylinux_2_28_aarch64.whl']='78662aab44379acaca8b69d76857ce1b5d85a3529b4003bab9b0468e7eda04f14009fb8b858b4bb169f4b17fa949941252db9af996bb030c03a8f60835aafa85'
+dependency_hashes['cryptography-38.0.3-cp36-abi3-manylinux_2_28_x86_64.whl']='5d7643f6c4622e2545e6ebb9e0c34479a1e8009fa4520896abb8ce76de6605e8b361e6ef04360e07fddef8bc56c97ce037d35d55ad534203453cb866423950d2'
+dependency_hashes['cryptography-38.0.3-cp36-abi3-musllinux_1_1_aarch64.whl']='9415ca7e6ce6b65336b3b2e63fe52ff17a7afab6da576c73ec8eacf4c3ff6e7af12ffa33df232d677f24facb8295453dce67e794d086393660411b2445de9a7b'
+dependency_hashes['cryptography-38.0.3-cp36-abi3-musllinux_1_1_x86_64.whl']='a312db208f0251b78afa1017c315bbecf6ef33fc83afb96d7cdd6cc4dfd91493a14f0229ca58adb68f248bd50c09e636953cdb2528306b0687f2cdbf143ab05f'
+dependency_hashes['cryptography-38.0.3-pp37-pypy37_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl']='a167f7b9318e650b71de9ac8666eef9d586ba8795b83bb1d54ec153b31bb75884f4f9bdfdc1861d01a537c265fd385e38a82b24778dfbfe26801c5522d0ffab0'
+dependency_hashes['cryptography-38.0.3-pp37-pypy37_pp73-manylinux_2_24_x86_64.whl']='58721c89535481d322597e369695ae51739e2f3bfbc457dcc4f45becda6bf22fab97c05f9d4942d3db7517acad32c6900f4e4768010efabf60be3ea0709f1d26'
+dependency_hashes['cryptography-38.0.3-pp37-pypy37_pp73-manylinux_2_28_x86_64.whl']='05dc3144e6c4ca253a293e715cb58eb5695fb9d9519181d3f1f0b01d32e9f229b8abd7468d4bcfbef40990fae5dadbf3fdb58e0f38258e14d1ed49918ba76ea2'
+dependency_hashes['cryptography-38.0.3-pp38-pypy38_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl']='ec592673ed79bf98634778bb7d81f93d0e495eb1bd192d8fda8243558a2b6332f667956d59e99f39b9f2545c5871152ca8aea20266b8e4d0f5d6b0adc6107606'
+dependency_hashes['cryptography-38.0.3-pp38-pypy38_pp73-manylinux_2_24_x86_64.whl']='bec86f29008d8f721738cf92cdb7ed7091c03f29dc527d88eefac28d2d908cbb031232d349dde1e9dc189de5ad189c0a5e6c0399bb867f9be2caedcfbab149cc'
+dependency_hashes['cryptography-38.0.3-pp38-pypy38_pp73-manylinux_2_28_x86_64.whl']='37011ac12b880008d506948252cc45442f0b73173353545aa68275668363cfbe4a45d0d8e28b56456e409b30bdc1f61c126794592e55a8f14181b122c4c57d5f'
+dependency_hashes['cryptography-38.0.3-pp39-pypy39_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl']='60aa740de00564f75c46f2656bcff7902f5c935c6c622c871a4aedc53789a0e84623fe26b1bf34082095510e6cfa6c9bdbd87cde385081971888378d60107f6d'
+dependency_hashes['cryptography-38.0.3-pp39-pypy39_pp73-manylinux_2_24_x86_64.whl']='1add30d5640201aa5c6a064af3ddf9dadf08504932eab16cdf76c62e57ed11280537c06e3a2d6e3ba5f28337160cc6aedf96061207e686cd044989b3d482c1b5'
+dependency_hashes['cryptography-38.0.3-pp39-pypy39_pp73-manylinux_2_28_x86_64.whl']='6f42c5fd38365658e4039956ab2325ce8f4d2a13edd65fddd6d52231777d0ad12a65e5b7a3434c998e3c44267f6a39ff0cf99748035485c66e93c6fa0e79f3a3'
+dependency_hashes['cryptography-38.0.3.tar.gz']='f133d83266f386cb0169a3cf2226d258b7d599e7aaad9913f8a4b01ee0841670586a21cee93fb4d4d9f61b0da53109c5dbcf7d91d470cfbb166aa04f4a1d7634'
 dependency_hashes['distlib-0.3.6-py2.py3-none-any.whl']='7046ad8707013371b68a805fb437e7f29d883694d6870012f2db197f8bdf472aa262d5e549852c4dbccbd5af5cb0a402d60f8cad845e43df9429a2c437e28187'
 dependency_hashes['distlib-0.3.6.tar.gz']='27f3a59f9175a92befb9a65a66cd0b8eb65185dab6fa13ef94e85ca69c2bc1b7281ce1522601034007cb98677ba9237a46224df4adc70ed966db7e131e073636'
 dependency_hashes['filelock-3.8.0-py3-none-any.whl']='50b2529305be50e9f1e1faf3a2d38133f65d71b15aed767b167b48350487fd4d83cb03e1a6b460362d34b6d5a8fcf2014162d8626ae513a4a068e804a63d3894'
@@ -145,10 +145,10 @@ dependency_hashes['MarkupSafe-2.1.1-cp39-cp39-musllinux_1_1_aarch64.whl']='f3695
 dependency_hashes['MarkupSafe-2.1.1-cp39-cp39-musllinux_1_1_i686.whl']='133e313fd4aac1bbaaa9ed4e5dd246da4d79bf8d5f23f10eb833f2dc268bf3dfa4f83946b2eef171a62de2607050439bb0273bd83dbe0591bd585162a61e7e45'
 dependency_hashes['MarkupSafe-2.1.1-cp39-cp39-musllinux_1_1_x86_64.whl']='7c0cec6c649f9d522569b47bf24fc2a09644ccc71250242b1c2edd0b751c67471a3f5c7e77a2d4055fb15c3b2e14ff2f435ff7150e49fe76a676f1346e5cfc94'
 dependency_hashes['MarkupSafe-2.1.1.tar.gz']='1d9bf55614b4e0aeca726ebda7bab2829452212f03f2295efdd0340f3dd05eefc9733d6dd0e37f0d06a432ce00ed7d06b28c9e817fc25212675006577f468b3e'
-dependency_hashes['pip-22.3-py3-none-any.whl']='4e71295da5d1a26c71a0baa8905fdccb522bb16d56bc964db636de68688c5bf703f3b2880cdeea07138789e0eb4506e06f9ccd0da906c89d2cb6d55ad64659ea'
-dependency_hashes['pip-22.3.tar.gz']='4210aa0408a22e28cf4fdf576af54e23f5fd7a18e8f4db8a1fd3c77f0a630290faf56507ff8e6d4ab05019ea02d968ec04dfdbe9c811cb0c2d9c19c62835ec07'
-dependency_hashes['platformdirs-2.5.2-py3-none-any.whl']='61784584b6d51d775a11e13123803202e04531ef455801943ef9b27c1ed8e9c3c9fb51f70954e4ab17cf0647b45778dd7587b645561edd6252359faf4d2a1a15'
-dependency_hashes['platformdirs-2.5.2.tar.gz']='b0b0dee3ac4176e64f302b3d34e253b2e33784160051b9dafb563962e597df75f2c9f714c050d5bdeb1769a1f56c2878a47e9a42361596e287ae7b2afe870370'
+dependency_hashes['pip-22.3.1-py3-none-any.whl']='f09c2a48e85108514c20fdc58466b9be6a9b7f234241ccd46e23249f690bd1ec03fa5e60c9df80f4cf31a9be64d7d59b2fa786c1d7779e284fec42b04bffc257'
+dependency_hashes['pip-22.3.1.tar.gz']='5bfba1eb6bd444d1a57dd5a9f03b95fe64ec27f238774d59a3b21a206a47390a9dba9ce44da50fb935f45ed23dba08ab9a5fa94cb1e67e420bb68b72abb4ef61'
+dependency_hashes['platformdirs-2.5.4-py3-none-any.whl']='b749aa34aa892549e3d85ce21a2ec0f7b26977c299b16426529447c12b8220ca65503d2b38cfe41bf07cdd51344cbaf7011e24f1eb1311c5830de76e39dfd612'
+dependency_hashes['platformdirs-2.5.4.tar.gz']='1b7ff79a421bc0b0320a9b1ba8f99dbbecd34a9bea7fa7696b58007f2e05d8a910a3f32e2c03e6e3a8f3d272ab1c045051a682e3155c5bc5285e66e4add59489'
 dependency_hashes['pycparser-2.21-py2.py3-none-any.whl']='aae67923f45abd1d781d03e0ce848627a07e9cf4c61a89bf32f1b5f638ceda08de39a038c46ed29d2df967d76be4f2572346bad087ac32b418e6fe654fd28e43'
 dependency_hashes['pycparser-2.21.tar.gz']='e61fbdde484d1cf74d4b27bdde40cf2da4b7028ca8ecd37c83d77473dab707d457321aecaf97da3b114c1d58a4eb200290b76f9c958044b57e5fed949895b5f0'
 dependency_hashes['PyNaCl-1.5.0-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.manylinux_2_24_aarch64.whl']='853446c38ce5488e18eba166f67650bc4f50044f509987ad2ae4830d2ed85284f057c3a4304180ad265bc33fb9cd6570488a37e40bade5e202ba201ad368af84'
@@ -165,8 +165,8 @@ dependency_hashes['PySocks-1.7.1-py3-none-any.whl']='313b954102231d038d52ab58f41
 dependency_hashes['PySocks-1.7.1.tar.gz']='cef4a5ce8c67fb485644696a23bf68a721db47f3211212de2d4431eaf9ebd26077dd5a06f6dfa7fde2dcb9d7c1ed551facd014e999929cb4d7b504972c464016'
 dependency_hashes['requests-2.28.1-py3-none-any.whl']='c6f13c11fe91caba7e152792f45dc9bfe2cb544d713521b27e46f1b1e9df923f386d860b9343fb3b5a3bfbd4b50c80591e8f7c7380160189a2eaed9830d5fe9d'
 dependency_hashes['requests-2.28.1.tar.gz']='c123ec07171c2c7c34e4173b97750adfa313b4312d91c0d58e4eb8750361604017e5b370c23ec886d2cbf704f9074ec5ad0fa9c2cd8e6f9521532adafff39d41'
-dependency_hashes['setuptools-65.5.0-py3-none-any.whl']='b179096ad073fd1fc2c9b68b4eecc6df5cb5e54250020b16a689f7c89ddad75ec88b8031fe4249cd609ee18e1aa22e7bc011d9ddb32b7b661e57f0645879e710'
-dependency_hashes['setuptools-65.5.0.tar.gz']='5f65765a2971662ef4864473d7b54d7d5357fba2b6e9369f1b7923ef5466463852a714e6ee0b6581835c1524069cdfefd907cc65681c7f2b73c6ef278bff6228'
+dependency_hashes['setuptools-65.5.1-py3-none-any.whl']='8fe0472001b1589caf81f1e0fe17777e524f003fc414d0a17a431209ba5aa8292741bdf13ae4346227afba2491099ea7369bf767ce621ef3fa38dda7b304b5c0'
+dependency_hashes['setuptools-65.5.1.tar.gz']='e75eb7fdb0bc5ffdc76ed864cf753c2672d097a60f8747ac5cd40a49276d33df31fb619877234b4c22693b627d9978ecdd48a5c6c48aa0bbb856d48dec70fb0a'
 dependency_hashes['six-1.16.0-py2.py3-none-any.whl']='656b010ed36d7486c07891c0247c7258faf0d1a68c5fb0a35db9c5b670eb712d5e470b023ffd568d7617e0ae77340820397014790d14fda4d13593fa2bd1c76f'
 dependency_hashes['six-1.16.0.tar.gz']='076fe31c8f03b0b52ff44346759c7dc8317da0972403b84dfe5898179f55acdba6c78827e0f8a53ff20afe8b76432c6fe0d655a75c24259d9acbaa4d9e8015c0'
 dependency_hashes['stem-1.8.1.tar.gz']='bad2f4f96e37caa3ee2928bb027318c4941ca3f6c0072c5f6e87fe647d2b68400ad352d9c27fa2a35c00f4f327aa9cc00e2907b21a9cbd26fab46ec21e2a038a'
@@ -174,8 +174,8 @@ dependency_hashes['typing_extensions-4.4.0-py3-none-any.whl']='3c5adf0a36516d284
 dependency_hashes['typing_extensions-4.4.0.tar.gz']='08286e3c997ba911570725674634bcfe3dd8ab14c88e61d8adb47755389050e714b9e87e4906c3bbcc3bde987024efcd8c4e1d2d312347fd89a4b55becb4b341'
 dependency_hashes['urllib3-1.26.12-py2.py3-none-any.whl']='f391145925973e63003830ae9df0ca5335d07f807ddf9e50dd27358684c4cec73bd2b07adc695a91b6c626631abd564241efbb9c59190696d4a39aade6cfde9c'
 dependency_hashes['urllib3-1.26.12.tar.gz']='c34bc2cb92ff5fb4e27948b6b8bf286d1f3993d8e399a7dc99e8c1cb07b364f16f9c8d6fc3e5e22e6f2d9285454a945174a9a1de3cb0fcf08e673ba316bc5469'
-dependency_hashes['virtualenv-20.16.6-py3-none-any.whl']='14866a3e6a5086032f10ff08d28cb7cb6f0b6cae28eea0e0ee2d0386396c159886861562722dc41366683748169a1d17217407e5448b5fcefde49634129a9223'
-dependency_hashes['virtualenv-20.16.6.tar.gz']='24ca5038cc4e9cd72cf99a8bd4b96bda10cdc8deae2e6e7a0bef5000fd8fbeda87c4fda21aeb3b109a3763e47e0a7c7a5f383914a1bb1edcd8ed6791117d91cb'
+dependency_hashes['virtualenv-20.16.7-py3-none-any.whl']='e7e32d88d5e5054c5f69f5ed1ec69d385337435ca3a37f43e0cb7f1e69e8c5a3d111efbc8f987d83c93eabc46f7f94c89064bd4cf9459fe767023e7730155e63'
+dependency_hashes['virtualenv-20.16.7.tar.gz']='975298181696c4636a9567c29b4da5bad703d35fcf2a110cc24146e5bf7afe63b3fcb1f1601586b03bc0deef08c2278577bedf40cb21a7e07841986a9215dc69'
 dependency_hashes['Werkzeug-2.2.2-py3-none-any.whl']='989e259788074a794b3b0fc33fdf066fef45014fc15a743216c98ab59f64c96766db02ca69e3753e39e280476ab57f7f2d2415fcddb95bac13ea9b916439147a'
 dependency_hashes['Werkzeug-2.2.2.tar.gz']='b37a63ba1d6970b10ba17b87575c2d030ad6c4c00ab50669d678297b9801e319f4f81f98bfc2d89fc2e645c5e192dd81ed2d653c03dbaef06565de0bdac2bcf7'
 dependency_hashes['zipp-3.10.0-py3-none-any.whl']='ba91ab0518c61eff13e5612d9e6b532940813f6b56e6ed81ea6c7c4d45acee4d98136a383a25067512b8f75538c67c987cf3944bfa0229e3cb677e2fb81e763e'
@@ -216,8 +216,9 @@ function compare_digest {
 function verify_tcb_requirements_files {
     # To minimize the time TCB installer configuration stays online,
     # only the requirements files are authenticated between downloads.
-    compare_digest 5a3706cb955d4113549a20dcc3340ec606bc1c6bc901d6edb76f71096edf28fa712bfe7d8db0a42c86641758c838afdb12c495c4721d89eb04ff621d0eaf3450 '' requirements.txt
-    compare_digest b1c9e907f82a2e57f61e22925c4c15f386e485eac88f8e6cde896570edfb3a8b029284ae3ed897d0d015238122b5e6bb26f7eb5f4bf164feb85e1e082e91a7f1 '' requirements-venv.txt
+    compare_digest 82542c9edf5ae3a3fa1ee0211c7172a8909ad1ac3f897a2eb38c13d1241c210b6ad6a35aa79698a2fa0e3660e0fdf8ae01deb318da94a8ed7c232e0ec03e58c4 '' requirements.txt
+    compare_digest f33d3f1cdd5dc1b662270c722c6aefdb35987cc13216e6167c40bc75fd62e4bd6b90b17b8a060aae8f37f8d4d734e6ea5abec6f28aaf5a31763c737dfe50b216 '' requirements-venv.txt
+    compare_digest 9d95ca9a0d1e659a8c7c658ef083f68171c11341896dcc4a0360ce0ed0369d2b24ca3da812cd992ee2594aacd98cea966772d0bb9e2dcebba7deef32f923877b '' requirements-pre.txt
 }
 
 
@@ -227,10 +228,9 @@ function verify_files {
     compare_digest d361e5e8201481c6346ee6a886592c51265112be550d5224f1a7a6e116255c2f1ab8788df579d9b8372ed7bfd19bac4b6e70e00b472642966ab5b319b99a2686 '' LICENSE
     compare_digest 86b1d7b2b899770483db804d4fb4cc99d77267650e9394abf7b07df7166d10e3ec56f14c730d0f2c91597fe1f7539ddc4cdf652ffae478c1bc407bcc78818ebd '' LICENSE-3RD-PARTY
     compare_digest 8d7c56d20c129ff1a9b497a4816027002d1622439fbfde803ca61ae34098aa81ba9159663c461524a802ce8fee689fa2f6fcb37409fd959c1fb442f9c08c5622 '' relay.py
-    compare_digest d8bfd6fbf256dd945e5f81ccc1181c85bcecf01736dc7c3eaf745a112dae30358e539a1296f1f036c5544ceb6805cf83654c25141443ea5d17f068b61c35edfd '' requirements-dev.txt
-    compare_digest d5188f23bc53a678d6f9961f2cf68172f759adeeec104314fd76dae83220b6e30a451b48a887e38232c0a1e95c39eb326db4826f44794a554d595041dd6739a9 '' requirements-relay.txt
-    compare_digest 0c62007a352822535c15e7bd1741eaa14075bae933d606331f6b74c94ad40d4f58cf778df21a6a56af9bb90ebfe2c9c1a457fe0b756fbccfa029f3a24e4d6248 '' requirements-relay-tails.txt
-    compare_digest b56b685f5092b309d4b1c27a3a2c5a0b8153a17656d4e1f8162908d4e2194d68b7a0616f672b773bb611c9412958ea699779fa064a6a54db46beefe24cb4f03a '' requirements-pre.txt
+    compare_digest 12cdec5703ddf2d2568429e9a6ced311a022432cfdada3069f9b1845d1f2636d530c4800bef803c293df55ef02ce09b0eea5029af1a32d2951f0f155f6cdcc94 '' requirements-dev.txt
+    compare_digest ff0629e6a5e29f38c8bafa62730c5fc9c88b56209d5c4a3cd68ce28c57c88140894461e485202923813811a5a9bc3332dd186528a2eccb1c82caf3706fef1e44 '' requirements-relay.txt
+    compare_digest b9b4519d2c8b0ba46f95ea30e83a378f724e442ca638604685f42db579c508086794e4ba2b9a8396527f29eeb24595f6d866c2211c54dc9effe0e3d4db097217 '' requirements-relay-tails.txt
     compare_digest 79f8272a2ab122a48c60630c965cd9d000dcafabf5ee9d69b1c33c58ec321feb17e4654dbbbf783cc8868ccdfe2777d60c6c3fc9ef16f8264d9fcf43724e83c2 '' tfc.png
     compare_digest 68de4f8c8b055ff9488c115d5e26aa0e23466c7fda7519c89ac7fc93f93f35a84e02cfc50f72af75a7bcff66138e62be1446d40ed94272017e8fd673cf3f5b9a '' tfc.py
     compare_digest 15a20bbe1fde78f13f92bad918752e34a67ca14501ae2348a7e723b4c61037acc991adfae1100b076a0971b4a5979600fb89a9c1170f4207d048b77d0c97a43a '' tfc.yml
@@ -316,6 +316,7 @@ function c_echo {
     # Justify printed text to the center of the terminal.
     printf "%*s\n" "$(( ( $(echo "${1}" | wc -c) + 80 ) / 2 ))" "${1}"
 }
+
 
 function exit_with_message {
     # Print error message and exit the installer with flag 1.
@@ -790,13 +791,12 @@ function install_relay_tails {
 
 function install_qubes_src {
     # Qubes Source VM installation configuration for Debian 10 domains.
-    create_user_data_dir
-
     steps_before_network_kill
 
-    VENV_NAME="venv_tcb"
-
     verify_files
+    create_user_data_dir
+
+    VENV_NAME="venv_tcb"
 
     install_packages_as_root "${virtualenv_packages[@]}"
     export DEB_PYTHON_INSTALL_LAYOUT='deb'
@@ -826,13 +826,12 @@ function install_qubes_src {
 
 function install_qubes_dst {
     # Qubes Destination VM installation configuration for Debian 10 domains.
-    create_user_data_dir
-
     steps_before_network_kill
 
-    VENV_NAME="venv_tcb"
-
     verify_files
+    create_user_data_dir
+
+    VENV_NAME="venv_tcb"
 
     # Configure listening service for qrexec RPC
     sudo ln -sf /opt/tfc/qubes/service.sh /etc/qubes-rpc/tfc.NetworkerDestination
@@ -866,13 +865,12 @@ function install_qubes_dst {
 
 function install_qubes_net {
     # Qubes Networked VM installation configuration for Debian 10 domains.
-    create_user_data_dir
-
     steps_before_network_kill
 
-    VENV_NAME="venv_relay"
-
     verify_files
+    create_user_data_dir
+
+    VENV_NAME="venv_relay"
 
     # Configure listening service for qrexec RPC
     sudo ln -sf /opt/tfc/qubes/service.sh /etc/qubes-rpc/tfc.SourceNetworker
@@ -1001,9 +999,9 @@ function arg_error {
     clear
     echo -e "\nUsage: bash install.sh [OPTION]\n"
     echo    "Mandatory arguments"
-    echo    "  tcb      Install Transmitter/Receiver Program (Debian 11 / PureOS 10.0 / *buntu 22.04 / LMDE 5 / Mint 21)"
-    echo    "  relay    Install Relay Program                (Debian 11 / PureOS 10.0 / *buntu 22.04 / LMDE 5 / Mint 21 / Tails 5.4)"
-    echo -e "  local    Install insecure local testing mode  (Debian 11 / PureOS 10.0 / *buntu 22.04 / LMDE 5 / Mint 21)\n"
+    echo    "  tcb      Install Transmitter/Receiver Program (Debian 11 / PureOS 10.0 / *buntu 22.04 / Pop!_OS 22.04 / LMDE 5 / Mint 21 / Zorin OS 16.1)"
+    echo    "  relay    Install Relay Program                (Debian 11 / PureOS 10.0 / *buntu 22.04 / Pop!_OS 22.04 / LMDE 5 / Mint 21 / Zorin OS 16.1 / Tails 5.6)"
+    echo -e "  local    Install insecure local testing mode  (Debian 11 / PureOS 10.0 / *buntu 22.04 / Pop!_OS 22.04 / LMDE 5 / Mint 21 / Zorin OS 16.1)\n"
     echo    "  qsrc     Install Transmitter Program          (Qubes 4.1.1)"
     echo    "  qdst     Install Receiver Program             (Qubes 4.1.1)"
     echo -e "  qnet     Install Relay Program                (Qubes 4.1.1)\n"
@@ -1053,6 +1051,7 @@ function test_installer {
     verify_tcb_requirements_files
     verify_files
 }
+
 
 function wait_for_tor {
     # Wait until Torsocks connects properly to GitHub
