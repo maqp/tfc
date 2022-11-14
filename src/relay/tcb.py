@@ -111,10 +111,10 @@ def load_packet_from_queue(queues:  'QueueDict',
     return ts, packet
 
 
-def process_command_datagram(ts:      'datetime',
-                             packet:  bytes,
-                             header:  bytes,
-                             queues:  'QueueDict'
+def process_command_datagram(ts:     'datetime',
+                             packet: bytes,
+                             header: bytes,
+                             queues: 'QueueDict'
                              ) -> None:
     """Process command datagram."""
     commands_to_dst = queues[DST_COMMAND_QUEUE]

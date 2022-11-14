@@ -201,9 +201,9 @@ def onion_service(queues: Dict[bytes, 'Queue[Any]'], test_run: bool) -> None:
             time.sleep(0.1)
         private_key, c_code = queues[ONION_KEY_QUEUE].get()
 
-    public_key_user     = bytes(nacl.signing.SigningKey(seed=private_key).verify_key)
-    onion_addr_user     = pub_key_to_onion_address(public_key_user)
-    buffer_key          = hashlib.blake2b(BUFFER_KEY, key=private_key, digest_size=SYMMETRIC_KEY_LENGTH).digest()
+    public_key_user = bytes(nacl.signing.SigningKey(seed=private_key).verify_key)
+    onion_addr_user = pub_key_to_onion_address(public_key_user)
+    buffer_key      = hashlib.blake2b(BUFFER_KEY, key=private_key, digest_size=SYMMETRIC_KEY_LENGTH).digest()
 
     try:
         rp_print("Setup  10% - Launching Tor...", bold=True)
