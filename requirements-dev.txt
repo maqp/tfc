@@ -48,7 +48,7 @@ PySocks>=1.7.1
 # pytest (Test framework)
 pytest>=7.2.0
 attrs>=22.1.0
-exceptiongroup>=1.0.2
+exceptiongroup>=1.0.3
 iniconfig>=1.1.1
 more-itertools>=9.0.0
 packaging>=21.3
