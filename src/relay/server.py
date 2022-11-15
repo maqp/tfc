@@ -177,7 +177,7 @@ def get_message(purp_url_token: str,
     identified_onion_pub_key = pub_key_dict[purp_url_token]
 
     # Load outgoing messages for all contacts,
-    # return the oldest message for contact
+    # return the oldest message to the contact
 
     sub_dir = hashlib.blake2b(identified_onion_pub_key, key=buf_key, digest_size=BLAKE2_DIGEST_LENGTH).hexdigest()
     buf_dir = f"{RELAY_BUFFER_OUTGOING_M_DIR}/{sub_dir}/"
