@@ -61,7 +61,7 @@ MarkupSafe==2.1.1             --hash=sha512:efb6cdb81d325aca18c959d41a67b3a749ec
                               --hash=sha512:133e313fd4aac1bbaaa9ed4e5dd246da4d79bf8d5f23f10eb833f2dc268bf3dfa4f83946b2eef171a62de2607050439bb0273bd83dbe0591bd585162a61e7e45 \
                               --hash=sha512:7c0cec6c649f9d522569b47bf24fc2a09644ccc71250242b1c2edd0b751c67471a3f5c7e77a2d4055fb15c3b2e14ff2f435ff7150e49fe76a676f1346e5cfc94 \
                               --hash=sha512:1d9bf55614b4e0aeca726ebda7bab2829452212f03f2295efdd0340f3dd05eefc9733d6dd0e37f0d06a432ce00ed7d06b28c9e817fc25212675006577f468b3e
-Werkzeug==2.2.2               --hash=sha512:989e259788074a794b3b0fc33fdf066fef45014fc15a743216c98ab59f64c96766db02ca69e3753e39e280476ab57f7f2d2415fcddb95bac13ea9b916439147a \
+Werkzeug==2.2.3               --hash=sha512:989e259788074a794b3b0fc33fdf066fef45014fc15a743216c98ab59f64c96766db02ca69e3753e39e280476ab57f7f2d2415fcddb95bac13ea9b916439147a \
                               --hash=sha512:b37a63ba1d6970b10ba17b87575c2d030ad6c4c00ab50669d678297b9801e319f4f81f98bfc2d89fc2e645c5e192dd81ed2d653c03dbaef06565de0bdac2bcf7
 
 # cryptography (pyca) (Handles URL token derivation)
