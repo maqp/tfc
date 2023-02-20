@@ -65,7 +65,7 @@ Werkzeug==2.2.2               --hash=sha512:989e259788074a794b3b0fc33fdf066fef45
                               --hash=sha512:b37a63ba1d6970b10ba17b87575c2d030ad6c4c00ab50669d678297b9801e319f4f81f98bfc2d89fc2e645c5e192dd81ed2d653c03dbaef06565de0bdac2bcf7
 
 # cryptography (pyca) (Handles URL token derivation)
-cryptography==38.0.3          --hash=sha512:7c1786877272f522f1e8115d6e68006d5b2999dbc06e20a96a84923c385ead9aaaba483a8ccc0c956162279cc6675aad5e987024e6ba6e57190b28b049ba712a \
+cryptography==39.0.1          --hash=sha512:7c1786877272f522f1e8115d6e68006d5b2999dbc06e20a96a84923c385ead9aaaba483a8ccc0c956162279cc6675aad5e987024e6ba6e57190b28b049ba712a \
                               --hash=sha512:ecbdf1bf7395fff92daca9207fb72912e28d5d1b10dbedfabeb35ee6f205d1b5f579e546e61e2cb9a6ee0f1a4d1229d10224ceb7efed8b771d8848d90c1ddcd0 \
                               --hash=sha512:6bd8bf28831e4aeaef0aca82193c297cc5b4381ed0739fb367ec511c6cbb02291ba964410aea13517eb52bfcd4fc6cd68f839954e7a863adabc750a9e05c8c60 \
                               --hash=sha512:b185ffc114b60e48c140c96b3e2ed88d3d17554dbc69bf8f1f633ad55e61184de70e0aa4a8a81a0332adfd3f8c6c5cba70eb730cf2eab6693070f4d5d0a1b426 \
