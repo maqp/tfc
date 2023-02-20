@@ -60,7 +60,7 @@ cffi==1.15.1                  --hash=sha512:160432f1765330dab76807ec42052cf41cf3
                               --hash=sha512:e99cafcb029076abc29e435b490fa0573ee2856f4051b7ca8a5b38cd125d56dd9dae8b189f59ceb3d728a675da8ee83239e09e19f8b0feeddea4b186ab5173a5
 
 # cryptography (pyca) (Handles TCB-side X448 key exchange)
-cryptography==38.0.3          --hash=sha512:7c1786877272f522f1e8115d6e68006d5b2999dbc06e20a96a84923c385ead9aaaba483a8ccc0c956162279cc6675aad5e987024e6ba6e57190b28b049ba712a \
+cryptography==39.0.1          --hash=sha512:7c1786877272f522f1e8115d6e68006d5b2999dbc06e20a96a84923c385ead9aaaba483a8ccc0c956162279cc6675aad5e987024e6ba6e57190b28b049ba712a \
                               --hash=sha512:ecbdf1bf7395fff92daca9207fb72912e28d5d1b10dbedfabeb35ee6f205d1b5f579e546e61e2cb9a6ee0f1a4d1229d10224ceb7efed8b771d8848d90c1ddcd0 \
                               --hash=sha512:6bd8bf28831e4aeaef0aca82193c297cc5b4381ed0739fb367ec511c6cbb02291ba964410aea13517eb52bfcd4fc6cd68f839954e7a863adabc750a9e05c8c60 \
                               --hash=sha512:b185ffc114b60e48c140c96b3e2ed88d3d17554dbc69bf8f1f633ad55e61184de70e0aa4a8a81a0332adfd3f8c6c5cba70eb730cf2eab6693070f4d5d0a1b426 \
