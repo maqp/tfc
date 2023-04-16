@@ -46,8 +46,8 @@ def generate_installer_hash_dict(working_dir: str) -> Dict[str, str]:
 
 
 def generate_hash_file_hash_dict(working_dir: str) -> Dict[str, str]:
-    """Return {file_path: hash} dictionary of TFC file hashes in `SHA512.list`."""
-    with open(f"{working_dir}/SHA512.list") as f:
+    """Return {file_path: hash} dictionary of TFC file hashes in `BLAKE2b.list`."""
+    with open(f"{working_dir}/BLAKE2b.list") as f:
         hash_file_lines = f.read().splitlines()
 
     hash_dict = dict()
@@ -62,7 +62,7 @@ def generate_hash_file_hash_dict(working_dir: str) -> Dict[str, str]:
 
 
 def main() -> None:
-    """Replace the pinned SHA512 hashes of TFC files in the installer."""
+    """Replace the pinned BLAKE2b hashes of TFC files in the installer."""
     working_dir = f'{os.getenv("HOME")}/tfc'
 
     installer_hashes = generate_installer_hash_dict(working_dir)
@@ -84,7 +84,7 @@ def main() -> None:
 
         for old_hash, new_hash, file_path in replace_tuples:
             data = data.replace(old_hash, new_hash)
-            print(f"Replaced the SHA512 hash of the file '{file_path}'.")
+            print(f"Replaced the BLAKE2b hash of the file '{file_path}'.")
 
         with open(f"{working_dir}/install.sh", "w+") as f:
             f.write(data)

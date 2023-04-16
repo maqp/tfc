@@ -219,7 +219,7 @@ This intermediate isolation mechanism runs on a single computer which means no h
 - Linux Mint 21
 - LMDE 5
 - Zorin OS 16.1
-- Qubes 4.1.1 (Debian 11 VM)
+- Qubes 4.1.2 (Debian 11 VM)
 
 #### Networked Computer
 - Tails 5.5
@@ -230,7 +230,7 @@ This intermediate isolation mechanism runs on a single computer which means no h
 - Linux Mint 21
 - LMDE 5
 - Zorin OS 16.1
-- Qubes 4.1.1 (Debian 11 VM)
+- Qubes 4.1.2 (Debian 11 VM)
 
 
 ### More information

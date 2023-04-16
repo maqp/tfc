@@ -159,18 +159,18 @@ function run_unit_tests() {
 function update_installer_digests() {
     # Setup
     cd_cwd
-    rm -f SHA512.list 2>/dev/null
+    rm -f BLAKE2b.list 2>/dev/null
 
     # Actions
-    box_print "Updating install.sh pinned SHA512 hashes"
-    find . -type f -exec sha512sum "{}" + > SHA512.list
+    box_print "Updating install.sh pinned BLAKE2b hashes"
+    find . -type f -exec b2sum "{}" + > BLAKE2b.list
     python3 hash_replacer.py
 
-    box_print "Verifying installer.sh pinned SHA512 digests via install.sh itself"
+    box_print "Verifying installer.sh pinned BLAKE2b digests via install.sh itself"
     bash install.sh test
 
     # Teardown
-    rm -f SHA512.list 2>/dev/null
+    rm -f BLAKE2b.list 2>/dev/null
 }
 
 function run_release_checks() {
