@@ -9,7 +9,6 @@
 [![codecov](https://codecov.io/gh/maqp/tfc/branch/development/graph/badge.svg?token=RJv2hFFdnR)](https://codecov.io/gh/maqp/tfc)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/71fa9cc1da424f52a576a04c2722da26)](https://www.codacy.com/gh/maqp/tfc/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=maqp/tfc&amp;utm_campaign=Badge_Grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/maqp/tfc/badge)](https://www.codefactor.io/repository/github/maqp/tfc)
-[![Requirements Status](https://requires.io/github/maqp/tfc/requirements.svg?branch=development)](https://requires.io/github/maqp/tfc/requirements/?branch=development)
 [![Snyk Report](https://snyk.io/test/github/maqp/tfc/badge.svg)](https://snyk.io/test/github/maqp/tfc) 
 
 # THIS IS TFC's PUBLIC TESTING BRANCH. THE CODE HOSTED HERE IS NOT STABLE AND IT IS SIGNED WITH AN INSECURELY STORED KEY!
