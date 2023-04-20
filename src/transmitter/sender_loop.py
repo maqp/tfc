@@ -202,24 +202,24 @@ def standard_sender_loop(queues:   'QueueDict',
     KEY_MANAGEMENT_QUEUE has the highest priority. This is to ensure the
     no queued message/command is encrypted with expired keyset.
 
-    COMMAND_PACKET_QUEUE has the second highest priority, to ensure
+    COMMAND_PACKET_QUEUE has the second-highest priority, to ensure
     commands are issued swiftly to Receiver program. Some commands like
     screen clearing might need to be issued quickly.
 
-    RELAY_PACKET_QUEUE has third highest priority. These are still
+    RELAY_PACKET_QUEUE has third-highest priority. These are still
     commands but since Relay Program does not handle sensitive data,
     issuing commands to that devices does not take priority.
 
-    Buffered messages have fourth highest priority. This ensures that if
+    Buffered messages have fourth-highest priority. This ensures that if
     for whatever reason the keyset is removed, buffered messages do not
     get lost. Packets are loaded from the buffer in FIFO basis ensuring
     packets arrive to the recipient in order.
 
-    MESSAGE_PACKET_QUEUE has fifth highest priority. Any buffered
+    MESSAGE_PACKET_QUEUE has fifth-highest priority. Any buffered
     messages need to arrive earlier, thus new messages must be
     prioritized after the buffered ones.
 
-    SENDER_MODE_QUEUE has sixth highest priority. This prevents outgoing
+    SENDER_MODE_QUEUE has sixth-highest priority. This prevents outgoing
     packets from being left in the queues used by this loop. This queue
     returns up-to-date settings object for `sender_loop` parent loop,
     that in turn uses it to start `traffic_masking_loop`.

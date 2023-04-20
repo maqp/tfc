@@ -184,7 +184,7 @@ def write_log_entry(assembly_packet: bytes,                       # Assembly pac
     file formats could reveal to a physical attacker.
 
     Transmitter Program can only log sent messages. This is not useful
-    for recalling conversations but it makes it possible to audit
+    for recalling conversations, but it makes it possible to audit
     recipient's Destination Computer-side logs, where malware could have
     substituted content of the sent messages.
 
