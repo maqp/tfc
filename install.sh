@@ -438,16 +438,16 @@ function verify_packages() {
         fi
 
         # Calculate the purported hash from the downloaded file
-        purp_hash=$(b2sum "${INSTALL_DIR}/${dep_file_name}" | awk '{print $1}')
+        purp_hash=$(sha512sum "${INSTALL_DIR}/${dep_file_name}" | awk '{print $1}')
 
         # Load pinned hash from the hashmap based on filename
         pinned_hash=${dependency_hashes[${dep_file_name}]}
 
         # Compare the purported hash to the pinned hash
         if echo "${purp_hash}" | cmp -s <(echo "$pinned_hash"); then
-            echo "OK - Pinned BLAKE2b hash matched file ${dep_file_name}"
+            echo "OK - Pinned SHA512 hash matched file ${dep_file_name}"
         else
-            echo "Error: ${dep_file_name} had an invalid BLAKE2b hash:"
+            echo "Error: ${dep_file_name} had an invalid SHA512 hash:"
             echo "${purp_hash}"
             echo "Expected following hash:"
             echo "${pinned_hash}"
