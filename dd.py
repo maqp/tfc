@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2022  Markus Ottela
+Copyright (C) 2013-2023  Markus Ottela
 
 This file is part of TFC.
 
@@ -50,7 +50,7 @@ def draw_frame(argv:    str,          # Arguments for the simulator position/ori
     terminal_width = get_terminal_width()
 
     def c_print(string: str) -> None:
-        """Print string on the center of the screen."""
+        """Print string at the center of the screen."""
         print(string.center(terminal_width))
 
     print('\n' * ((get_terminal_height() // 2) - DD_OFFSET_FROM_CENTER))

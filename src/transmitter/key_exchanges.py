@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2022  Markus Ottela
+Copyright (C) 2013-2023  Markus Ottela
 
 This file is part of TFC.
 
@@ -387,7 +387,7 @@ def exchange_public_keys(onion_pub_key:       bytes,
 def validate_contact_public_key(tfc_public_key_contact: bytes) -> None:
     """This function validates the public key from contact.
 
-    The validation takes into account key state and it will detect if
+    The validation takes into account key state, and it will detect if
     the public key is zero, but it can't predict whether the shared key
     will be zero. Further validation of the public key is done by the
     `src.common.crypto` module.

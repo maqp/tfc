@@ -116,7 +116,7 @@ reasonable version of python (2.4-3.5), but I'm only testing on 2.7-3.4.
     >> import reedsolo as rs
     >> rs.init_tables(0x11d)
 
-    Pro tip: if you get the error: ValueError: byte must be in
+    Pro-tip: if you get the error: ValueError: byte must be in
     range(0, 256), please check that your prime polynomial is correct
     for your field.
 
@@ -147,18 +147,18 @@ reasonable version of python (2.4-3.5), but I'm only testing on 2.7-3.4.
     Note that both the message and the ecc are corrected (if possible
     of course).
 
-    Pro tip: if you know a few erasures positions, you can specify them
+    Pro-tip: if you know a few erasures positions, you can specify them
     in a list `erase_pos` to double the repair power. But you can also
     just specify an empty list.
 
     If the decoding fails, it will normally automatically check and
-    raise a ReedSolomonError exception that you can handle. However
+    raise a ReedSolomonError exception that you can handle. However,
     if you want to manually check if the repaired message is correct,
     you can do so:
     >> rs.rs_check(rmes + recc, nsym)
 
     Note: if you want to use multiple Reed-Solomon with different
-    parameters, you need to backup the globals and restore them before
+    parameters, you need to back up the globals and restore them before
     calling reedsolo functions:
 
     >> rs.init_tables()
@@ -171,9 +171,9 @@ reasonable version of python (2.4-3.5), but I'm only testing on 2.7-3.4.
     >> mesecc = rs.rs_encode_msg(mes, nsym)
     >> rmes, recc = rs.rs_correct_msg(mesecc, nsym)
 
-    The globals backup is not necessary if you use RSCodec, it will be
+    The globals back up is not necessary if you use RSCodec, it will be
     automatically managed. Read the source code's comments for more info
-    about how it works, and for the various parameters you can setup if
+    about how it works, and for the various parameters you can set up if
     you need to interface with other RS codecs.
 
 TO DO IMPORTANT: try to keep the same convention for the ordering of
@@ -232,13 +232,13 @@ def find_prime_polys(generator:   int  = 2,
     Compute the list of prime polynomials for the given generator and
     Galois Field characteristic exponent.
 
-    fast_primes will output less results but will be significantly faster.
+    fast_primes will output fewer results but will be significantly faster.
     Single will output the first prime polynomial found, so if all you
     want is to just find one prime polynomial to generate the LUT for
     Reed-Solomon to work, then just use that.
 
     A prime polynomial (necessarily irreducible) is necessary to reduce
-    the multiplications in the Galois Field, so as to avoid overflows.
+    the multiplications in the Galois Field, to avoid overflows.
 
     Why do we need a "prime polynomial"? Can't we just reduce modulo 255
     (for GF(2^8) for example)? Because we need the values to be unique.
@@ -267,7 +267,7 @@ def find_prime_polys(generator:   int  = 2,
 
     # Here is implemented a brute-force approach to find all these prime
     polynomials, by generating every possible prime polynomials (i.e.,
-    every integers between field_charac+1 and field_charac*2), and then
+    every integer between field_charac+1 and field_charac*2), and then
     we build the whole Galois Field, and we reject the candidate prime
     polynomial if it duplicates even one value or if it generates a
     value above field_charac (i.e., cause an overflow).
@@ -370,10 +370,10 @@ def init_tables(prim:      int = 0x11D,
     Generator is the generator number (the "increment" that will be used
     to walk through the field by multiplication, this must be a prime
     number). This is basically the base of the logarithm/anti-log tables.
-    Also often noted "alpha" in academic books.
+    Also, often noted "alpha" in academic books.
 
     Prim is the primitive/prime (binary) polynomial and must be
-    irreducible (i.e., it can't represented as the product of two smaller
+    irreducible (i.e., it can't be represented as the product of two smaller
     polynomials). It's a polynomial in the binary sense: each bit is a
     coefficient, but in fact it's an integer between field_charac+1 and
     field_charac*2, and not a list of gf values. The prime polynomial
@@ -540,7 +540,7 @@ def cl_div(dividend: int, divisor: int) -> int:
     integers and returns the remainder.
     """
     # Compute the position of the most
-    # significant bit for each integers
+    # significant bit for each integer
     dl1 = bit_length(dividend)
     dl2 = bit_length(divisor)
 
@@ -650,7 +650,7 @@ def gf_poly_mul(p: Any,
 
     # Compute the polynomial multiplication (just like the
     # outer product of two vectors, we multiply each
-    # coefficients of p with all coefficients of q)
+    # coefficient of p with all coefficients of q)
     for j, _ in enumerate(q):
         # Optimization: load the coefficient once
         qj = q[j]
@@ -680,7 +680,7 @@ def gf_poly_mul_simple(p: List[int],
     r = _bytearray(len(p) + len(q) - 1)  # type: bytearray
 
     # Compute the polynomial multiplication (just like the outer product
-    # of two vectors, we multiply each coefficients of p with all
+    # of two vectors, we multiply each coefficient of p with all
     # coefficients of q)
     for j, _ in enumerate(q):
         for i, _ in enumerate(p):
@@ -853,7 +853,7 @@ def rs_encode_msg(msg_in:    bytes,
     # len(gen)-1 bytes (which is the number of ecc symbols).
     msg_out = _bytearray(msg_in) + _bytearray(len(gen) - 1)  # type: bytearray
 
-    # Precompute the logarithm of every items in the generator
+    # Precompute the logarithm of every item in the generator
     lgen = _bytearray([gf_log[gen[j]] for j, _ in enumerate(gen)])
 
     # Extended synthetic division main loop
@@ -885,8 +885,8 @@ def rs_encode_msg(msg_in:    bytes,
             # since the divisor, the generator polynomial, is always
             # monic)
             for j in range(1, len(gen)):
-                # If gen[j] != 0: # log(0) is undefined so we need to
-                # check that, but it slows things down in fact and it's
+                # If gen[j] != 0: # log(0) is undefined, so we need to
+                # check that, but it slows things down in fact, and it's
                 # useless in our case (Reed-Solomon encoding) since we
                 # know that all coefficients in the generator are not 0
 
@@ -921,7 +921,7 @@ def rs_calc_syndromes(msg:       bytearray,
 
     Note the "[0] +" : we add a 0 coefficient for the lowest degree (the
     constant). This effectively shifts the syndrome, and will shift
-    every computations depending on the syndromes (such as the errors
+    every computation depending on the syndromes (such as the errors
     locator polynomial, errors evaluator polynomial, etc. but not the
     errors positions).
 
@@ -1081,10 +1081,10 @@ def rs_find_error_locator(synd:        List[int],
 
     # L = 0
     # Update flag variable, not needed here because we use an
-    # alternative equivalent way of checking if update is needed (but
+    # alternative equivalent way of checking if update is needed, but
     # using the flag could potentially be faster depending on if using
     # length(list) is taking linear time in your language, here in
-    # Python it's constant so it's as fast.
+    # Python it's constant, so it's as fast.
 
     # Fix the syndrome shifting: when computing the syndrome, some
     # implementations may prepend a 0 coefficient for the lowest degree
@@ -1134,7 +1134,7 @@ def rs_find_error_locator(synd:        List[int],
         # necessary to correctly decode. But this can be optimized:
         # Since we only need the K'th element, we don't need to compute
         # the polynomial multiplication for any other element but the
-        # K'th. Thus to optimize, we compute the polymul only at the item
+        # K'th. Thus, to optimize, we compute the polymul only at the item
         # we need, skipping the rest (avoiding a nested loop, thus we
         # are linear time instead of quadratic). This optimization is
         # actually described in several figures of the book
@@ -1174,7 +1174,7 @@ def rs_find_error_locator(synd:        List[int],
                 # correcting only 2*(errors+erasures) <= (n-k) instead
                 # of 2*errors+erasures <= (n-k)), but in this latest
                 # draft, this will lead to a wrong decoding in some
-                # cases where it should correctly decode! Thus you
+                # cases where it should correctly decode! Thus, you
                 # should try with and without `- erase_count` to update
                 # L on your own implementation and see which one works
                 # OK without producing wrong decoding failures.
@@ -1197,7 +1197,7 @@ def rs_find_errata_locator(e_pos:     List[int],
                            ) -> List[int]:
     """\
     Compute the erasures/errors/errata locator polynomial from the
-    erasures/errors/errata positions (the positions must be relative to
+    erasures/errors/errata positions. The positions must be relative to
     the x coefficient, eg: "hello worldxxxxxxxxx" is tampered to
     "h_ll_ worldxxxxxxxxx" with xxxxxxxxx being the ecc of length n-k=9,
     here the string positions are [1, 4], but the coefficients are
@@ -1257,7 +1257,7 @@ def rs_find_error_evaluator(synd:    List[int],
     and the error/erasures/errata locator Sigma. Omega is already
     computed at the same time as Sigma inside the Berlekamp-Massey
     implemented above, but in case you modify Sigma, you can recompute
-    Omega afterwards using this method, or just ensure that Omega
+    Omega afterward using this method, or just ensure that Omega
     computed by BM is correct given Sigma.
     """
     # Omega(x) = [ Synd(x) * Error_loc(x) ] mod x^(n-k+1)
@@ -1381,7 +1381,7 @@ def rs_correct_msg(msg_in:        Union[bytes, bytearray],
         # that are longer than field_charac, but because this will be
         # above the field, this will generate more error positions
         # during Chien Search than it should, because this will generate
-        # duplicate values, which should normally be prevented thank's
+        # duplicate values, which should normally be prevented thanks
         # to the prime polynomial reduction (e.g., because it can't
         # discriminate between error at position 1 or 256, both being
         # exactly equal under Galois Field 2^8). So it's really not
@@ -1603,12 +1603,12 @@ class RSCodec(object):
         """\
         Initialize the Reed-Solomon codec. Note that different
         parameters change the internal values (the ecc symbols, look-up
-        table values, etc) but not the output result (whether your
+        table values, etc.) but not the output result (whether your
         message can be repaired or not, there is no influence of the
         parameters).
 
         nsym       : number of ecc symbols (you can repair nsym/2 errors
-                     and nsym erasures.
+                     and nsym erasures).
         nsize      : maximum length of each chunk. If higher than 255,
                      will use a higher Galois Field, but the algorithm's
                      complexity and computational cost will raise
@@ -1618,7 +1618,7 @@ class RSCodec(object):
                      single_gen = False.
         """
 
-        # Auto-setup if Galois Field or message length is different than
+        # Auto-setup if Galois Field or message length is different from
         # default (exponent 8).
 
         # If nsize (chunk size) is larger than the Galois Field, we
@@ -1636,7 +1636,7 @@ class RSCodec(object):
         # Memorize variables
 
         # Number of ecc symbols (i.e., the repairing rate will be
-        # r=(nsym/2)/nsize, so for example if you have nsym=5 and
+        # r=(nsym/2)/nsize), so for example if you have nsym=5 and
         # nsize=10, you have a rate r=0.25, so you can correct up to
         # 0.25% errors (or exactly 2 symbols out of 10), and 0.5%
         # erasures (5 symbols out of 10).
@@ -1657,7 +1657,7 @@ class RSCodec(object):
 
         # Exponent of the field's characteristic. This both defines the
         # maximum value per symbol and the maximum length of one chunk.
-        # By default it's GF(2^8), do not change if you're not sure what
+        # By default, it's GF(2^8), do not change if you're not sure what
         # it means.
         self.c_exp = c_exp
 
@@ -1711,7 +1711,7 @@ class RSCodec(object):
         Usage: rmes, rmesecc = RSCodec.decode(data).
         """
         # erase_pos is a list of positions where you know (or greatly
-        # suspect at least) there is an erasure (i.e., wrong character but
+        # suspect at least) there is an erasure (i.e., wrong character, but
         # you know it's at this position). Just input the list of all
         # positions you know there are errors, and this method will
         # automatically split the erasures positions to attach to the
@@ -1739,7 +1739,7 @@ class RSCodec(object):
 
                 # Then remove the extract erasures from the big list and
                 # also decrement all subsequent positions values by
-                # nsize (the current chunk's size) so as to prepare the
+                # nsize (the current chunk's size) to prepare the
                 # correct alignment for the next iteration
                 erase_pos = [x - (self.nsize + 1) for x in erase_pos if x > self.nsize]
 

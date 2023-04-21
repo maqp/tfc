@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2022  Markus Ottela
+Copyright (C) 2013-2023  Markus Ottela
 
 This file is part of TFC.
 
@@ -223,7 +223,7 @@ def ch_master_key(ts:           'datetime',
     group_list.store_groups(replace=False)
     settings.store_settings(replace=False)
 
-    # At this point all temp files exist and they have been checked to be valid by the respective
+    # At this point all temp files exist, and they have been checked to be valid by the respective
     # temp file writing function. It's now time to create a temp file for the new master key
     # database. Once the temp master key database is created, the `replace_database_data()` method
     # will also run the atomic `os.replace()` command for the master key database.

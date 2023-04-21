@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2022  Markus Ottela
+Copyright (C) 2013-2023  Markus Ottela
 
 This file is part of TFC.
 
@@ -21,7 +21,7 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 
 """Program details"""
 TFC         = 'TFC'
-VERSION     = '1.22.11'
+VERSION     = '1.23.04'
 TRANSMITTER = 'Transmitter'
 RECEIVER    = 'Receiver'
 RELAY       = 'Relay'

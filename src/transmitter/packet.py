@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2022  Markus Ottela
+Copyright (C) 2013-2023  Markus Ottela
 
 This file is part of TFC.
 
@@ -154,7 +154,7 @@ def queue_file(window:   'TxWindow',
 
     When traffic masking is disabled, file transmission is much faster
     as the file is only encrypted and transferred over serial once
-    before the Relay Program multi-casts the ciphertext to each
+    before the Relay Program multicasts the ciphertext to each
     specified recipient. See the send_file docstring (below) for more
     details.
     """
@@ -195,11 +195,11 @@ def send_file(path:     str,
     masking is not enabled. The file is loaded and compressed before it
     is encrypted. The encrypted file is then exported to Networked
     Computer along with a list of Onion Service public keys (members in
-    window) of all recipients to whom the Relay Program will multi-cast
+    window) of all recipients to whom the Relay Program will multicast
     the file to.
 
     Once the file ciphertext has been exported, this function will
-    multi-cast the file decryption key to each recipient inside an
+    multicast the file decryption key to each recipient inside an
     automated key delivery message that uses a special FILE_KEY_HEADER
     in place of standard PRIVATE_MESSAGE_HEADER. To know for which file
     ciphertext the key is for, an identifier must be added to the key
@@ -408,7 +408,7 @@ def send_packet(key_list:        'KeyList',                # Key list object
 
     The assembly packets are encrypted using a symmetric message key.
     TFC provides forward secrecy via a hash ratchet, meaning previous
-    message key is replaced by it's BLAKE2b hash. The preimage
+    message key is replaced by its BLAKE2b hash. The preimage
     resistance of the hash function prevents retrospective decryption of
     ciphertexts in cases of physical compromise.
 

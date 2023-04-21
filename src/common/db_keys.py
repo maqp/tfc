@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2022  Markus Ottela
+Copyright (C) 2013-2023  Markus Ottela
 
 This file is part of TFC.
 
@@ -204,7 +204,7 @@ class KeyList(object):
 
         By default, TFC has a maximum number of 50 contacts. In
         addition, the database stores the KeySet used to encrypt
-        commands from Transmitter to Receiver Program). The plaintext
+        commands from Transmitter to Receiver Program. The plaintext
         length of 51 serialized KeySets is 51*176 = 8976 bytes. The
         ciphertext includes a 24-byte nonce and a 16-byte tag, so the
         size of the final database is 9016 bytes.

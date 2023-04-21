@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2022  Markus Ottela
+Copyright (C) 2013-2023  Markus Ottela
 
 This file is part of TFC.
 
@@ -89,7 +89,7 @@ class File(object):
 
     @staticmethod
     def get_size(path: str) -> Tuple[bytes, str]:
-        """Get size of file in bytes and in human readable form."""
+        """Get size of file in bytes and in human-readable form."""
         byte_size = os.path.getsize(path)
         if byte_size == 0:
             raise SoftError("Error: Target file is empty.", head_clear=True)

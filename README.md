@@ -9,7 +9,6 @@
 [![codecov](https://codecov.io/gh/maqp/tfc/branch/master/graph/badge.svg?token=RJv2hFFdnR)](https://codecov.io/gh/maqp/tfc)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/71fa9cc1da424f52a576a04c2722da26)](https://www.codacy.com/gh/maqp/tfc/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=maqp/tfc&amp;utm_campaign=Badge_Grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/maqp/tfc/badge)](https://www.codefactor.io/repository/github/maqp/tfc)
-[![Requirements Status](https://requires.io/github/maqp/tfc/requirements.svg?branch=master)](https://requires.io/github/maqp/tfc/requirements/?branch=master)
 [![Snyk Report](https://snyk.io/test/github/maqp/tfc/badge.svg)](https://snyk.io/test/github/maqp/tfc) 
 
 Tinfoil Chat (TFC) is a
@@ -214,21 +213,21 @@ This intermediate isolation mechanism runs on a single computer which means no h
 - PureOS 10.0
 - *buntu 22.04 LTS
 - Pop!_OS 22.04 LTS
-- Linux Mint 21
+- Linux Mint 21.1
 - LMDE 5
-- Zorin OS 16.1
-- Qubes 4.1.1 (Debian 11 VM)
+- Zorin OS 16.2
+- Qubes 4.1.2 (Debian 11 VM)
 
 #### Networked Computer
-- Tails 5.6
+- Tails 5.12
 - Debian 11
 - PureOS 10.0
 - *buntu 22.04 LTS
 - Pop!_OS 22.04 LTS
-- Linux Mint 21
+- Linux Mint 21.1
 - LMDE 5
-- Zorin OS 16.1
-- Qubes 4.1.1 (Debian 11 VM)
+- Zorin OS 16.2
+- Qubes 4.1.2 (Debian 11 VM)
 
 
 ### More information

@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2022  Markus Ottela
+Copyright (C) 2013-2023  Markus Ottela
 
 This file is part of TFC.
 
@@ -458,7 +458,7 @@ class GroupList(Iterable[Group], Sized):
         return [g.group_id for g in self.groups]
 
     def get_list_of_hr_group_ids(self) -> List[str]:
-        """Return list of human readable (B58 encoded) group IDs."""
+        """Return list of human-readable (B58 encoded) group IDs."""
         return [b58encode(g.group_id) for g in self.groups]
 
     def get_group_members(self, group_id: bytes) -> List['Contact']:
@@ -480,7 +480,7 @@ class GroupList(Iterable[Group], Sized):
     def print_groups(self) -> None:
         """Print list of groups.
 
-        Neatly printed group list allows easy group management and it
+        Neatly printed group list allows easy group management, and it
         also allows the user to check active logging and notification
         setting, as well as what group ID Relay Program shows
         corresponds to what group, and which contacts are in the group.

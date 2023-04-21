@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2022  Markus Ottela
+Copyright (C) 2013-2023  Markus Ottela
 
 This file is part of TFC.
 
@@ -91,7 +91,7 @@ def blake2b(message:     bytes,                        # Message to hash
         o 128-bit collision/preimage/second-preimage resistance against
           Grover's algorithm running on a quantum Turing machine.
 
-        o The algorithm is bundled in Python3.7's hashlib.
+        o The algorithm is bundled in Python3's hashlib.
 
         o Compared to SHA3-256, the algorithm runs faster on CPUs which
           means better hash ratchet performance:
@@ -169,7 +169,7 @@ def argon2_kdf(password:    str,    # Password to derive the key from
           trade-off (TMTO) attacks that allows compact implementations
           with the same energy cost."[1; p.2]
 
-        o Of all of the PHC finalists, only Catena and Argon2i offer
+        o Out of all the PHC finalists, only Catena and Argon2i offer
           complete cache-timing resistance by using data-independent
           memory access. Catena does not support parallelism[2; p.49],
           thus if it later turns out TFC needs stronger protection from

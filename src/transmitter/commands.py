@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2022  Markus Ottela
+Copyright (C) 2013-2023  Markus Ottela
 
 This file is part of TFC.
 
@@ -473,7 +473,7 @@ def change_master_key(user_input:    'UserInput',
         settings.store_settings(replace=False)
         onion_service.store_onion_service_private_key(replace=False)
 
-        # At this point all temp files exist and they have been checked to be valid by the respective
+        # At this point all temp files exist, and they have been checked to be valid by the respective
         # temp file writing function. It's now time to create a temp file for the new master key
         # database. Once the temp master key database is created, the `replace_database_data()` method
         # will also run the atomic `os.replace()` command for the master key database.
@@ -714,7 +714,7 @@ def whisper(user_input: 'UserInput',
     setting for that message.
 
     The functionality of this feature is impossible to enforce, but if
-    the recipient can be trusted and they do not modify their client,
+    the recipient can be trusted, and they do not modify their client,
     this feature can be used to send the message off-the-record.
     """
     try:
