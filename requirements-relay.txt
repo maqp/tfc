@@ -25,8 +25,8 @@ urllib3==1.26.15              --hash=sha512:4f2cdf7174e25fb6ee6dfff0501c51e4f56b
                               --hash=sha512:b6ddb29c15b2d729605a6acb7c602f18c75a937cdfe9649d35d790a59fbb1d96a8d68975ba0a4c073c9f1750e383c67b7566dbcd81b3e8611501e9f4153e9a2b
 
 # Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)
-Flask==2.2.3                  --hash=sha512:39a67e2b05619d4196fbccfbd836be0ed6c4c977beb1696020563433766c089a278ae09957936c7d23a75ca022a90cc719ab7cc3a6fe5a7dac4f687d11568d85 \
-                              --hash=sha512:de119d032b04eef80a99cee9658cac12f934e9a66d7dbb8304588d0c1320a8a19a8b0a78f69134a20ca26aa408db8686436c5c108ecc39e16b1eca1a3dea2d2c
+Flask==2.3.2                  --hash=sha512:758f281a6f0bdcf90840b6f42a4e5b0244610455cacfe9f909de041c6db3de936a2e46cbbf3ef48984c60cc57a7194fafdc6bf6e353da4d9ebc5254e0898ba9d \
+                              --hash=sha512:7917c3658a1dec77decad2dbc067a1ae602a66007573f1ff26527c214dede2c455ca5e6490159922fac967ceea99bd880cf929d05e21ed49b08abf501d96e8f8
 click==8.1.3                  --hash=sha512:ce7e25725b3edfd0f336f3ebc8ace3977539f0d063f3439c4a1af517263cc1058cd9c0f687819ba319811dd0f376148372444dbaf082797d1dfe2c1c1c856dfb \
                               --hash=sha512:be5b0c8b72ef7c10854f31406668ca4d6f826381deff10bb6a87a406166c09af97e2165f1327094d96abade15efb872892af37f20fdbc855b659cb2c7bd2f2c5
 importlib-metadata==6.5.0     --hash=sha512:90e6f30282f0cd47a7dd1e489cbfc47725c484ccc87392930bccdb0537139c8291714c5125c74d5819facd36476b95bf3e4f4ebe238ee6ad8816f93095d3d8de \
