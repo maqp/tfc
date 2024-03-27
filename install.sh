@@ -189,7 +189,7 @@ dependency_hashes['zipp-3.18.1.tar.gz']='27f2a5a098c773ea878b751e5c1d4e6bb89a367
 
 tcb_packages=("pycparser" "cffi" "setuptools" "argon2_cffi_bindings" "argon2_cffi-" "PyNaCl" "cryptography" "pyserial")
 requests_packages=("urllib3" "idna" "charset_normalizer" "certifi" "requests")
-flask_packages=("Werkzeug" "MarkupSafe" "Jinja2" "itsdangerous" "click" "blinker" "Flask")
+flask_packages=("werkzeug" "MarkupSafe" "Jinja2" "itsdangerous" "click" "blinker" "flask")
 tails_packages=("pyserial" "PySocks" "pycparser" "cffi" "cryptography" "PyNaCl" "argon2_cffi_bindings" "argon2_cffi-")
 tails_packages+=("${requests_packages[@]}" "${flask_packages[@]}")
 
