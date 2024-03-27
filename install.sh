@@ -187,7 +187,6 @@ dependency_hashes['zipp-3.18.1.tar.gz']='27f2a5a098c773ea878b751e5c1d4e6bb89a367
 # before packages that use them, and the list items must use the same capitalization
 # as the dependency filename).
 
-pre_packages=("pip" "setuptools")
 tcb_packages=("pycparser" "cffi" "setuptools" "argon2_cffi_bindings" "argon2_cffi-" "PyNaCl" "cryptography" "pyserial")
 requests_packages=("urllib3" "idna" "charset_normalizer" "certifi" "requests")
 flask_packages=("Werkzeug" "MarkupSafe" "Jinja2" "itsdangerous" "click" "blinker" "Flask")
@@ -234,17 +233,17 @@ function verify_files {
     compare_digest bfc64f8bf698c74e120dbfad105767975b36b5ae077307381b567aeedfea4b4ff6ea8b96159b844ff29a4fb0f90559e76b1fd669256447c83fbd248a0ee823f3 '' uninstall.sh
 
     compare_digest fe5b9289761661f1440f97d4f64b4f969842ef4ed3dcc6951ce7e5fbe71f986f5058e7fe4815e0e6b0bca9b644b95d147a2e77d367ebfec8df2733d22ed38bec launchers/ terminator-config-local-test
-    compare_digest b5a406ef43e83b873a10f2cbef0470c125638cbea251cadb3aadb57f5b9cb8fbb09912f05112b0b575919383e90c486daa96d6b49aeafcacebf7f67a0098b98b launchers/ TFC-Local-test.desktop
+    compare_digest 19dc85a3e35f7a6261cf8ea09621ffd2dabe0e9a96f4ba504f0127825da0e3239073a0e56e2ab7eedd4053f1cb4b53b6ba98e964988a4d92efa59f0b10937871 launchers/ TFC-Local-test.desktop
     compare_digest b38a6a1a1f84adec336c0ea6779d1524ee40f182721810643d78eebea92492db9ae55a660d31306f11b0bf0c0da1ded037b5366d81b54b8f494aac9e340d7027 launchers/ tfc-qubes-receiver
     compare_digest 36816ecfda0c9959d2e61504d980925ac848c512c275a068631485d36ac5590a2112c59da7361061d5055cc5a637302b28c901d956ccfb8e809a9ff1a13401b5 launchers/ tfc-qubes-relay
     compare_digest ec74d5090d45ecbf5802715404efdc8870a6a06559678677987a6af69de65d79fd6d48c11e1dce36d431b4d2951df9214d8016be6c10faa149d7bd82226ec661 launchers/ tfc-qubes-transmitter
-    compare_digest 10323da3cac2af9e5b338fb1e88fd9ed982ffe2fc582b2903a1ffc08d251a6518d726057d71cd3f4950fe4ac5b6361e9faa26f98a774b47c719f93cbc7f36b1f launchers/ TFC-RP.desktop
-    compare_digest 6153f81bacf496b384e2fd547320460631ab3fd1c600998a0a88ea25c98187e1c8de6029e28880df849a85faf10bdec48e0952541527478163b8ef3097a41c91 launchers/ TFC-RP-Qubes.desktop
-    compare_digest 7ec05f8ef14f1a0c3460ff5d572e02667718680fccf70cf9560c7bf63c82626b83fa949e4096da060fdf5ae10dbc8167ba8d558a7564ff388a9aa327d1a3d4a0 launchers/ TFC-RP-Tails.desktop
-    compare_digest b5186b0375312143dc097cd2cba8513de1ba5d05d2f8725f25ed57b89f625a0a148f43aab96015f69977f00a6a3f3f78128fbd28c218c3d5d9706f4690e652f0 launchers/ TFC-RxP.desktop
-    compare_digest 6a1bee5561893d689dee35a06b37cc8b66fa2b4a840420250e178f19e3df2ac8248c74e83048af8a53ec2eafb8e0220eed57a9b68a438c3f994d99462cdbda68 launchers/ TFC-RxP-Qubes.desktop
-    compare_digest 2942bb2adb256206242c92c05dd0f270273f260cb3571b0d36fe393f89ac3dd9e132480b4a4a195bfc12c22be530cca866f9026cb717f0a6821c0569bdb0ced2 launchers/ TFC-TxP.desktop
-    compare_digest e502a2e20ac16e7deae76383492509ded4e426b1d1d78fba707a0735119829bbf9e7ed2bdb4975040b3ff932f16ce6e0583a1833f3a6979875ac14e739d177cc launchers/ TFC-TxP-Qubes.desktop
+    compare_digest 2cb288015524281c001c2090c952a607a984568f8d62146a5e7bc4ba8cc8e4105fb411324cc8806a05ad99b501d9585bbded43b5ad8762db698ea6ef7681e1ef launchers/ TFC-RP.desktop
+    compare_digest 6bb0b26d0f9cd800fae0a1cdd13c48bb030fa9141591d5f8dde02b55693b47213e1989095f4187f286f515314b50ee25c90364a4dad7099b6bf15cf39cbeb183 launchers/ TFC-RP-Qubes.desktop
+    compare_digest 2bd8cfca67c9d07598af1f0d2ab87e59922314c3273ec1e368b68dac0421769d031e3a451a11f3a4dafab4b4b99613780bfa03eb4908baa63382b965bb98f49e launchers/ TFC-RP-Tails.desktop
+    compare_digest 228e401ac0fe9a20125cc8a6370daf61c81da0ef24216eaca7364777a373559d170a6f27757814ff31b6856c02e37a5e004e03875d9688f76cc3f97bac5c581d launchers/ TFC-RxP.desktop
+    compare_digest fb9fcb15ba4853cd07b61566e071dfca68a61de717ca29765e472cbbbc08215fde967e83e5744f7c29af3a45a4a4c5c6f18eab0076dab08eec3516455eb0b8b6 launchers/ TFC-RxP-Qubes.desktop
+    compare_digest 1db227da47e7e818461b3ada5318d08e963ce55287d12d0239ad19f0746c43d8b1b3339b810e5048af48868e69dd8722976f01e981ee39240ff613cc2470ff31 launchers/ TFC-TxP.desktop
+    compare_digest 46d22f767b973f095ae1580d31731f0448bbe4a06d645cb8f6c02678e4779c32b7e778d21bae15186b9855ff4a731e1de9c2d77572e2a3e29bf2bd4bda63d954 launchers/ TFC-TxP-Qubes.desktop
 
     compare_digest 75d9c1bbcafec1839dc93baf6afa135634f434d2426ee0f821f8a794acae9cc7ab2c6008ad642d65259c364c6960489210d00ecad53713b73048f0322f5a1f22 qubes/ service.sh
     compare_digest 369632ea58b3f63a9bbc2202fb69adaa47f2a16c565f9b4a325e63f63cb0802c1e61018986100c47d5745180606be494be96ee30b2d4e56f57e4797589a1b258 qubes/ writer.py
@@ -268,7 +267,7 @@ function verify_files {
     compare_digest 50985070c73cc5055504e3d228ecfa923a6b0ab0ea155f1ae308531f65a23d28d48141f19446e58c031c65b0c6122b42b3a907c297c8fb21e4ccfe3b0615ddbe src/common/ output.py
     compare_digest 6cc10e84c9b4fdfd0f8beee6c18e565231f98ad4ddfc7a6e3f96228aa1dbee15e32feab7fdbdb66402b60efc7579b32732fe23d1313caba201b181a28d06a120 src/common/ path.py
     compare_digest 0cf08cbd61b1be94142414c03f6931df7c06ff944f150855bb52b13abd8f1dd29506be041cd4b77eb83a2c4617702b4dbad3e9a5097256c36b1d444f20ccb4da src/common/ reed_solomon.py
-    compare_digest ced1583b680f03453084dbc241a57cc29b8421ae7126844a9279a0f0d01c23d234630657384482b7af5e8b7f1b7343c086c515c4e7cf0daae585dc38c507be03 src/common/ statics.py
+    compare_digest 9ef30831e51cfa772cda5f882eefac27bd2c3248a5b5e1677df287711d72300079ff1347fe65c6b88d8b4820edfb7df66f7bf5614da8a9679afb1c0547b6823b src/common/ statics.py
     compare_digest 66fe7fad5ad3e363fba36ed7c7177e97d17cb7fdecf0f303a9015cffafbd523c8d02393cfd297dc5e463bddf62e13daf21c19d9614a0814170f524616b81ff29 src/common/ word_list.py
 
     compare_digest dec1f3561e4345dcb7741b6ac26ec29e4bcd1b0ba421864c35c9c23ab989bc7b70cb3af46d820af65f405d390998ca0e762090d9165ded3cc1200365ccb8b902 src/receiver/ __init__.py
@@ -729,8 +728,6 @@ function install_relay_tails {
     # to $HOME, move the files to /opt/tfc, and then perform the hash verification
 
     # Install prerequisites before downloading other packages: This ensures pip accepts manylinux2014 wheels
-    verify_packages "${pre_packages[@]}"
-    install_packages_as_root "${pre_packages[@]}"
 
     torsocks python3 -m pip download -r "${INSTALL_DIR}/requirements-relay-tails.txt" --require-hashes --no-deps --no-cache-dir -d "${HOME}/"
 
@@ -747,7 +744,6 @@ function install_relay_tails {
     t_sudo mv ${INSTALL_DIR}/tfc.yml                        /etc/onion-grater.d/
 
     # Remove unnecessary files
-    remove_packages "${pre_packages[@]}"
     remove_packages "${tails_packages[@]}"
     remove_common_files "t_sudo"
     t_sudo rm -r "${INSTALL_DIR}/src/receiver/"
