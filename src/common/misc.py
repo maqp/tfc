@@ -266,9 +266,7 @@ def monitor_processes(process_list:       List[Process],
                     sys.exit(0)
 
                 if command == WIPE:
-                    with open('/etc/os-release') as f:
-                        data = f.read()
-                    if TAILS not in data:
+                    if not platform_is_tails():
                         shred_databases(software_operation)
                     power_off_system()
 
@@ -277,7 +275,7 @@ def platform_is_tails() -> bool:
     """Return True if Relay Program is running on Tails."""
     with open('/etc/os-release') as f:
         data = f.read()
-    return 'TAILS_PRODUCT_NAME="Tails"' in data
+    return TAILS in data
 
 
 def power_off_system() -> None:

@@ -41,7 +41,7 @@ DUMMY_GROUP   = 'dummy_group'
 TX            = 'tx'
 RX            = 'rx'
 NC            = 'nc'
-TAILS         = 'TAILS_PRODUCT_NAME="Tails"'
+TAILS         = 'NAME="Tails"'
 
 
 """Window identifiers"""
