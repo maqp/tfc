@@ -34,21 +34,18 @@ TESTING_DIR = ''  # Must include slash!
 
 REQ_FILE_DEV   = 'requirements-dev.txt'
 REQ_FILE_NET   = 'requirements-relay.txt'
-REQ_FILE_TPRE  = 'requirements-pre.txt'
 REQ_FILE_TAILS = 'requirements-relay-tails.txt'
 REQ_FILE_TCB   = 'requirements.txt'
-REQ_FILE_VENV  = 'requirements-venv.txt'
 
 persistent = False  # When True, uses cached dependencies.
 debug      = True   # When True, prints debug messages
 
 # Dependency statics
 APIPKG = 'APIPKG'
-APPDIRS = 'APPDIRS'
 ARGON2_CFFI = 'ARGON2_CFFI'
 ARGON2_CFFI_BINDINGS = 'ARGON2_CFFI_BINDINGS'
 ATTRS = 'ATTRS'
-BP_EP_SEL = 'BACKPORTS_ENTRYPOINTS_SELECTABLE'
+BLINKER = 'BLINKER'
 CERTIFI = 'CERTIFI'
 CFFI = 'CFFI'
 CHARDET = 'CHARDET'
@@ -56,11 +53,9 @@ CHARSET_NORMALIZER = 'CHARSET_NORMALIZER'
 CLICK = 'CLICK'
 COVERAGE = 'COVERAGE'
 CRYPTOGRAPHY = 'CRYPTOGRAPHY'
-DISTLIB = 'DISTLIB'
 EXCEPTIONGROUP = 'EXCEPTIONGROUP'
 EXECNET = 'EXECNET'
 FLASK = 'FLASK'
-FILELOCK = 'FILELOCK'
 IDNA = 'IDNA'
 IMPORTLIB_METADATA = 'IMPORTLIB_METADATA'
 INICONFIG = 'INICONFIG'
@@ -72,8 +67,6 @@ MORE_ITERTOOLS = 'MORE_ITERTOOLS'
 MYPY = 'MYPY'
 MYPY_EXTENSIONS = 'MYPY_EXTENSIONS'
 PACKAGING = 'PACKAGING'
-PIP = 'PIP'
-PLATFORM_DIRS = 'PLATFORM_DIRS'
 PLUGGY = 'PLUGGY'
 PY = 'PY'
 PYCODESTYLE = 'PYCODESTYLE'
@@ -348,7 +341,6 @@ def main() -> None:
 
     dependency_dict = {
         APIPKG:               Dependency(uid=APIPKG,             stylized_name='apipkg',             pip_name='apipkg',             sub_dependencies=None, is_dev_dependency=True),
-        APPDIRS:              Dependency(uid=APPDIRS,            stylized_name='appdirs',            pip_name='appdirs',            sub_dependencies=None),
         ARGON2_CFFI:          Dependency(uid=ARGON2_CFFI,        stylized_name='argon2-cffi',        pip_name='argon2-cffi',        sub_dependencies=[ARGON2_CFFI_BINDINGS, PYCPARSER, CFFI],
                                          description_dict={REQ_FILE_DEV:   'Argon2 Password Hashing Function (Derives keys that protect persistent user data)',
                                                            REQ_FILE_TCB:   'Argon2 Password Hashing Function (Derives keys that protect persistent user data)',
@@ -356,7 +348,7 @@ def main() -> None:
                                                            REQ_FILE_TAILS: 'Argon2 Password Hashing Function (Not needed but allows importing from src.common.crypto)'}),
         ARGON2_CFFI_BINDINGS: Dependency(uid=ARGON2_CFFI_BINDINGS, stylized_name='Argon2 CFFI Bindings', pip_name='argon2-cffi-bindings', sub_dependencies=[PYCPARSER, CFFI]),
         ATTRS:                Dependency(uid=ATTRS,              stylized_name='attrs',              pip_name='attrs',              sub_dependencies=None, is_dev_dependency=True),
-        BP_EP_SEL:            Dependency(uid=BP_EP_SEL,          stylized_name='BP_EP_SEL',          pip_name='backports.entry-points-selectable', sub_dependencies=None),
+        BLINKER:              Dependency(uid=BLINKER,            stylized_name='Blinker',            pip_name='blinker',            sub_dependencies=None),
         CERTIFI:              Dependency(uid=CERTIFI,            stylized_name='Certifi',            pip_name='certifi',            sub_dependencies=None),
         CFFI:                 Dependency(uid=CFFI,               stylized_name='CFFI',               pip_name='cffi',               sub_dependencies=[PYCPARSER]),
         CHARDET:              Dependency(uid=CHARDET,            stylized_name='chardet',            pip_name='chardet',            sub_dependencies=None),
@@ -368,11 +360,9 @@ def main() -> None:
                                                            REQ_FILE_TCB:   'cryptography (pyca) (Handles TCB-side X448 key exchange)',
                                                            REQ_FILE_NET:   'cryptography (pyca) (Handles URL token derivation)',
                                                            REQ_FILE_TAILS: 'cryptography (pyca) (Handles URL token derivation)'}),
-        DISTLIB:              Dependency(uid=DISTLIB,            stylized_name='distlib',            pip_name='distlib',            sub_dependencies=None),
         EXCEPTIONGROUP:       Dependency(uid=EXCEPTIONGROUP,     stylized_name='exceptiongroup',     pip_name='exceptiongroup',     sub_dependencies=None,     is_dev_dependency=True),
         EXECNET:              Dependency(uid=EXECNET,            stylized_name='execnet',            pip_name='execnet',            sub_dependencies=[APIPKG], is_dev_dependency=True),
-        FILELOCK:             Dependency(uid=FILELOCK,           stylized_name='py-filelock',        pip_name='filelock',           sub_dependencies=None),
-        FLASK:                Dependency(uid=FLASK,              stylized_name='Flask',              pip_name='Flask',              sub_dependencies=[CLICK, ITSDANGEROUS, JINJA2, WERKZEUG],
+        FLASK:                Dependency(uid=FLASK,              stylized_name='Flask',              pip_name='Flask',              sub_dependencies=[BLINKER, CLICK, ITSDANGEROUS, JINJA2, WERKZEUG],
                                          description_dict={REQ_FILE_DEV:   'Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)',
                                                            REQ_FILE_NET:   'Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)',
                                                            REQ_FILE_TAILS: 'Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)'}),
@@ -388,8 +378,6 @@ def main() -> None:
                                          description_dict={REQ_FILE_DEV: 'mypy (Static type checking tool)'}, is_dev_dependency=True),
         MYPY_EXTENSIONS:      Dependency(uid=MYPY_EXTENSIONS,    stylized_name='Mypy Extensions',    pip_name='mypy-extensions',    sub_dependencies=None, is_dev_dependency=True),
         PACKAGING:            Dependency(uid=PACKAGING,          stylized_name='packaging',          pip_name='packaging',          sub_dependencies=[PYPARSING, SIX], is_dev_dependency=True),
-        PIP:                  Dependency(uid=PIP,                stylized_name='pip',                pip_name='pip',                sub_dependencies=None),
-        PLATFORM_DIRS:        Dependency(uid=PLATFORM_DIRS,      stylized_name='platformdirs',      pip_name='platformdirs',                sub_dependencies=None),
         PLUGGY:               Dependency(uid=PLUGGY,             stylized_name='pluggy',             pip_name='pluggy',             sub_dependencies=[IMPORTLIB_METADATA], is_dev_dependency=True),
         PY:                   Dependency(uid=PY,                 stylized_name='py',                 pip_name='py',                 sub_dependencies=None, is_dev_dependency=True),
         PYCODESTYLE:          Dependency(uid=PYCODESTYLE,        stylized_name='pycodestyle',        pip_name='pycodestyle',        sub_dependencies=None, is_dev_dependency=True),
@@ -436,8 +424,6 @@ def main() -> None:
         TYPES_REQUESTS:       Dependency(uid=TYPES_REQUESTS,     stylized_name='types-requests',     pip_name='types-requests',     sub_dependencies=None, is_dev_dependency=True),
         TYPING_EXTENSIONS:    Dependency(uid=TYPING_EXTENSIONS,  stylized_name='Typing Extensions',  pip_name='typing-extensions',  sub_dependencies=None),
         URLLIB3:              Dependency(uid=URLLIB3,            stylized_name='urllib3',            pip_name='urllib3',            sub_dependencies=None),
-        VIRTUALENV:           Dependency(uid=VIRTUALENV,         stylized_name='virtualenv',         pip_name='virtualenv',         sub_dependencies=[APPDIRS, BP_EP_SEL, DISTLIB, FILELOCK, IMPORTLIB_METADATA, PLATFORM_DIRS, TYPING_EXTENSIONS, SIX],
-                                         description_dict={REQ_FILE_VENV: 'Virtual environment (Used to create an isolated Python environment for TFC dependencies)'}),
         WCWIDTH:              Dependency(uid=WCWIDTH,            stylized_name='wcwidth',            pip_name='wcwidth',            sub_dependencies=None, is_dev_dependency=True),
         WERKZEUG:             Dependency(uid=WERKZEUG,           stylized_name='Werkzeug',           pip_name='Werkzeug',           sub_dependencies=None),
         ZIPP:                 Dependency(uid=ZIPP,               stylized_name='zipp',               pip_name='zipp',               sub_dependencies=None)
@@ -485,15 +471,6 @@ def main() -> None:
                                                      ARGON2_CFFI
                                                      ])
 
-    requirements_tails_pre = RequirementsFile(file_name=REQ_FILE_TPRE,
-                                               dependency_dict=dependency_dict,
-                                               dependencies=[PIP,
-                                                             SETUPTOOLS])
-
-    requirements_venv = RequirementsFile(file_name=REQ_FILE_VENV,
-                                         dependency_dict=dependency_dict,
-                                         dependencies=[VIRTUALENV])
-
     requirements_dev = RequirementsFile(file_name=REQ_FILE_DEV,
                                         dependency_dict=dependency_dict,
                                         dependencies=[ARGON2_CFFI,
@@ -517,8 +494,6 @@ def main() -> None:
     requirements.generate_file()
     requirements_r.generate_file()
     requirements_rt.generate_file()
-    requirements_tails_pre.generate_file()
-    requirements_venv.generate_file()
     requirements_dev.generate_file()
 
 

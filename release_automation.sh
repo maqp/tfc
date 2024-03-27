@@ -18,6 +18,7 @@
 #
 # --------------------------------------------------------------------------------
 
+
 function cd_cwd() {
     # cd to current working directory
     cd /home/user/tfc/
@@ -40,22 +41,27 @@ function remove_pycache_files() {
 }
 
 
+function install_global_dependencies() {
+  box_print "Installing global dependencies"
+  sudo apt install -y wget
+  sudo apt install -y python3-pip
+  sudo apt install -y python3-virtualenv
+  sudo apt install -y python3-tk
+  sudo apt install -y tor
+}
+
+
 function update_dependencies() {
     box_print "Updating dependencies"
     python3 /home/user/tfc/auto_dependency_updater.py
 }
+
 
 function update_ide_venv() {
     box_print "Updating IDE Virtualenv"
 
     # Cleanup
     rm -rf /home/user/tfc/venv_tfc
-
-    # Upgrade PIP
-    python3 -m pip install --upgrade pip
-
-    # Upgrade virtualenv
-    python3 -m pip install --upgrade virtualenv
 
     # Create virtualenv
     python3 -m virtualenv venv_tfc --system-site-packages
@@ -78,7 +84,7 @@ function test_requirement_files_with_pinned_hashes() {
     box_print "Testing requirement files with pinned hashes"
 
     req_test_venv_name=venv_req_test
-    requirements_files="requirements.txt requirements-relay.txt requirements-relay-tails.txt requirements-pre.txt"
+    requirements_files="requirements.txt requirements-relay.txt requirements-relay-tails.txt"
 
     for req_file in ${requirements_files}; do
         # Setup
@@ -193,6 +199,7 @@ function main() {
     set -e
 
     # DL Actions
+    install_global_dependencies
     update_dependencies
     update_ide_venv
     test_requirement_files_with_pinned_hashes
