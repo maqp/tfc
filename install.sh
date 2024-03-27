@@ -709,7 +709,7 @@ function install_relay_tails {
     read_sudo_pwd
 
     t_sudo apt update
-    t_sudo apt install libssl-dev python3-pip python3-tk -y || true  # Ignore error in case packets can not be persistently installed
+    t_sudo apt install libssl-dev python3-pip python3-virtualenv python3-tk -y || true  # Ignore error in case packets can not be persistently installed
 
     create_user_data_dir
 
