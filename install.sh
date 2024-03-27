@@ -983,7 +983,12 @@ function sudoer_check {
     # Check that the user who launched the installer is on the sudoers list.
 
     # Tails allows sudo without the user `amnesia` being on sudoers list.
-    if ! lsb_release -a 2>/dev/null | grep -q Tails; then
+    if grep -q "Tails" /etc/os-release; then
+        return
+    fi
+
+    # QubesOS also allows sudo without the user `user` being on sudoers list.
+    if [ -d "/etc/qubes-rpc" ]; then
         return
     fi
 
