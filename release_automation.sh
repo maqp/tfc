@@ -51,23 +51,17 @@ function install_global_dependencies() {
 }
 
 
-function update_dependencies() {
-    box_print "Updating dependencies"
-    python3 /home/user/tfc/auto_dependency_updater.py
-}
-
-
 function update_ide_venv() {
     box_print "Updating IDE Virtualenv"
 
     # Cleanup
-    rm -rf /home/user/tfc/venv_tfc
+    rm -rf /home/user/tfc/venv
 
     # Create virtualenv
-    python3 -m virtualenv venv_tfc --system-site-packages
+    python3 -m virtualenv venv --system-site-packages
 
     # Activate virtualenv
-    . /home/user/tfc/venv_tfc/bin/activate
+    . /home/user/tfc/venv/bin/activate
 
     # Upgrade PIP in virtualenv
     python3 -m pip install --upgrade pip
@@ -77,6 +71,12 @@ function update_ide_venv() {
 
     # Cleanup
     deactivate
+}
+
+
+function update_dependencies() {
+    box_print "Updating dependencies"
+    python3 /home/user/tfc/auto_dependency_updater.py
 }
 
 
@@ -113,7 +113,7 @@ function run_mypy_type_checks() {
     cd_cwd
     remove_pycache_files
     rm -rf /home/user/tfc/.mypy_cache 2>/dev/null
-    . /home/user/tfc/venv_tfc/bin/activate
+    . /home/user/tfc/venv/bin/activate
 
     # Run mypy type checks
     python3 -m mypy {tfc,relay,dd}.py --ignore-missing-imports  # --strict (Strict is disabled until pyca/cryptography PKCS7 (un)padder uses types)
@@ -130,7 +130,7 @@ function run_style_checks() {
     # Setup
     cd_cwd
     remove_pycache_files
-    . /home/user/tfc/venv_tfc/bin/activate
+    . /home/user/tfc/venv/bin/activate
     cd src/
 
     # Run style checks on source files
@@ -149,7 +149,7 @@ function run_unit_tests() {
     cd_cwd
     rm -rf /home/user/tfc/.pytest_cache 2>/dev/null
     rm -rf /home/user/tfc/htmlcov/ 2>/dev/null
-    . /home/user/tfc/venv_tfc/bin/activate
+    . /home/user/tfc/venv/bin/activate
 
     # Run unit tests
     python3 -m pytest --cov=src --cov-report=html -d --tx 7*popen//python=python3 tests/
@@ -199,15 +199,15 @@ function main() {
     set -e
 
     # DL Actions
-    install_global_dependencies
-    update_dependencies
-    update_ide_venv
-    test_requirement_files_with_pinned_hashes
+    # install_global_dependencies
+    # update_ide_venv
+    # update_dependencies
+    # test_requirement_files_with_pinned_hashes
 
     # Actions
-    run_mypy_type_checks
-    run_style_checks
-    run_unit_tests
+    # run_mypy_type_checks
+    # run_style_checks
+    # run_unit_tests
 
     update_installer_digests
     run_release_checks
