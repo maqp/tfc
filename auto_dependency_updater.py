@@ -41,10 +41,8 @@ persistent = False  # When True, uses cached dependencies.
 debug      = True   # When True, prints debug messages
 
 # Dependency statics
-APIPKG = 'APIPKG'
 ARGON2_CFFI = 'ARGON2_CFFI'
 ARGON2_CFFI_BINDINGS = 'ARGON2_CFFI_BINDINGS'
-ATTRS = 'ATTRS'
 BLINKER = 'BLINKER'
 CERTIFI = 'CERTIFI'
 CFFI = 'CFFI'
@@ -53,49 +51,37 @@ CHARSET_NORMALIZER = 'CHARSET_NORMALIZER'
 CLICK = 'CLICK'
 COVERAGE = 'COVERAGE'
 CRYPTOGRAPHY = 'CRYPTOGRAPHY'
-EXCEPTIONGROUP = 'EXCEPTIONGROUP'
 EXECNET = 'EXECNET'
 FLASK = 'FLASK'
 IDNA = 'IDNA'
-IMPORTLIB_METADATA = 'IMPORTLIB_METADATA'
 INICONFIG = 'INICONFIG'
 ITSDANGEROUS = 'ITSDANGEROUS'
 JINJA2 = 'JINJA2'
 MARKUPSAFE = 'MARKUPSAFE'
 MCCABE = 'MCCABE'
-MORE_ITERTOOLS = 'MORE_ITERTOOLS'
 MYPY = 'MYPY'
 MYPY_EXTENSIONS = 'MYPY_EXTENSIONS'
 PACKAGING = 'PACKAGING'
 PLUGGY = 'PLUGGY'
-PY = 'PY'
 PYCODESTYLE = 'PYCODESTYLE'
 PYCPARSER = 'PYCPARSER'
 PYDOCSTYLE = 'PYDOCSTYLE'
 PYFLAKES = 'PYFLAKES'
 PYLAMA = 'PYLAMA'
 PYNACL = 'PYNACL'
-PYPARSING = 'PYPARSING'
 PYSERIAL = 'PYSERIAL'
 PYSOCKS = 'PYSOCKS'
 PYTEST = 'PYTEST'
 PYTEST_COV = 'PYTEST_COV'
-PYTEST_FORKED = 'PYTEST_FORKED'
 PYTEST_XDIST = 'PYTEST_XDIST'
 REQUESTS = 'REQUESTS'
-TYPES_REQUESTS = 'TYPES_REQUESTS'
 SETUPTOOLS = 'SETUPTOOLS'
-SIX = 'SIX'
 SNOWBALLSTEMMER = 'SNOWBALLSTEMMER'
 STEM = 'STEM'
-TOMLI = 'TOMLI'
-TYPED_AST = 'TYPED_AST'
 TYPING_EXTENSIONS = 'TYPING_EXTENSIONS'
 URLLIB3 = 'URLLIB3'
 VIRTUALENV = 'VIRTUALENV'
-WCWIDTH = 'WCWIDTH'
 WERKZEUG = 'WERKZEUG'
-ZIPP = 'ZIPP'
 
 
 
@@ -340,58 +326,50 @@ def main() -> None:
     create_and_change_to_download_directory()
 
     dependency_dict = {
-        APIPKG:               Dependency(uid=APIPKG,             stylized_name='apipkg',             pip_name='apipkg',             sub_dependencies=None, is_dev_dependency=True),
-        ARGON2_CFFI:          Dependency(uid=ARGON2_CFFI,        stylized_name='argon2-cffi',        pip_name='argon2-cffi',        sub_dependencies=[ARGON2_CFFI_BINDINGS, PYCPARSER, CFFI],
+        ARGON2_CFFI:          Dependency(uid=ARGON2_CFFI,        stylized_name='argon2-cffi',        pip_name='argon2-cffi',        sub_dependencies=[ARGON2_CFFI_BINDINGS],
                                          description_dict={REQ_FILE_DEV:   'Argon2 Password Hashing Function (Derives keys that protect persistent user data)',
                                                            REQ_FILE_TCB:   'Argon2 Password Hashing Function (Derives keys that protect persistent user data)',
                                                            REQ_FILE_NET:   'Argon2 Password Hashing Function (Not needed but allows importing from src.common.crypto)',
                                                            REQ_FILE_TAILS: 'Argon2 Password Hashing Function (Not needed but allows importing from src.common.crypto)'}),
-        ARGON2_CFFI_BINDINGS: Dependency(uid=ARGON2_CFFI_BINDINGS, stylized_name='Argon2 CFFI Bindings', pip_name='argon2-cffi-bindings', sub_dependencies=[PYCPARSER, CFFI]),
-        ATTRS:                Dependency(uid=ATTRS,              stylized_name='attrs',              pip_name='attrs',              sub_dependencies=None, is_dev_dependency=True),
+        ARGON2_CFFI_BINDINGS: Dependency(uid=ARGON2_CFFI_BINDINGS, stylized_name='Argon2 CFFI Bindings', pip_name='argon2-cffi-bindings', sub_dependencies=[CFFI]),
         BLINKER:              Dependency(uid=BLINKER,            stylized_name='Blinker',            pip_name='blinker',            sub_dependencies=None),
         CERTIFI:              Dependency(uid=CERTIFI,            stylized_name='Certifi',            pip_name='certifi',            sub_dependencies=None),
         CFFI:                 Dependency(uid=CFFI,               stylized_name='CFFI',               pip_name='cffi',               sub_dependencies=[PYCPARSER]),
-        CHARDET:              Dependency(uid=CHARDET,            stylized_name='chardet',            pip_name='chardet',            sub_dependencies=None),
         CHARSET_NORMALIZER:   Dependency(uid=CHARSET_NORMALIZER, stylized_name='Charset Normalizer', pip_name='charset-normalizer', sub_dependencies=None, pinned_version='2.1.1'),
-        CLICK:                Dependency(uid=CLICK,              stylized_name='Click',              pip_name='click',              sub_dependencies=[IMPORTLIB_METADATA, TYPING_EXTENSIONS, ZIPP]),
+        CLICK:                Dependency(uid=CLICK,              stylized_name='Click',              pip_name='click',              sub_dependencies=None),
         COVERAGE:             Dependency(uid=COVERAGE,           stylized_name='Coverage.py',        pip_name='coverage',           sub_dependencies=None, is_dev_dependency=True),
-        CRYPTOGRAPHY:         Dependency(uid=CRYPTOGRAPHY,       stylized_name='cryptography',       pip_name='cryptography',       sub_dependencies=[CFFI, SIX],
+        CRYPTOGRAPHY:         Dependency(uid=CRYPTOGRAPHY,       stylized_name='cryptography',       pip_name='cryptography',       sub_dependencies=[CFFI],
                                          description_dict={REQ_FILE_DEV:   'cryptography (pyca) (Provides X448 key exchange)',
                                                            REQ_FILE_TCB:   'cryptography (pyca) (Handles TCB-side X448 key exchange)',
                                                            REQ_FILE_NET:   'cryptography (pyca) (Handles URL token derivation)',
                                                            REQ_FILE_TAILS: 'cryptography (pyca) (Handles URL token derivation)'}),
-        EXCEPTIONGROUP:       Dependency(uid=EXCEPTIONGROUP,     stylized_name='exceptiongroup',     pip_name='exceptiongroup',     sub_dependencies=None,     is_dev_dependency=True),
-        EXECNET:              Dependency(uid=EXECNET,            stylized_name='execnet',            pip_name='execnet',            sub_dependencies=[APIPKG], is_dev_dependency=True),
+        EXECNET:              Dependency(uid=EXECNET,            stylized_name='execnet',            pip_name='execnet',            sub_dependencies=None, is_dev_dependency=True),
         FLASK:                Dependency(uid=FLASK,              stylized_name='Flask',              pip_name='Flask',              sub_dependencies=[BLINKER, CLICK, ITSDANGEROUS, JINJA2, WERKZEUG],
                                          description_dict={REQ_FILE_DEV:   'Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)',
                                                            REQ_FILE_NET:   'Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)',
                                                            REQ_FILE_TAILS: 'Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)'}),
         IDNA:                 Dependency(uid=IDNA,               stylized_name='IDNA',               pip_name='idna',               sub_dependencies=None),
-        IMPORTLIB_METADATA:   Dependency(uid=IMPORTLIB_METADATA, stylized_name='importlib_metadata', pip_name='importlib-metadata', sub_dependencies=[ZIPP]),
         INICONFIG:            Dependency(uid=INICONFIG,          stylized_name='iniconfig',          pip_name='iniconfig',          sub_dependencies=None, is_dev_dependency=True),
         ITSDANGEROUS:         Dependency(uid=ITSDANGEROUS,       stylized_name='ItsDangerous',       pip_name='itsdangerous',       sub_dependencies=None),
         JINJA2:               Dependency(uid=JINJA2,             stylized_name='Jinja2',             pip_name='Jinja2',             sub_dependencies=[MARKUPSAFE]),
         MARKUPSAFE:           Dependency(uid=MARKUPSAFE,         stylized_name='MarkupSafe',         pip_name='MarkupSafe',         sub_dependencies=None),
         MCCABE:               Dependency(uid=MCCABE,             stylized_name='McCabe',             pip_name='mccabe',             sub_dependencies=None, is_dev_dependency=True),
-        MORE_ITERTOOLS:       Dependency(uid=MORE_ITERTOOLS,     stylized_name='More Itertools',     pip_name='more-itertools',     sub_dependencies=None, is_dev_dependency=True),
-        MYPY:                 Dependency(uid=MYPY,               stylized_name='mypy',               pip_name='mypy',               sub_dependencies=[MYPY_EXTENSIONS, TYPED_AST, TYPES_REQUESTS, TYPING_EXTENSIONS, TOMLI],
+        MYPY:                 Dependency(uid=MYPY,               stylized_name='mypy',               pip_name='mypy',               sub_dependencies=[MYPY_EXTENSIONS, TYPING_EXTENSIONS],
                                          description_dict={REQ_FILE_DEV: 'mypy (Static type checking tool)'}, is_dev_dependency=True),
         MYPY_EXTENSIONS:      Dependency(uid=MYPY_EXTENSIONS,    stylized_name='Mypy Extensions',    pip_name='mypy-extensions',    sub_dependencies=None, is_dev_dependency=True),
-        PACKAGING:            Dependency(uid=PACKAGING,          stylized_name='packaging',          pip_name='packaging',          sub_dependencies=[PYPARSING, SIX], is_dev_dependency=True),
-        PLUGGY:               Dependency(uid=PLUGGY,             stylized_name='pluggy',             pip_name='pluggy',             sub_dependencies=[IMPORTLIB_METADATA], is_dev_dependency=True),
-        PY:                   Dependency(uid=PY,                 stylized_name='py',                 pip_name='py',                 sub_dependencies=None, is_dev_dependency=True),
+        PACKAGING:            Dependency(uid=PACKAGING,          stylized_name='packaging',          pip_name='packaging',          sub_dependencies=None, is_dev_dependency=True),
+        PLUGGY:               Dependency(uid=PLUGGY,             stylized_name='pluggy',             pip_name='pluggy',             sub_dependencies=None, is_dev_dependency=True),
         PYCODESTYLE:          Dependency(uid=PYCODESTYLE,        stylized_name='pycodestyle',        pip_name='pycodestyle',        sub_dependencies=None, is_dev_dependency=True),
         PYCPARSER:            Dependency(uid=PYCPARSER,          stylized_name='pycparser',          pip_name='pycparser',          sub_dependencies=None),
         PYDOCSTYLE:           Dependency(uid=PYDOCSTYLE,         stylized_name='pydocstyle',         pip_name='pydocstyle',         sub_dependencies=[SNOWBALLSTEMMER], is_dev_dependency=True),
         PYFLAKES:             Dependency(uid=PYFLAKES,           stylized_name='Pyflakes',           pip_name='pyflakes',           sub_dependencies=None, is_dev_dependency=True),
         PYLAMA:               Dependency(uid=PYLAMA,             stylized_name='Pylama',             pip_name='pylama',             sub_dependencies=[MCCABE, PYCODESTYLE, PYDOCSTYLE, PYFLAKES],
                                          description_dict={REQ_FILE_DEV: 'PyLama (Code audit tool for Python)'}, is_dev_dependency=True),
-        PYNACL:               Dependency(uid=PYNACL,             stylized_name='PyNaCl',             pip_name='PyNaCl',             sub_dependencies=[CFFI, SIX],
+        PYNACL:               Dependency(uid=PYNACL,             stylized_name='PyNaCl',             pip_name='PyNaCl',             sub_dependencies=[CFFI],
                                          description_dict={REQ_FILE_DEV:   'PyNaCl (pyca) (Handles TCB-side XChaCha20-Poly1305 symmetric encryption and Derives TFC account from Onion Service private key)',
                                                            REQ_FILE_NET:   'PyNaCl (pyca) (Derives TFC account from Onion Service private key)',
                                                            REQ_FILE_TAILS: 'PyNaCl (pyca) (Derives TFC account from Onion Service private key)',
                                                            REQ_FILE_TCB:   'PyNaCl (pyca) (Handles TCB-side XChaCha20-Poly1305 symmetric encryption)'}),
-        PYPARSING:            Dependency(uid=PYPARSING,          stylized_name='PyParsing',          pip_name='pyparsing',          sub_dependencies=None, is_dev_dependency=True),
         PYSERIAL:             Dependency(uid=PYSERIAL,           stylized_name='pySerial',           pip_name='pyserial',           sub_dependencies=None,
                                          description_dict={REQ_FILE_DEV:   'pySerial (Connects the Source/Destination Computer to the Networked Computer)',
                                                            REQ_FILE_NET:   'pySerial (Connects the Source/Destination Computer to the Networked Computer)',
@@ -401,32 +379,25 @@ def main() -> None:
                                          description_dict={REQ_FILE_DEV:   'PySocks (Routes Requests library through SOCKS5 proxy making Onion Service connections possible)',
                                                            REQ_FILE_NET:   'PySocks (Routes Requests library through SOCKS5 proxy making Onion Service connections possible)',
                                                            REQ_FILE_TAILS: 'PySocks (Routes Requests library through SOCKS5 proxy making Onion Service connections possible)'}),
-        PYTEST:               Dependency(uid=PYTEST,             stylized_name='pytest',             pip_name='pytest',             sub_dependencies=[ATTRS, EXCEPTIONGROUP, IMPORTLIB_METADATA, INICONFIG, MORE_ITERTOOLS, PACKAGING, PLUGGY, PY, WCWIDTH],
+        PYTEST:               Dependency(uid=PYTEST,             stylized_name='pytest',             pip_name='pytest',             sub_dependencies=[INICONFIG, PACKAGING, PLUGGY],
                                          description_dict={REQ_FILE_DEV: 'pytest (Test framework)'}, is_dev_dependency=True),
         PYTEST_COV:           Dependency(uid=PYTEST_COV,         stylized_name='pytest-cov',         pip_name='pytest-cov',         sub_dependencies=[COVERAGE, PYTEST],
                                          description_dict={REQ_FILE_DEV: 'pytest-cov (Pytest plugin for measuring coverage)'}, is_dev_dependency=True),
-        PYTEST_FORKED:        Dependency(uid=PYTEST_FORKED,      stylized_name='pytest-forked',      pip_name='pytest-forked',      sub_dependencies=[PYTEST], is_dev_dependency=True),
-        PYTEST_XDIST:         Dependency(uid=PYTEST_XDIST,       stylized_name='xdist',              pip_name='pytest-xdist',       sub_dependencies=[EXECNET, PYTEST, PYTEST_FORKED, SIX],
+        PYTEST_XDIST:         Dependency(uid=PYTEST_XDIST,       stylized_name='xdist',              pip_name='pytest-xdist',       sub_dependencies=[EXECNET, PYTEST],
                                          description_dict={REQ_FILE_DEV: 'xdist (Pytest distributed testing plugin)'}, is_dev_dependency=True),
         REQUESTS:             Dependency(uid=REQUESTS,           stylized_name='Requests',           pip_name='requests',           sub_dependencies=[CERTIFI, CHARSET_NORMALIZER, IDNA, URLLIB3],
                                          description_dict={REQ_FILE_DEV:   "Requests (Connects to the contact's Tor Onion Service)",
                                                            REQ_FILE_NET:   "Requests (Connects to the contact's Tor Onion Service)",
                                                            REQ_FILE_TAILS: "Requests (Connects to the contact's Tor Onion Service)"}),
         SETUPTOOLS:           Dependency(uid=SETUPTOOLS,         stylized_name='Setuptools',         pip_name='setuptools',         sub_dependencies=None),
-        SIX:                  Dependency(uid=SIX,                stylized_name='six',                pip_name='six',                sub_dependencies=None),
         SNOWBALLSTEMMER:      Dependency(uid=SNOWBALLSTEMMER,    stylized_name='snowballstemmer',    pip_name='snowballstemmer',    sub_dependencies=None, is_dev_dependency=True),
         STEM:                 Dependency(uid=STEM,               stylized_name='Stem',               pip_name='stem',               sub_dependencies=None,
                                          description_dict={REQ_FILE_DEV:   'Stem (Connects to Tor and manages Onion Services)',
                                                            REQ_FILE_NET:   'Stem (Connects to Tor and manages Onion Services)',
                                                            REQ_FILE_TAILS: 'Stem (Connects to Tor and manages Onion Services)'}),
-        TOMLI:                Dependency(uid=TOMLI,              stylized_name='Tomli',              pip_name='tomli',              sub_dependencies=None, is_dev_dependency=True),
-        TYPED_AST:            Dependency(uid=TYPED_AST,          stylized_name='Typed AST',          pip_name='typed-ast',          sub_dependencies=None, is_dev_dependency=True),
-        TYPES_REQUESTS:       Dependency(uid=TYPES_REQUESTS,     stylized_name='types-requests',     pip_name='types-requests',     sub_dependencies=None, is_dev_dependency=True),
         TYPING_EXTENSIONS:    Dependency(uid=TYPING_EXTENSIONS,  stylized_name='Typing Extensions',  pip_name='typing-extensions',  sub_dependencies=None),
         URLLIB3:              Dependency(uid=URLLIB3,            stylized_name='urllib3',            pip_name='urllib3',            sub_dependencies=None),
-        WCWIDTH:              Dependency(uid=WCWIDTH,            stylized_name='wcwidth',            pip_name='wcwidth',            sub_dependencies=None, is_dev_dependency=True),
         WERKZEUG:             Dependency(uid=WERKZEUG,           stylized_name='Werkzeug',           pip_name='Werkzeug',           sub_dependencies=None),
-        ZIPP:                 Dependency(uid=ZIPP,               stylized_name='zipp',               pip_name='zipp',               sub_dependencies=None)
     }
 
     for d in dependency_dict.keys():
