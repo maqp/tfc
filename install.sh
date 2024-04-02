@@ -739,6 +739,7 @@ function install_qubes_src {
     export DEB_PYTHON_INSTALL_LAYOUT='deb'
     sudo -E python3 -m virtualenv "${INSTALL_DIR}/${VENV_NAME}" --system-site-packages --never-download --always-copy
 
+    . ${INSTALL_DIR}/${VENV_NAME}/bin/activate
     install_to_venv "${tcb_packages[@]}"
     deactivate
 
