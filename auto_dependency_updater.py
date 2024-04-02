@@ -34,7 +34,6 @@ TESTING_DIR = ''  # Must include slash!
 
 REQ_FILE_DEV   = 'requirements-dev.txt'
 REQ_FILE_NET   = 'requirements-relay.txt'
-REQ_FILE_TAILS = 'requirements-relay-tails.txt'
 REQ_FILE_TCB   = 'requirements.txt'
 
 persistent = False  # When True, uses cached dependencies.
@@ -329,8 +328,7 @@ def main() -> None:
         ARGON2_CFFI:          Dependency(uid=ARGON2_CFFI,        stylized_name='argon2-cffi',        pip_name='argon2-cffi',        sub_dependencies=[ARGON2_CFFI_BINDINGS],
                                          description_dict={REQ_FILE_DEV:   'Argon2 Password Hashing Function (Derives keys that protect persistent user data)',
                                                            REQ_FILE_TCB:   'Argon2 Password Hashing Function (Derives keys that protect persistent user data)',
-                                                           REQ_FILE_NET:   'Argon2 Password Hashing Function (Not needed but allows importing from src.common.crypto)',
-                                                           REQ_FILE_TAILS: 'Argon2 Password Hashing Function (Not needed but allows importing from src.common.crypto)'}),
+                                                           REQ_FILE_NET:   'Argon2 Password Hashing Function (Not needed but allows importing from src.common.crypto)'}),
         ARGON2_CFFI_BINDINGS: Dependency(uid=ARGON2_CFFI_BINDINGS, stylized_name='Argon2 CFFI Bindings', pip_name='argon2-cffi-bindings', sub_dependencies=[CFFI]),
         BLINKER:              Dependency(uid=BLINKER,            stylized_name='Blinker',            pip_name='blinker',            sub_dependencies=None),
         CERTIFI:              Dependency(uid=CERTIFI,            stylized_name='Certifi',            pip_name='certifi',            sub_dependencies=None),
@@ -341,13 +339,11 @@ def main() -> None:
         CRYPTOGRAPHY:         Dependency(uid=CRYPTOGRAPHY,       stylized_name='cryptography',       pip_name='cryptography',       sub_dependencies=[CFFI],
                                          description_dict={REQ_FILE_DEV:   'cryptography (pyca) (Provides X448 key exchange)',
                                                            REQ_FILE_TCB:   'cryptography (pyca) (Handles TCB-side X448 key exchange)',
-                                                           REQ_FILE_NET:   'cryptography (pyca) (Handles URL token derivation)',
-                                                           REQ_FILE_TAILS: 'cryptography (pyca) (Handles URL token derivation)'}),
+                                                           REQ_FILE_NET:   'cryptography (pyca) (Handles URL token derivation and and derives TFC account from Onion Service private key))'}),
         EXECNET:              Dependency(uid=EXECNET,            stylized_name='execnet',            pip_name='execnet',            sub_dependencies=None, is_dev_dependency=True),
         FLASK:                Dependency(uid=FLASK,              stylized_name='Flask',              pip_name='Flask',              sub_dependencies=[BLINKER, CLICK, ITSDANGEROUS, JINJA2, WERKZEUG],
                                          description_dict={REQ_FILE_DEV:   'Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)',
-                                                           REQ_FILE_NET:   'Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)',
-                                                           REQ_FILE_TAILS: 'Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)'}),
+                                                           REQ_FILE_NET:   'Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)'}),
         IDNA:                 Dependency(uid=IDNA,               stylized_name='IDNA',               pip_name='idna',               sub_dependencies=None),
         INICONFIG:            Dependency(uid=INICONFIG,          stylized_name='iniconfig',          pip_name='iniconfig',          sub_dependencies=None, is_dev_dependency=True),
         ITSDANGEROUS:         Dependency(uid=ITSDANGEROUS,       stylized_name='ItsDangerous',       pip_name='itsdangerous',       sub_dependencies=None),
@@ -368,17 +364,14 @@ def main() -> None:
         PYNACL:               Dependency(uid=PYNACL,             stylized_name='PyNaCl',             pip_name='PyNaCl',             sub_dependencies=[CFFI],
                                          description_dict={REQ_FILE_DEV:   'PyNaCl (pyca) (Handles TCB-side XChaCha20-Poly1305 symmetric encryption and Derives TFC account from Onion Service private key)',
                                                            REQ_FILE_NET:   'PyNaCl (pyca) (Derives TFC account from Onion Service private key)',
-                                                           REQ_FILE_TAILS: 'PyNaCl (pyca) (Derives TFC account from Onion Service private key)',
                                                            REQ_FILE_TCB:   'PyNaCl (pyca) (Handles TCB-side XChaCha20-Poly1305 symmetric encryption)'}),
         PYSERIAL:             Dependency(uid=PYSERIAL,           stylized_name='pySerial',           pip_name='pyserial',           sub_dependencies=None,
                                          description_dict={REQ_FILE_DEV:   'pySerial (Connects the Source/Destination Computer to the Networked Computer)',
                                                            REQ_FILE_NET:   'pySerial (Connects the Source/Destination Computer to the Networked Computer)',
-                                                           REQ_FILE_TAILS: 'pySerial (Connects the Source/Destination Computer to the Networked Computer)',
                                                            REQ_FILE_TCB:   'pySerial (Connects the Source/Destination Computer to the Networked Computer)'}),
         PYSOCKS:              Dependency(uid=PYSOCKS,            stylized_name='PySocks',            pip_name='PySocks',            sub_dependencies=None,
                                          description_dict={REQ_FILE_DEV:   'PySocks (Routes Requests library through SOCKS5 proxy making Onion Service connections possible)',
-                                                           REQ_FILE_NET:   'PySocks (Routes Requests library through SOCKS5 proxy making Onion Service connections possible)',
-                                                           REQ_FILE_TAILS: 'PySocks (Routes Requests library through SOCKS5 proxy making Onion Service connections possible)'}),
+                                                           REQ_FILE_NET:   'PySocks (Routes Requests library through SOCKS5 proxy making Onion Service connections possible)'}),
         PYTEST:               Dependency(uid=PYTEST,             stylized_name='pytest',             pip_name='pytest',             sub_dependencies=[INICONFIG, PACKAGING, PLUGGY],
                                          description_dict={REQ_FILE_DEV: 'pytest (Test framework)'}, is_dev_dependency=True),
         PYTEST_COV:           Dependency(uid=PYTEST_COV,         stylized_name='pytest-cov',         pip_name='pytest-cov',         sub_dependencies=[COVERAGE, PYTEST],
@@ -387,14 +380,12 @@ def main() -> None:
                                          description_dict={REQ_FILE_DEV: 'xdist (Pytest distributed testing plugin)'}, is_dev_dependency=True),
         REQUESTS:             Dependency(uid=REQUESTS,           stylized_name='Requests',           pip_name='requests',           sub_dependencies=[CERTIFI, CHARSET_NORMALIZER, IDNA, URLLIB3],
                                          description_dict={REQ_FILE_DEV:   "Requests (Connects to the contact's Tor Onion Service)",
-                                                           REQ_FILE_NET:   "Requests (Connects to the contact's Tor Onion Service)",
-                                                           REQ_FILE_TAILS: "Requests (Connects to the contact's Tor Onion Service)"}),
+                                                           REQ_FILE_NET:   "Requests (Connects to the contact's Tor Onion Service)"}),
         SETUPTOOLS:           Dependency(uid=SETUPTOOLS,         stylized_name='Setuptools',         pip_name='setuptools',         sub_dependencies=None),
         SNOWBALLSTEMMER:      Dependency(uid=SNOWBALLSTEMMER,    stylized_name='snowballstemmer',    pip_name='snowballstemmer',    sub_dependencies=None, is_dev_dependency=True),
         STEM:                 Dependency(uid=STEM,               stylized_name='Stem',               pip_name='stem',               sub_dependencies=None,
                                          description_dict={REQ_FILE_DEV:   'Stem (Connects to Tor and manages Onion Services)',
-                                                           REQ_FILE_NET:   'Stem (Connects to Tor and manages Onion Services)',
-                                                           REQ_FILE_TAILS: 'Stem (Connects to Tor and manages Onion Services)'}),
+                                                           REQ_FILE_NET:   'Stem (Connects to Tor and manages Onion Services)'}),
         TYPING_EXTENSIONS:    Dependency(uid=TYPING_EXTENSIONS,  stylized_name='Typing Extensions',  pip_name='typing-extensions',  sub_dependencies=None),
         URLLIB3:              Dependency(uid=URLLIB3,            stylized_name='urllib3',            pip_name='urllib3',            sub_dependencies=None),
         WERKZEUG:             Dependency(uid=WERKZEUG,           stylized_name='Werkzeug',           pip_name='Werkzeug',           sub_dependencies=None),
@@ -430,18 +421,6 @@ def main() -> None:
                                                     ARGON2_CFFI
                                                     ])
 
-    requirements_rt = RequirementsFile(file_name=REQ_FILE_TAILS,
-                                       dependency_dict=dependency_dict,
-                                       dependencies=[PYSERIAL,
-                                                     # STEM,  # Not needed ATM
-                                                     PYSOCKS,
-                                                     REQUESTS,
-                                                     FLASK,
-                                                     CRYPTOGRAPHY,
-                                                     PYNACL,
-                                                     ARGON2_CFFI
-                                                     ])
-
     requirements_dev = RequirementsFile(file_name=REQ_FILE_DEV,
                                         dependency_dict=dependency_dict,
                                         dependencies=[ARGON2_CFFI,
@@ -464,7 +443,6 @@ def main() -> None:
 
     requirements.generate_file()
     requirements_r.generate_file()
-    requirements_rt.generate_file()
     requirements_dev.generate_file()
 
 

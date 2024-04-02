@@ -27,7 +27,8 @@ import time
 
 from typing import Optional, Tuple
 
-from src.common.crypto     import argon2_kdf, blake2b, csprng
+from src.common.crypto     import blake2b, csprng
+from src.common.crypto_phf import argon2_kdf
 from src.common.database   import TFCUnencryptedDatabase
 from src.common.encoding   import bytes_to_int, int_to_bytes
 from src.common.exceptions import CriticalError, graceful_exit, SoftError

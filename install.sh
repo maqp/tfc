@@ -180,10 +180,6 @@ dependency_hashes['werkzeug-3.0.1.tar.gz']='83bacda231cd714cf111ebcaf78b47f7e400
 # as the dependency filename).
 
 tcb_packages=("pycparser" "cffi" "setuptools" "argon2_cffi_bindings" "argon2_cffi-" "PyNaCl" "cryptography" "pyserial")
-requests_packages=("urllib3" "idna" "charset_normalizer" "certifi" "requests")
-flask_packages=("werkzeug" "MarkupSafe" "Jinja2" "itsdangerous" "click" "blinker" "flask")
-tails_packages=("pyserial" "PySocks" "pycparser" "cffi" "cryptography" "PyNaCl" "argon2_cffi_bindings" "argon2_cffi-")
-tails_packages+=("${requests_packages[@]}" "${flask_packages[@]}")
 
 # ----------------------------------------------------------------------------------------
 # TFC Source file verification
@@ -217,8 +213,7 @@ function verify_files {
     compare_digest da5fad3d2dfcb2bb992df4af9ce5c7a792b489cf9f86f966610c2d5933536a8ff9f1be2ec2bf2cbc3eab46cd469ffba35a739eacd31dadb704a28f14cd75cefa '' LICENSE-3RD-PARTY
     compare_digest 55b954740233846aaed4360b5ec39e5fd52c3050541b221013fd62fe66e65f21c3ef3527dc97f3db1013a26768a9f2cc1400bf84bf4b26bb18f79c00e1f500f5 '' relay.py
     compare_digest 1dab82c7be5704162cf7c279e3472e573b39a1000d70407c9e7731ec767b5c394b6a8c20ebfe63b9a57176800807e66d4231891d6ffa6bf82f831ecacfe3ec9b '' requirements-dev.txt
-    compare_digest 6e967efe695a8e217981e5f3661c8e9ae23299538bc3509b5766921e54fbcf36fce1985cbfc32fb7f68900305c6bb5c13935eab992c933c7271abcc7abd419f6 '' requirements-relay.txt
-    compare_digest 88eb7830a88e16658ba0dd63e30599600595260899683191f716d474c7eae77a99b524edebb51320b78608d94d794030d57084acea583b6bed353245be3780ca '' requirements-relay-tails.txt
+    compare_digest 35de14ab7ba0fd91a15cce841c6f3276e9310b68a6fd1d0c895c93602472f104987036ebd639e3f74c31834ce7411653dd0449a144e113e24abee4409ef130f1 '' requirements-relay.txt
     compare_digest 0e66cb8609a0f9abc9ca0f76298593a076cd5c8b85abaa0d8b3b765d40a2599a4ea2d33fb4792a97dc5ceee3b71e1682715f71555d5502c87ea20da922d05a7f '' tfc.png
     compare_digest 14bbec9fce50ea69082724347d075ed81685b982743384a9690d7c95ae5c1655a35d01ec5b4d8e4ffeee91c37ef0e2c7ca3d79ea8578abb7c87c22b5d9fb9928 '' tfc.py
     compare_digest f9600e3e31075a53e009cec13474399f5553517f62fa2bcf9048987e47a5eb1b1c2443eadf14aea5ec7f4e67f4caa08809bc11ec8984a184a8c249bde1d2688a '' tfc.yml
@@ -242,13 +237,13 @@ function verify_files {
 
     compare_digest 90218be097758a94ed60189393756682fa84cac0c025bd9c3c1f26bf21357800398ac505eb9f4b0f565ff3cfe52c48a0463a939a60e1e197a674d88cda314583 src/ __init__.py
     compare_digest 90218be097758a94ed60189393756682fa84cac0c025bd9c3c1f26bf21357800398ac505eb9f4b0f565ff3cfe52c48a0463a939a60e1e197a674d88cda314583 src/common/ __init__.py
-    compare_digest caa6efe18a89e570ed984613cf41026b635d7fee2c67ca6333122b3d9a1468aa1cbe8d89e30938b668181539ae3e23f0d68fccc248bb39f9ecf67097d58646bd src/common/ crypto.py
+    compare_digest aeb3f9b67de6ba4834910d67e1a74d1457ca1f31ca55488565ad8cb13c08bd5f9819759d17f47ed98f0300b56c98f1a7f13093433e8d316115ea4d0eaefbbebf src/common/ crypto.py
     compare_digest b18f02061b26b4bbfe2e6b7d073dc4f72b652756bcd7067509a2216e89ef41e9e3004541412e3dea00663a46b870d0423fa8040f2c1f613d8f32c649937f0b57 src/common/ database.py
     compare_digest e581b79859eb74096263732c84319260833bacc6d595b3592d61bf630271807c13896d2278724fd1d439c5d721d856c6b77f38d61e542bcd3c75828eb93d362f src/common/ db_contacts.py
     compare_digest b32d333356b53487761c6c7214f60ff526aff0f42cdce7eb7fe26f3d528d60ca97ed728e3deaa3d322e2c1d2460fb9f5bc8e8b7d5147f360362645a820f1ded1 src/common/ db_groups.py
     compare_digest 37bebfafaec2ca8d9e02ff2090092954f8fb07a4163d17c077c4c67958c97189babbc6cffb706440000c4ac1d78662bd52f088ab8dc6b29215077ef6a0af7a95 src/common/ db_keys.py
     compare_digest 9adb670eeac30cafcd95e64c5250cae5d7d3543cdb80e00ef8a71f3fc6b43547eb4b282b66e2483cd9905db99fc12ce2bdd8a2255dc8457cf8d589b0370f7770 src/common/ db_logs.py
-    compare_digest 5b22c434083e07f17a0bc8d5a8fae47ab774e244b98575541ea39fb0472c9a43a9a6e4286fb244209965394f7dad0bf57c34f360d4f7a24924a361aea505efea src/common/ db_masterkey.py
+    compare_digest 87b43ed3ca6d244a311e6344507c842327162851c0e32ad5e6d12bc4f770a32d148a3cf7c1b180c06f9ce0efa6d3135ff22bb7417d72d181ffefc1b928a94c30 src/common/ db_masterkey.py
     compare_digest 59cd5925a5727d796c516a038955965564d30b5fac529b069623d14fa43eb2cd344ed6b3688f42e7019483c12b587c21fcfc4875db273e6f959fb99c8c502029 src/common/ db_onion.py
     compare_digest a33144fe0650f30c50753178023169fdd77e9f23a94fc19e1bd3f555d216831f8752301524e63d90d2f89ee9ecb54fbdcdc52c47530466ee7a5182d4b1900f90 src/common/ db_settings.py
     compare_digest 9b67271611202da7bc112a460f53e96d9cd4e713407087a2a1ef1bf927a675ff8f51e65ce77168d325e599e59f4963c13d6e964464352011f27497e7783b3c5f src/common/ encoding.py
@@ -266,7 +261,7 @@ function verify_files {
     compare_digest 6b3860213104873fbfd59917e4d52e31466696f3494ffbbd5edd4a8bccacfc72e3141b2c6779d52da7d393b501f03a40fb0d4e86270d65fd1129ad3d508ed98e src/receiver/ commands.py
     compare_digest b33c47f47ce37b7f3905ff99f690300cbd4b96e6b2d4b785f06361b47d9993e6a6740435e09313cfacd63650705e85eeb29c49706da369c2424205b9cdf44a45 src/receiver/ commands_g.py
     compare_digest 5838632327e7b3fdd5c5c17f3f2d75db7a62d75f7444b9d2bebda7b72ed3f48c82745d8aa78a74320f8f6c4e6d22b1228cab0a8c0dfb2fa1d642c8cc85ecfefd src/receiver/ files.py
-    compare_digest dfc94e6762f5c20af24aff902c039733d1c9cc89344d259de62e1acd768bfb3690401f1ebfd1c26e11346ee0b443d22d0f7029373100a9c4f08078b068b47ded src/receiver/ key_exchanges.py
+    compare_digest 2f2d9ecf366307c3c8bd9b18f8ad499452fae6bad9b8344ddc97e44c1ffebec9cc26fa6578206448cbf68cb33dd4546bb78121b30eb7c18eba572c0ac89eaa0d src/receiver/ key_exchanges.py
     compare_digest 92b4b00726e2722ca7e96178e5716e72a440ead63289a9acedb30784f7cdec410a8577ee71c5384fdb54c7a654ab09828f1713109ec2f167df9ae97fda9c2578 src/receiver/ messages.py
     compare_digest aa76be19d367c89f94884ddfcec88c76215628d2a12b815a7d9990e85d921c42885a60bd3dffd88b64b68a7a414a12e1ff2e8c5b6994df51576a1b31dd9b1b91 src/receiver/ output_loop.py
     compare_digest 0ec4241a996dce75009dc53783e06c500acdd55de45b11e191b1b1b0a41a896c9138299ef0ef5356370881249e7358d0a1a9e9d440883584603675cc3afa47ea src/receiver/ packet.py
@@ -277,7 +272,7 @@ function verify_files {
     compare_digest d2336f5e6a5aa5c41c39f95b4fe6e1413e5a87ac305cb31916c58df130cff81a6952045942b63f1546c82d6d3b05c38e3d0c6ddd69428d239a9030d150bda562 src/relay/ client.py
     compare_digest a56aa18162a25b2fb665ec81b93745bd9aa8e2b5ef88f75a0984ef50ef2fb7d90cc2287c4e1ce54b2fcbca89f7a89e84024d58904c4d6c948fa356448466bc63 src/relay/ commands.py
     compare_digest a27e65526e0eb40319dd65a2739d94e2aae6c0d67eefc3885f54c8ebdd390d8331f8682aff56aea9911e94a24edecf28435011eed7713dbdca58a9e7f927bf22 src/relay/ diffs.py
-    compare_digest db49e1aefc5c25a93c86f442c6807498127373ffb7725103eb8183912fd0ac6f4097637ef2104ca1364f51f7454ba2cd232d560d2e73ba76ec8e43cc9e21e9af src/relay/ onion.py
+    compare_digest d3e2aa129e91c0048167dbce055c0fd14e4c71701bed84fed30783c2d79d94a01dcc3a1c1eb6476ef8cdaad33bed12c68c4bdfffefa3a27cb3be5f394a09ad51 src/relay/ onion.py
     compare_digest 49e838d7d5758cd94ff547fbebfe3a5de08bf5b2e1e7c35313d29c20ee24d258484996a11b36402de4113704efcf8fdec05db23a4ab774d5cfb7a4670f7f697b src/relay/ server.py
     compare_digest 0a702b1ef2be7f359b8f43e27ca917d39c36ecf47b98b57829b9d1729a9149e8543089ee332f67d0aece79fd16c12f563090d70ecc1203e355368fb80f5e508f src/relay/ tcb.py
 
@@ -287,7 +282,7 @@ function verify_files {
     compare_digest e5fd8ab8978d38fe617606581783d0c9807dfcc8c95e0e31cd3a7d1ce6ad88d3f88ba49c070ec69743c11b8707a6cd1f4ea979f2dfe49621a095e910e14a82a8 src/transmitter/ contact.py
     compare_digest e14e407035e0b8342320f205d1b934c5f521ae2e86aaeb8fc6265572b0aed06e64fc86b0b96253efe45f4499b3ecd80c865e3424c5d2cf46d3e31f051232b8a9 src/transmitter/ files.py
     compare_digest ad73ffa1c20620a01cf846a73cf0f3d0dc786beaa3be00bb3996ca087ca1d8a960f962474989ccf096f98b94d73c65552e0905c8b697c9438ffbcb3fded235b9 src/transmitter/ input_loop.py
-    compare_digest 0a30f4e76bce2c9cff0511ea191e55060007f302b1b985083f6c56856893fa15a2d4e5bcf069ced0cee7e9e2c81d943838e124cfd3cd670fa732b1baff149726 src/transmitter/ key_exchanges.py
+    compare_digest 0bb0a0e4d51b001c12cf3135c916e34343e14f3075d210641e6d99914892af4a02a8e0652a9c81229ef6dbf746c7aca9f80331f1bc6a538bacda8dfcd25dc86e src/transmitter/ key_exchanges.py
     compare_digest de827c1be6adc2fc36c115eb1fee6670488cb9076b89d755d3b1edcc322321424e4b3c5e86d1e49ea1e26c75ea727765890f7aeffc88a7fa235f1359efa83d6b src/transmitter/ packet.py
     compare_digest 52e6332a949dc15be10699e5e156aea6ba1e4ac4bc10c2e8777474c627569b7e3ca79f79b1ed2e4799704ba94ea7aa653a85b891c35273e51170239d851de485 src/transmitter/ sender_loop.py
     compare_digest b4a0e38437caef8256fd46087b8bd85757b9c459684ba16b26fda80e3f7bb472dfe3cb0118c3831d08d5a96a40b97185144ad2e730cfb29492aab588a5db3e60 src/transmitter/ traffic_masking.py
@@ -701,11 +696,9 @@ function install_relay_tails {
     read_sudo_pwd
 
     t_sudo apt update
-    t_sudo apt install libssl-dev python3-pip python3-virtualenv python3-tk -y || true  # Ignore error in case packets can not be persistently installed
+    t_sudo apt install python3-tk -y || true  # Ignore error in case packets can not be persistently installed
 
     create_user_data_dir
-
-    VENV_NAME="venv_relay"
 
     torsocks git clone https://github.com/maqp/tfc.git "${HOME}/tfc"
     cd "${HOME}/tfc"
@@ -716,27 +709,11 @@ function install_relay_tails {
     verify_tcb_requirements_files
     verify_files
 
-    # Tails doesn't allow downloading over PIP to /opt/tfc, so we first download
-    # to $HOME, move the files to /opt/tfc, and then perform the hash verification
-
-    # Install prerequisites before downloading other packages: This ensures pip accepts manylinux2014 wheels
-
-    torsocks python3 -m pip download -r "${INSTALL_DIR}/requirements-relay-tails.txt" --require-hashes --no-deps --no-cache-dir -d "${HOME}/"
-
-    verify_packages "${tails_packages[@]}"
-
-    # Install Relay Program dependencies to virtualenv
-    t_sudo python3 -m virtualenv ${INSTALL_DIR}/${VENV_NAME} --system-site-packages --always-copy
-    . ${INSTALL_DIR}/${VENV_NAME}/bin/activate
-    install_to_venv "${tails_packages[@]}"
-    deactivate
-
     t_sudo mv ${INSTALL_DIR}/tfc.png                        /usr/share/pixmaps/
     t_sudo mv ${INSTALL_DIR}/launchers/TFC-RP-Tails.desktop /usr/share/applications/
     t_sudo mv ${INSTALL_DIR}/tfc.yml                        /etc/onion-grater.d/
 
     # Remove unnecessary files
-    remove_packages "${tails_packages[@]}"
     remove_common_files "t_sudo"
     t_sudo rm -r "${INSTALL_DIR}/src/receiver/"
     t_sudo rm -r "${INSTALL_DIR}/src/transmitter/"

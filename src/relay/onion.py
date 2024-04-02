@@ -31,7 +31,7 @@ import typing
 
 from typing import Any, Dict, Optional, Union
 
-import nacl.signing
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 import stem.control
 import stem.process
@@ -201,7 +201,7 @@ def onion_service(queues: Dict[bytes, 'Queue[Any]'], test_run: bool) -> None:
             time.sleep(0.1)
         private_key, c_code = queues[ONION_KEY_QUEUE].get()
 
-    public_key_user = bytes(nacl.signing.SigningKey(seed=private_key).verify_key)
+    public_key_user = Ed25519PrivateKey.from_private_bytes(private_key).public_key().public_bytes_raw()
     onion_addr_user = pub_key_to_onion_address(public_key_user)
     buffer_key      = hashlib.blake2b(BUFFER_KEY, key=private_key, digest_size=SYMMETRIC_KEY_LENGTH).digest()
 

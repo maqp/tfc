@@ -75,7 +75,7 @@ MarkupSafe==2.1.5             --hash=sha512:f32cc6753cfaedeae6392e1f7fc8523ccbbd
 Werkzeug==3.0.1               --hash=sha512:56cfbfb2d084bf6ab08305f204647abbd2d66074770e1ade45515216d759e6dfeafd51d743801f2291b6befe670b5b3eaa59bdae736be8942611315f7abd105d \
                               --hash=sha512:83bacda231cd714cf111ebcaf78b47f7e400cefbaf4a450bde99b630136c2976a2e7629a3a34140493c5f54c2ea1c034c673085dd7d1fd7ce8f1da49d8576bb8
 
-# cryptography (pyca) (Handles URL token derivation)
+# cryptography (pyca) (Handles URL token derivation and derives TFC account from Onion Service private key)
 cryptography==42.0.5          --hash=sha512:fd840cb0f6c49078d2484fd2ff75a2c62c6ae58b69a01be0885a7bd088067e5f39f9e0de582e0a824525f7bbfe4d6e5831fe176f40fb01101df3f9a41e3ab14e \
                               --hash=sha512:615d99cedb543228cc45a49bde24883e920426cd32c964471149fcb994a74b8ca3edb00d1addd52d19c19d7689f9b978cd10f54ac6ca70368da9dc40c28625fe \
                               --hash=sha512:8b98785ff25b2fe0745d867e7055b54bf2ace5a21f9b42eda99c5a5fbd5bb4a6e74bedd6a3cf39c179570b351503ee0e7e937a04e1451f22a4fa0d69dac1f2cf \
