@@ -32,8 +32,7 @@ from typing   import List, Tuple
 
 import nacl.exceptions
 
-from src.common.crypto       import auth_and_decrypt, blake2b, csprng
-from src.common.crypto_phf   import argon2_kdf
+from src.common.crypto       import argon2_kdf, auth_and_decrypt, blake2b, csprng
 from src.common.db_masterkey import MasterKey
 from src.common.encoding     import b58encode, bytes_to_str, pub_key_to_short_address
 from src.common.exceptions   import SoftError

@@ -53,8 +53,8 @@ cffi==1.16.0                  --hash=sha512:47fc17ba58e9fc2e7829a4c028a0a067f0d2
                               --hash=sha512:5dc5ef04aa1b2ef2da537a932b8c11b49ee5e57c6ad214e6bddaef9a61b66a93952cc9f30b805da2c3c028fe58ea11cc25a56bb7fe2b116e7b9349dcc6075b5a \
                               --hash=sha512:e6d8ff3fe823c4d99dc88877e626a9428d554d671d476826bae7117a123074eaae3d42d1f16e7b94bb601ef781c22791e742319f8a9a82599184c23045412da6 \
                               --hash=sha512:fd2588115092202aa9289c9d4e0a0b3e264b5e9ec1dc192950f31aeb412fd9f9d4e5c96a3f9c6762987b58ccc1e229f2012ddda89211797104df672d8ed51152
-pycparser==2.21               --hash=sha512:aae67923f45abd1d781d03e0ce848627a07e9cf4c61a89bf32f1b5f638ceda08de39a038c46ed29d2df967d76be4f2572346bad087ac32b418e6fe654fd28e43 \
-                              --hash=sha512:e61fbdde484d1cf74d4b27bdde40cf2da4b7028ca8ecd37c83d77473dab707d457321aecaf97da3b114c1d58a4eb200290b76f9c958044b57e5fed949895b5f0
+pycparser==2.22               --hash=sha512:14a66293830ac4b7ffa5dcf964e6c36c25888e6f7b0fb1f50acbbc586806bfa9c691fa6159e64f060b2f00a834caa858ba62f7045291c452c163d6b42e29f62c \
+                              --hash=sha512:c9a81c78d87162f71281a32a076b279f4f7f2e17253fe14c89c6db5f9b3554a6563ff700c385549a8b51ef8832f99f7bb4ac07f22754c7c475dd91feeb0cf87f
 
 # cryptography (pyca) (Handles TCB-side X448 key exchange)
 cryptography==42.0.5          --hash=sha512:fd840cb0f6c49078d2484fd2ff75a2c62c6ae58b69a01be0885a7bd088067e5f39f9e0de582e0a824525f7bbfe4d6e5831fe176f40fb01101df3f9a41e3ab14e \

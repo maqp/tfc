@@ -25,8 +25,7 @@ import typing
 
 from typing import Any, Dict
 
-from src.common.crypto       import blake2b, csprng, encrypt_and_sign, X448
-from src.common.crypto_phf   import argon2_kdf
+from src.common.crypto       import argon2_kdf, blake2b, csprng, encrypt_and_sign, X448
 from src.common.db_masterkey import MasterKey
 from src.common.encoding     import bool_to_bytes, int_to_bytes, pub_key_to_short_address, str_to_bytes, b58encode
 from src.common.exceptions   import SoftError
