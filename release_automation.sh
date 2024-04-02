@@ -84,7 +84,7 @@ function test_requirement_files_with_pinned_hashes() {
     box_print "Testing requirement files with pinned hashes"
 
     req_test_venv_name=venv_req_test
-    requirements_files="requirements.txt requirements-relay.txt requirements-relay-tails.txt"
+    requirements_files="requirements.txt requirements-relay.txt"
 
     for req_file in ${requirements_files}; do
         # Setup

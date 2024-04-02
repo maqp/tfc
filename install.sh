@@ -510,7 +510,6 @@ function remove_common_files {
     $1 rm    ${INSTALL_DIR}/requirements.txt
     $1 rm    ${INSTALL_DIR}/requirements-dev.txt
     $1 rm    ${INSTALL_DIR}/requirements-relay.txt
-    $1 rm    ${INSTALL_DIR}/requirements-relay-tails.txt
     $1 rm -f /opt/install.sh
     $1 rm -f /opt/install.sh.asc
     $1 rm -f /opt/pubkey.asc
