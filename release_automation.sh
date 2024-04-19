@@ -201,13 +201,13 @@ function main() {
     # DL Actions
     # install_global_dependencies
     # update_ide_venv
-    # update_dependencies
-    # test_requirement_files_with_pinned_hashes
+    update_dependencies
+    test_requirement_files_with_pinned_hashes
 
     # Actions
-    #run_mypy_type_checks
-    #run_style_checks
-    #run_unit_tests
+    run_mypy_type_checks
+    run_style_checks
+    run_unit_tests
 
     update_installer_digests
     run_release_checks

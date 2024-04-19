@@ -30,8 +30,7 @@ from unittest      import mock
 from unittest.mock import MagicMock
 from typing        import Any
 
-from src.common.crypto     import encrypt_and_sign
-from src.common.crypto_phf import argon2_kdf
+from src.common.crypto     import argon2_kdf, encrypt_and_sign
 from src.common.encoding   import b58encode, str_to_bytes
 from src.common.exceptions import SoftError
 from src.common.statics    import (ARGON2_SALT_LENGTH, BOLD_ON, CLEAR_ENTIRE_SCREEN, CONFIRM_CODE_LENGTH,
