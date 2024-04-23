@@ -25,7 +25,6 @@ import sys
 from multiprocessing import Process, Queue
 from typing          import Any, Dict
 
-from src.common.crypto       import check_kernel_version
 from src.common.database     import MessageLog
 from src.common.db_contacts  import ContactList
 from src.common.db_groups    import GroupList
@@ -96,8 +95,6 @@ def main() -> None:
     os.chdir(working_dir)
 
     operation, local_test, data_diode_sockets, qubes, _ = process_arguments()
-
-    check_kernel_version()
 
     print_title(operation)
 
