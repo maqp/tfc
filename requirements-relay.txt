@@ -27,8 +27,8 @@ urllib3==2.2.1                --hash=sha512:82525e89629af701c2ce44ed6766c3b4c1f7
 # Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)
 Flask==3.0.3                  --hash=sha512:efc6990982567332f1d274054a5d2f1e1b78c21f25a4cfb1de6b3a2f96fceab33fb0d31f9eb28f504e3899742fddf5854ee357395e7b66fdd3810eb64b8dff93 \
                               --hash=sha512:977c0e5fd2d496fae8e34a035f211118642dc6518a14dc5f6c175b72c6a76407aeb9ff0ed1f5db636370a9aa7e0d36baa783713ea7bdabd7f28c8c2b94643cd1
-blinker==1.7.0                --hash=sha512:d7a15c140abe1ae1aab65d215748c2cab3f80c33ea31e3b5d7b3c44cd8d121b5084fe081e875e72f7cdfb85af987153288f55dc2ca0ee776dc93059fbb84df29 \
-                              --hash=sha512:b55dc104fd69bf9f682184202f9da7cb6925e7e863f38d5ad5b4b5988b2315aae02da6f4c9f0ec34238b8d5b9b6eec52b06258d93e14416cda3e2b718d9aa60c
+blinker==1.8.1                --hash=sha512:2bee24786f60124d6e07900213433a2d4b42eb48439f7f435da1e51f0fdb77d137083aa37d0d62d473bdfa24d63d9cf23712a3dd6416a491eaf0e326062ba185 \
+                              --hash=sha512:b6adada7f314369863070e830364833aade954e4cedca390643223d632c110a314856fb1c050402cad7e64959500c4d27d149ce7b682ee6bde99a69dc66ea495
 click==8.1.7                  --hash=sha512:687ea8c461196b234b0f0db0638ba213304b96bdeb9c9c6334a6cbd78f4e99da9e062bca2f449c88fd7a1de7ea2643e80c8ea571103dd4b2c50424a6fbd5d5e0 \
                               --hash=sha512:c67146ad0112daf8ed4db62a6b0a0065109332eb8fa31962ce40d61e27e2736020a0cadfebdd1656e2f23c20291b069d3a409faffe999a0907e6dbdef77aa014
 itsdangerous==2.2.0           --hash=sha512:3c9d38d4a9a53f6426139969a111cb13f0588e4445173542a5c88a2f85348afc6f709f3523a4169eee6010cec99eed6df3a82cac59ca96a731d39461f88e2b83 \
