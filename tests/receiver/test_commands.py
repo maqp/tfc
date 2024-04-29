@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2023  Markus Ottela
+Copyright (C) 2013-2024  Markus Ottela
 
 This file is part of TFC.
 
@@ -26,7 +26,6 @@ import unittest
 from datetime        import datetime
 from multiprocessing import Queue
 from unittest        import mock
-from unittest.mock   import MagicMock
 
 from src.common.database import MessageLog, TFCDatabase
 from src.common.db_logs  import write_log_entry
@@ -261,9 +260,8 @@ class TestChMasterKey(TFCTestCase):
         cleanup(self.unit_test_dir)
 
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.1)
-    @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 1.0)
-    @mock.patch('os.popen',                  return_value=MagicMock(
-        read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemAvailable 10240"])))))
+    @mock.patch('src.common.db_masterkey.MAX_KEY_DERIVATION_TIME', 1.0)
+    @mock.patch('src.common.db_masterkey.MasterKey.get_available_memory', return_value=10240)
     @mock.patch('multiprocessing.cpu_count', return_value=1)
     @mock.patch('getpass.getpass',           side_effect=['test_password', 'a', 'a'])
     @mock.patch('time.sleep',                return_value=None)
@@ -303,9 +301,8 @@ class TestChMasterKey(TFCTestCase):
         self.settings.database.replace_database     = orig_st_rd
 
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.1)
-    @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 1.0)
-    @mock.patch('os.popen',                  return_value=MagicMock(
-        read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemAvailable 10240"])))))
+    @mock.patch('src.common.db_masterkey.MAX_KEY_DERIVATION_TIME', 1.0)
+    @mock.patch('src.common.db_masterkey.MasterKey.get_available_memory', return_value=10240)
     @mock.patch('multiprocessing.cpu_count', return_value=1)
     @mock.patch('getpass.getpass',           return_value='a')
     @mock.patch('time.sleep',                return_value=None)

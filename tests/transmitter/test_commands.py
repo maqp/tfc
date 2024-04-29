@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2023  Markus Ottela
+Copyright (C) 2013-2024  Markus Ottela
 
 This file is part of TFC.
 
@@ -284,8 +284,7 @@ class TestLogCommand(TFCTestCase):
 
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.1)
     @mock.patch('src.common.db_masterkey.MAX_KEY_DERIVATION_TIME', 1.0)
-    @mock.patch('os.popen',                  return_value=MagicMock(
-        read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemAvailable 10240"])))))
+    @mock.patch('src.common.db_masterkey.MasterKey.get_available_memory', return_value=10240)
     @mock.patch("multiprocessing.cpu_count", return_value=1)
     @mock.patch('time.sleep',                return_value=None)
     @mock.patch('builtins.input',            return_value='Yes')
@@ -295,10 +294,9 @@ class TestLogCommand(TFCTestCase):
         self.assert_se("Authentication aborted.",
                        log_command, UserInput('export'), *self.args)
 
-    @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.1)
-    @mock.patch('src.common.db_masterkey.MAX_KEY_DERIVATION_TIME', 1.0)
-    @mock.patch('os.popen',                  return_value=MagicMock(
-        read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemAvailable 10240"])))))
+    @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.01)
+    @mock.patch('src.common.db_masterkey.MAX_KEY_DERIVATION_TIME', 0.1)
+    @mock.patch('src.common.db_masterkey.MasterKey.get_available_memory', return_value=10240)
     @mock.patch("multiprocessing.cpu_count", return_value=1)
     @mock.patch("getpass.getpass",           side_effect=3*['test_password'] + ['invalid_password'] + ['test_password'])
     @mock.patch('time.sleep',                return_value=None)
@@ -553,7 +551,7 @@ class TestChangeMasterKey(TFCTestCase):
                        change_master_key, UserInput("passwd t"), *self.args)
 
     @mock.patch('src.common.db_keys.KeyList', return_value=MagicMock())
-    @mock.patch('os.popen',        return_value=MagicMock(read=MagicMock(return_value='foo\nMemAvailable 200')))
+    @mock.patch('src.common.db_masterkey.MasterKey.get_available_memory', return_value=200)
     @mock.patch('getpass.getpass', side_effect=['test_password', 'a', 'a'])
     @mock.patch('time.sleep',      return_value=None)
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.01)
@@ -577,7 +575,7 @@ class TestChangeMasterKey(TFCTestCase):
         p.terminate()
 
     @mock.patch('src.common.db_keys.KeyList', return_value=MagicMock())
-    @mock.patch('os.popen',        return_value=MagicMock(read=MagicMock(return_value='foo\nMemAvailable 200')))
+    @mock.patch('src.common.db_masterkey.MasterKey.get_available_memory', return_value=10240)
     @mock.patch('getpass.getpass', side_effect=['test_password', 'a', 'a'])
     @mock.patch('time.sleep',      return_value=None)
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.01)
@@ -633,7 +631,7 @@ class TestChangeMasterKey(TFCTestCase):
         self.onion_service.database.replace_database = orig_os_rd
 
     @mock.patch('src.common.db_keys.KeyList', return_value=MagicMock())
-    @mock.patch('os.popen',        return_value=MagicMock(read=MagicMock(return_value='foo\nMemAvailable 200')))
+    @mock.patch('src.common.db_masterkey.MasterKey.get_available_memory', return_value=200)
     @mock.patch('getpass.getpass', side_effect=['test_password', 'a', 'a'])
     @mock.patch('time.sleep',      return_value=None)
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.01)

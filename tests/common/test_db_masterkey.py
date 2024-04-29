@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2023  Markus Ottela
+Copyright (C) 2013-2024  Markus Ottela
 
 This file is part of TFC.
 
@@ -90,8 +90,7 @@ class TestMasterKey(TFCTestCase):
 
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.01)
     @mock.patch('src.common.db_masterkey.MAX_KEY_DERIVATION_TIME', 0.1)
-    @mock.patch('os.popen',        return_value=MagicMock(
-        read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemAvailable 10240"])))))
+    @mock.patch('src.common.db_masterkey.MasterKey.get_available_memory', return_value=10240)
     @mock.patch('os.path.isfile',  side_effect=[KeyboardInterrupt, False, True, False])
     @mock.patch('getpass.getpass', side_effect=input_list)
     @mock.patch('time.sleep',      return_value=None)
@@ -109,8 +108,7 @@ class TestMasterKey(TFCTestCase):
 
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.01)
     @mock.patch('src.common.db_masterkey.MAX_KEY_DERIVATION_TIME', 0.1)
-    @mock.patch('os.popen',        return_value=MagicMock(
-        read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemAvailable 10240"])))))
+    @mock.patch('src.common.db_masterkey.MasterKey.get_available_memory', return_value=10240)
     @mock.patch('os.path.isfile',  side_effect=[False, True, False])
     @mock.patch('getpass.getpass', side_effect=4*['password'])
     @mock.patch('time.sleep',      return_value=None)
@@ -124,8 +122,7 @@ class TestMasterKey(TFCTestCase):
 
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.01)
     @mock.patch('src.common.db_masterkey.MAX_KEY_DERIVATION_TIME', 0.1)
-    @mock.patch('os.popen',        return_value=MagicMock(
-        read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemAvailable 10240"])))))
+    @mock.patch('src.common.db_masterkey.MasterKey.get_available_memory', return_value=10240)
     @mock.patch('getpass.getpass', side_effect=['generate'])
     @mock.patch('builtins.input',  side_effect=[''])
     @mock.patch('os.system',       return_value=None)
@@ -142,8 +139,7 @@ class TestMasterKey(TFCTestCase):
                                       +     [(KL*b'a',  0.1)]  # Test3: Complete binary search with search end
                                       +     [(KL*b'a',  6.0)]
                                       + 7 * [(KL*b'a',  2.5)]))
-    @mock.patch('os.popen',        return_value=MagicMock(
-        read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemAvailable 10240"])))))
+    @mock.patch('src.common.db_masterkey.MasterKey.get_available_memory', return_value=10240)
     @mock.patch('getpass.getpass', side_effect=['generate'])
     @mock.patch('builtins.input',  side_effect=[''])
     @mock.patch('os.system',       return_value=None)
@@ -173,8 +169,7 @@ class TestMasterKey(TFCTestCase):
                                       + 100 * [(KL*b'b',  5.0)]
                                       +   2 * [(KL*b'a',  2.5)]
                                       +       [(KL*b'a',  3.1)]))
-    @mock.patch('os.popen',        return_value=MagicMock(
-        read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemAvailable 10240"])))))
+    @mock.patch('src.common.db_masterkey.MasterKey.get_available_memory', return_value=10240)
     @mock.patch('getpass.getpass', side_effect=['generate'])
     @mock.patch('builtins.input',  side_effect=[''])
     @mock.patch('os.system',       return_value=None)
@@ -185,8 +180,7 @@ class TestMasterKey(TFCTestCase):
 
     @mock.patch('src.common.db_masterkey.MIN_KEY_DERIVATION_TIME', 0.01)
     @mock.patch('src.common.db_masterkey.MAX_KEY_DERIVATION_TIME', 0.1)
-    @mock.patch('os.popen',        return_value=MagicMock(
-        read=MagicMock(return_value=MagicMock(splitlines=MagicMock(return_value=["MemAvailable 10240"])))))
+    @mock.patch('src.common.db_masterkey.MasterKey.get_available_memory', return_value=10240)
     @mock.patch('getpass.getpass', side_effect=['password', 'password', KeyboardInterrupt, 'password', 'invalid_pwd'])
     @mock.patch('time.sleep',      return_value=None)
     def test_authenticate_action(self, *_: Any) -> None:

@@ -209,25 +209,25 @@ This intermediate isolation mechanism runs on a single computer which means no h
 ### Supported Operating Systems
 
 #### Source/Destination Computer
-- Debian 11
-- PureOS 10.0
-- *buntu 22.04 LTS
+- Debian 12.5
+- PureOS 10.3
+- *buntu 24.04 LTS
 - Pop!_OS 22.04 LTS
-- Linux Mint 21.1
-- LMDE 5
-- Zorin OS 16.2
-- Qubes 4.1.2 (Debian 11 VM)
+- Linux Mint 21.3
+- LMDE 6
+- Zorin OS 17.1
+- Qubes 4.2.1 (Debian 12 VM)
 
 #### Networked Computer
-- Tails 5.12
-- Debian 11
-- PureOS 10.0
-- *buntu 22.04 LTS
+- Tails 6.2
+- Debian 12.5
+- PureOS 10.3
+- *buntu 24.04 LTS
 - Pop!_OS 22.04 LTS
-- Linux Mint 21.1
-- LMDE 5
-- Zorin OS 16.2
-- Qubes 4.1.2 (Debian 11 VM)
+- Linux Mint 21.3
+- LMDE 6
+- Zorin OS 17.1
+- Qubes 4.2.1 (Debian 12 VM)
 
 
 ### More information

@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2023  Markus Ottela
+Copyright (C) 2013-2024  Markus Ottela
 
 This file is part of TFC.
 

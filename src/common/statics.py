@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2023  Markus Ottela
+Copyright (C) 2013-2024  Markus Ottela
 
 This file is part of TFC.
 
@@ -21,7 +21,7 @@ along with TFC. If not, see <https://www.gnu.org/licenses/>.
 
 """Program details"""
 TFC         = 'TFC'
-VERSION     = '1.23.04'
+VERSION     = '1.24.04'
 TRANSMITTER = 'Transmitter'
 RECEIVER    = 'Receiver'
 RELAY       = 'Relay'
@@ -41,7 +41,7 @@ DUMMY_GROUP   = 'dummy_group'
 TX            = 'tx'
 RX            = 'rx'
 NC            = 'nc'
-TAILS         = 'TAILS_PRODUCT_NAME="Tails"'
+TAILS         = 'NAME="Tails"'
 
 
 """Window identifiers"""
@@ -542,7 +542,7 @@ BITS_PER_BYTE        = 8
 MAX_INT              = 2 ** 64 - 1
 B58_CHECKSUM_LENGTH  = 4
 TRUNC_ADDRESS_LENGTH = 5
-TOR_CONTROL_PORT     = 9051
+TOR_CONTROL_PORT     = 951
 TOR_SOCKS_PORT       = 9050
 DB_WRITE_RETRY_LIMIT = 10
 ACCOUNT_RATIO_LIMIT  = 0.75

@@ -6,45 +6,44 @@ by the TFC installer.
 
         applies to:
         - The Click CLI toolkit, Copyright © 2014, the Pallets team
-          (https://github.com/pallets/click)
+          (https://github.com/pallets/click/blob/main/LICENSE.rst)
           (See 3rd party licenses at https://github.com/pallets/click/blob/master/LICENSE.rst)
 
         - The cryptography library, Copyright © Individual contributors
-          (https://github.com/pyca/cryptography)
+          (https://github.com/pyca/cryptography/blob/main/LICENSE.BSD)
 
         - The Flask web application framework, Copyright © 2010, the Pallets team
-          (https://github.com/pallets/flask)
+          (https://github.com/pallets/flask/blob/main/LICENSE.rst)
 
-        - The Internationalized Domain Names in Applications (IDNA) library, Copyright © 2013-2018, Kim Davies
-          (https://github.com/kjd/idna)
+        - The Internationalized Domain Names in Applications (IDNA) library, Copyright © 2013-2023, Kim Davies
+          (https://github.com/kjd/idna/blob/master/LICENSE.md)
           (See 3rd party licenses at https://github.com/kjd/idna/blob/master/LICENSE.rst)
 
         - The itsdangerous library, Copyright © 2011, the Pallets team
-          (https://github.com/pallets/itsdangerous)
+          (https://github.com/pallets/itsdangerous/blob/main/LICENSE.rst)
 
-        - The Jinja2 template engine, Copyright © 2009, the Jinja Team, see AUTHORS for more details.
-          (https://github.com/pallets/jinja)
+        - The Jinja2 template engine, Copyright © 2007, the Jinja Team, see AUTHORS for more details.
+          (https://github.com/pallets/jinja/blob/main/LICENSE.rst)
 
         - The MarkupSafe library, Copyright © 2010, the Pallets team
-          (https://github.com/pallets/markupsafe)
+          (https://github.com/pallets/markupsafe/blob/main/LICENSE.rst)
 
-        - The pycparser C parser, Copyright © 2008-2017, Eli Bendersky
-          (https://github.com/eliben/pycparser)
+        - The pycparser C parser, Copyright © 2008-2022, Eli Bendersky
+          (https://github.com/eliben/pycparser/blob/main/LICENSE)
 
-        - The pySerial library, Copyright © 2001-2017, Chris Liechti <cliechti@gmx.net>
-          (https://github.com/pyserial/pyserial)
+        - The pySerial library, Copyright © 2001-2020, Chris Liechti <cliechti@gmx.net>
+          (https://github.com/pyserial/pyserial/blob/master/LICENSE.txt)
 
         - The PySocks proxy client, Copyright © 2006, Dan-Haim
           (https://github.com/Anorov/PySocks)
 
         - The Tor application, Copyright © 2001-2004, Roger Dingledine
                                Copyright © 2004-2006, Roger Dingledine, Nick Mathewson
-                               Copyright © 2007-2023, The Tor Project, Inc.
-          (https://torproject.org)
-          (See the Tor licence and 3rd party licences at https://gitweb.torproject.org/tor.git/tree/LICENSE)
+                               Copyright © 2007-2019, The Tor Project, Inc.
+          (https://gitlab.torproject.org/tpo/core/tor/-/blob/HEAD/LICENSE)
 
         - The Werkzeug library, Copyright © 2007, the Pallets team
-          (https://github.com/pallets/werkzeug)
+          (https://github.com/pallets/werkzeug/blob/main/LICENSE.rst)
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -81,49 +80,48 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
         applies to:
         - The appdirs library, Copyright (c) 2010 ActiveState Software Inc.
-          (https://github.com/ActiveState/appdirs)
+          (https://github.com/ActiveState/appdirs/blob/master/LICENSE.txt)
 
         - The Argon2 library, Copyright © 2015, Hynek Schlawack
-          (https://github.com/hynek/argon2_cffi)
+          (https://github.com/hynek/argon2-cffi/blob/main/LICENSE)
 
         - The src.common.encoding Base58 implementation, Copyright © 2015, David Keijser
-          (https://github.com/keis/base58)
+          (https://github.com/keis/base58/blob/master/COPYING)
 
-        - The cffi library, Copyright © 2012-2023, Armin Rigo, Maciej Fijalkowski
-          (https://bitbucket.org/cffi/cffi/overview)
+        - The cffi library, Copyright © 2012-2024, Armin Rigo, Maciej Fijalkowski
+          (https://github.com/python-cffi/cffi/blob/main/LICENSE)
 
-        - The Mypy static type checker, Copyright © 2015-2016, Jukka Lehtosalo and contributors
-          (https://github.com/python/mypy)
-          (See 3rd party licenses at https://github.com/python/mypy/blob/master/LICENSE)
+        - The Mypy static type checker,
+              Copyright © 2015-2016, Jukka Lehtosalo and contributors
+              Copyright © 2015-2023 Dropbox, Inc.
+          (https://github.com/python/mypy/blob/master/LICENSE)
 
-        - The pip package installer, Copyright © 2008-2023, The pip developers (see AUTHORS.txt file)
-          (https://github.com/pypa/pip)
+        - The pip package installer, Copyright © 2008-present, The pip developers (see AUTHORS.txt file)
+          (https://github.com/pypa/pip/blob/main/LICENSE.txt)
 
-        - The pytest framework, Copyright © 2004-2023, Holger Krekel and others
-          (https://github.com/pytest-dev/pytest)
+        - The pytest framework, Copyright © 2004, Holger Krekel and others
+          (https://github.com/pytest-dev/pytest/blob/main/LICENSE)
 
         - The pytest-cov plugin, Copyright © 2010, Meme Dough
-          (https://github.com/pytest-dev/pytest-cov)
+          (https://github.com/pytest-dev/pytest-cov/blob/master/LICENSE)
 
-        - The pytest-xdist plugin, Copyright © Individual contributors
-          (https://github.com/pytest-dev/pytest-xdist)
+        - The pytest-xdist plugin, Copyright © 2010 Holger Krekel and contributors.
+          (https://github.com/pytest-dev/pytest-xdist/blob/master/LICENSE)
 
-        - The Setuptools build system, Copyright © 2016, Jason R Coombs <jaraco@jaraco.com>
-          (https://github.com/pypa/setuptools)
+        - The Setuptools build system, Copyright © Jason R. Coombs
+          (https://github.com/pypa/setuptools/blob/main/LICENSE)
 
-        - The Six library, Copyright © 2010-2023, Benjamin Peterson
-          (https://github.com/benjaminp/six)
+        - The Six library, Copyright © 2010-2020, Benjamin Peterson
+          (https://github.com/benjaminp/six/blob/master/LICENSE)
 
-        - The urllib3 library, Copyright © 2008-2023, Andrey Petrov and contributors (see CONTRIBUTORS.txt)
-          (https://github.com/urllib3/urllib3)
+        - The urllib3 library, Copyright © 2008-2020, Andrey Petrov and contributors (see CONTRIBUTORS.txt)
+          (https://github.com/urllib3/urllib3/blob/main/LICENSE.txt)
 
-        - The virtualenv tool, Copyright © 2007, Ian Bicking and Contributors
-                               Copyright © 2009, Ian Bicking, The Open Planning Project
-                               Copyright © 2011-2016, The virtualenv developers
-          (https://github.com/pypa/virtualenv)
+        - The virtualenv tool, Copyright © 202x, The virtualenv developers
+          (https://github.com/pypa/virtualenv/blob/main/LICENSE)
 
         - The zipp library. Copyright © Jason R. Coombs
-          (https://github.com/jaraco/zipp)
+          (https://github.com/jaraco/zipp/blob/main/LICENSE)
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -150,8 +148,8 @@ SOFTWARE.
                                  ISC License
 
         applies to:
-        - The libsodium library, Copyright © 2013-2023, Frank Denis <j at pureftpd dot org>
-          (https://github.com/jedisct1/libsodium)
+        - The libsodium library, Copyright © 2013-2024, Frank Denis <j at pureftpd dot org>
+          (https://github.com/jedisct1/libsodium/blob/master/LICENSE)
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -179,7 +177,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
         applies to:
         - The Git application, Copyright © Linus Torvalds
-          (https://git.kernel.org/pub/scm/git/git.git/tree/)
+          (https://git.kernel.org/pub/scm/git/git.git/tree/COPYING)
 
         - The net-tools application, Copyright 1996 © Bernd Eckenfels
           (https://sourceforge.net/projects/net-tools/)
@@ -531,12 +529,12 @@ Public License instead of this License.
  of this license document, but changing it is not allowed.
 
         applies to:
-        - The src.relay.onion Tor class, Copyright © 2014-2023, Micah Lee <micah@micahflee.com>
-          (https://github.com/micahflee/onionshare)
+        - The src.relay.onion Tor class, Copyright © 2014-2022, Micah Lee <micah[at]micahflee.com>
+          (https://github.com/onionshare/onionshare/blob/main/LICENSE.txt)
 
-        - gnome-terminal, Copyright © Guilherme de S. Pastore <gpastore@gnome.org>,
-                                      Havoc Pennington <hp@redhat.com>,
-                                      Mariano Suárez-Alvarez <mariano@gnome.org>
+        - gnome-terminal, Copyright © Guilherme de S. Pastore <gpastore[at]gnome.org>,
+                                      Havoc Pennington <hp[at]redhat.com>,
+                                      Mariano Suárez-Alvarez <mariano[at]gnome.org>
           (https://gitlab.gnome.org/GNOME/gnome-terminal)
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1217,17 +1215,17 @@ Public License instead of this License.  But first, please read
 
         applies to:
         - The importlib_metadata library, Copyright © 2017-2019 Jason R. Coombs, Barry Warsaw
-          (https://gitlab.com/python-devs/importlib_metadata)
+          (https://gitlab.com/python-devs/importlib_metadata/-/blob/master/LICENSE?ref_type=heads)
 
         - The OpenSSL library, Copyright © 1995-1998, Eric A. Young, Tim J. Hudson
-                               Copyright © 1999-2018, The OpenSSL Project
-          (https://github.com/openssl/openssl)
+                               Copyright © 1999-2023, The OpenSSL Project Authors
+          (https://github.com/openssl/openssl/blob/master/LICENSE.txt)
 
         - The PyNaCl library, Copyright © 2013, Donald Stufft and individual contributors
-          (https://github.com/pyca/pynacl)
+          (https://github.com/pyca/pynacl/blob/main/LICENSE)
 
-        - The Requests library, Copyright © 2018, Kenneth Reitz
-          (https://github.com/requests/requests)
+        - The Requests library, Copyright © MMXVIX, Kenneth Reitz
+          (https://github.com/psf/requests/blob/main/LICENSE)
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -1797,7 +1795,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
         applies to:
         - The Chardet library, Copyright © Daniel Blanchard
-          (https://github.com/chardet/chardet)
+          (https://github.com/chardet/chardet/blob/main/LICENSE)
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -2488,19 +2486,19 @@ Library.
                                                Copyright © 2000, BeOpen.com.
                                                All Rights Reserved.
 
-                                               Copyright © 2001-2023, Python Software Foundation.
+                                               Copyright © 2001-2024, Python Software Foundation.
                                                All Rights Reserved.
           (https://www.python.org/)
 
-        - distlib library Copyright © 2023 [Python Packaging Authority Developers]
-          (https://bitbucket.org/pypa/distlib/src/master/)
+        - distlib library Copyright © 2024, Python Software Foundation
+          (https://bitbucket.org/pypa/distlib/src/master/LICENSE.txt)
 
         - The python3-tk library, Copyright © 2006, Matthias Klose
           This package was debianized by Matthias Klose <doko@debian.org> on
           Wed,  7 Jun 2006 15:02:31 +0200.
           It was downloaded from https://python.org/, built by extracting the
           Tk and gdbm extensions from the upstream tarballs.
-          (https://packages.ubuntu.com/disco/python3-tk)
+          (https://packages.ubuntu.com/noble/python3-tk)
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

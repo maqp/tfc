@@ -1,5 +1,5 @@
 [Desktop Entry]
-Version=1.23.04
+Version=1.24.04
 Name=TFC-Relay
 Exec=gnome-terminal --geometry=105x25 -x bash -c "cd /opt/tfc && source venv_relay/bin/activate && python3 'relay.py' && deactivate || bash"
 Icon=tfc.png

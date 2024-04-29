@@ -3,7 +3,7 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2023  Markus Ottela
+Copyright (C) 2013-2024  Markus Ottela
 
 This file is part of TFC.
 
@@ -39,7 +39,7 @@ import nacl.utils
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey
 from cryptography.hazmat.primitives.serialization   import Encoding, NoEncryption, PrivateFormat
 
-from src.common.crypto  import (argon2_kdf, auth_and_decrypt, blake2b, byte_padding, check_kernel_version, csprng,
+from src.common.crypto  import (argon2_kdf, auth_and_decrypt, blake2b, byte_padding, csprng,
                                 encrypt_and_sign, rm_padding_bytes, X448)
 from src.common.statics import (ARGON2_MIN_MEMORY_COST, ARGON2_MIN_PARALLELISM, ARGON2_MIN_TIME_COST,
                                 ARGON2_SALT_LENGTH, BLAKE2_DIGEST_LENGTH, BLAKE2_DIGEST_LENGTH_MAX,
@@ -754,25 +754,6 @@ class TestCSPRNG(unittest.TestCase):
 
         mock_getrandom.assert_called_with(SYMMETRIC_KEY_LENGTH, flags=0)
         mock_blake2b.assert_not_called()
-
-
-class TestCheckKernelVersion(unittest.TestCase):
-
-    invalid_versions = ['3.9.11', '3.19.8', '4.16.0']
-    valid_versions   = ['4.17.0', '4.18.1', '5.0.0']
-
-    @mock.patch('os.uname', side_effect=[['', '', f'{version}-0-generic'] for version in invalid_versions])
-    def test_invalid_kernel_versions_raise_critical_error(self, mock_uname: MagicMock) -> None:
-        for _ in self.invalid_versions:
-            with self.assertRaises(SystemExit):
-                check_kernel_version()
-        mock_uname.assert_called()
-
-    @mock.patch('os.uname', side_effect=[['', '', f'{version}-0-generic'] for version in valid_versions])
-    def test_valid_kernel_versions_return_none(self, mock_uname: MagicMock) -> None:
-        for _ in self.valid_versions:
-            self.assertIsNone(check_kernel_version())
-        mock_uname.assert_called()
 
 
 if __name__ == '__main__':
