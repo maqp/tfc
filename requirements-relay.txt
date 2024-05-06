@@ -76,7 +76,7 @@ Werkzeug==3.0.2               --hash=sha512:8904c195547630ef173356c8286deb5fa914
                               --hash=sha512:5f9a91684653da17ef419459db11a6a4bd83b6c1f2f6b0e9f0a296bc5c7c63d2b465044a131f579557f1fb240a560793b734f3d0248ecbb7b6af62b1713484c3
 
 # cryptography (pyca) (Handles URL token derivation and and derives TFC account from Onion Service private key))
-cryptography==42.0.5          --hash=sha512:fd840cb0f6c49078d2484fd2ff75a2c62c6ae58b69a01be0885a7bd088067e5f39f9e0de582e0a824525f7bbfe4d6e5831fe176f40fb01101df3f9a41e3ab14e \
+cryptography==42.0.6          --hash=sha512:fd840cb0f6c49078d2484fd2ff75a2c62c6ae58b69a01be0885a7bd088067e5f39f9e0de582e0a824525f7bbfe4d6e5831fe176f40fb01101df3f9a41e3ab14e \
                               --hash=sha512:615d99cedb543228cc45a49bde24883e920426cd32c964471149fcb994a74b8ca3edb00d1addd52d19c19d7689f9b978cd10f54ac6ca70368da9dc40c28625fe \
                               --hash=sha512:8b98785ff25b2fe0745d867e7055b54bf2ace5a21f9b42eda99c5a5fbd5bb4a6e74bedd6a3cf39c179570b351503ee0e7e937a04e1451f22a4fa0d69dac1f2cf \
                               --hash=sha512:8f084fff47efe264edd9101915ea31e1e16cba949b7a0d3be3e72632fd656e5989794c0ef02645192beb3c51be0ab0a3184c554355e241e5060bb1b255cb0983 \
