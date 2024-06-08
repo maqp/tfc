@@ -57,7 +57,7 @@ pycparser==2.22               --hash=sha512:14a66293830ac4b7ffa5dcf964e6c36c2588
                               --hash=sha512:c9a81c78d87162f71281a32a076b279f4f7f2e17253fe14c89c6db5f9b3554a6563ff700c385549a8b51ef8832f99f7bb4ac07f22754c7c475dd91feeb0cf87f
 
 # cryptography (pyca) (Handles TCB-side X448 key exchange)
-cryptography==42.0.5          --hash=sha512:fd840cb0f6c49078d2484fd2ff75a2c62c6ae58b69a01be0885a7bd088067e5f39f9e0de582e0a824525f7bbfe4d6e5831fe176f40fb01101df3f9a41e3ab14e \
+cryptography==42.0.8          --hash=sha512:fd840cb0f6c49078d2484fd2ff75a2c62c6ae58b69a01be0885a7bd088067e5f39f9e0de582e0a824525f7bbfe4d6e5831fe176f40fb01101df3f9a41e3ab14e \
                               --hash=sha512:615d99cedb543228cc45a49bde24883e920426cd32c964471149fcb994a74b8ca3edb00d1addd52d19c19d7689f9b978cd10f54ac6ca70368da9dc40c28625fe \
                               --hash=sha512:8b98785ff25b2fe0745d867e7055b54bf2ace5a21f9b42eda99c5a5fbd5bb4a6e74bedd6a3cf39c179570b351503ee0e7e937a04e1451f22a4fa0d69dac1f2cf \
                               --hash=sha512:8f084fff47efe264edd9101915ea31e1e16cba949b7a0d3be3e72632fd656e5989794c0ef02645192beb3c51be0ab0a3184c554355e241e5060bb1b255cb0983 \
