@@ -15,8 +15,8 @@ PySocks==1.7.1                --hash=sha512:3e0b1775c14fe091d10e30b03f7f0c770861
 # Requests (Connects to the contact's Tor Onion Service)
 requests==2.31.0              --hash=sha512:b795abb26ba2f04f1afcfb196f21f638014b26c8186f8f488f1c2d91e8e0220962fbd259dbc9c3875222eb47fc95c73fc0606aaa6602b9ebc524809c9ba3501f \
                               --hash=sha512:ce50d64973752f4cf7f7c7c91401669854b55c66d7465bea3689772fae8a6b646cf6720d84a2984bbe6fd78fc8b9ce0aa377f291fb6d7c20c7c2a4be8193acdd
-certifi==2024.2.2             --hash=sha512:7a3bd4849f95e1715fe2e99613df70a0fedd944a9bfde71a0fadb837fe62c3431c30da4f0b75c74de6f1a459f1fdf7cb62eaf404fdbe45e2d121e0b1021f1580 \
-                              --hash=sha512:2191710dc2cfdf781df498c3ecd5f38dfc5215e2c2dc402cdcd484376dbd7fe2e442793cc856e93f6033c1fc43cb77c71d2dc785dbfe0d8cd10fd3120ee3c2fd
+certifi==2024.7.4             --hash=sha512:a0c39ff304687ee050e28053958ebad7dd5803b6c4319f9081c35808e28846c409cc1eeea6db0b78ef71c1e7ce56985e983b945cecf384ffbdc2ad8a96930d05 \
+                              --hash=sha512:c50057759c298cb45bc287afbbbe7d6dfb5096f79cc581dfe5ed7c5d77bcfe7fe9fe995bc46ad893aabe08b94f91631d846f6dead03254dbefb1109e8de10ae7
 charset-normalizer==2.1.1     --hash=sha512:fe2f3ae5d3c011b314a057456a7b13ba957593b22dbe7f532f9fbe077103e75b3f8b631fb1e2a4d5875a60af678b6779780eff7df0ea7c08144aa88fce34abc0 \
                               --hash=sha512:f52abab683ebda4100d67ec6ee0349713baee453a742d60a1356f405c5ce2c3b4d850b0891527f08f92fa1217d59c46d6b181dc4ff1b962ce60d9c5ef8c913d1
 idna==3.7                     --hash=sha512:488a437198bcf2d32098d99a71447a514212d28e6149d597a347d85b638d9c1b8a328cf190f2b7872a7869f157160754f560fdbca2f2a9ba035401f0eaa9a87d \
