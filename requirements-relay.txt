@@ -160,3 +160,4 @@ argon2-cffi-bindings==21.2.0  --hash=sha512:c3218d723db5c8f2dbc9c737a3ce24d52291
                               --hash=sha512:74f931f3262333e3451295075abbfe0c323beadad36ffe73b65143e906f1e8cab924601a56a3f184ca2516fedcb69dc7d8dc6ea1d0ba25bccb21476a89bc46d8 \
                               --hash=sha512:740c76d800bf8bea95f800457ef03d4125b262d034e4a62e66615144a8abe35950b37fe5627553e5bc448ffe32f77ebeee5e2a04857409f53604fb30de7d8d72 \
                               --hash=sha512:71d023ae96073ed78599e4f4e42f8efcc985cc329adeea00b14b54eaac1e6a545e6ad9b7f4cfdc60a4e9c396f95053c0ccb6f6f67d92f70265f91315fff4a390
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
