@@ -64,3 +64,4 @@ setuptools>=69.5.1
 
 # Stem (Connects to Tor and manages Onion Services)
 stem>=1.8.2
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
