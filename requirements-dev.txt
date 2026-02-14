@@ -7,7 +7,7 @@ cffi>=1.16.0
 pycparser>=2.22
 
 # cryptography (pyca) (Provides X448 key exchange)
-cryptography>=42.0.5
+cryptography>=46.0.5
 
 # Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)
 Flask>=3.0.3
