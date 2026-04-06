@@ -312,7 +312,7 @@ UV_BIN=''
 # │ TFC source files │
 # └──────────────────┘
 PINNED_HASHES_FILE="${INSTALL_SUBDIR}/pinned_hashes.txt"
-PINNED_HASHES_DIGEST='94e5cda69c85a2feeaeb426152ceb772a461baa5c5292c69a53c23261cc87421861a283c249f0a6fd3be9f6c0cd7a4a0699aeab97c791ea0e5351c5cedaa43e3'
+PINNED_HASHES_DIGEST='8a5d5160ea36360a82fd8faa7847a29d1fcadb24537d829726ddd48937bfb62b500b9dfb17ffe0113a7965fcc83ef416c12ed49e5d386630618b9e3769d4003a'
 declare -A tfc_file_hashes
 pinned_hashes_loaded=false
 
@@ -1241,7 +1241,7 @@ function remove_unused_files {
     $1 rm -f  "${INSTALL_DIR}/.coveragerc"
     $1 rm -f  "${INSTALL_DIR}/.importlinter"
     $1 rm -f  "${INSTALL_DIR}/.mypy.ini"
-    $1 rm -f  "${INSTALL_DIR}/DOCS-README.md"
+    $1 rm -f  "${INSTALL_DIR}/README.md"
     $1 rm -f  "${INSTALL_DIR}/tracker_mypy.md"
     $1 rm -rf "${INSTALL_DIR}/${INSTALL_SUBDIR}"
     $1 rm -f  /opt/install.sh
