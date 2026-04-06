@@ -1587,6 +1587,8 @@ function install_tfc_configuration_qubes_src {
     create_venv "${INSTALL_DIR}/${VENV_NAME}" "sudo"
     install_to_venv "${tcb_packages[@]}"
 
+    build_reed_solomon_extension "${INSTALL_DIR}" "${INSTALL_DIR}/${VENV_NAME}/bin/python3" "sudo"
+
     sudo mv "${INSTALL_DIR}/${INSTALL_SUBDIR}/tfc.png"                                  "/usr/share/pixmaps/"
     sudo mv "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}/tfc-transmitter-qubes.desktop"  "/usr/share/applications/"
     sudo mv "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}/tfc-qubes-transmitter"          "/usr/bin/tfc-transmitter"
@@ -1619,6 +1621,8 @@ function install_tfc_configuration_qubes_dst {
     create_venv "${INSTALL_DIR}/${VENV_NAME}" "sudo"
     install_to_venv "${tcb_packages[@]}"
 
+    build_reed_solomon_extension "${INSTALL_DIR}" "${INSTALL_DIR}/${VENV_NAME}/bin/python3" "sudo"
+
     sudo mv "${INSTALL_DIR}/${INSTALL_SUBDIR}/tfc.png"                               "/usr/share/pixmaps/"
     sudo mv "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}/tfc-receiver-qubes.desktop"  "/usr/share/applications/"
     sudo mv "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}/tfc-qubes-receiver"          "/usr/bin/tfc-receiver"
@@ -1649,6 +1653,8 @@ function install_tfc_configuration_qubes_net {
 
     create_venv "${INSTALL_DIR}/${VENV_NAME}" "sudo"
     sudo torsocks "${UV_BIN}" pip install --python "${INSTALL_DIR}/${VENV_NAME}/bin/python3" --link-mode copy --no-managed-python --no-python-downloads -r "${INSTALL_DIR}/${INSTALL_SUBDIR}/requirements-relay.txt" --require-hashes --no-deps
+
+    build_reed_solomon_extension "${INSTALL_DIR}" "${INSTALL_DIR}/${VENV_NAME}/bin/python3" "sudo"
 
     sudo mv "${INSTALL_DIR}/${INSTALL_SUBDIR}/tfc.png"                            "/usr/share/pixmaps/"
     sudo mv "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}/tfc-relay-qubes.desktop"  "/usr/share/applications/"
