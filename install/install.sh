@@ -995,8 +995,8 @@ function install_system_dependencies {
 # └─────────────────────┘
 
 function install_apt_tails_relay_dependencies {
-  tsudo torsocks apt update
-  tsudo torsocks apt install -y \
+  t_sudo torsocks apt update
+  t_sudo torsocks apt install -y \
     build-essential \
     cargo \
     git \
