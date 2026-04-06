@@ -1,0 +1,1852 @@
+#!/usr/bin/env bash
+
+# TFC - Onion-routed, endpoint secure messaging system
+# Copyright (C) 2013-2026  Markus Ottela
+
+# This file is part of TFC.
+# TFC is free software: you can redistribute it and/or modify it under the terms
+# of the GNU General Public License as published by the Free Software Foundation,
+# either version 3 of the License, or (at your option) any later version. TFC is
+# distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+# even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License for more details. You should have received a
+# copy of the GNU General Public License along with TFC. If not, see
+# <https://www.gnu.org/licenses/>.
+
+
+# ┌─────────────────────────┐
+# │ Installer configuration │
+# └─────────────────────────┘
+INSTALL_DIR="/opt/tfc"
+INSTALL_SUBDIR="install"
+INSTALL_LAUNCHERS_SUBDIR="${INSTALL_SUBDIR}/launchers"
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                                                                           │
+# │                                                                           │
+# │                          Pinned hash verification                         │
+# │                                                                           │
+# │                                                                           │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                               Pinned hashes                               │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+# ┌──────────────────┐
+# │ PIP dependencies │
+# └──────────────────┘
+declare -A dependency_hashes
+dependency_hashes['argon2_cffi-25.1.0-py3-none-any.whl']='ce13cd42839896d11a62fcc449d23ac74640e1d09b91fc54bb7abbe318c8dfc1a2937aff33b732f5451bd3a213eae10235698fac0c8597b9858e7f3088fcf176'
+dependency_hashes['argon2_cffi-25.1.0.tar.gz']='746f4469cd9be79f4639f814bee99ddca71200a7bfb31c8f34ca88cc760ee73665fc0d4e46d50ca003911fcfab0dd153fd555ec6cb9127066c1e1e0fd63755b5'
+dependency_hashes['argon2_cffi_bindings-25.1.0-cp314-cp314t-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl']='81834ab5b62b4cf05c484dcb50fbb4a8d589ca748a509172bd312237305708cb57135e2013e39388f81ed94933279a5139887ab7cc8678380ae98dd8254bd6e4'
+dependency_hashes['argon2_cffi_bindings-25.1.0-cp314-cp314t-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl']='829049aab2ffe1f64aaf1fb0bb0cf80d570a30217d378df247fa80dcf36850056a987fe96d35e9696884dd15d0a173ca7b1d9d5582ff3fb15503a0e635a2f6d9'
+dependency_hashes['argon2_cffi_bindings-25.1.0-cp314-cp314t-musllinux_1_2_aarch64.whl']='9f6075094dc76ad40b7b1f840aafdc740719012d4be5dea502c57e9d575a6619866a81ab52274335cf37e4e88b78fb5821e5f24fa8212aa039b130dbe5d8479c'
+dependency_hashes['argon2_cffi_bindings-25.1.0-cp314-cp314t-musllinux_1_2_x86_64.whl']='d7cf780eed912845011456f27b2416df7a6202651118e813d0d83e5f2e0b919c413dd68b87aaea37281e4ec96796f7a7f150c8a0c987c2fd81f24fa6b726c744'
+dependency_hashes['argon2_cffi_bindings-25.1.0-cp39-abi3-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl']='89c67488edb418a5a67dc83f3f64ba0dd1b084bb5a1a1d59b3857e2b54395ee327f44788332bf6b414610ad47682d1d955b3aa270af883dc7493661e2b7fd6cc'
+dependency_hashes['argon2_cffi_bindings-25.1.0-cp39-abi3-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl']='e735249b786a3b77f8a0f5210e30fa4d6263ffd1ff00aa6bf25a1f69ee9e15819613019777920baa39809657bff33baad371ee211ecf3d58c592c675316123cc'
+dependency_hashes['argon2_cffi_bindings-25.1.0-cp39-abi3-musllinux_1_2_aarch64.whl']='cbbd1ba2f1a23c47e4b2218e18e834478b32d50b27104d0196476402f30d038f2738ab8bfdef97967c4fa3a89971b15206ab4555672e914e5e41ecbab224bb5e'
+dependency_hashes['argon2_cffi_bindings-25.1.0-cp39-abi3-musllinux_1_2_x86_64.whl']='85195222a3f820a1f9b724569c4f6b5b826b739cc77f57448f3275b61164afffc36601b426d6725adbd1b4340cc1599ee25471de8f5cd601c9421111170c620a'
+dependency_hashes['argon2_cffi_bindings-25.1.0-pp310-pypy310_pp73-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl']='0758c6cbf112afb774b49d6833b4dc4b595e4279358015b39684450c4a6aa57e20a5aa87b48dbbc33e5522d7d3e9e65ee328ec9f017b8c3b21a5e4e6886e4e37'
+dependency_hashes['argon2_cffi_bindings-25.1.0-pp310-pypy310_pp73-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl']='a6d340036b843643e5523206c8032d045bbcbed05b7c85b735514ffd463567ed5ae7b3e19a9ccf4e857b0d382b27fed503e350e9c983d56b2e13a2fd713ac434'
+dependency_hashes['argon2_cffi_bindings-25.1.0.tar.gz']='64e387a4997b5a905e177b62d1bfb5fafb3b466c10c759d5305fa3e4ec35b7f386eabd34562157266405114c0c71a8c616e25efd9fd8638de03bcc16cc3df6df'
+dependency_hashes['blinker-1.9.0-py3-none-any.whl']='8b74690c74656fb72dd9884543c8afc71726251856f92652cf23cbe0d6b582528fa53f5a19804b3f07da4ff4f2a3696cec8b2593c6983b671147e89f1c91c962'
+dependency_hashes['blinker-1.9.0.tar.gz']='587eaead4750eb742209703d792498293579dc55afc855498066b49a067527b6b3eccbe9a35ddbacc2cb1b7ced0bb3bb7a5716dba82d87b434a6ca8281bd76e5'
+dependency_hashes['certifi-2026.2.25-py3-none-any.whl']='d3c48f0b1e9500d347c5766346fa1ff9fb1abbb0f446b9c049685a7f40130815286ea867b5e98c14903610ea0051d8bacc39441952159be5293d57ea7427a5ba'
+dependency_hashes['certifi-2026.2.25.tar.gz']='beb2a95cc9066b828b33ec9003c8f9fa8b5dec67de262ad13908a1f26ada64eb64b572c775a648d091ac95a52380d4be3a2faccecc03d761e1ee77fc08936f3c'
+dependency_hashes['cffi-2.0.0-cp310-cp310-manylinux1_i686.manylinux2014_i686.manylinux_2_17_i686.manylinux_2_5_i686.whl']='379ae7e98f3b180c88475550fbc86c80bc4de47bf20257e66984611235ccb237c8b8124160bb1010d49dfff3fc53d54436bda35d393822563acaa29995d4f311'
+dependency_hashes['cffi-2.0.0-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.whl']='5f45553d7c05169ffbbbcb0633e5f8f7db53e01f137d82defaf4ac2247e54b6193efccda5e95081d83ab08e1fb28ace928ef5182b2701c5514224746d5886cad'
+dependency_hashes['cffi-2.0.0-cp310-cp310-manylinux2014_ppc64le.manylinux_2_17_ppc64le.whl']='3123f6fcb049c6f005e79c07dfa131b852df4087e8201344324f8d6651f3358e1e7ed69c9e922b5c6b03ba54a1f190bae780512eab8de7653ad337a36487ebc8'
+dependency_hashes['cffi-2.0.0-cp310-cp310-manylinux2014_s390x.manylinux_2_17_s390x.whl']='e23ee373ea46dc9d45e0de2b34ff7d86abaaa3e38cdf1d1a16f493b66770b71241368c11eb7402c49376d76b6ca27722bd880143fc71f613bed32d5b744f7912'
+dependency_hashes['cffi-2.0.0-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl']='a9e7e1ad2fa6c87ad6f737757638a1ece05c396d96c9566de9ab8885ea1dba0ed2edd731155fd157377cdc99b0beb19c438757f32b01d6591fb91eb4ecc11d83'
+dependency_hashes['cffi-2.0.0-cp310-cp310-musllinux_1_2_aarch64.whl']='d62ac676e8eb3ca26adcd0e76633e7966574543cff6a45ad060f50d6cdf405bd50dd9ef80eadcf5a7af2b815e762620b0ad4a76ece2dfc0dc80fe3c840d7d17a'
+dependency_hashes['cffi-2.0.0-cp310-cp310-musllinux_1_2_i686.whl']='c3f3e34da714e73edb8a35a6d862aea74331811491dd3b894311eadfff45736f4467709c9b5bc7c4c4f4d04fe4069b4fe71bfd10128ac81f33adb75822aef875'
+dependency_hashes['cffi-2.0.0-cp310-cp310-musllinux_1_2_x86_64.whl']='46c9a9750d0fe7671c1632bae22639cc119982f1367b9a37138cfe657c98416a228b0eed412b8d38c538eea9674a5a119072054231ebb6bfbfa7da1ab3009e8c'
+dependency_hashes['cffi-2.0.0-cp311-cp311-manylinux1_i686.manylinux2014_i686.manylinux_2_17_i686.manylinux_2_5_i686.whl']='a8074efa4c5be9cdc51ce195f2b2dc7df8e0498b4ce62328ddfc7d7d85574cc41d0a8c3b348050745049ea2eb106dac37b8521b3bb48345db77ecac80b8df193'
+dependency_hashes['cffi-2.0.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl']='a7f8ed67749425430a3ec84bf14c1da76df4192cd9794ca67b9284e88f3076fb001011762cb87fe538e69af29e87b81cbb53f776b3a3413395a92bb1e0f166b6'
+dependency_hashes['cffi-2.0.0-cp311-cp311-manylinux2014_ppc64le.manylinux_2_17_ppc64le.whl']='1820a14366bc45772c39b03dceec44557c9ab06e084ff70baba153a6d2e352c8fd4e1644787c35e0d3194b80dac7cb902f79320ebe93ec7d80b002dea70f03a1'
+dependency_hashes['cffi-2.0.0-cp311-cp311-manylinux2014_s390x.manylinux_2_17_s390x.whl']='ffa41228e4f69744ba3f5e79f7ff1b8465ba7a2833b32a22d718e47528839fcb9d4964f6ba3a8e8045f33e39d38e751fae0c6701a2f683a95d1f1311816148b0'
+dependency_hashes['cffi-2.0.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl']='46b17e78a6eb26f8ed59cb13b1f303bd6d093d8f229e61b789d27f34978352dcbe583674cfdbb2638c33994262f31b9c2d70efe7db1d7c3ead37d4b803aa79a7'
+dependency_hashes['cffi-2.0.0-cp311-cp311-musllinux_1_2_aarch64.whl']='61cc96dfd4763892b3ad111b1168ee868b305d2260e865915f03daaa9840fa9618b2c462966a3b734cd6e5d12379ced26b7a14ace281d28594e10eaa9292527c'
+dependency_hashes['cffi-2.0.0-cp311-cp311-musllinux_1_2_i686.whl']='1cd3adc5f582c7f7dff2e7321a333bb93cb4b9009c57ee4c95cbe018cc77bb42af247374f2d7ed01b4f8ad4ffe6049f72a7ad32ad2f49a01d82c22d6cfda8182'
+dependency_hashes['cffi-2.0.0-cp311-cp311-musllinux_1_2_x86_64.whl']='72275dee4eeab7e91bf530dca997a50faa00364c8275c48c8b4ecd055a327a5f72ad38c3ca9b13b2f34520dd32582381575e28e67fd3d582683aba2b1b7c6982'
+dependency_hashes['cffi-2.0.0-cp312-cp312-manylinux1_i686.manylinux2014_i686.manylinux_2_17_i686.manylinux_2_5_i686.whl']='957f40b52aabd29316e2ab673c7829b01c124789240d9f4aa23d30e880e6222d26b316fc39acacb93e07c74434da5c9a825564e25b7bbaef5292553a29b6f0d1'
+dependency_hashes['cffi-2.0.0-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl']='75fddd8818cb696feb1f03d87b43483199445617d42a299f98e7b09da67c64da280dc0bd1a07e70c986aa13928699bd4bf4045a86a16b8f839568d850cd8ca1b'
+dependency_hashes['cffi-2.0.0-cp312-cp312-manylinux2014_ppc64le.manylinux_2_17_ppc64le.whl']='f0719fdb8976fb98d8bfeee466d7a91f231fec29a0140803ab9258ce9b12caae71eea0ce59ccc276ced16805c8b1d65f444ba27a622d307a299b5382db5ceb96'
+dependency_hashes['cffi-2.0.0-cp312-cp312-manylinux2014_s390x.manylinux_2_17_s390x.whl']='4fca38005c602f951cb7f8b75fc2fb70a0da29ade629ea0f3c3e28372360f3efe8d971236f50ef283430d7f1d400c67cbbdc17a0a54cb4221bcff439deefcb7d'
+dependency_hashes['cffi-2.0.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl']='61d40bbdb52155272fa7b8bc53ae23016372cbee7521ad506763e417c0505d3cdd1fc634e66e767412d05887a53930ab81630694a1d2cbe1762561083dfdfd38'
+dependency_hashes['cffi-2.0.0-cp312-cp312-musllinux_1_2_aarch64.whl']='43be92fd3b21fd4cd4df3b9ff9580929f7ff9addb8be5a32293bb2ee1d5967f50a52dac99fed8e31eb1c3f4cbc93b2947f475e7b348a7c649185e92125adaee5'
+dependency_hashes['cffi-2.0.0-cp312-cp312-musllinux_1_2_x86_64.whl']='a63c679c3390146b62cee45ecad89066d3a8dc762e6c5cd2d23c51e23fc29ff8b24e50d8681c809ec5a471a464f0434cb28f745ec7d302c0528016c474aad83b'
+dependency_hashes['cffi-2.0.0-cp313-cp313-manylinux1_i686.manylinux2014_i686.manylinux_2_17_i686.manylinux_2_5_i686.whl']='76c4996c06438920db1d007feeaf21f2bd5d1327d8f1d9ce01563030ead93be9786d9569ae7c9f62a9f299b341b3c44ff100aea742ef855507ccd987408ed602'
+dependency_hashes['cffi-2.0.0-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.whl']='df16a51c2763515b5d9660656d68faeb5416866da807cdd6a17b7503c53e54ba32106a9066c53fdba9b15b6d563255c8aea8d578df5732585a17af960c71e704'
+dependency_hashes['cffi-2.0.0-cp313-cp313-manylinux2014_ppc64le.manylinux_2_17_ppc64le.whl']='76bc38a2c363f01fc057655343923c5dcf8d448f20d18fce23636cd63ceaba4eb004a1c3a5bcd9bf8807d8ef83870a2a26e096585f6b42e9fbda974fdb7385a1'
+dependency_hashes['cffi-2.0.0-cp313-cp313-manylinux2014_s390x.manylinux_2_17_s390x.whl']='a979849d8a9ff7e09a3dd44c77ed1f49c1aa8347a731bd82560c113a45c2d2551e3ca996eaca747bee2ea4886ed4f8cd8436bdd8f2def327ef5e530974dab29f'
+dependency_hashes['cffi-2.0.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl']='4fa9d65eeae2f1b136da75bca37d90f9d5f6b772effa1c4904cc53f6a56e071d3354a5c32e69fa7e3193b857687d2ca12367d214b7215bc21d583e9d0d50e815'
+dependency_hashes['cffi-2.0.0-cp313-cp313-musllinux_1_2_aarch64.whl']='9220cbab6b2022338993cccbaff47604026ebac5431c58cf63895784aa025d32d3461fe688ba8f1126706b1305ac1048f863561e0a8de44e30cc1021614ce2cc'
+dependency_hashes['cffi-2.0.0-cp313-cp313-musllinux_1_2_x86_64.whl']='ec74c17a72ce6bc4f4aa0ca0f3008d8b3c3fa07a5ea5bae464ae2796198631e9e763199e82b42d6613b59457faece7d8eb5dadbff712e9bd1d822603a7345ac0'
+dependency_hashes['cffi-2.0.0-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.whl']='bc713881e956ce07fd33faa73262b6f8c4b5fbc3a26242eedef30818b312fc8fad1fe4b331a798afbfeb5cf5dbcd05346ddbd8299e7cd99c70c872a7bac0a6ec'
+dependency_hashes['cffi-2.0.0-cp314-cp314-manylinux2014_ppc64le.manylinux_2_17_ppc64le.whl']='d9ea9fb7cf773182ef428e86cbfccd6a2aee9383bb0159d7845bd28409920038beebc3780975fbb5708b333cdef283cd7b7b95d2eb13f73a7447e27c64497baf'
+dependency_hashes['cffi-2.0.0-cp314-cp314-manylinux2014_s390x.manylinux_2_17_s390x.whl']='7d009b5926453b546f2c8ca2eebaad9f696a48eba7ce2b4781d5a00f3ded041580ce0a79b21fd4ff3b04833746a3fc4e5e55e8d97301f9d31b2808b07868ca88'
+dependency_hashes['cffi-2.0.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl']='c8dff2ec6a8ae780a1eeaf96e7dcf20968b4f59accc54849144e301d2beaff899ba17f26585afa874e8324e9538dadba159a79b7e365ebcb68ea2d5aaff6cc4c'
+dependency_hashes['cffi-2.0.0-cp314-cp314-musllinux_1_2_aarch64.whl']='4aa5f9da3106bc1da9535f4ad0de8e10d2c525f317971c76efc90b8df2f45b6f92f0c47872cca65c7e0b08b4d5fbe90ba2b8f6d4b03744167b8777c2c6c44b31'
+dependency_hashes['cffi-2.0.0-cp314-cp314-musllinux_1_2_x86_64.whl']='4543ebe6220fc57f9087c64fba50c6c4cbd158d997dd933bcb93bc581a12ab020b4d670426e47d61688e09f89b052228948b762a1abd5eaf69cfd14a4c6eafe9'
+dependency_hashes['cffi-2.0.0-cp314-cp314t-manylinux2014_aarch64.manylinux_2_17_aarch64.whl']='a18e7c199dd2aa3b2a4b3e171a9e1adde2447f6c049e0bd5ae0306013863cce438dd66974d79dc4a75ef567f0c9c1c073b44b3336bb75575afa5a1dc07330c4e'
+dependency_hashes['cffi-2.0.0-cp314-cp314t-manylinux2014_ppc64le.manylinux_2_17_ppc64le.whl']='7443b498a9c0c214956d852e13a4d3211bcb44c07d35b533a4fadbccd74de3c9c08c5a13c1c4d201e2240f16585bb5ed250f4517d0cec733e377764792a94a5e'
+dependency_hashes['cffi-2.0.0-cp314-cp314t-manylinux2014_s390x.manylinux_2_17_s390x.whl']='dce442784577e5e6f93988ecb04aa992f0fee03b381297818cdae33eea09135c66531f8b9eb3ec08c40ad3b0429d76850dbe0f0ab5238b16b925c8230535a136'
+dependency_hashes['cffi-2.0.0-cp314-cp314t-manylinux2014_x86_64.manylinux_2_17_x86_64.whl']='aa2a5cd569f36a2d0b2a104e55a68999b6e32c2419b5f3a5e86e939e1e7beadecca8301e7da09ef8f761e4a52aa81a1b42efe932fee9100acefcf346d27d22ce'
+dependency_hashes['cffi-2.0.0-cp314-cp314t-musllinux_1_2_aarch64.whl']='b24622bf7d14c4a697763a01adea29c2907cb01caef1f801346696bfd72dcae0c718ddd0d6dbfab086360639d49c1abaf99f8f37ab9bfc44596e426d4363c4d9'
+dependency_hashes['cffi-2.0.0-cp314-cp314t-musllinux_1_2_x86_64.whl']='80b04cc9509c0b8bad7470889678bd270cc99d06597ccf3a2d7a1d8856d399c30e591b7ff6594364d6652c232d0fcbcb086545002d879a5bfa75d4c78cad1fe7'
+dependency_hashes['cffi-2.0.0-cp39-cp39-manylinux1_i686.manylinux2014_i686.manylinux_2_17_i686.manylinux_2_5_i686.whl']='dce84fd859935d5b13235680f4637ccc66e306f27594ad097e7834f0a450bec803fab4be4926a0f796edb91dd743ee6dac3d0dcbd914669e354a9f4e34b9522f'
+dependency_hashes['cffi-2.0.0-cp39-cp39-manylinux2014_aarch64.manylinux_2_17_aarch64.whl']='a0e70179fa5b2cd239c846e1c80220f16901615d1b1ca3f67e6bc42f8b9f3c243af53259a98f2d686ed55a0962a8e366e3b6c68e70196da22f812798ac4b7442'
+dependency_hashes['cffi-2.0.0-cp39-cp39-manylinux2014_ppc64le.manylinux_2_17_ppc64le.whl']='63a2f4b95b6dbdb4a40ec22f5b73f28ac376ae3cce0309152d381d37a5d088b278036ece10f4e9c809a1be3f4fbeee06727321502a153fa2bd831f45d9f2bf1f'
+dependency_hashes['cffi-2.0.0-cp39-cp39-manylinux2014_s390x.manylinux_2_17_s390x.whl']='3e7330c2416857e7ab86cfe0c79cb36aafe0e6b53c6d9bf4ce7d1666c0f4a93a6adaed06b5fc028ae796fbceecb6cd52038c6ec996170f89744397efeb0651d7'
+dependency_hashes['cffi-2.0.0-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.whl']='da5dd879d4c0bc33b232d50e399a88494a4d576c3cb67de622a53c62bce2b89fe8e2d6e9a6f8d8d61a074667dc7881dff4eefbf049129ed341eaa0bfb607d74e'
+dependency_hashes['cffi-2.0.0-cp39-cp39-musllinux_1_2_aarch64.whl']='03a2769a54b531d6fae2fc5f7e59accf39e600249e07c0aba8133becfc6c0f29306ad04925d47c174518f656d761fbce69afe5cba4c1e301effa16813341099c'
+dependency_hashes['cffi-2.0.0-cp39-cp39-musllinux_1_2_i686.whl']='36a0b3fc24c3e6d7690af96ceb6cc6ee47833529d9bf6ea6653555bd963338454a3f055abadbb6b63fdba667d6e849034d43386a62ce4e914e94f7c884e63809'
+dependency_hashes['cffi-2.0.0-cp39-cp39-musllinux_1_2_x86_64.whl']='87c24c0a79968ce6267381b9f98dbc6c96e5d3bbb704234ee7bb3d408cf311c18ffd8ff091b24ba76da772be4ed34720620c0a2e651ebb6727c01d7fc9a4e1aa'
+dependency_hashes['cffi-2.0.0.tar.gz']='a8bf705e626f6b5858cc20e9044a23fd653d155e2a2d4cb59f1eed00ef13ebd92d5a2f07738c66b361cb24d863786d4379dcd9c176250b546fbd45758e51d4f4'
+dependency_hashes['charset_normalizer-2.1.1-py3-none-any.whl']='fe2f3ae5d3c011b314a057456a7b13ba957593b22dbe7f532f9fbe077103e75b3f8b631fb1e2a4d5875a60af678b6779780eff7df0ea7c08144aa88fce34abc0'
+dependency_hashes['charset-normalizer-2.1.1.tar.gz']='f52abab683ebda4100d67ec6ee0349713baee453a742d60a1356f405c5ce2c3b4d850b0891527f08f92fa1217d59c46d6b181dc4ff1b962ce60d9c5ef8c913d1'
+dependency_hashes['click-8.3.2-py3-none-any.whl']='c93f154a13d339b4e68360fdce66fda79128aae359f521fb5dcf16dfc4b899522ea9754946218f1356d68ed5b98075cd9fe5da47a50508e3c6bbf023e1f0332d'
+dependency_hashes['click-8.3.2.tar.gz']='909c9421ef05dfabc6b685b290fbc7cc673bba5ebcf57e082dc75fe6a2d3843ae54de14aa886574c5371b80f51c0e2edafc0f0416a267b1bc6965dbe4e22be1f'
+dependency_hashes['cryptography-46.0.6-cp311-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl']='5f3d7cca57bf0b3feeadb4c8ed7ee320f1a53a468bd963cc5aa1804ba7ddab96a6f9be7e32ca2eb7998f9554d1acb018c18c877428f6535796f60ebcb67acf63'
+dependency_hashes['cryptography-46.0.6-cp311-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl']='82f55e3434dbc4bbbdee6aa7e866e3b425074cdc3de953c74c06d897dc222badd43b02618d37d0a7fc2e6f209d761bcb9ecebd57591edb765ba10017384a93b7'
+dependency_hashes['cryptography-46.0.6-cp311-abi3-manylinux_2_28_aarch64.whl']='5e58002ca81dedc513742df9a1b1d841bdadad72c99ec7f4a7cd3fd394713b49a03a187a387a56b373ff67e77e9dca7b83773ad7230080265ac49b9aa42aca85'
+dependency_hashes['cryptography-46.0.6-cp311-abi3-manylinux_2_28_ppc64le.whl']='36fccd831ad9d6099c3f6471e1e9fe6695f8f74a400cc69a28390a3c210d5e18f35e5d94d964ada10d8c6410309ff1beeebfd4f7341153b850863bc84b24b9d3'
+dependency_hashes['cryptography-46.0.6-cp311-abi3-manylinux_2_28_x86_64.whl']='17f92b5c71a414286505503ac69e2da4101060ae309717d24ff7c532b8a669087bfc85b8480aa9d4073104bca985cebd1a4ab94392d5ef41ac682a8b6f183271'
+dependency_hashes['cryptography-46.0.6-cp311-abi3-manylinux_2_31_armv7l.whl']='42e4d62be2a1f8d92c85670bbf74ee1a01260461299b800ae1723f4a931c4cce83bb82e68274f6ccc5b9b3b4eb63bc12e0a2172a57a1feb1c90633e3e9425348'
+dependency_hashes['cryptography-46.0.6-cp311-abi3-manylinux_2_34_aarch64.whl']='faf510cfefc1a32e9af13071925c9a8b24791266ca73ef86eabc7246688ca5405b23e1d061ea024636eca8b512ce4970a25f776ce6b7da658e74582da3173b80'
+dependency_hashes['cryptography-46.0.6-cp311-abi3-manylinux_2_34_ppc64le.whl']='0ae42f654b981beefb11b3f283445013cb4d8aae4c1dd0791233fa4f35892c1f1f7096c668e76727d2fa0b679e0662db40dc7d62287cec40066815a9f6757ce5'
+dependency_hashes['cryptography-46.0.6-cp311-abi3-manylinux_2_34_x86_64.whl']='a6fcd06c87ffb18d2c9cf5af06346cac363607d080de4ec8652fb593be4fb34667e3090827ca0b5949b4caffe95372f186032af5080ee62c555c24f5d1b73f51'
+dependency_hashes['cryptography-46.0.6-cp311-abi3-musllinux_1_2_aarch64.whl']='38461d1f885fab63116d636d78b31bbc68cf7e357359ee79d922184327e5a5282e4c82a6a70bdaf3f7c4b8238fcd22cb60fd34c63b0cead5c22e916f8698bc06'
+dependency_hashes['cryptography-46.0.6-cp311-abi3-musllinux_1_2_x86_64.whl']='5675bebe9cfcdc25d1fd378f249919b2f964ee4f99f73a54c3434e821f514191e0258d1efa787243901601924287137ad1e1cb9e021a820eb414f6eb316106a1'
+dependency_hashes['cryptography-46.0.6-cp314-cp314t-manylinux2014_aarch64.manylinux_2_17_aarch64.whl']='c71cc55b66516ff99dfa1bae770d6b30f63567b9e05fef61c33ed348f558d130b6399b4128fea6d76ad11592843be6443996cbebc1b4dc1ea2d2c741315a3b77'
+dependency_hashes['cryptography-46.0.6-cp314-cp314t-manylinux2014_x86_64.manylinux_2_17_x86_64.whl']='1c2656876c84a4e4016e61259bf87cfd1e20ac32ef0a56b08ebcf4b07903060937900eb37a40d5d3f4411dd96bb917c56d347ed2f87a6c3dbe4379335812b7e0'
+dependency_hashes['cryptography-46.0.6-cp314-cp314t-manylinux_2_28_aarch64.whl']='4b11ccecd4b872348c6a9fed56f8be247d6931220b120fb70faaab3183c906443d7ef556cd9ba6a8bed03114fa5acfaae77b89fbc55ab9935c03a105eacb9733'
+dependency_hashes['cryptography-46.0.6-cp314-cp314t-manylinux_2_28_ppc64le.whl']='647d6808920ae4ae490b24e32a993ff6a5a50c5e13fac3e69c1e3f7e39f1d80307dce1cb10119ba6c7c751b27530b151092c61f00a30441e8c66b2c2169728d1'
+dependency_hashes['cryptography-46.0.6-cp314-cp314t-manylinux_2_28_x86_64.whl']='957768256966d4792cef6231b8e158817868ef0ce98de896d011783dede8648f377c8dee1e953586d51ade8890114a40efe82d830d31161d54039468f47e6023'
+dependency_hashes['cryptography-46.0.6-cp314-cp314t-manylinux_2_31_armv7l.whl']='ac34a097b0d2e172cec1bd359942bd151e1ff88935c42e8140bb6b734fe27e6b9858265c219ec9e6bdb7a6ffba81a88c41a3b99d24ce6414ead6307a46df7540'
+dependency_hashes['cryptography-46.0.6-cp314-cp314t-manylinux_2_34_aarch64.whl']='11c89aa3f528d5281581dd053e73ecccf70e3a99ab563ca6fec3a77f6611417e561cf73f2e6bbc3b17965a17ce61aa9a9eda0939c0ade0297a87051ce322de20'
+dependency_hashes['cryptography-46.0.6-cp314-cp314t-manylinux_2_34_ppc64le.whl']='f6fff2c4cf98bf0bfc7c82e4cb4eb525b834136d19b55130efd8c883cbe2455a757f7823f6ee9140ef0f95e851dd90523fa2db0d1be27beab49f09a7a3989ff6'
+dependency_hashes['cryptography-46.0.6-cp314-cp314t-manylinux_2_34_x86_64.whl']='432ba1da3c6c8f8676c5b87a011535d18963accdb4dcc8810dcfd52e04e4e71402b36f1329348e290cb6b86f425a00a86bc4706954aee66a17a253f958304491'
+dependency_hashes['cryptography-46.0.6-cp314-cp314t-musllinux_1_2_aarch64.whl']='48338ab9a9eb6ded7cc4a3132b72847d1c83eb9086121c114868346ff2b9ddc64d140754448aea4052e10b8f560f9e14ef98a99f8be61c60a021f252a9c9c036'
+dependency_hashes['cryptography-46.0.6-cp314-cp314t-musllinux_1_2_x86_64.whl']='0247b38d8c7ecf8df2d7497abaae4e2079c26835ee06c299f5f3881659534cbfbc9f25a1e7fa938452ff1ebdace72afe93077e8e9f086ff8cc673ced180db7e3'
+dependency_hashes['cryptography-46.0.6-cp38-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl']='aadd2fafe9c9b0b3f518bd8115e05e9d37cb1897aea1c32d498c5a47bef88af9203c6c4e670b25a830b5bfd286298ba1d777f9227bc95b07585e92983d57d5dc'
+dependency_hashes['cryptography-46.0.6-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl']='a03d0d486f91304c8af9a6241137f5a6d520bac6e735467adb77845165d2733b2e8157a1e64b1800baba8480cb8318a0401b267344e02f3c3273cd2be45f8a6d'
+dependency_hashes['cryptography-46.0.6-cp38-abi3-manylinux_2_28_aarch64.whl']='0fee37478f684f868622bf800f0ec53816b591d6eb10ba38d8f2d9b1a88f7dd3d25cf7f7627f5b4d3f0e21ed04aa081648f6c5e215997779af24dd88a8a282ab'
+dependency_hashes['cryptography-46.0.6-cp38-abi3-manylinux_2_28_ppc64le.whl']='e5846ff7e4390ecb0ba7599b7848390a2a11b34cf80027208558d93b215fcddaeb2a04b75d39fd8427730369c26132cacfc7720a51c932fd1e87bfb0c3b57da5'
+dependency_hashes['cryptography-46.0.6-cp38-abi3-manylinux_2_28_x86_64.whl']='fda6af4caae899fc7b0aaeaa58ca6d02eae45efc63339e2c73bb65e8df6a25cb5352ba95bf84908d8ad08dd2f476a2411cab4e7a518481103ac5be92d5a8de71'
+dependency_hashes['cryptography-46.0.6-cp38-abi3-manylinux_2_31_armv7l.whl']='d260a7f629f3b633860d66ada4ab9e8681b7562721c7364c76520f8b9abd063d0b93ede7c155ba3e563a48ed44d8188603eea83c46989557a975690f6acfffdb'
+dependency_hashes['cryptography-46.0.6-cp38-abi3-manylinux_2_34_aarch64.whl']='d05c9610d89e6489f6023649a7e8a030a4bb6d3b010a34550688ff8bdd021b54e72c08e5969af86e2fc7f8616ed3001363022eaf2403353e7c2c0ae0fccbcb34'
+dependency_hashes['cryptography-46.0.6-cp38-abi3-manylinux_2_34_ppc64le.whl']='eb84bcce4c1747864e1369701b344a197cfcc8bc66f86838cb6da2e18af7498bc591f8d3aad472bddfe3694375181ef17191b4b9207ea0ef22e11833f5591937'
+dependency_hashes['cryptography-46.0.6-cp38-abi3-manylinux_2_34_x86_64.whl']='cab852b3036f7260dabc142caacdfe0bcb61206b2f8b16eb3c95d88736a159da37c75dcb2ed7e4c1c287e626c7a68a79a70d152aa1f603ac8993b9c1ef761fdc'
+dependency_hashes['cryptography-46.0.6-cp38-abi3-musllinux_1_2_aarch64.whl']='6a9c0d72a353d5888f7ba020c78db894b26f17a936387c388f57730c9c6d622619c8080a7668d513b3363013a2e87532facdc75dc45dfd1a86f081f63e9670f3'
+dependency_hashes['cryptography-46.0.6-cp38-abi3-musllinux_1_2_x86_64.whl']='a7c55b11e14d0310c643b7fccb7ad2972d6261c5828e0b8fb4e901449437c8657c92b711c8e237215b8771e186ed6b3e49c4c0bf9f96729413d61fa502fdeb0d'
+dependency_hashes['cryptography-46.0.6-pp311-pypy311_pp73-manylinux_2_28_aarch64.whl']='dd943f7046a67e8819c3493567fa05a0c6b87cc3f4fb10b1578bc975aed310cfdf15b77705b89b45ce00dd284efd101c43e7331f24c9710b500decf00f70e705'
+dependency_hashes['cryptography-46.0.6-pp311-pypy311_pp73-manylinux_2_28_x86_64.whl']='b1c42b89402542e849726834d831a1a322331dd930c978d703cf899e2af900f9d44d97a8fd8b74102e8807df802398273482b8d2433f4c23270a8a3f3c4bd145'
+dependency_hashes['cryptography-46.0.6-pp311-pypy311_pp73-manylinux_2_34_aarch64.whl']='cc30b128724e5b22d140f1b6257a8f62630fb02ffb44e0c84416c5b1c66e6b36fc36b3cfdab4b5af3a5e5fe1dd0d3ef45b2abd901913f4e25ef066724ddd6625'
+dependency_hashes['cryptography-46.0.6-pp311-pypy311_pp73-manylinux_2_34_x86_64.whl']='5fe26f7b4417beca18015f99f9af7329d3f5c613cf4fdcd2115011b4ffa101f6882e1a7d9d9239700d901034add9ff6e21b292d6d26be7aaff27a863a379bf68'
+dependency_hashes['cryptography-46.0.6.tar.gz']='c8207d0d3a687570bd0b1b371a30f76a9ba2b4494495cfdc0734c4839e477e64568695e5d37895acc13ee5477368904906013b48099cf39bde8d1973e2a4ebcf'
+dependency_hashes['flask-3.1.3-py3-none-any.whl']='1a40f3aa8927bad2d6447d3a03e80a0c346b2e8a3a8ae8debac1fa56dc558b15e57b5126d296a055af1a1ed1b3ba5d85ab7239f44514f974864089505f59d9be'
+dependency_hashes['flask-3.1.3.tar.gz']='17c290fdccf3c7e45eeaf5d12a967889f6b0c6aac06a518624a18eb4de67904e825a2724d0c4d7701bb7e75a2f4629089a658e30909c6c7fe20992cc431b273e'
+dependency_hashes['idna-3.11-py3-none-any.whl']='bce9804c4c85c55883537eda167ae3090642d153a46a0c0e16f3339df9000a2fc625fb13248935ade2ef81828715b4984aeeb21ef7c8578c77d8ae1b5a439f38'
+dependency_hashes['idna-3.11.tar.gz']='f99359b515ae66a124f21336c8b5a4d2842c2ac6f64b2f6f3e25502f376d799bec848fbbf49d886f4ff787e72a0aa49a3416d63f213bc872fc980eaaa977c917'
+dependency_hashes['itsdangerous-2.2.0-py3-none-any.whl']='3c9d38d4a9a53f6426139969a111cb13f0588e4445173542a5c88a2f85348afc6f709f3523a4169eee6010cec99eed6df3a82cac59ca96a731d39461f88e2b83'
+dependency_hashes['itsdangerous-2.2.0.tar.gz']='ed046cc371ea9aa1f7cd3bd201f1b68910a2b008bd8434c425332cecec6539cf031df6e2223a1fdccd68c12ccf5486e80f178d5906911b19417f0ea244e367f8'
+dependency_hashes['jinja2-3.1.6-py3-none-any.whl']='9a7f40edc6f9209a2acd23793f3cbd6213c94f36064048cb8bf6eb04f1bdb2c2fe991cb09f77fe8b13e5cd85c618ef23573e79813b2fef899ab2f290cd129779'
+dependency_hashes['jinja2-3.1.6.tar.gz']='bddd5e142f1462426c57b2efafdfafdfc6b66de257668707940896feae71eabdf19e0b6e34ef49b965153baf9b1eb59bb5a97349bb287ea0921dd2a751e967ab'
+dependency_hashes['librt-0.8.1-cp310-cp310-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl']='9647508a61c3f9cc387f2561197cb8f4e31c08b4c6bf8e87029bfe381ae7ec1a7cc93767bcac7f0d571705f269b56b3104ee3c104d1d78adef0faab5eff25d73'
+dependency_hashes['librt-0.8.1-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl']='b920fc23908d6418717958fb85dc412a4b490953c1ef8f9b188168750edf41f7967649f478ef9fdca17dc7035cb3bd3ead17b9ed2d1564404264ade72d748735'
+dependency_hashes['librt-0.8.1-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl']='5370aa8369c881909ff7e80c513e8c28b4d3760a49d5711b7ef8cf53027607c2e7e5b8d3424b5b3e8a6f30419540d040410adfd834af5ebfff6fc72682e1fae6'
+dependency_hashes['librt-0.8.1-cp310-cp310-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl']='0c438f9f1749657b14270a54cad3867e4cba777c1630e7168bb2ff3c7f0be4cef3e88f976009a824f20f63bb7a36fd83e61c5866c790275ba2017f1e821d40d6'
+dependency_hashes['librt-0.8.1-cp310-cp310-musllinux_1_2_aarch64.whl']='e07855cd21b062b5c53af87c12c25f2fd9bf436134f22f21926cbf144a03dacfef1ebdb44a2088346f23695be0bd3d251dc3944ed8e884f8c5e7a7da3c65e686'
+dependency_hashes['librt-0.8.1-cp310-cp310-musllinux_1_2_i686.whl']='a1a6dd5c8797e1d21eac54306b939f677a802c2b9b4fc66160f60541cca4dfebad45ba8aecf8a7831e8576f75fe57c547257aaf485136071b4aa541910289392'
+dependency_hashes['librt-0.8.1-cp310-cp310-musllinux_1_2_riscv64.whl']='183e351113bfdfa801e0f882f13c633d7adb9dcabc8f596f19b9f0f2d474b04acde7b12538707f4557f31dd374d19bc07042a621873d84073f8b0b0b93205fc5'
+dependency_hashes['librt-0.8.1-cp310-cp310-musllinux_1_2_x86_64.whl']='e1d9b9764b5786ed8a1b8af6fcab811ca43a2a9b68116444ef389f9fef46ffbc93b6b51a64725dc56699a98324fa60366630cd95a5379517dca220114d5eb1fe'
+dependency_hashes['librt-0.8.1-cp311-cp311-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl']='9e079fcda4029d69d09845ec6a7cdff761c39fb58ce092165383e0cdc7f41b2d7033815e4165527a4491917914066d6db81c7b7ca08ce8e2cd99df7cdb5baa19'
+dependency_hashes['librt-0.8.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl']='d6042e0bbe9720abb7eba276e03ed4725d9f60cc9de9e955b2b974440fc0c183627a87f6b8edb2afe446330f2ee67f793e5d2a50790c9bba636d391b14288f01'
+dependency_hashes['librt-0.8.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl']='132ee5dd9b316b56edd2d6be90122b1940a28fcbacde976fa83b55189c3700ca08415e442e16f27e7047c13c3fc29544c25aef774cffaded1fe3a263a8d7c41e'
+dependency_hashes['librt-0.8.1-cp311-cp311-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl']='b65d61a304b99847019138ee8d030d02006560be7ef5e89df28c4c5aae2b2a2bc87824e24d89232877565dbf28f0004abfe890036f84997f4ed65cc68287a17c'
+dependency_hashes['librt-0.8.1-cp311-cp311-musllinux_1_2_aarch64.whl']='f2167c95c41737b4761af93b6497273d459eeb81fa36e9bcbcc3178593b718e85dc9b330790e8c50ba3447200c052c7b3fcaaa81227978f67fb23e3214550cbb'
+dependency_hashes['librt-0.8.1-cp311-cp311-musllinux_1_2_i686.whl']='b46345aea26642a519b9d593e1d7a10c46da041c1d2a2f02000a47fca631ed6f420628b0c11fd5d7713fe3481619ae3f33eba6f21d7a0333d3c4c616f67a3568'
+dependency_hashes['librt-0.8.1-cp311-cp311-musllinux_1_2_riscv64.whl']='9ddacfbe8c01670b40ca37376c22cbce3259b6808d7f588a9c781c66c03e070d1cb645c822a394956150ee00389b5b53cfb269f69e9aea2cc22f67f270d7b676'
+dependency_hashes['librt-0.8.1-cp311-cp311-musllinux_1_2_x86_64.whl']='f549bf5565043ff7f1fc9bfe5950bd79ed18ea97815f3cd53615b843eb1e47ce9347381680525f6532091ee08848bc87f3c0e08faf2f4aa8e218e896630a6344'
+dependency_hashes['librt-0.8.1-cp312-cp312-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl']='92423b0cb474cee278c2512fa42db5b3b63768c5a97256c2f164943911f68a138bd8a2b20cd7bc789e5366b2533fe54c1f940fbb50abe8de9970a7d626e5a302'
+dependency_hashes['librt-0.8.1-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl']='95c33bbbc12375a53c513b8af601c8ed577c223b9a8170a858fc7683a56ac7acd1ccdbf2b7b8e333a5aedd2ba87f97469485403bfc78fb8ab4c3538c3f45abe3'
+dependency_hashes['librt-0.8.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl']='3538281600de5c45353d1d8eab182d7907aaa742a18527059b2af6248cab7c1fcafb1233585e7fdc60822e9880df1b675a7a30d9681bae0546111afe1dbcf090'
+dependency_hashes['librt-0.8.1-cp312-cp312-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl']='6ffc0c1cba4de7401870d7ea8ea4c84cd7ad704c1ca6bc6b269dda51e4ec281a113793fb54bc102be93425ac9658e63a34b16ba127b75a5aa397e5cfacc7edc8'
+dependency_hashes['librt-0.8.1-cp312-cp312-musllinux_1_2_aarch64.whl']='aadf76ab2bdd78d80537a3509385f75bbc92ddf6c6f55e73d12933b6ce046a177d5213a7745f841ad016c284d80cc3e0f300efa854371c6deb4b9bbefb2430de'
+dependency_hashes['librt-0.8.1-cp312-cp312-musllinux_1_2_i686.whl']='fc1374ea4364cdb1b02b77403ec4cebd1d1607d6c623a1f37fc78d029196d5ed5b4ebdbe79f3e5160df814d932c418a806ea53c3dae54c7ac093b7b0173610ad'
+dependency_hashes['librt-0.8.1-cp312-cp312-musllinux_1_2_riscv64.whl']='4c91cb4847423cb959fd3a3c0a5ca8c28295ef575004f3ba1455f7e451a3db0d7c76368f700773acbe9ca44d524e03472b44a13d9997e6dd45cb401c757266bd'
+dependency_hashes['librt-0.8.1-cp312-cp312-musllinux_1_2_x86_64.whl']='49e35b2a29f8d455f034b8982b4b26605aacbec69de13657a32b8abff1c151026751663c9f47ea063cdfa63a25d0ba4d7b2b6edcabfe762e985ffc2e77c51662'
+dependency_hashes['librt-0.8.1-cp313-cp313-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl']='16b2634d771e89230ab2073693a3a18b411f81b69b0ee52f77c903d7b16fc73cb55156399b55a584210aaa221d52b356118fa4f8d6139c9998924b90fc91164e'
+dependency_hashes['librt-0.8.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl']='903adc35dacad73e00eae31b23dbb91edca2f853a99c39fd703df24ddd3e3abd14257f1ba18c2d18df98f1419cf63ba11c24a519604b1957e17b21bba27a1ed3'
+dependency_hashes['librt-0.8.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl']='20ea3cf6f1e49856ea3301fb05233a555b84edc33293d1d2473424e6ff300c015d655ba24ce21df338e0886f6286ba477436d9e84f18201f9174a029d8989191'
+dependency_hashes['librt-0.8.1-cp313-cp313-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl']='4758727acfde11737364544b9892286d38a49f0d20d5477834282aeb2f6c831a1b51fb1b96131a18cfb5562a8c3a378821b3030b20c376bba90849166b9e8c57'
+dependency_hashes['librt-0.8.1-cp313-cp313-musllinux_1_2_aarch64.whl']='fdd22e592445fe649f11572b34e597ae67655dbf1b3414d43b89f69709d9d103700adb62d9e03bdf43a3e7eaf90891b9397da6fc71b364553274751f7e228e2b'
+dependency_hashes['librt-0.8.1-cp313-cp313-musllinux_1_2_i686.whl']='c7762d89fc8e4eb7181cf8ca40792d7b0e1f29585d01ead4706c4eb9f700e626130c059f8899fe05e61474fa3adc7213eb626ab503e50ac16fc2030ecf7d92da'
+dependency_hashes['librt-0.8.1-cp313-cp313-musllinux_1_2_riscv64.whl']='708e2251272162acc6198241768ffdc61d05b851e49c2ddaa583bc8f0840cff82bf5d7415c2726f2b8d5121c0e013384dac0fcd8ff8805c82864c78ec3301976'
+dependency_hashes['librt-0.8.1-cp313-cp313-musllinux_1_2_x86_64.whl']='6c0328f674b97e4790ed5fc3a3e4c0379d26df0fd6872977cd254fc3a624e6ef564a902ce8c1bd0ba4fe75c1a5b9ba1cb20ef544f01d094dfada22efa2fddb21'
+dependency_hashes['librt-0.8.1-cp314-cp314-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl']='77d39c12a3f78e59d7c0b93d6ab4cfe0b8cb8ebc2c80e31c66bd6ee0fc7dc8e5ba973b8b4c0aa7a9cd696d2fea059e4a1445613d92eeddd9e1590ba0e0db014f'
+dependency_hashes['librt-0.8.1-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl']='46265ffff9941d5b0719a41cbd0a0c34ae03006c8772b9823d6798dc38759933d23cbe32cf26d5caf66170789b9cb76e4e6505826cd5e2708187d22a30f14bed'
+dependency_hashes['librt-0.8.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl']='7a0e1903d896ef787bcf819bffcc915a31d6e40de7e208af1c13e52b2ea50999bf07b662f38316beb4c7b4470d3cfd1f56f1bab7718e02562c7d610255ca1e74'
+dependency_hashes['librt-0.8.1-cp314-cp314-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl']='f777116262a45cab560749b24061df74af77f19d0ad250d2ca5c3833478b53ebf9ff020098adf18b9bc126979bf606a7c84e31f5fc61c29d0caccadbf5319eef'
+dependency_hashes['librt-0.8.1-cp314-cp314-musllinux_1_2_aarch64.whl']='065b4a6cfc1ff6a8952dd59aef3b1f4d29a0c95d40cb7dd05bdffeddacaa922f41d266e694d57868aa71abd587da92bdea0b5bd07683bd4f9d3e6deb297d1d88'
+dependency_hashes['librt-0.8.1-cp314-cp314-musllinux_1_2_i686.whl']='8c2aa26b1a04434b35849c643b3e67b7d65aab999a0b1645136a09772d2642c13e6fdc2ecd7eb67464176ee5a296962725298f3616142e5b8b92ab49961202f7'
+dependency_hashes['librt-0.8.1-cp314-cp314-musllinux_1_2_riscv64.whl']='51f1a06bede3558d873ca734911be0737042e49e822fc598e2c8928cbe8b1db1a9af1c550bba99eb91fab25dc1a6631523ebbd7461e979bf6ba747aebd0ddfb8'
+dependency_hashes['librt-0.8.1-cp314-cp314-musllinux_1_2_x86_64.whl']='86b2a7329e1f7ae6067065a91a6644bacf394357629b318933fbdbb788ecb801e220cb49886eac7e35e9d1b9b1692eeb283a63cb4ed822322f791a745e956f9c'
+dependency_hashes['librt-0.8.1-cp314-cp314t-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl']='bac78f6dbe48445506d0bded26fb33fc803d1e7b6938b4b0d73a218fac3ea938c34f057fe80268276fe9e08bc3b25a2c22acbab195bb8643f721aa2054b85bf7'
+dependency_hashes['librt-0.8.1-cp314-cp314t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl']='aa6f2585d218d7c31821b19379bfcc6a459a94c4e491cee47d70a348bf58b8687069499271e6fe5f95509573c5fa40c77ec0c1f66dab1ceea0a7ef9584591f2d'
+dependency_hashes['librt-0.8.1-cp314-cp314t-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl']='e1c8bc0df75cd1e4a5617d6fa2ef198ba4bf0ab6280c0117db5b3f4488c1bb460b2995b3a37f485128c2cbcd325e6ac0e393f260aefd177620e7ddd3caa095cb'
+dependency_hashes['librt-0.8.1-cp314-cp314t-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl']='e1ae11e4ae2f610da322b4cd81b619c83c4faa529b4b3c70249515654bcfd9517324ee02b12136f93a07cf297f29707f6a87fe7995a1b9fef64d89afe37860f9'
+dependency_hashes['librt-0.8.1-cp314-cp314t-musllinux_1_2_aarch64.whl']='325e8589e8a9f7509b491de79d692c8a8f276f82673e8b30ee6867e6b9920a36f71913700cb22b2f5fbe4ff9694f0ea49542e16f06a33c90a20f46c2964a6b4e'
+dependency_hashes['librt-0.8.1-cp314-cp314t-musllinux_1_2_i686.whl']='3db2ccc6293fa3d3059d7da8dcbd0df9fd9a84c435c592cd74a4f11b9374aab205a7877567517806ffdaf86855f8812530cc7222cb5ee72ea2700765fedcee7c'
+dependency_hashes['librt-0.8.1-cp314-cp314t-musllinux_1_2_riscv64.whl']='a73a35f5e4412d3036713704a8f3e86aa968a9dad4e0a1985fad5f1108f98c073ca7ad834dce4ef89727a535fbfaf24fb5d6641de05f2e0fdd69e628626edd2d'
+dependency_hashes['librt-0.8.1-cp314-cp314t-musllinux_1_2_x86_64.whl']='ac87dab87f6727da0cc86c454e249965162b84fcca423e5eba5b8da792cf588831267480f67e78e042c90f970d2985ab32621b446b617fcf2e4f8f97522b9cd9'
+dependency_hashes['librt-0.8.1-cp39-cp39-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl']='b35c14ab048119fef5de57ffe41de1e14d0554660d67db5ea92366ce43292910ed85924c421b0866a43a33c5d5f1cde4e51324c2c8096ea164a0036d7f88c425'
+dependency_hashes['librt-0.8.1-cp39-cp39-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl']='d60694cd4e0efddbb65fef7c47450437febffbc8c5e844a92e7553d212fcaea7e1fe78b6abd0ae85307ee7f62ffa19f349b9e1f5197c5d78cd55b08f34ea863f'
+dependency_hashes['librt-0.8.1-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl']='9d40bf8e54ad975390e31a694b3e9261109e22a6f9fc3c8ce9a511a5548ffa755f0338dd1b629f1015195d503d26c9ea99680bdacf939b3ed7988c69d5530451'
+dependency_hashes['librt-0.8.1-cp39-cp39-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl']='405747b3e263f2a4153dd14e11a9531dd923de457856a40930c9714e554544ce5158194d876342dc54cefd5d75d7f32a15bfee4c834af4f3ab70380183880dad'
+dependency_hashes['librt-0.8.1-cp39-cp39-musllinux_1_2_aarch64.whl']='214fe9fb19ef82161a9ca759561166cc672d9b4494755d27ca06be112eecc29dd7423584837fb1ed17f2fbeacc9c2d83d0c98fbffc67f2187445584c1e0ea8bb'
+dependency_hashes['librt-0.8.1-cp39-cp39-musllinux_1_2_i686.whl']='db7cfa3f0d550a7bc8cce7579e58b794c4f7027aeff12ee21c35ee1f35b427f13e040175d8ee00173e3791058242d965c59818157105d54faf7b5e1fdb95d4d0'
+dependency_hashes['librt-0.8.1-cp39-cp39-musllinux_1_2_riscv64.whl']='ed0417a3d5aec75cb74400887b42abb619f75e07fc3790aaa07a003b82b6a0ba4419f930fb1eacb66e3b0110b2a7ec68c82cdf6a9ecb4e4f1d374e7458c7c02d'
+dependency_hashes['librt-0.8.1-cp39-cp39-musllinux_1_2_x86_64.whl']='851198ee0b2869636d90ff4694627f95be57625d2924afa1172f0f6b52a37d79a5d054bcf0342477f136af833ee36df5548882760ddf8a8e99c2933dc2250f31'
+dependency_hashes['librt-0.8.1.tar.gz']='0cac416696dd87a1cd9c8276946d7ea25d125b07fe9bb0abc09a5590e549bb781944713f1c83edb83eede3a0038175cc33d8ad3fa4e945ed916aa3c590f91020'
+dependency_hashes['markupsafe-3.0.3-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl']='2de3cee15304c11e06460718623574a5c27237540d92e4fec6fd17ed3508c5b52fef387a19091a1b8ee98c5e0480f9d0dcd542a355273164e52bf834f4b98293'
+dependency_hashes['markupsafe-3.0.3-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl']='b031ed5d9c393cb42c637c9d63c4400da9ec03efc97262375a705dc889220cc665a46354f4e98498a4ae7ce972c57645e50fdc8eef5e602235bebb0d60d6fcbb'
+dependency_hashes['markupsafe-3.0.3-cp310-cp310-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl']='0b8ff3f6233a1d4cf8e29e4f08937ceb7f43c4e268a5d470e80a25f07c7fd7b45c73b328269236541c809a7914f0d3dc1decf41426c2cdc28beca73a423ca4e3'
+dependency_hashes['markupsafe-3.0.3-cp310-cp310-musllinux_1_2_aarch64.whl']='6ab5761e9e063c90b1a94f5d4db32d66f09900c16048598b0e3463eb54a08c75fba6a91653288e88e35e055aa662d00f9b51ba5354a925ca9cf725867b5c1c4e'
+dependency_hashes['markupsafe-3.0.3-cp310-cp310-musllinux_1_2_riscv64.whl']='ae36a3c59ef938e9ec17947c855f492d38334596999cfb4b4a0542892474407927b4c852275a355eaa613f35697d8a005917279fc6030f0695672607c802ec1c'
+dependency_hashes['markupsafe-3.0.3-cp310-cp310-musllinux_1_2_x86_64.whl']='d14ffc531efde977d1a32c617bc8dcce444734bfba7d14675dcc36524c269315030151342deff86a308cd298f1ca17d0b930fc678d3a3c9fcf9e675f979b3736'
+dependency_hashes['markupsafe-3.0.3-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl']='c15d8f48b890ab8b0206f94f677065f9fcb6e657631f7daa37bdcf704648df28ddcb537ae73fec15aabd84f05731f5238a23fdb86824ffd9bff334efbafdff36'
+dependency_hashes['markupsafe-3.0.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl']='a44c1fca5e10300e9e6ab87600199d2d889016d9bd0f8f20ade0b5e6df3c42443be18979ef3c9973cdb4e0e50b32636d242a58f62d4aba2d78980d34be4a5272'
+dependency_hashes['markupsafe-3.0.3-cp311-cp311-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl']='c1feecea433a3dad5abf2dcad4fe2980c26f29505102f139e9bd358e57b9ebdc7ea05a61bb0ee7baade41ab259aa0ea9e354ed63f899ca22b940d3d7b81bbd52'
+dependency_hashes['markupsafe-3.0.3-cp311-cp311-musllinux_1_2_aarch64.whl']='0d733403961aaa226f2b263d0417e63ebdc27723c3859221cf51caee7645dc83b29c0f726b7e0767b90702f31b4b6a803d6082aaa4698232257f33f36d64b549'
+dependency_hashes['markupsafe-3.0.3-cp311-cp311-musllinux_1_2_riscv64.whl']='c6124f4b5355f328c4917b872b9f49463ee9b07bea69f0a2e5c7c1d1bbcbc47469dbd9e435d4c60c04e40a9c950dd2ebf78b02b003686b53c6c6595ad025e263'
+dependency_hashes['markupsafe-3.0.3-cp311-cp311-musllinux_1_2_x86_64.whl']='aa3ccd316d72f1283603f8da5a4059e2d52b3c10222f08fed497173902700b95b4b8c3ec9aba94c60733eff363597649169f44dfe8105a7efb8abf5e643789c9'
+dependency_hashes['markupsafe-3.0.3-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl']='8943c71df8fceccdddb846f3ea4b27142f29af856a7ad11e5350b0cc190b8a6aa64ca664238ee67c1ea1ddc135a8ddd2608aa93824b77278f90ca887e8abeb4f'
+dependency_hashes['markupsafe-3.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl']='850a9ecea3fa29c0756f91a00834ee26b1e71d808a7739841e6c1a8ed976b34db5c80bab977461cb3861ba1fc0beddee8e234bdf939dbfcf6ef7ab16777d4f2d'
+dependency_hashes['markupsafe-3.0.3-cp312-cp312-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl']='d55d96be0e33171065549fec475370168cb17fb275c13fc0a55bc766d7bbd63a14c5c6230e44a618244d73e969491796609bbfbb8acb0755fc4e249bad1ae2d7'
+dependency_hashes['markupsafe-3.0.3-cp312-cp312-musllinux_1_2_aarch64.whl']='801a79af6b7d45eec7f7709db366fd1c456d503931031045bc1b1ae32e93eb9ecbeab77589ed2c1410ff0e2e56d92fc9f71afac51becae6e0999e3ac5a721962'
+dependency_hashes['markupsafe-3.0.3-cp312-cp312-musllinux_1_2_riscv64.whl']='d9dd8a20ec6cc605f692eee9b8082a16fd299acec79a77619aa6fa923da7d413487b7e4283772ffa4408d62cb9d3438b38fe869642d03f9fb72a8181d24bfe2e'
+dependency_hashes['markupsafe-3.0.3-cp312-cp312-musllinux_1_2_x86_64.whl']='7d9ced898a8dbb520fcbdc0622b43b28ef5940160889a1ec8967d3e08b918e17ba26da30c49b3fbc2791e1e7aa090362102a6d1f9fcc991ce27be6e43f17fc23'
+dependency_hashes['markupsafe-3.0.3-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl']='7ee061155b6c3630c8a7a4218c775e5db2e791fa47a9a48777bffbc36fc94e159b7a5d7318d02a39034063dd65a389697631fc8f784fd44d8396d1978db3cef5'
+dependency_hashes['markupsafe-3.0.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl']='7c830c50728b76148e1666cd83a09551674a064c6499a14b31e07cefa478bf0594d29daa094f58059e233369441744c9fd787b37fcc68740e75ec710f64ce520'
+dependency_hashes['markupsafe-3.0.3-cp313-cp313-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl']='a6b54b56359fdd5a306731319be6bc873fbdf5f15a268ba637ee348ea64faa4598561779e3dfc0d3aec2f20aa99f8b04b2d8bafd1a59b3d22180e07e1903aaf2'
+dependency_hashes['markupsafe-3.0.3-cp313-cp313-musllinux_1_2_aarch64.whl']='a55d52068ca22f7b18f7b4e98dce74321e48c90d80777d059fd3b209216296c9ad9608ffbad6efba254594c53a83767d2898596867c7576a5721249c06365f09'
+dependency_hashes['markupsafe-3.0.3-cp313-cp313-musllinux_1_2_riscv64.whl']='81d3c5873f94b6eafaf26d354db329f3b0fd7d14e4e2d457d033b791ba6031fd600173adea2777ffe69c024782df4c0c9aa12a6b1af65ebb5e819d9c5863392f'
+dependency_hashes['markupsafe-3.0.3-cp313-cp313-musllinux_1_2_x86_64.whl']='350442e783ae6ae3e2ea89296618b39502ef0f30223a544b39b53aa55563d491d4f6eb1d474496d7ceebcf1649667a44eef0ac68582dfda434452608c8555fcf'
+dependency_hashes['markupsafe-3.0.3-cp313-cp313t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl']='7bf415ea7249f6e8d40da0d49fa9eac1ee6ce6db9f4eb4ed338340a64f5b145884a7595948ee068f88a65efea6f664cdfd55ce89ed8595f1d20b6ed4890d30ec'
+dependency_hashes['markupsafe-3.0.3-cp313-cp313t-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl']='bbc44c2ed708708c4d75aee5811c61fb05ce145c9756f3de85a99f43aa165414262570b53ba548a17a9ec149db5444a62779566d0c0bcb07620380527674671a'
+dependency_hashes['markupsafe-3.0.3-cp313-cp313t-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl']='af3691d2b321dc276040f5300f3edd3188ebb32e3fe721bc79f96cabc969240d0e3511e5a6f0fae5b91d5e8c18f0bb58733d0881125f60b222e84dd6130ade33'
+dependency_hashes['markupsafe-3.0.3-cp313-cp313t-musllinux_1_2_aarch64.whl']='9a5449da208a7e18c2eb6c15587e4c4c47ecc488715e681a9dd37d2c25a4a2007270fb6223e9c0d8b6e382b60e945a99a31aaf2d83bd731a514b20e2203a81bb'
+dependency_hashes['markupsafe-3.0.3-cp313-cp313t-musllinux_1_2_riscv64.whl']='b7c4c3104262ef06d634647b72f19f7d33dfbc81b9fc1746727a7defd330a1c36313e6b6e5e65dbd0d2e56662b9a5ef1e097b866bc367cba23c3918225b9faea'
+dependency_hashes['markupsafe-3.0.3-cp313-cp313t-musllinux_1_2_x86_64.whl']='791b42d3fae399c0a21f5f985d30561658057f5b9083d001e17926af6921e383793a54cfa8d0a83020085ffa2a45c0f477ebdc34013f61d2315d2f6923647fb3'
+dependency_hashes['markupsafe-3.0.3-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl']='23060d745017afded4776f4d004bb642ca29d8dcc60753801a317a30ac677259bbf58ea5b00ee6b341db1ef26f96364e2f0e6f29d7b21a6be8114b8c21c7489d'
+dependency_hashes['markupsafe-3.0.3-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl']='8e5ac2dc49bb1b9cbda912b93a88480d2e4bca653e4de04ba0657303d1c106773233e4508aed7516f71dce2b11278c43ee58180a560129afde04a8942f0358f3'
+dependency_hashes['markupsafe-3.0.3-cp314-cp314-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl']='b2b047c955719a6d7816b12f3538a3de3d5a70b9a9fde55bc54f02350625c4207e85a16ac3e735463abbf925ffddac4b5c2d6cdd3d3aafe5b35b2f933890b5c3'
+dependency_hashes['markupsafe-3.0.3-cp314-cp314-musllinux_1_2_aarch64.whl']='1de0e6de5a379d97fe9248a1a1c5d8dba846591b57f8f07db005e11d9001a53e30570dfcf46bf5d2c18f4b03b1d617e187fe456c71d756d7a267523f8f892ab8'
+dependency_hashes['markupsafe-3.0.3-cp314-cp314-musllinux_1_2_riscv64.whl']='f22cee9a750701e3571af651ae8eaf0286461814d5c6c250419ed838581a0832170ad163bb84a4967b870aab211f7a84bb51bb7d6ea58fa593cc42e0e0bfe5e4'
+dependency_hashes['markupsafe-3.0.3-cp314-cp314-musllinux_1_2_x86_64.whl']='5349b40a1aa35d82f22afe6827eca0783b7458606fdd8911076a2ccf5ca622ecffabeb7f4fe37f423874f53dce78b02ad1c4961026322bc8255d335d854e5ba4'
+dependency_hashes['markupsafe-3.0.3-cp314-cp314t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl']='73eefbf607b5d4755ff42437a2d17975665e94ef4418744597876614c7afb049ce936f9b5c42bcf447b0c25d38339428298bd7c40ef4a26e0c6bf755aa05f06e'
+dependency_hashes['markupsafe-3.0.3-cp314-cp314t-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl']='0273c6ab69ce843d94113241e106ca86a2a1d951a3412334bb7ca7de1b82026218c313e81098ea6d1b5958aa07692a6eff63a90109a58fe1141131c83625cbca'
+dependency_hashes['markupsafe-3.0.3-cp314-cp314t-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl']='f08af6568e6caad867b1ced8a92a356121b8f436f1d21a04cd92fadbd305d542c57f1950d33b67255804b8477c9c6eb77d784dd134a83e0597cb8ea6d86b89f6'
+dependency_hashes['markupsafe-3.0.3-cp314-cp314t-musllinux_1_2_aarch64.whl']='b1e7cb9e82084e5ae081552c8040ee4717f3f99f9988b930f0080660683e61782f37e97a8e5a9b27667adbd0f3ec6d501aa85a908c90d8b1f2ee3c91044066ec'
+dependency_hashes['markupsafe-3.0.3-cp314-cp314t-musllinux_1_2_riscv64.whl']='9d3b1ca79d28a00868454b1669917a3fed235065365cdc7973f9569cfb8c19ff135998ed45369b390d3eb40ca996d2fd352ad767efae1d270379b737e49f42e5'
+dependency_hashes['markupsafe-3.0.3-cp314-cp314t-musllinux_1_2_x86_64.whl']='36cdb62bc40a8028970b4c1ed28c5d373e499411e86cc7627ec74339d88393f478101d0b23991cfbbe7fce535a8f084a16e5ced9552f0165e9880484639af3a6'
+dependency_hashes['markupsafe-3.0.3-cp39-cp39-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl']='399bcb001ba9c50494ac1921c97c9f23826789db3f46c8690fa348f22e944468c7576ec8294a825aff60b0ad91df6737fe1754c1090b9c4039a48b6497768c6c'
+dependency_hashes['markupsafe-3.0.3-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl']='eb318971ffcabba92fd49600b214517b70ff07d17081bcbe595efe1615b99d579b797ec0ae9f4d981456bcc9d23ba4c748c6a5b7a40b5875d323a81ccee928c1'
+dependency_hashes['markupsafe-3.0.3-cp39-cp39-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl']='fbecb0de3987a1702d12e8ff01ec2aed0b44d8f014ad4c68151c8bbcb6a86f66dde75d8bc5089e152fcba928831276c680284ad7991b6941a4b426d1153054da'
+dependency_hashes['markupsafe-3.0.3-cp39-cp39-musllinux_1_2_aarch64.whl']='cd925ae774043afbfc09278689360b8b97944bba771469a586a0b97be06e27a170ac448155661c0984084a3042c061bd87ccaa6c41b2fca9ff4918d673d88f48'
+dependency_hashes['markupsafe-3.0.3-cp39-cp39-musllinux_1_2_riscv64.whl']='f496b2ab4df9a45ce400b193f00641e39b5302cd32ca7667529a274c6810bd249f7ff3c4c112b993e0f24db7c21776fe4626a4c2b69152b0290015a6f425bc1c'
+dependency_hashes['markupsafe-3.0.3-cp39-cp39-musllinux_1_2_x86_64.whl']='61cb4e64cfac4b2d21eed40764b54b146283f83094062be0321fc2464a4417493baddf542f62b391d15617e1f3ef1f5efddeb645f47ba1009d0dda3ef3609088'
+dependency_hashes['markupsafe-3.0.3.tar.gz']='8c4ed04b467244f6bf99cd2a60ed922bc0569581f00cc5a13d9edcd0a4bc8b97c404edc4576f6146c7aa543bbd37cf52e5312d3bdd27758264d8751fdc7a646c'
+dependency_hashes['pycparser-3.0-py3-none-any.whl']='0d4db91143b4be85ff467eb5b622fafe9a4904ab4afcfeff9cc2e9a7a08919e68b6d0503a8e548ec3c4f358c025469765ffe6475792034eaae338bc0492bc62b'
+dependency_hashes['pycparser-3.0.tar.gz']='333504ef076e369661823abcd1d1f0d4e01ebadd43b7039e403d80fc2418500c2ed2c42e7b997c6eaf9c56b16085dfccacc6d0be2d45f0033a90eac1a7ed49d0'
+dependency_hashes['pynacl-1.6.2-cp314-cp314t-manylinux2014_aarch64.manylinux_2_17_aarch64.whl']='0659316e52c45ac4ac28f2d30308ac36cf587a916baf4d5e2825747bc47a8786e53f71a3b330d42876b5a444556e7ccd71eb45ad2a4648545dab7ec8a5b4ac7b'
+dependency_hashes['pynacl-1.6.2-cp314-cp314t-manylinux2014_x86_64.manylinux_2_17_x86_64.whl']='ef792e9b67b96db10cac52872011c4ceed517116b316d40f2537b03a10bb24a5334c8a84bd9e64300ec17f2c0260dcbb708a9cfb77181f99563365644056e3e1'
+dependency_hashes['pynacl-1.6.2-cp314-cp314t-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl']='00091ffdf8f0d83e94b315d68c5a6e978608e6d15a5e11d88645815605fccd5c5844672779a0197f47bfda3a64c03f7fccc36602c76c9e2da05e7e2925a8985a'
+dependency_hashes['pynacl-1.6.2-cp314-cp314t-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl']='57929715a98eb678f5dbef3246a9e789d9db38a91495d07b6eb5d9776c7c4da7c9b50d5f893da03b560938d4e57815afd488a72b49001cbff49cdd85eacbc22b'
+dependency_hashes['pynacl-1.6.2-cp314-cp314t-manylinux_2_34_aarch64.whl']='6d48c46278fb61bb873e63188e011cc087a61e262ab670d9a7c5baf956c2ede799509b53dc6d00479c0c120ae33ad82370c2a9205cffc436bbd4a6102020a105'
+dependency_hashes['pynacl-1.6.2-cp314-cp314t-manylinux_2_34_x86_64.whl']='27f9e1f6eeb5b885be91d1f59f9e89766de928567a7af1dc817a270067deef0c20459ef281e2056f1ce195df26451ddb445e52437b35a343e4a4268cef6ae346'
+dependency_hashes['pynacl-1.6.2-cp314-cp314t-musllinux_1_2_aarch64.whl']='889a51564354abf124cb0e214fbf7a8ff89bfe7b86177c89bffb751d1280310d0ed1215e9796808fc910bc5de43625df0ae381b27c7c58a350ef4785b8df40d1'
+dependency_hashes['pynacl-1.6.2-cp314-cp314t-musllinux_1_2_x86_64.whl']='3debf321c2494845eb1fc39fda7337a58c73606d09abcee05c31d89b9928efcb4d1fd01aab4af27581f2594d9102e60824543efd475c937525fb4eb4cf4d6871'
+dependency_hashes['pynacl-1.6.2-cp38-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl']='94b0095a92d2878ff3fba60750b0bb7236bfb56209c1695dfd27cf15e1e319a92acf52304f9e6f0ddc3e36f351d30cbbd21c349ffbd677ef8bb2ea3f81667594'
+dependency_hashes['pynacl-1.6.2-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl']='028dea2e30158544dd5ef14ff6d472c76860349f9892364d3840f365530461522f627336529cfb8a031b01b94f789cd2e1227939eec7b0d124f1c96846d905ae'
+dependency_hashes['pynacl-1.6.2-cp38-abi3-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl']='962976470a367daaaed529e70fb3f171a7f65d7604010ee6548353c652d5b31979b70ebd9c9e7a654b3c84860d25daa50206f6a99ce3d510b32fd047c2d5da9d'
+dependency_hashes['pynacl-1.6.2-cp38-abi3-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl']='3fbb56200012d77ab4bac9e386036269c7a51abae7e9c76bf953c452b70d620060f24344b6b2dbb82a74fb00fe813ff33d97b0359f118cab530f35b34cd4d7ac'
+dependency_hashes['pynacl-1.6.2-cp38-abi3-manylinux_2_34_aarch64.whl']='8c139ded2f14b65b3cb0c468ec2b8e6009b9b46b60a868cd6c90e37afb1a6188ba8a28340037a80585d5feff9c1f3331d32e4d7cf8f262cde8fd496dde9ec018'
+dependency_hashes['pynacl-1.6.2-cp38-abi3-manylinux_2_34_x86_64.whl']='dffe808742625079a00e3ebcb809c539947ee753d4bb046d73d5b9860973b26d564de656135388b801ca37d3a309b8c9ac03ac705f1f9b25fa001f41aee5ba9d'
+dependency_hashes['pynacl-1.6.2-cp38-abi3-musllinux_1_2_aarch64.whl']='fcb82d89df56636166cb42d2ad79e86f784c52573b21c12a7e42971c0ee53a47ff635268af3776cdbe7dbe318354f43bf9effd5b0061caed70ae5d5e196a3882'
+dependency_hashes['pynacl-1.6.2-cp38-abi3-musllinux_1_2_x86_64.whl']='fbbb03d285c72cd014f8cf697a50e80ab5edf7993f3a352580b330e639e7061ae940e91f0ef77dbdb0a5fc55fe81e669267f8b5770799f26ee8d337fb3c7a933'
+dependency_hashes['pynacl-1.6.2.tar.gz']='66adf76028461ec63958dbb418cc6539b143ae83e84f053f9e752342f869c70977c5fd12f02af863851636997e2d94efe39c1421918b41a0c0fbfe9477d1791e'
+dependency_hashes['pyserial-3.5-py2.py3-none-any.whl']='29bce14c59e60f54ce476d919c9b9477190ef6bb44a6102f71345840f5c0f1d0a323c4c3c302c5f380bfaae32cf04142ee528b6dd7184f17789632a31d5ecab6'
+dependency_hashes['pyserial-3.5.tar.gz']='c8df5e50d952d5a6dcf1d9253a6ba953e9763c545a867da66c22c90dfa015aba0194f2a8f29a229d0a5f4dc8bfeeaaab8bcfda4066ed78a18b151bc05e6ae327'
+dependency_hashes['PySocks-1.7.1-py27-none-any.whl']='3e0b1775c14fe091d10e30b03f7f0c770861152e493cf3a3143b0de01aadbc73f684f0d4305f1a694932d4bdcac8056c422437130640e19028cd9fba59ff0b3f'
+dependency_hashes['PySocks-1.7.1-py3-none-any.whl']='313b954102231d038d52ab58f41e3642579be29f827135b8dd92c06acb362effcb0a7fd5f35de9273372b92d9fe29f38381ae44f8b41aa90d2564d6dd07ecd12'
+dependency_hashes['PySocks-1.7.1.tar.gz']='cef4a5ce8c67fb485644696a23bf68a721db47f3211212de2d4431eaf9ebd26077dd5a06f6dfa7fde2dcb9d7c1ed551facd014e999929cb4d7b504972c464016'
+dependency_hashes['requests-2.33.1-py3-none-any.whl']='88ec39e914d6f2e9776ba5838d7ed9e4624bea3ae8c51ea014cf36c1fec8151b7bf2614be64c2ad215a1b6e97112ec9e0051c711a6cb956012518fd57205cb91'
+dependency_hashes['requests-2.33.1.tar.gz']='058dc417085f8be99c2ea79fffecce833068d9342c925a8d8bd1b10c171e52fda5d4bdd8ae1a93b05b111e275c29b705ec79ac0c365fb10f6f81c49e6d839483'
+dependency_hashes['setuptools-82.0.1-py3-none-any.whl']='24132d3af7054ea6e75e3bc4fd90bbb845dd146a0f38d7411c3e7c183fe1c08e210c06c3f1302a41d639eb15467dc6312d1f22ba49c438296058e2dfd2ca9d8f'
+dependency_hashes['setuptools-82.0.1.tar.gz']='5d70e9efd818245fb8119a4eed64d776078469ed884facc188f141ea491efd9fde5c10c928d3236ea5e2e431b16616f18ed14870b867f95e6320251707332395'
+dependency_hashes['stem-1.8.2.tar.gz']='f054bbc9a61e04fb7e3b7d1534803b938b855c29795471953661f8fd9c0a5196fe1f9ccfd01e5b3256ea42893a7d57fda34fa54932012e345f74bb3303ff98c5'
+dependency_hashes['typing_extensions-4.15.0-py3-none-any.whl']='646ed82c2753efc09e7e65a24d5497f7e996760ed7af8d1d0d08244eaad9df52764e4e9b39c70f8951499222e565697eaed70213600a64e49155a535f3b9080d'
+dependency_hashes['typing_extensions-4.15.0.tar.gz']='7ad50638ddbb575a929ffde20ac7b421970abacb311ce1b10b4bbc3b331318784863a8f67b44531327a69be08f5ab7ade65cbd1b5cd35af69fde491d800c8074'
+dependency_hashes['urllib3-2.6.3-py3-none-any.whl']='7810c5c199800b3da247646aaaa5d82ebc8fd86f0b558333706567411850983f78ec267affaddbe4851397305039f41a2b2920b06ebb61f592313f1ca00460a9'
+dependency_hashes['urllib3-2.6.3.tar.gz']='663c83a78908dac9bb05c7ac833183c2fdc2969d0662d21dd8751ba13c51880ee264f7804760f33ebdabfd1c1f04a5d44171a420396de6ae582f9789801b141c'
+dependency_hashes['werkzeug-3.1.8-py3-none-any.whl']='ff5214b216ab350fed334d13fab1049c6d0cd548375ba40bb8e4b3d53ecaeb77ef5d42c8b9cc218267cd96afc4e06130d4c29a20658cea4979bf9b729aa56e7c'
+dependency_hashes['werkzeug-3.1.8.tar.gz']='78c1a4fe38b5e071defe7003af58bf50c38a5cc8132641c69e9ecaaa6ddba00856919082c239a1f1c8eeb2fe44e2a5d20a769baffc8ce3c110450461517eda87'
+
+# ┌────┐
+# │ UV │
+# └────┘
+UV_VERSION='0.11.3'
+declare -A uv_archive_hashes=(
+    ['uv-aarch64-unknown-linux-gnu.tar.gz']='711382e3158433f06b11d99afb440f4416359fc3c84558886d8ed8826a921bff'
+    ['uv-x86_64-unknown-linux-gnu.tar.gz']='c0f3236f146e55472663cfbcc9be3042a9f1092275bbe3fe2a56a6cbfd3da5ce'
+)
+UV_BIN=''
+
+# ┌──────────────────┐
+# │ TFC source files │
+# └──────────────────┘
+PINNED_HASHES_FILE="${INSTALL_SUBDIR}/pinned_hashes.txt"
+PINNED_HASHES_DIGEST='94e5cda69c85a2feeaeb426152ceb772a461baa5c5292c69a53c23261cc87421861a283c249f0a6fd3be9f6c0cd7a4a0699aeab97c791ea0e5351c5cedaa43e3'
+declare -A tfc_file_hashes
+pinned_hashes_loaded=false
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                          Pinned hash verification                         │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+# ┌───────┐
+# │ Utils │
+# └───────┘
+
+function compare_hash {
+    # Compare the BLAKE2b hash of a file against a pinned hash.
+    local expected_hash="$1"
+    local relative_path="$2"
+    local purp_hash
+
+    purp_hash=$(b2sum "${INSTALL_DIR}/${relative_path}" | awk '{print $1}')
+    if [[ "${purp_hash}" == "${expected_hash}" ]]; then
+        echo "OK - Pinned BLAKE2b hash matched file ${INSTALL_DIR}/${relative_path}"
+    else
+        echo "Error: ${INSTALL_DIR}/${relative_path} had an invalid BLAKE2b hash:"
+        echo "${purp_hash}"
+        echo "Expected following hash:"
+        echo "${expected_hash}"
+        exit 1
+    fi
+}
+
+function load_pinned_hashes {
+    # Load pinned source heshes from the hash file
+    local expected_hash
+    local relative_path
+
+    if ${pinned_hashes_loaded}; then
+        return
+    fi
+
+    # Verify the pinned hashes file itself first
+    compare_hash "${PINNED_HASHES_DIGEST}" "${PINNED_HASHES_FILE}"
+
+    while read -r expected_hash relative_path; do
+        if [[ -z "${expected_hash}" || -z "${relative_path}" ]]; then
+            continue
+        fi
+        tfc_file_hashes["${relative_path}"]="${expected_hash}"
+    done < "${INSTALL_DIR}/${PINNED_HASHES_FILE}"
+
+    pinned_hashes_loaded=true
+}
+
+function compare_pinned_hash {
+    # Compare pinned digest against one in the pinned
+    local relative_path="$1"
+    local expected_hash
+
+    load_pinned_hashes
+    expected_hash="${tfc_file_hashes["${relative_path}"]}"
+
+    if [[ -z "${expected_hash}" ]]; then
+        echo "Error: Missing pinned hash for ${INSTALL_DIR}/${relative_path}"
+        exit 1
+    fi
+
+    compare_hash "${expected_hash}" "${relative_path}"
+}
+
+# ┌───────────┐
+# │ PIP files │
+# └───────────┘
+
+function verify_tcb_requirements_files {
+    # To minimize the time TCB installer configuration stays online,
+    # only the requirements.txt file is authenticated between downloads.
+    compare_pinned_hash "${INSTALL_SUBDIR}/requirements.txt"
+}
+
+# ┌──────────────────┐
+# │ TFC source files │
+# └──────────────────┘
+
+function verify_reed_solomon_source_files {
+    # Authenticate vendored Rust source before prefetching cargo dependencies.
+    compare_pinned_hash 'reed_solomon/Cargo.toml'
+    compare_pinned_hash 'reed_solomon/Cargo.lock'
+    compare_pinned_hash 'reed_solomon/src/lib.rs'
+}
+
+function verify_files {
+    # Verify the authenticity of the rest of
+    # the TFC files (i.e. non-Reed-Solomon).
+    local expected_hash
+    local relative_path
+
+    load_pinned_hashes
+
+    while read -r expected_hash relative_path; do
+        if [[ -z "${expected_hash}" || -z "${relative_path}" ]]; then
+            continue
+        fi
+        compare_hash "${expected_hash}" "${relative_path}"
+    done < "${INSTALL_DIR}/${PINNED_HASHES_FILE}"
+}
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                                                                           │
+# │                                                                           │
+# │                           Installation Utilities                          │
+# │                                                                           │
+# │                                                                           │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                            Privilege escalation                           │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+function t_sudo {
+    # Execute command as root on Tails.
+    echo "${sudo_pwd}" | sudo -S "${@}"
+}
+
+function read_sudo_pwd {
+    # Cache the sudo password so that Debian doesn't keep asking
+    # for it during the installation (it won't be stored on disk).
+    read -r -s -p "[sudo] password for ${USER}: " sudo_pwd
+    until (t_sudo echo '' 2>/dev/null)
+    do
+        echo -e '\nSorry, try again.'
+        read -r -s -p "[sudo] password for ${USER}: " sudo_pwd
+    done
+    echo
+}
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                                   UV venv                                 │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+function ensure_uv {
+    # Keep the installer's uv binary inside the installation tree so the
+    # launchers can continue to rely on a standard virtual environment layout.
+    # The release tarballs are version-pinned and verified against hashes
+    # embedded in this installer, unlike the mutable upstream install script.
+    local uv_root="$1"
+    local install_as="${2:-}"
+    local arch
+    local archive_name
+    local archive_url
+    local expected_hash
+    local tmp_dir
+    local archive_path
+
+    UV_BIN="${uv_root}/uv"
+    if [[ -x "${UV_BIN}" ]]; then
+        return
+    fi
+
+    case "$(uname -m)" in
+        x86_64|amd64 )
+            arch='x86_64-unknown-linux-gnu'
+            ;;
+        aarch64|arm64 )
+            arch='aarch64-unknown-linux-gnu'
+            ;;
+        * )
+            echo "Error: Unsupported CPU architecture for uv bootstrap: $(uname -m)"
+            exit 1
+            ;;
+    esac
+
+    archive_name="uv-${arch}.tar.gz"
+    archive_url="https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/${archive_name}"
+    expected_hash="${uv_archive_hashes["${archive_name}"]}"
+
+    if [[ -z "${expected_hash}" ]]; then
+        echo "Error: Missing pinned SHA256 hash for ${archive_name}"
+        exit 1
+    fi
+
+    tmp_dir=$(mktemp -d)
+    archive_path="${tmp_dir}/${archive_name}"
+
+    torsocks wget -qO "${archive_path}" "${archive_url}"
+
+    if ! echo "${expected_hash}  ${archive_path}" | sha256sum -c --status; then
+        echo "Error: ${archive_name} had an invalid SHA256 hash."
+        echo "Expected following hash:"
+        echo "${expected_hash}"
+        echo "Calculated following hash:"
+        sha256sum "${archive_path}" | awk '{print $1}'
+        rm -rf "${tmp_dir}"
+        exit 1
+    fi
+
+    case "${install_as}" in
+        t_sudo )
+            t_sudo mkdir -p "${uv_root}"
+            t_sudo tar -xzf "${archive_path}" -C "${uv_root}" --strip-components=1
+            ;;
+        sudo   )
+            sudo mkdir -p "${uv_root}"
+            sudo tar -xzf "${archive_path}" -C "${uv_root}" --strip-components=1
+            ;;
+        *      )
+            mkdir -p "${uv_root}"
+            tar -xzf "${archive_path}" -C "${uv_root}" --strip-components=1
+            ;;
+    esac
+
+    rm -rf "${tmp_dir}"
+}
+
+function create_venv {
+    # Create a standard virtual environment with uv without letting it fetch
+    # a managed Python interpreter during installation.
+    local venv_path="$1"
+    local install_as="${2:-}"
+
+    case "${install_as}" in
+        t_sudo ) t_sudo "${UV_BIN}" venv --python python3 --system-site-packages --link-mode copy --no-managed-python --no-python-downloads "${venv_path}" ;;
+        sudo   ) sudo   "${UV_BIN}" venv --python python3 --system-site-packages --link-mode copy --no-managed-python --no-python-downloads "${venv_path}" ;;
+        *      )         "${UV_BIN}" venv --python python3 --system-site-packages --link-mode copy --no-managed-python --no-python-downloads "${venv_path}" ;;
+    esac
+}
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                                Directories                                │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+function check_rm_existing_installation {
+    # Remove TFC installation directory if TFC is already installed.
+
+    # Guard against accidental changes in install dir
+    # that could recursively delete data from device.
+    if [[ "${INSTALL_DIR}" != "/opt/tfc" ]]; then
+        exit_with_message "Refusing to remove unexpected install directory '${INSTALL_DIR}'."
+    fi
+
+    if [[ -d "${INSTALL_DIR}" ]]; then
+        if [[ -n "${sudo_pwd:-}" ]]; then
+            t_sudo rm -r -- "${INSTALL_DIR}"  # Tails
+        else
+            sudo rm -r -- "${INSTALL_DIR}"    # Debian etc.
+        fi
+    fi
+}
+
+function backup_user_data_dir {
+    # Backup TFC user data directory if it exists and has files in it.
+    local user_data_dir="${HOME}/.tfc"
+
+    if [[ -d "${user_data_dir}" ]]; then
+        if find "${user_data_dir}" -mindepth 1 -maxdepth 1 | read -r; then
+            mv "${user_data_dir}" "${HOME}/.tfc_backup_at_$(date +%Y_%m_%d__%H_%M_%S)"
+        fi
+    fi
+}
+
+function create_user_data_dir {
+    backup_user_data_dir
+    mkdir -p "${HOME}/.tfc" 2>/dev/null
+}
+
+function prepare_clone_target_dir {
+    # Let git clone create the checkout directory so failed clones do not
+    # leave a new empty ~/tfc directory behind.
+    backup_user_data_dir
+    rmdir "${HOME}/tfc" 2>/dev/null || true
+}
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                           Package manager utils                           │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+function get_system_package_manager {
+    if command -v apt >/dev/null 2>&1; then
+        echo 'apt'
+        return
+    fi
+
+    if command -v pacman >/dev/null 2>&1; then
+        echo 'pacman'
+        return
+    fi
+
+    if command -v dnf >/dev/null 2>&1; then
+        echo 'dnf'
+        return
+    fi
+
+    if command -v zypper >/dev/null 2>&1; then
+        echo 'zypper'
+        return
+    fi
+
+    if command -v eopkg >/dev/null 2>&1; then
+        echo 'eopkg'
+        return
+    fi
+
+    echo ''
+}
+
+function print_wait_animation {
+    # Print a simple waiting animation in-place.
+    local frame_index
+    local frames=('.' 'o' 'O' 'o')
+
+    frame_index=$(( $1 % ${#frames[@]} ))
+    printf "\rWaiting for %s to become available %s" "$2" "${frames[frame_index]}"
+}
+
+function wait_for_system_package_manager {
+    # Wait until the detected system package manager is no longer busy.
+    local package_manager
+    local lock_files=()
+    local pid_files=()
+    local process_names=()
+    local lock_found=false
+    local waited=false
+    local animation_tick=0
+    local lock_file
+    local pid_file
+    local pid
+    local process_name
+
+    # Detect which package manager is installed on the system.
+    package_manager="$(get_system_package_manager)"
+
+    # Define the lock files, pid files, and process names that indicate
+    # the package manager is currently busy.
+    case "${package_manager}" in
+        apt )
+            lock_files=(/var/lib/dpkg/lock /var/lib/dpkg/lock-frontend)
+            ;;
+        pacman )
+            lock_files=(/var/lib/pacman/db.lck)
+            ;;
+        dnf )
+            pid_files=(/var/cache/dnf/metadata_lock.pid)
+            process_names=(dnf)
+            ;;
+        zypper )
+            pid_files=(/run/zypp.pid /var/run/zypp.pid)
+            process_names=(zypper)
+            ;;
+        eopkg )
+            process_names=(eopkg)
+            ;;
+        * )
+            return
+            ;;
+    esac
+
+    # Keep checking until no lock, pid, or package-manager process remains.
+    while true; do
+        lock_found=false
+
+        # Check known lock files and confirm they are actively held.
+        for lock_file in "${lock_files[@]}"; do
+            if [[ -e "${lock_file}" ]] && fuser "${lock_file}" >/dev/null 2>&1; then
+                lock_found=true
+                break
+            fi
+        done
+
+        # If no active lock file was found, check pid files that point to
+        # a currently running package-manager process.
+        if [[ "${lock_found}" == false ]]; then
+            for pid_file in "${pid_files[@]}"; do
+                if [[ -s "${pid_file}" ]]; then
+                    pid="$(tr -cd '0-9' < "${pid_file}")"
+
+                    if [[ -n "${pid}" ]] && ps -p "${pid}" >/dev/null 2>&1; then
+                        lock_found=true
+                        break
+                    fi
+                fi
+            done
+        fi
+
+        # If no lock or pid file indicates activity, fall back to checking
+        # whether the package-manager process itself is still running.
+        if [[ "${lock_found}" == false ]]; then
+            for process_name in "${process_names[@]}"; do
+                if pgrep -x "${process_name}" >/dev/null 2>&1; then
+                    lock_found=true
+                    break
+                fi
+            done
+        fi
+
+        # Exit once the package manager is no longer busy.
+        if [[ "${lock_found}" == false ]]; then
+            break
+        fi
+
+        # Show the waiting animation while the package manager remains busy.
+        waited=true
+        print_wait_animation "${animation_tick}" "${package_manager}"
+        animation_tick=$((animation_tick + 1))
+        sleep 0.3
+    done
+
+    # Print a completion message if the function had to wait.
+    if [[ "${waited}" == true ]]; then
+        printf "\r%s is now available.                      \n" "${package_manager}"
+    fi
+}
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                             Printing utilities                            │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+function c_echo {
+    # Justify printed text to the center of the terminal.
+    printf "%*s\n" "$(( ( $(echo "${1}" | wc -c) + 80 ) / 2 ))" "${1}"
+}
+
+function exit_with_message {
+    # Print error message and exit the installer with flag 1.
+    clear
+    echo ''
+    c_echo "Error: $* Exiting." 1>&2
+    echo ''
+    exit 1
+}
+
+function install_complete {
+    # Notify the user that the installation is complete.
+    clear
+    c_echo ''
+    c_echo "$*"
+    c_echo ''
+    c_echo "Press any key to close the installer."
+    read -r -n 1 -s -p ''
+    echo ''
+    exit 0
+}
+
+function install_complete_qubes {
+    # Notify the user that the installation for Qubes VM is complete.
+    clear
+    c_echo ''
+    c_echo "Installation of TFC on this Qube is now complete."
+    c_echo ''
+    c_echo "Press any key to close the installer."
+    read -r -n 1 -s -p ''
+    clear
+    exit 0
+}
+
+function install_config_arg_error {
+    # Print help message if the user launches the
+    # installer with missing or invalid argument.
+    clear
+    echo -e "\nUsage: bash install.sh [OPTION]\n"
+    echo    "Mandatory arguments"
+    echo    "  tcb      Install Transmitter/Receiver Program (Arch Linux, Debian/Ubuntu, Fedora, openSUSE, SolusOS)"
+    echo    "  relay    Install Relay Program                (Arch Linux, Debian/Ubuntu, Fedora, openSUSE, SolusOS, Tails)"
+    echo    "  local    Install insecure local testing mode  (Arch Linux, Debian/Ubuntu, Fedora, openSUSE, SolusOS)"
+    echo -e "  dev      Install development configuration    (Arch Linux, Debian/Ubuntu, Fedora, openSUSE, SolusOS)\n"
+    echo    "  qsrc     Install Transmitter Program          (Qubes)"
+    echo    "  qdst     Install Receiver Program             (Qubes)"
+    echo -e "  qnet     Install Relay Program                (Qubes)\n"
+    exit 1
+}
+
+function unsupported_system_error {
+    exit_with_message "Unsupported system. Supported systems: Arch Linux, Debian/Ubuntu, Fedora, openSUSE, and Solus."
+}
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                                                                           │
+# │                                                                           │
+# │                              System Packages                              │
+# │                                                                           │
+# │                                                                           │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+# ┌───────────────┐
+# │ Package lists │
+# └───────────────┘
+#
+# The list must be ordered so that sub-dependencies are listed before packages
+# that use them, and the list items must use the same capitalization as the
+# dependency filename.
+tcb_packages=("pycparser" "setuptools" "cffi" "argon2_cffi_bindings" "argon2_cffi-" "pynacl" "cryptography" "pyserial")
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                             Bootstrap packages                            │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+function ensure_apt_bootstrap_packages {
+    # Ensure Tor bootstrap tools are installed for apt.
+    if ! dpkg -s tor >/dev/null 2>&1; then
+        sudo apt update
+        sudo apt install -y tor
+    fi
+
+    if ! command -v wget >/dev/null 2>&1; then
+        sudo apt update
+        sudo apt install -y wget
+    fi
+}
+
+function ensure_pacman_bootstrap_packages {
+    # Ensure Tor bootstrap tools are installed for pacman.
+    if ! pacman -Q tor >/dev/null 2>&1; then
+        sudo pacman -Syu --noconfirm
+        sudo pacman -S --needed --noconfirm tor
+    fi
+
+    if ! command -v wget >/dev/null 2>&1; then
+        sudo pacman -S --needed --noconfirm wget
+    fi
+
+    if ! command -v xdpyinfo >/dev/null 2>&1; then
+        sudo pacman -S --needed --noconfirm xorg-xdpyinfo
+    fi
+}
+
+function ensure_dnf_bootstrap_packages {
+    # Ensure Tor bootstrap tools are installed for dnf.
+    if ! rpm -q tor >/dev/null 2>&1; then
+        sudo dnf -y makecache
+        sudo dnf -y install tor
+    fi
+
+    if ! command -v wget >/dev/null 2>&1; then
+        sudo dnf -y install wget
+    fi
+}
+
+function ensure_zypper_bootstrap_packages {
+    # Ensure Tor bootstrap tools are installed for zypper.
+    if ! rpm -q tor >/dev/null 2>&1; then
+        sudo zypper --non-interactive --gpg-auto-import-keys refresh
+        sudo zypper --non-interactive install --no-recommends tor
+    fi
+
+    if ! command -v wget >/dev/null 2>&1; then
+        sudo zypper --non-interactive install --no-recommends wget
+    fi
+}
+
+function ensure_eopkg_bootstrap_packages {
+    # Ensure Tor bootstrap tools are installed for eopkg.
+    if ! eopkg list-installed | grep -qE '^tor[[:space:]]'; then
+        sudo eopkg update-repo
+        sudo eopkg install -y tor
+    fi
+
+    if ! command -v wget >/dev/null 2>&1; then
+        sudo eopkg install -y wget
+    fi
+}
+
+function ensure_bootstrap_packages {
+    # Ensure Tor bootstrap tools are installed.
+    case "$(get_system_package_manager)" in
+        apt    ) ensure_apt_bootstrap_packages ;;
+        pacman ) ensure_pacman_bootstrap_packages ;;
+        dnf    ) ensure_dnf_bootstrap_packages ;;
+        zypper ) ensure_zypper_bootstrap_packages ;;
+        eopkg  ) ensure_eopkg_bootstrap_packages ;;
+        *      ) unsupported_system_error ;;
+    esac
+}
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                        System package installation                        │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+# ┌──────────────────────────┐
+# │ Data diode configuration │
+# └──────────────────────────┘
+
+function install_apt_system_dependencies {
+    sudo torsocks apt update
+    sudo torsocks apt install -y \
+        build-essential \
+        cargo \
+        git \
+        gnome-terminal \
+        libffi-dev \
+        libssl-dev \
+        python3-dev \
+        python3-pip \
+        rustc \
+        zenity
+}
+
+function install_pacman_system_dependencies {
+    sudo torsocks pacman -Syu --noconfirm
+    sudo torsocks pacman -S --needed --noconfirm \
+        base-devel \
+        git \
+        gnome-terminal \
+        libffi \
+        openssl \
+        python \
+        python-pip \
+        rust \
+        zenity
+}
+
+function install_dnf_system_dependencies {
+    sudo torsocks dnf -y makecache
+    sudo torsocks dnf -y install \
+        cargo \
+        gcc \
+        gcc-c++ \
+        git \
+        gnome-terminal \
+        libffi-devel \
+        make \
+        openssl-devel \
+        python3-devel \
+        python3-pip \
+        rust \
+        zenity
+}
+
+function install_zypper_system_dependencies {
+    sudo torsocks zypper --non-interactive --gpg-auto-import-keys refresh
+    sudo torsocks zypper --non-interactive install --no-recommends \
+        cargo \
+        gcc \
+        gcc-c++ \
+        git \
+        gnome-terminal \
+        libffi-devel \
+        libopenssl-devel \
+        make \
+        python3-devel \
+        python3-pip \
+        rust \
+        zenity
+}
+
+function install_eopkg_system_dependencies {
+    sudo torsocks eopkg update-repo
+    # Solus ships Cargo as part of the `rust` package.
+    sudo torsocks eopkg install -y \
+        binutils \
+        gcc \
+        git \
+        glibc-devel \
+        gnome-terminal \
+        make \
+        openssl-devel \
+        pip \
+        python3 \
+        python3-devel \
+        rust \
+        zenity
+}
+
+function install_system_dependencies {
+    case "$(get_system_package_manager)" in
+        apt    ) install_apt_system_dependencies ;;
+        pacman ) install_pacman_system_dependencies ;;
+        dnf    ) install_dnf_system_dependencies ;;
+        zypper ) install_zypper_system_dependencies ;;
+        eopkg  ) install_eopkg_system_dependencies ;;
+        *      ) unsupported_system_error ;;
+    esac
+}
+
+# ┌─────────────────────────────┐
+# │ Local testing configuration │
+# └─────────────────────────────┘
+
+function install_apt_local_test_dependencies {
+    sudo torsocks apt install -y terminator zenity
+}
+
+function install_pacman_local_test_dependencies {
+    sudo torsocks pacman -S --needed --noconfirm terminator zenity
+}
+
+function install_dnf_local_test_dependencies {
+    sudo torsocks dnf -y install terminator zenity
+}
+
+function install_zypper_local_test_dependencies {
+    sudo torsocks zypper --non-interactive install --no-recommends terminator zenity
+}
+
+function install_eopkg_local_test_dependencies {
+    sudo torsocks eopkg install -y terminator zenity
+}
+
+function install_local_test_system_dependencies {
+    case "$(get_system_package_manager)" in
+        apt    ) install_apt_local_test_dependencies ;;
+        pacman ) install_pacman_local_test_dependencies ;;
+        dnf    ) install_dnf_local_test_dependencies ;;
+        zypper ) install_zypper_local_test_dependencies ;;
+        eopkg  ) install_eopkg_local_test_dependencies ;;
+        *      ) unsupported_system_error ;;
+    esac
+}
+
+# ┌───────────────────┐
+# │ Dev configuration │
+# └───────────────────┘
+
+function install_apt_dev_mode_dependencies {
+    sudo torsocks apt update
+    sudo torsocks apt install -y \
+        build-essential \
+        cargo \
+        git \
+        libffi-dev \
+        libssl-dev \
+        python3-dev \
+        rustc \
+        terminator \
+        zenity
+}
+
+function install_pacman_dev_mode_dependencies {
+    sudo torsocks pacman -Syu --noconfirm
+    sudo torsocks pacman -S --needed --noconfirm \
+        base-devel \
+        git \
+        libffi \
+        openssl \
+        python \
+        rust \
+        terminator \
+        zenity
+}
+
+function install_dnf_dev_mode_dependencies {
+    sudo torsocks dnf -y makecache
+    sudo torsocks dnf -y install \
+        cargo \
+        gcc \
+        gcc-c++ \
+        git \
+        libffi-devel \
+        make \
+        openssl-devel \
+        python3-devel \
+        rust \
+        terminator \
+        zenity
+}
+
+function install_zypper_dev_mode_dependencies {
+    sudo torsocks zypper --non-interactive --gpg-auto-import-keys refresh
+    sudo torsocks zypper --non-interactive install --no-recommends \
+        cargo \
+        gcc \
+        gcc-c++ \
+        git \
+        libffi-devel \
+        libopenssl-devel \
+        make \
+        python3-devel \
+        rust \
+        terminator \
+        zenity
+}
+
+function install_eopkg_dev_mode_dependencies {
+    sudo torsocks eopkg update-repo
+    # Solus ships Cargo as part of the `rust` package.
+    sudo torsocks eopkg install -y \
+        binutils \
+        gcc \
+        git \
+        glibc-devel \
+        make \
+        openssl-devel \
+        python3 \
+        python3-devel \
+        rust \
+        terminator \
+        zenity
+}
+
+function install_dev_mode_system_dependencies {
+    case "$(get_system_package_manager)" in
+        apt    ) install_apt_dev_mode_dependencies ;;
+        pacman ) install_pacman_dev_mode_dependencies ;;
+        dnf    ) install_dnf_dev_mode_dependencies ;;
+        zypper ) install_zypper_dev_mode_dependencies ;;
+        eopkg  ) install_eopkg_dev_mode_dependencies ;;
+        *      ) unsupported_system_error ;;
+    esac
+}
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                        PIP dependency installation                        │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+function find_dependency_file() {
+    # Find downloaded dependency file
+    local search_dir="$1"
+    local dependency="$2"
+    local dep_file_name
+    local matched_files=()
+
+    while IFS= read -r dep_file_name; do
+        [[ ${dep_file_name} == "${dependency}"* ]] || continue
+        matched_files+=("${dep_file_name}")
+    done < <(find "${search_dir}" -maxdepth 1 -type f -printf '%f\n')
+
+    if [[ ${#matched_files[@]} -eq 0 ]]; then
+        echo "Error: Couldn't find dependency file matching '${dependency}' in ${search_dir}" >&2
+        exit 1
+    fi
+
+    if [[ ${#matched_files[@]} -gt 1 ]]; then
+        echo "Error: Dependency pattern '${dependency}' matched multiple files in ${search_dir}:" >&2
+        printf ' - %s\n' "${matched_files[@]}" >&2
+        exit 1
+    fi
+
+    echo "${matched_files[0]}"
+}
+
+function install_to_venv() {
+    # Install list of verified packages to virtual environment
+    local dependency_list=("$@")
+    local dependency
+    local dep_file_name
+    local venv_python="${INSTALL_DIR}/${VENV_NAME}/bin/python3"
+
+    for dependency in "${dependency_list[@]}"; do
+        dep_file_name="$(find_dependency_file "${INSTALL_DIR}" "${dependency}")"
+
+        if [[ -n "${sudo_pwd:-}" ]]; then
+            t_sudo "${UV_BIN}" pip install --python "${venv_python}" --link-mode copy --no-managed-python --no-python-downloads --offline --no-deps "${INSTALL_DIR}/${dep_file_name}"  # Tails
+        else
+            sudo "${UV_BIN}" pip install --python "${venv_python}" --link-mode copy --no-managed-python --no-python-downloads --offline --no-deps "${INSTALL_DIR}/${dep_file_name}"    # Debian etc.
+        fi
+    done
+}
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                             Rust Reed-Solomon                             │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+function prepare_reed_solomon_extension {
+    # Fetch Rust crates needed for the later offline Reed-Solomon build.
+    verify_reed_solomon_source_files
+    sudo torsocks cargo fetch --locked --manifest-path "${INSTALL_DIR}/reed_solomon/Cargo.toml"
+}
+
+function build_reed_solomon_extension {
+    # Build the Rust Reed-Solomon extension against the selected Python.
+    local project_root="$1"
+    local python_bin="$2"
+    local runner="$3"
+    local manifest_path="${project_root}/reed_solomon/Cargo.toml"
+    local output_path="${project_root}/reed_solomon/target/release/libreed_solomon.so"
+
+    case "${runner}" in
+        t_sudo ) t_sudo env PYO3_PYTHON="${python_bin}" cargo build --locked --offline --release --manifest-path "${manifest_path}" ;;
+        sudo   )   sudo env PYO3_PYTHON="${python_bin}" cargo build --locked --offline --release --manifest-path "${manifest_path}" ;;
+        *      )        env PYO3_PYTHON="${python_bin}" cargo build --locked --offline --release --manifest-path "${manifest_path}" ;;
+    esac
+
+    if [[ ! -f "${output_path}" ]]; then
+        echo "Error: Reed-Solomon extension build did not produce ${output_path}"
+        exit 1
+    fi
+}
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                               Cleanup Utils                               │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+function remove_packages() {
+    # Remove the dependency installation files.
+    local dependency_list=("$@")
+    local dependency
+    local dep_file_name
+    local matched_files=()
+
+    for dependency in "${dependency_list[@]}"; do
+        matched_files=()
+
+        while IFS= read -r dep_file_name; do
+            [[ ${dep_file_name} == "${dependency}"* ]] || continue
+            matched_files+=("${dep_file_name}")
+        done < <(find "${INSTALL_DIR}" -maxdepth 1 -type f -printf '%f\n')
+
+        if [[ ${#matched_files[@]} -eq 0 ]]; then
+            continue
+        fi
+
+        for dep_file_name in "${matched_files[@]}"; do
+            if [[ -n "${sudo_pwd:-}" ]]; then
+                t_sudo rm -f "${INSTALL_DIR}/${dep_file_name}"  # Tails
+            else
+                sudo rm -f "${INSTALL_DIR}/${dep_file_name}"    # Debian etc.
+            fi
+        done
+    done
+}
+
+function remove_unused_files {
+    # Remove files that become unnecessary after installation.
+    $1 rm -rf "${INSTALL_DIR}/.git"
+    $1 rm -rf "${INSTALL_DIR}/.github"
+    $1 rm -rf "${INSTALL_DIR}/dev"
+    $1 rm -rf "${INSTALL_DIR}/scripts"
+    $1 rm -rf "${INSTALL_DIR}/tests"
+    $1 rm -rf "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}"
+    $1 rm -f  "${INSTALL_DIR}/.coveragerc"
+    $1 rm -f  "${INSTALL_DIR}/.importlinter"
+    $1 rm -f  "${INSTALL_DIR}/.mypy.ini"
+    $1 rm -f  "${INSTALL_DIR}/DOCS-README.md"
+    $1 rm -f  "${INSTALL_DIR}/tracker_mypy.md"
+    $1 rm -rf "${INSTALL_DIR}/${INSTALL_SUBDIR}"
+    $1 rm -f  /opt/install.sh
+    $1 rm -f  /opt/install.sh.asc
+    $1 rm -f  /opt/pubkey.asc
+}
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                                                                           │
+# │                                                                           │
+# │                           Install configurations                          │
+# │                                                                           │
+# │                                                                           │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                       Install config security utils                       │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+# ┌───────────┐
+# │ Anonymity │
+# └───────────┘
+
+function wait_for_tor {
+    # Wait until Torsocks connects properly to GitHub
+    c_echo "Waiting for Tor..."
+    until torsocks wget -T 10 -q https://raw.githubusercontent.com -O /dev/null; do
+        sleep 1
+    done
+}
+
+# ┌────────────────────────┐
+# │ Install config masking │
+# └────────────────────────┘
+
+function steps_before_network_kill {
+    # These steps are identical in TCB/Relay/Local test configurations.
+    # This makes it harder to distinguish from network traffic when the
+    # user is installing TFC for Source or Destination Computer: By the
+    # time `kill-network` is run, it's too late to compromise the TCB.
+    # Hopefully this forces adversaries to attempt compromise of more
+    # endpoints during installation, which increases their chances of
+    # getting caught.
+    wait_for_system_package_manager
+    check_rm_existing_installation
+
+    ensure_bootstrap_packages
+    wait_for_tor
+    install_system_dependencies
+
+    sudo torsocks git clone https://github.com/maqp/tfc.git "${INSTALL_DIR}"
+    cd "${INSTALL_DIR}"
+    sudo git checkout development
+
+    verify_tcb_requirements_files
+    sudo torsocks python3 -m pip download -r "${INSTALL_DIR}/${INSTALL_SUBDIR}/requirements.txt" --require-hashes --no-deps --no-cache-dir -d "${INSTALL_DIR}/"
+    ensure_uv "${INSTALL_DIR}/uv-bin" "sudo"
+    prepare_reed_solomon_extension
+}
+
+# ┌────────────────┐
+# │ TCB airgapping │
+# └────────────────┘
+
+function disable_network_interface {
+    local interface_name="$1"
+
+    if command -v ip >/dev/null 2>&1; then
+        if ! sudo ip link set "${interface_name}" down; then
+            echo "Warning: Failed to disable network interface ${interface_name}; it may have already disappeared."
+        fi
+    elif command -v ifconfig >/dev/null 2>&1; then
+        if ! sudo ifconfig "${interface_name}" down; then
+            echo "Warning: Failed to disable network interface ${interface_name}; it may have already disappeared."
+        fi
+    else
+        exit_with_message "Couldn't find iproute2 or ifconfig for disabling network interfaces."
+    fi
+}
+
+function kill_network {
+    # Kill hardware-backed network interfaces to protect the TCB from remote compromise.
+    local interface
+    local name
+
+    for interface in /sys/class/net/*; do
+        name=$(basename "${interface}")
+
+        if [[ ${name} == "lo" || ! -e "${interface}/device" ]]; then
+            continue
+        fi
+
+        echo "Disabling network interface ${name}"
+        disable_network_interface "${name}"
+    done
+
+    sleep 1
+    clear
+    c_echo ''
+    c_echo " This computer needs to be air gapped. The installer has "
+    c_echo "disabled network interfaces as the first line of defense."
+    c_echo ''
+    c_echo "Disconnect the Ethernet cable and press any key to continue."
+    read -r -n 1 -s -p ''
+    echo -e '\n'
+}
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                   Install config serial interface utils                   │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+function get_serial_group {
+    local group_name
+
+    for group_name in dialout uucp; do
+        if getent group "${group_name}" >/dev/null; then
+            echo "${group_name}"
+            return
+        fi
+    done
+
+    echo ''
+}
+
+function add_serial_permissions {
+    # Enable serial interface for user-level programs.
+    local serial_group
+
+    clear
+    c_echo ''
+    c_echo "Setting serial permissions. If available, please connect the"
+    c_echo "USB-to-serial/TTL adapter now and press any key to continue."
+    read -r -n 1 -s -p ''
+    echo -e '\n'
+    sleep 3  # Wait for USB serial interfaces to register
+
+    serial_group="$(get_serial_group)"
+    if [[ -z "${serial_group}" ]]; then
+        exit_with_message "Couldn't find a serial device group. Tried 'dialout' and 'uucp'."
+    fi
+
+    # Add temporary permissions for serial interfaces until reboot
+    # Match currently present USB serial interfaces
+    mapfile -t arr < <(ls /sys/class/tty | grep '^ttyUSB') || true
+    for i in "${arr[@]}"; do
+        # Move device to the serial-access group
+        sudo chgrp "${serial_group}" "/dev/${i}"
+
+        # Grant read/write to root and the serial group only
+        sudo chmod 660         "/dev/${i}"
+    done
+
+    # Apply the same temporary fix to the built-in UART if present
+    if [[ -e /dev/ttyS0 ]]; then
+        sudo chgrp "${serial_group}" /dev/ttyS0
+        sudo chmod 660         /dev/ttyS0
+    fi
+}
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                          Data diode configuration                         │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+# ┌────────────────┐
+# │ Standard Linux │
+# └────────────────┘
+
+function install_tfc_configuration_tcb {
+    # Install TFC for Source/Destination Computer.
+    steps_before_network_kill
+    kill_network
+
+    verify_files
+    create_user_data_dir
+
+    VENV_NAME="venv_tcb"
+
+    create_venv "${INSTALL_DIR}/${VENV_NAME}" "sudo"
+    install_to_venv "${tcb_packages[@]}"
+    build_reed_solomon_extension "${INSTALL_DIR}" "${INSTALL_DIR}/${VENV_NAME}/bin/python3" "sudo"
+
+    sudo mv "${INSTALL_DIR}/${INSTALL_SUBDIR}/tfc.png"                            "/usr/share/pixmaps/"
+    sudo mv "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}/tfc-transmitter.desktop"  "/usr/share/applications/"
+    sudo mv "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}/tfc-receiver.desktop"     "/usr/share/applications/"
+
+    # Remove unnecessary files
+    remove_packages "${tcb_packages[@]}"
+    remove_unused_files "sudo"
+    sudo rm -rf "${INSTALL_DIR}/qubes/"
+    sudo rm     "${INSTALL_DIR}/tfc-dd.py"
+    sudo rm     "${INSTALL_DIR}/tfc-relay.py"
+
+    add_serial_permissions
+
+    install_complete "Installation of TFC on this device is now complete."
+}
+
+function install_tfc_configuration_relay {
+    # Install TFC Relay configuration on Networked Computer.
+    steps_before_network_kill
+
+    verify_files
+    create_user_data_dir
+
+    VENV_NAME="venv_relay"
+
+    create_venv "${INSTALL_DIR}/${VENV_NAME}" "sudo"
+    sudo torsocks "${UV_BIN}" pip install --python "${INSTALL_DIR}/${VENV_NAME}/bin/python3" --link-mode copy --no-managed-python --no-python-downloads -r "${INSTALL_DIR}/${INSTALL_SUBDIR}/requirements-relay.txt" --require-hashes --no-deps
+    build_reed_solomon_extension "${INSTALL_DIR}" "${INSTALL_DIR}/${VENV_NAME}/bin/python3" "sudo"
+
+    sudo mv "${INSTALL_DIR}/${INSTALL_SUBDIR}/tfc.png"                     "/usr/share/pixmaps/"
+    sudo mv "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}/tfc-relay.desktop" "/usr/share/applications/"
+
+    # Remove unnecessary files
+    remove_packages "${tcb_packages[@]}"
+    remove_unused_files "sudo"
+    sudo rm -rf "${INSTALL_DIR}/qubes/"
+    sudo rm     "${INSTALL_DIR}/tfc-dd.py"
+    sudo rm     "${INSTALL_DIR}/tfc-receiver.py"
+    sudo rm     "${INSTALL_DIR}/tfc-transmitter.py"
+
+    add_serial_permissions
+
+    install_complete "Installation of the TFC Relay configuration is now complete."
+}
+
+# ┌──────────┐
+# │ Tails OS │
+# └──────────┘
+
+function update_onion_grater_profile_python_version {
+    # This ensures the TFC installer remains compatible
+    # with Tails release bumping Python version. Onion
+    # grater does not work with /usr/bin/python3 but
+    # for example /usr/bin/python3.13 works.
+    local yaml_path="$1"
+    local install_as="${2:-}"
+    local python_version
+    local versioned_python
+    local -a runner=()
+
+    if [[ ! -x /usr/bin/python3 ]]; then
+        echo "Error: Missing /usr/bin/python3"
+        exit 1
+    fi
+
+    if [[ ! -f "${yaml_path}" ]]; then
+        echo "Error: Missing ${yaml_path}"
+        exit 1
+    fi
+
+    python_version="$("/usr/bin/python3" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+    versioned_python="/usr/bin/python${python_version}"
+
+    if [[ ! -x "${versioned_python}" ]]; then
+        echo "Error: Missing ${versioned_python}"
+        exit 1
+    fi
+
+    if [[ -n "${install_as}" ]]; then
+        runner=("${install_as}")
+    fi
+
+    if ! "${runner[@]}" grep -Eq "^([[:space:]]*-[[:space:]]*')/usr/bin/python3(\\.[0-9]+)?('$)" "${yaml_path}"; then
+        echo "Error: Could not find the AppArmor Python entry in ${yaml_path}"
+        exit 1
+    fi
+
+    "${runner[@]}" sed -Ei "s|^([[:space:]]*-[[:space:]]*')/usr/bin/python3(\\.[0-9]+)?('$)|\\1${versioned_python}\\3|" "${yaml_path}"
+}
+
+function install_tfc_configuration_relay_tails {
+    # Install TFC Relay configuration on Networked Computer
+    # running Tails live distro (https://tails.boum.org/).
+    read_sudo_pwd
+
+    t_sudo apt update
+
+    prepare_clone_target_dir
+
+    torsocks git clone https://github.com/maqp/tfc.git "${HOME}/tfc"
+    cd "${HOME}/tfc"
+    git checkout development
+    t_sudo mv "${HOME}/tfc/" "${INSTALL_DIR}/"
+    t_sudo chown -R root "${INSTALL_DIR}/"
+
+    verify_tcb_requirements_files
+    verify_files
+
+    update_onion_grater_profile_python_version "${INSTALL_DIR}/${INSTALL_SUBDIR}/tfc.yml" "t_sudo"
+
+    t_sudo mv "${INSTALL_DIR}/${INSTALL_SUBDIR}/tfc.png"                           "/usr/share/pixmaps/"
+    t_sudo mv "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}/tfc-relay-tails.desktop" "/usr/share/applications/"
+    t_sudo mv "${INSTALL_DIR}/${INSTALL_SUBDIR}/tfc.yml"                           "/etc/onion-grater.d/"
+
+    # Remove unnecessary files
+    remove_unused_files "t_sudo"
+    t_sudo rm -r "${INSTALL_DIR}/qubes/"
+    t_sudo rm    "${INSTALL_DIR}/tfc-dd.py"
+    t_sudo rm    "${INSTALL_DIR}/tfc-receiver.py"
+    t_sudo rm    "${INSTALL_DIR}/tfc-transmitter.py"
+
+    install_complete "Installation of the TFC Relay configuration is now complete."
+}
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                            Qubes configuration                            │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+function install_tfc_configuration_qubes_src {
+    # Qubes Source VM installation configuration for Debian 10 domains.
+    steps_before_network_kill
+
+    verify_files
+    create_user_data_dir
+
+    VENV_NAME="venv_tcb"
+
+    create_venv "${INSTALL_DIR}/${VENV_NAME}" "sudo"
+    install_to_venv "${tcb_packages[@]}"
+
+    sudo mv "${INSTALL_DIR}/${INSTALL_SUBDIR}/tfc.png"                                  "/usr/share/pixmaps/"
+    sudo mv "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}/tfc-transmitter-qubes.desktop"  "/usr/share/applications/"
+    sudo mv "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}/tfc-qubes-transmitter"          "/usr/bin/tfc-transmitter"
+
+    # Remove unnecessary files
+    remove_packages "${tcb_packages[@]}"
+    remove_unused_files "sudo"
+    sudo rm -r "${INSTALL_DIR}/qubes/"  # Listening service only needed on NET/DST
+    sudo rm    "${INSTALL_DIR}/tfc-dd.py"
+    sudo rm    "${INSTALL_DIR}/tfc-receiver.py"
+    sudo rm    "${INSTALL_DIR}/tfc-relay.py"
+
+    install_complete_qubes
+}
+
+function install_tfc_configuration_qubes_dst {
+    # Qubes Destination VM installation configuration for Debian 10 domains.
+    steps_before_network_kill
+
+    verify_files
+    create_user_data_dir
+
+    VENV_NAME="venv_tcb"
+
+    # Configure listening service for qrexec RPC
+    sudo ln -sf /opt/tfc/qubes/service.sh /etc/qubes-rpc/tfc.NetworkerDestination
+    sudo chmod a+x /opt/tfc/qubes/writer.py
+    sudo chmod a+x /opt/tfc/qubes/service.sh
+
+    create_venv "${INSTALL_DIR}/${VENV_NAME}" "sudo"
+    install_to_venv "${tcb_packages[@]}"
+
+    sudo mv "${INSTALL_DIR}/${INSTALL_SUBDIR}/tfc.png"                               "/usr/share/pixmaps/"
+    sudo mv "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}/tfc-receiver-qubes.desktop"  "/usr/share/applications/"
+    sudo mv "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}/tfc-qubes-receiver"          "/usr/bin/tfc-receiver"
+
+    # Remove unnecessary files
+    remove_packages "${tcb_packages[@]}"
+    remove_unused_files "sudo"
+    sudo rm "${INSTALL_DIR}/tfc-dd.py"
+    sudo rm "${INSTALL_DIR}/tfc-relay.py"
+    sudo rm "${INSTALL_DIR}/tfc-transmitter.py"
+
+    install_complete_qubes
+}
+
+function install_tfc_configuration_qubes_net {
+    # Qubes Networked VM installation configuration for Debian 10 domains.
+    steps_before_network_kill
+
+    verify_files
+    create_user_data_dir
+
+    VENV_NAME="venv_relay"
+
+    # Configure listening service for qrexec RPC
+    sudo ln -sf /opt/tfc/qubes/service.sh /etc/qubes-rpc/tfc.SourceNetworker
+    sudo chmod a+x /opt/tfc/qubes/writer.py
+    sudo chmod a+x /opt/tfc/qubes/service.sh
+
+    create_venv "${INSTALL_DIR}/${VENV_NAME}" "sudo"
+    sudo torsocks "${UV_BIN}" pip install --python "${INSTALL_DIR}/${VENV_NAME}/bin/python3" --link-mode copy --no-managed-python --no-python-downloads -r "${INSTALL_DIR}/${INSTALL_SUBDIR}/requirements-relay.txt" --require-hashes --no-deps
+
+    sudo mv "${INSTALL_DIR}/${INSTALL_SUBDIR}/tfc.png"                            "/usr/share/pixmaps/"
+    sudo mv "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}/tfc-relay-qubes.desktop"  "/usr/share/applications/"
+    sudo mv "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}/tfc-qubes-relay"          "/usr/bin/tfc-relay"
+
+    # Remove unnecessary files
+    remove_packages "${tcb_packages[@]}"
+    remove_unused_files "sudo"
+    sudo rm "${INSTALL_DIR}/tfc-dd.py"
+    sudo rm "${INSTALL_DIR}/tfc-receiver.py"
+    sudo rm "${INSTALL_DIR}/tfc-transmitter.py"
+
+    install_complete_qubes
+}
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                        Local testing configurations                       │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+# These use Terminator tiling terminal emulator to simulate a full TFC encpoint.
+# WARNING: These configurations do NOT provide any kind of endpoint security.
+
+# ┌───────────┐
+# │ Utilities │
+# └───────────┘
+
+function get_screen_width {
+    # Output the width of the screen resolution.
+    #
+    # Fall back to 1600 if xdpyinfo is unavailable or width detection fails.
+    local width
+
+    if command -v xdpyinfo >/dev/null 2>&1; then
+        width="$(xdpyinfo 2>/dev/null | grep dimensions | sed -r 's/^[^0-9]*([0-9]+).*$/\1/')"
+    fi
+
+    if [[ -z "${width}" || ! "${width}" =~ ^[0-9]+$ ]]; then
+        width=1600
+    fi
+
+    printf '%s\n' "${width}"
+}
+
+function modify_terminator_font_size {
+    # Adjust terminator font size for tiling terminal emulator configurations.
+    #
+    # The default font sizes in terminator config file are for 1920px
+    # wide screens. The lowest resolution (width) supported is 1366px.
+    local width
+    width="$(get_screen_width)"
+
+    if (( width < 1600 )); then
+        $1 sed -i -e 's/font                = Monospace 11/font                = Monospace 8/g'     "${2}"  # Normal config
+        $1 sed -i -e 's/font                = Monospace 10.5/font                = Monospace 7/g'   "${2}"  # Data diode config
+    elif (( width < 1920 )); then
+        $1 sed -i -e 's/font                = Monospace 11/font                = Monospace 9/g'     "${2}"  # Normal config
+        $1 sed -i -e 's/font                = Monospace 10.5/font                = Monospace 8.5/g' "${2}"  # Data diode config
+    fi
+}
+
+# ┌─────────────────┐
+# │ Install configs │
+# └─────────────────┘
+
+function install_tfc_configuration_local_test {
+    # Install TFC for local testing on a single computer.
+    steps_before_network_kill
+
+    verify_files
+    # create_user_data_dir
+
+    VENV_NAME="venv_tfc"
+
+    install_local_test_system_dependencies
+
+    create_venv "${INSTALL_DIR}/${VENV_NAME}" "sudo"
+    sudo torsocks "${UV_BIN}" pip install --python "${INSTALL_DIR}/${VENV_NAME}/bin/python3" --link-mode copy --no-managed-python --no-python-downloads -r "${INSTALL_DIR}/${INSTALL_SUBDIR}/requirements.txt"       --require-hashes --no-deps
+    sudo torsocks "${UV_BIN}" pip install --python "${INSTALL_DIR}/${VENV_NAME}/bin/python3" --link-mode copy --no-managed-python --no-python-downloads -r "${INSTALL_DIR}/${INSTALL_SUBDIR}/requirements-relay.txt" --require-hashes --no-deps
+    build_reed_solomon_extension "${INSTALL_DIR}" "${INSTALL_DIR}/${VENV_NAME}/bin/python3" "sudo"
+
+    sudo mv "${INSTALL_DIR}/${INSTALL_SUBDIR}/tfc.png"                                "/usr/share/pixmaps/"
+    sudo mv "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}/tfc-local-test.desktop"       "/usr/share/applications/"
+    sudo mv "${INSTALL_DIR}/${INSTALL_LAUNCHERS_SUBDIR}/terminator-config-local-test" "${INSTALL_DIR}/"
+    modify_terminator_font_size "sudo" "${INSTALL_DIR}/terminator-config-local-test"
+
+    # Remove unnecessary files
+    remove_packages "${tcb_packages[@]}"
+    remove_unused_files "sudo"
+    sudo rm -rf "${INSTALL_DIR}/qubes/"
+
+    install_complete "Installation of TFC for local testing is now complete."
+}
+
+function install_tfc_configuration_developer {
+    # Install TFC development configuration.
+    #
+    # This configuration will install TFC into `$HOME/tfc/`. This allows
+    # you (the user) to easily make edits to the source between runs.
+    # Note that it also means, that any malicious program with
+    # user-level privileges is also able to modify the source files. For
+    # more secure use on a single computer, select the local testing
+    # install configuration, or preferably use the Qubes configuration.
+    wait_for_system_package_manager
+    ensure_bootstrap_packages
+
+    wait_for_tor
+    prepare_clone_target_dir
+
+    VENV_NAME="venv_tfc"
+
+    install_dev_mode_system_dependencies
+
+    torsocks git clone https://github.com/maqp/tfc.git "${HOME}/tfc"
+    cd "${HOME}/tfc"
+    git checkout development
+
+    ensure_uv "${HOME}/tfc/uv-bin"
+
+    create_venv "${HOME}/tfc/${VENV_NAME}"
+    torsocks "${UV_BIN}" pip install --python "${HOME}/tfc/${VENV_NAME}/bin/python3" --link-mode copy --no-managed-python --no-python-downloads -r "${HOME}/tfc/${INSTALL_SUBDIR}/requirements-dev.txt"
+    torsocks cargo fetch --locked --manifest-path "${HOME}/tfc/reed_solomon/Cargo.toml"
+    build_reed_solomon_extension "${HOME}/tfc" "${HOME}/tfc/${VENV_NAME}/bin/python3" ""
+
+    sudo cp "${HOME}/tfc/${INSTALL_SUBDIR}/tfc.png"                                    "/usr/share/pixmaps/"
+    sudo cp "${HOME}/tfc/${INSTALL_LAUNCHERS_SUBDIR}/tfc-dev.desktop"                  "/usr/share/applications/"
+    sudo sed -i "s|\$HOME|${HOME}|g"                                                   "/usr/share/applications/tfc-dev.desktop"
+    modify_terminator_font_size "" "${HOME}/tfc/${INSTALL_LAUNCHERS_SUBDIR}/terminator-config-dev"
+
+    # Set permissions
+    chmod -R go-rwx "${HOME}/tfc"                                                       # Ensure no other user has access to the files
+    find "${HOME}/tfc" -type d -exec chmod 700 {} +                                     # User has full access to directories
+    find "${HOME}/tfc" -type f -exec chmod 600 {} +                                     # Give user read/write access to all files
+    find "${HOME}/tfc" -type f \( -name '*.sh' -o -name '*.py' \) -exec chmod 700 {} +  # Give user execution rights to python/shell files
+
+    # Remove unnecessary files
+    sudo rm -f "/opt/install.sh"
+    sudo rm -f "/opt/install.sh.asc"
+    sudo rm -f "/opt/pubkey.asc"
+
+    add_serial_permissions
+
+    install_complete "Installation of the TFC dev environment is now complete."
+}
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                        Installer test configuration                       │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+function test_installer {
+    # Test that the installer's hashes match the files.
+    # Note: This function is only used as part of the release pipeline.
+    INSTALL_DIR='.'
+    verify_tcb_requirements_files
+    verify_files
+}
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │                                                                           │
+# │                                                                           │
+# │                                Main Routine                               │
+# │                                                                           │
+# │                                                                           │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+# ┌───────────┐
+# │ Utilities │
+# └───────────┘
+
+function root_check {
+    # Check that the installer was not launched as root.
+    if [[ $EUID -eq 0 ]]; then
+        exit_with_message "This installer must not be run as root."
+    fi
+}
+
+function sudoer_check {
+    # Check that the user who launched the installer can use sudo.
+
+    # Tails allows sudo without the user `amnesia` being on sudoers list.
+    if grep -q "Tails" /etc/os-release; then
+        return
+    fi
+
+    # QubesOS also allows sudo without the user `user` being on sudoers list.
+    if [ -d "/etc/qubes-rpc" ]; then
+        return
+    fi
+
+    if sudo -n true 2>/dev/null; then
+        return
+    fi
+
+    if ! sudo -v; then
+        exit_with_message "User ${USER} must be allowed to use sudo."
+    fi
+}
+
+# ┌──────┐
+# │ Main │
+# └──────┘
+
+set -euo pipefail
+root_check
+sudoer_check
+sudo_pwd=''
+
+case "${1-}" in
+    tcb    ) install_tfc_configuration_tcb;;
+    relay  ) install_tfc_configuration_relay;;
+    tails  ) install_tfc_configuration_relay_tails;;
+    local  ) install_tfc_configuration_local_test;;
+    qsrc   ) install_tfc_configuration_qubes_src;;
+    qdst   ) install_tfc_configuration_qubes_dst;;
+    qnet   ) install_tfc_configuration_qubes_net;;
+    dev    ) install_tfc_configuration_developer;;
+    test   ) test_installer;;
+    *      ) install_config_arg_error;;
+esac

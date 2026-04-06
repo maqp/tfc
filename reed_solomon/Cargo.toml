@@ -1,0 +1,19 @@
+[package]
+name = "reed_solomon"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-only"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+overflow-checks = true
+
+[lib]
+name = "reed_solomon"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.25.1", features = ["extension-module"] }

@@ -3,28 +3,34 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2024  Markus Ottela
+Copyright (C) 2013-2026  Markus Ottela
 
 This file is part of TFC.
-
 TFC is free software: you can redistribute it and/or modify it under the terms
 of the GNU General Public License as published by the Free Software Foundation,
-either version 3 of the License, or (at your option) any later version.
-
-TFC is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with TFC. If not, see <https://www.gnu.org/licenses/>.
+either version 3 of the License, or (at your option) any later version. TFC is
+distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+See the GNU General Public License for more details. You should have received a
+copy of the GNU General Public License along with TFC. If not, see
+<https://www.gnu.org/licenses/>.
 """
 
 import base64
 import os
 import sys
 
-BUFFER_FILE_DIR  = '/home/user/tfc/.buffered_incoming_packets'
-BUFFER_FILE_NAME = 'buffered_incoming_packet'
+from enum import Enum
+
+
+class QubesDir(Enum):
+    """Qubes directory enum."""
+    BUFFER_FILE_DIR  = '/home/user/.tfc/buffered_incoming_packets'
+
+
+class QubesFile(Enum):
+    """Qubes file enum."""
+    BUFFER_FILE_NAME = 'buffered_incoming_packet'
 
 
 def ensure_dir(directory: str) -> None:
@@ -37,9 +43,9 @@ def ensure_dir(directory: str) -> None:
             pass
 
 
-def store_unique(file_data: bytes,  # File data to store
-                 file_dir:  str,    # Directory to store file
-                 file_name: str     # Name of the file.
+def store_unique(file_data : bytes,  # File data to store
+                 file_dir  : str,    # Directory to store file
+                 file_name : str     # Name of the file.
                  ) -> None:
     """Store file under a unique filename.
 
@@ -55,7 +61,7 @@ def store_unique(file_data: bytes,  # File data to store
     except IndexError:
         ctr = 0
 
-    with open(f"{file_dir}/{file_name}.{ctr}", 'wb+') as f:
+    with open(f'{file_dir}/{file_name}.{ctr}', 'wb+') as f:
         f.write(file_data)
         f.flush()
         os.fsync(f.fileno())
@@ -70,9 +76,9 @@ def main() -> None:
     """
     data = sys.stdin.buffer.read()
 
-    store_unique(file_data=base64.b85encode(data),
-                 file_dir=BUFFER_FILE_DIR,
-                 file_name=BUFFER_FILE_NAME)
+    store_unique(file_data = base64.b85encode(data),
+                 file_dir  = QubesDir.BUFFER_FILE_DIR.value,
+                 file_name = QubesFile.BUFFER_FILE_NAME.value)
 
 
 if __name__ == '__main__':

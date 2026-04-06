@@ -1,0 +1,68 @@
+# Sub-dependencies are listed below dependencies
+
+# Argon2 Password Hashing Function (Derives keys that protect persistent user data)
+argon2-cffi>=25.1.0
+argon2-cffi-bindings>=25.1.0
+cffi>=2.0.0
+pycparser>=3.0
+
+# cryptography (pyca) (Provides X448 key exchange)
+cryptography>=46.0.6
+
+# Flask (Onion Service web server that serves TFC public keys and ciphertexts to contacts)
+Flask>=3.1.3
+blinker>=1.9.0
+click>=8.3.2
+itsdangerous>=2.2.0
+Jinja2>=3.1.6
+MarkupSafe>=3.0.3
+Werkzeug>=3.1.8
+
+# mypy (Static type checking tool)
+mypy>=1.20.0
+mypy-extensions>=1.1.0
+typing-extensions>=4.15.0
+pathspec>=1.0.4
+librt>=0.8.1
+
+# PyLama (Code audit tool for Python)
+pylama>=8.4.1
+mccabe>=0.7.0
+pycodestyle>=2.14.0
+pydocstyle>=6.3.0
+snowballstemmer>=3.0.1
+pyflakes>=3.4.0
+
+# PyNaCl (pyca) (Handles TCB-side XChaCha20-Poly1305 symmetric encryption and Derives TFC account from Onion Service private key)
+PyNaCl>=1.6.2
+
+# pySerial (Connects the Source/Destination Computer to the Networked Computer)
+pyserial>=3.5
+
+# PySocks (Routes Requests library through SOCKS5 proxy making Onion Service connections possible)
+PySocks>=1.7.1
+
+# pytest (Test framework)
+pytest>=9.0.2
+iniconfig>=2.3.0
+packaging>=26.0
+pluggy>=1.6.0
+
+# pytest-cov (Pytest plugin for measuring coverage)
+pytest-cov>=7.1.0
+coverage>=7.13.5
+
+# xdist (Pytest distributed testing plugin)
+pytest-xdist>=3.8.0
+execnet>=2.1.2
+
+# Requests (Connects to the contact's Tor Onion Service)
+requests>=2.33.1
+certifi>=2026.2.25
+charset-normalizer==2.1.1
+idna>=3.11
+urllib3>=2.6.3
+setuptools>=82.0.1
+
+# Stem (Connects to Tor and manages Onion Services)
+stem>=1.8.2

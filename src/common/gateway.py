@@ -3,103 +3,83 @@
 
 """
 TFC - Onion-routed, endpoint secure messaging system
-Copyright (C) 2013-2024  Markus Ottela
+Copyright (C) 2013-2026  Markus Ottela
 
 This file is part of TFC.
-
 TFC is free software: you can redistribute it and/or modify it under the terms
 of the GNU General Public License as published by the Free Software Foundation,
-either version 3 of the License, or (at your option) any later version.
-
-TFC is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with TFC. If not, see <https://www.gnu.org/licenses/>.
+either version 3 of the License, or (at your option) any later version. TFC is
+distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+See the GNU General Public License for more details. You should have received a
+copy of the GNU General Public License along with TFC. If not, see
+<https://www.gnu.org/licenses/>.
 """
 
 import base64
 import hashlib
-import json
 import multiprocessing.connection
 import os
 import os.path
 import serial
 import socket
 import subprocess
-import textwrap
 import time
-import typing
 
-from datetime import datetime
-from typing   import Any, Dict, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Optional as O
 
 from serial.serialutil import SerialException
 
-from src.common.exceptions   import CriticalError, graceful_exit, SoftError
-from src.common.input        import yes
-from src.common.misc         import (calculate_race_condition_delay, ensure_dir, ignored, get_terminal_width,
-                                     separate_trailer)
-from src.common.output       import m_print, phase, print_on_previous_line
+from src.common.replay import allocate_packet_number, cache_outgoing_packet, load_cached_outgoing_packet, make_numbered_packet
+from src.common.exceptions import CriticalError, graceful_exit, SoftError
+from src.common.utils.strings import separate_trailer
+from src.common.utils.io import ensure_dir, read_oldest_buffer_file
+from src.ui.common.output.phase import phase
 from src.common.reed_solomon import ReedSolomonError, RSCodec
-from src.common.statics      import (BAUDS_PER_BYTE, DIR_USER_DATA, DONE, DST_DD_LISTEN_SOCKET, DST_LISTEN_SOCKET,
-                                     GATEWAY_QUEUE, LOCALHOST, LOCAL_TESTING_PACKET_DELAY, MAX_INT, NC,
-                                     PACKET_CHECKSUM_LENGTH, QUBES_BUFFER_INCOMING_DIR, QUBES_BUFFER_INCOMING_PACKET,
-                                     QUBES_DST_VM_NAME, QUBES_NET_DST_POLICY, QUBES_NET_VM_NAME, QUBES_SRC_NET_POLICY,
-                                     RECEIVER, RELAY, RP_LISTEN_SOCKET, RX, SERIAL_RX_MIN_TIMEOUT, SETTINGS_INDENT,
-                                     SRC_DD_LISTEN_SOCKET, TRANSMITTER, TX)
+from src.common.statics import (StatusMsg, Delay, FieldLength, QubesLiterals, ProgramID,
+                                SocketNumber, NetworkLiterals, ProgramName)
+from src.database.db_settings_gateway import GatewaySettings
+from src.datagrams.receiver.command import DatagramReceiverCommand
+from src.datagrams.receiver.local_key import DatagramReceiverLocalKey
+from src.datagrams.receiver.message import DatagramOutgoingMessage, DatagramIncomingMessage
+from src.datagrams.receiver.public_key import DatagramPublicKey
+from src.datagrams.relay.command.change_setting import DatagramRelayChangeSetting
+from src.datagrams.relay.command.command_security import (DatagramRelayCommandScreenClear,
+                                                          DatagramRelayCommandClearCiphertextCache,
+                                                          DatagramRelayCommandScreenReset,
+                                                          DatagramRelayCommandExitTFC,
+                                                          DatagramRelayCommandWipeSystem)
+from src.datagrams.relay.command.contact_add import DatagramRelayAddContact
+from src.datagrams.relay.command.contact_remove import DatagramRelayRemoveContact
+from src.datagrams.relay.diff_comparison.diff_comparison_account import DatagramRelayDiffComparisonAccount
+from src.datagrams.relay.diff_comparison.diff_comparison_public_key import DatagramRelayDiffComparisonPublicKey
+from src.datagrams.receiver.file_multicast import DatagramFileMulticast, DatagramFileMulticastFragment
+from src.datagrams.relay.group_management.group_msg_add_rem import DatagramGroupAddMember, DatagramGroupRemMember
+from src.datagrams.relay.command.setup_onion_service import DatagramRelaySetupOnionService
+from src.datagrams.relay.group_management.group_msg_flat import DatagramGroupInvite, DatagramGroupJoin, DatagramGroupExit
 
-if typing.TYPE_CHECKING:
-    from multiprocessing import Queue
-    JSONDict = Dict[str, Union[int, bool, str]]
-
-
-def gateway_loop(queues:    Dict[bytes, 'Queue[Tuple[datetime, bytes]]'],
-                 gateway:   'Gateway',
-                 unit_test: bool = False
-                 ) -> None:
-    """Load data from serial interface or socket into a queue.
-
-    Also place the current timestamp to queue to be delivered to the
-    Receiver Program. The timestamp is used both to notify when the sent
-    message was received by the Relay Program, and as part of a
-    commitment scheme: For more information, see the section on "Covert
-    channel based on user interaction" under TFC's Security Design wiki
-    article.
-    """
-    queue = queues[GATEWAY_QUEUE]
-
-    while True:
-        with ignored(EOFError, KeyboardInterrupt):
-            if gateway.test_run:
-                time.sleep(0.1)
-            else:
-                queue.put((datetime.now(), gateway.read()))
-            if unit_test:
-                break
+if TYPE_CHECKING:
+    from src.common.launch_args import LaunchArgumentsTCB, LaunchArgumentsRelay
+    from src.datagrams.datagram import Datagram
+    JSONDict = dict[str, int|bool|str]
 
 
-class Gateway(object):
+class Gateway:
     """\
     Gateway object is a wrapper for interfaces that connect
     Source/Destination Computer with the Networked Computer.
     """
 
-    def __init__(self,
-                 operation:  str,
-                 local_test: bool,
-                 dd_sockets: bool,
-                 qubes:      bool,
-                 test_run:   bool = False
-                 ) -> None:
+    def __init__(self, launch_arguments: 'LaunchArgumentsTCB|LaunchArgumentsRelay') -> None:
         """Create a new Gateway object."""
-        self.settings   = GatewaySettings(operation, local_test, dd_sockets, qubes)
-        self.tx_serial  = None  # type: Optional[serial.Serial]
-        self.rx_serial  = None  # type: Optional[serial.Serial]
-        self.rx_socket  = None  # type: Optional[multiprocessing.connection.Connection]
-        self.tx_socket  = None  # type: Optional[multiprocessing.connection.Connection]
-        self.test_run   = test_run
+        self.settings  = GatewaySettings(launch_arguments)
+
+        self.tx_serial : O[serial.Serial]                         = None
+        self.rx_serial : O[serial.Serial]                         = None
+        self.rx_socket : O[multiprocessing.connection.Connection] = None
+        self.tx_socket : O[multiprocessing.connection.Connection] = None
+
+        self.test_run = launch_arguments.test_run
 
         # Initialize Reed-Solomon erasure code handler
         self.rs = RSCodec(2 * self.settings.session_serial_error_correction)
@@ -109,12 +89,185 @@ class Gateway(object):
         self.init_found = False
 
         if self.settings.local_testing_mode:
-            if self.settings.software_operation in [TX, NC]:
+            if self.settings.program_id in [ProgramID.TX, ProgramID.NC]:
                 self.client_establish_socket()
-            if self.settings.software_operation in [NC, RX]:
+            if self.settings.program_id in [ProgramID.NC, ProgramID.RX]:
                 self.server_establish_socket()
         elif not self.settings.qubes and not self.test_run:
             self.establish_serial()
+
+    # ┌───────────────────────────────────────────────────────────────────────────┐
+    # │                          Transmitter Program API                          │
+    # └───────────────────────────────────────────────────────────────────────────┘
+
+    def write_command(self, datagram: DatagramReceiverCommand, *, cache_packet: bool = False) -> int:
+        """Write a command datagram to the serial interface."""
+        if not isinstance(datagram, DatagramReceiverCommand):
+            raise CriticalError(f'Invalid command datagram {type(datagram)}')
+
+        return self.__write(datagram.to_txp_rep_bytes(), cache_packet=cache_packet)
+
+    def write_message(self, datagram: DatagramOutgoingMessage, *, cache_packet: bool = False) -> int:
+        """Write a command datagram to the serial interface."""
+        if not isinstance(datagram, DatagramOutgoingMessage):
+            raise CriticalError(f'Invalid message datagram {type(datagram)}')
+
+        return self.__write(datagram.to_txp_rep_bytes(), cache_packet=cache_packet)
+
+    def write(self, datagram: 'Datagram', *, cache_packet: bool = False) -> int:
+        """Write datagram to the serial interface."""
+        valid_datagrams = (
+            # Pre-encrypted datagrams to user's Receiver Program
+            DatagramReceiverLocalKey,
+
+            # Pre-encrypted datagrams to contact's Receiver Program
+            DatagramFileMulticast,
+
+            # Datagrams to contact's Relay Program
+            DatagramPublicKey,
+            DatagramGroupInvite,
+            DatagramGroupJoin,
+            DatagramGroupExit,
+            DatagramGroupAddMember,
+            DatagramGroupRemMember,
+
+            # Datagrams to user's Relay Program
+            DatagramRelayChangeSetting,
+            DatagramRelayCommandScreenClear,
+            DatagramRelayCommandClearCiphertextCache,
+            DatagramRelayCommandScreenReset,
+            DatagramRelayCommandExitTFC,
+            DatagramRelayCommandWipeSystem,
+            DatagramRelaySetupOnionService,
+            DatagramRelayAddContact,
+            DatagramRelayRemoveContact,
+            DatagramRelayDiffComparisonAccount,
+            DatagramRelayDiffComparisonPublicKey)
+
+        if not isinstance(datagram, valid_datagrams):
+            raise CriticalError(f'Invalid datagram {type(datagram)}')
+
+        return self.__write(datagram.to_txp_rep_bytes(), cache_packet=cache_packet)
+
+
+    # ┌───────────────────────────────────────────────────────────────────────────┐
+    # │                             Relay Program API                             │
+    # └───────────────────────────────────────────────────────────────────────────┘
+
+    def write_rxp_datagram(self,
+                           datagram: (DatagramReceiverLocalKey
+                                      | DatagramReceiverCommand
+                                      | DatagramIncomingMessage
+                                      | DatagramOutgoingMessage
+                                      | DatagramFileMulticast
+                                      | DatagramFileMulticastFragment),
+                           *,
+                           cache_packet: bool = False,
+                           ) -> int:
+        """Write a datagram to the serial interface."""
+        valid_datagrams = (DatagramReceiverLocalKey,
+                           DatagramReceiverCommand,
+                           DatagramIncomingMessage,
+                           DatagramOutgoingMessage,
+                           DatagramFileMulticast,
+                           DatagramFileMulticastFragment)
+
+        if not isinstance(datagram, valid_datagrams):
+            raise SoftError(f'Invalid datagram type {type(datagram)}')
+
+        return self.__write(datagram.to_rep_rxp_bytes(), cache_packet=cache_packet)
+
+    # ┌───────────────────────────────────────────────────────────────────────────┐
+    # │                                 Read/Write                                │
+    # └───────────────────────────────────────────────────────────────────────────┘
+
+    def __write(self, orig_packet: bytes, *, cache_packet: bool = False) -> int:
+        """Number a packet and output it via socket/serial interface.
+
+        The packet counter is prepended before the Reed-Solomon / checksum
+        framing is applied so resends reuse the exact same numbered payload.
+        """
+        packet_number = allocate_packet_number(self.settings.program_id)
+        packet = make_numbered_packet(packet_number, orig_packet)
+
+        if cache_packet:
+            cache_outgoing_packet(self.settings.program_id, packet_number, packet)
+
+        self.__send_numbered_packet(packet)
+        return packet_number
+
+    def resend_cached_packet(self, packet_number: int) -> None:
+        """Resend a cached numbered packet without changing its counter."""
+        packet = load_cached_outgoing_packet(self.settings.program_id, packet_number)
+        self.__send_numbered_packet(packet)
+
+    def send_numbered_packet(self, packet: bytes) -> None:
+        """Send a pre-numbered packet without modifying its payload."""
+        self.__send_numbered_packet(packet)
+
+    def __send_numbered_packet(self, packet: bytes) -> None:
+        """Add error correction data and output a numbered packet.
+
+        After outputting the packet via serial, sleep long enough to
+        trigger the Rx-side timeout timer, or if local testing is
+        enabled, add slight delay to simulate that introduced by the
+        serial interface.
+        """
+        packet_ec = self.add_error_correction(packet)
+
+        if self.settings.local_testing_mode and self.tx_socket is not None:
+            try:
+                self.tx_socket.send(packet_ec)
+                time.sleep(Delay.LOCAL_TESTING_PACKET_DELAY)
+            except (BrokenPipeError, EOFError, OSError):
+                self.tx_socket = None
+                self.client_establish_socket()
+                self.__send_numbered_packet(packet)
+
+        elif self.settings.qubes:
+            self.send_over_qrexec(packet_ec)
+
+        elif self.tx_serial is not None:
+            try:
+                self.tx_serial.write(packet_ec)
+                self.tx_serial.flush()
+                time.sleep(self.settings.tx_inter_packet_delay)
+            except SerialException:
+                self.establish_serial()
+                self.__send_numbered_packet(packet)
+
+
+    def read(self) -> bytes:
+        """Read data via socket/qr-exec/serial interface."""
+        if self.settings.local_testing_mode: return self.read_socket()
+        if self.settings.qubes:              return self.read_qubes_buffer_file()
+        else:                                return self.read_serial()
+
+
+    # ┌───────────────────────────────────────────────────────────────────────────┐
+    # │                              Serial Interface                             │
+    # └───────────────────────────────────────────────────────────────────────────┘
+
+    def search_loop(self) -> str:
+        """Loop that searches for USB-to-serial interface."""
+        while True:
+            for f in sorted(os.listdir('/dev/')):
+                if f.startswith('ttyUSB'):
+                    self.init_found = True
+                    return f'/dev/{f}'
+
+    def search_serial_interface(self) -> str:
+        """Search for a serial interface."""
+        if self.settings.session_usb_serial_adapter:
+            message = 'Searching for USB-to-serial interface' if self.init_found else 'Serial adapter disconnected. Waiting for reconnection'
+            with phase(message, done_message='Found', padding_top=1):
+                interface = self.search_loop()
+        else:
+            if self.settings.built_in_serial_interface not in sorted(os.listdir('/dev/')):
+                raise CriticalError(f'Error: /dev/{self.settings.built_in_serial_interface} was not found.')
+            interface = f'/dev/{self.settings.built_in_serial_interface}'
+
+        return interface
 
     def establish_serial(self) -> None:
         """Create a new Serial object.
@@ -150,98 +303,7 @@ class Gateway(object):
                                                             self.settings.session_serial_baudrate,
                                                             timeout=0)
         except SerialException:
-            raise CriticalError("SerialException. Ensure $USER is in the dialout group by restarting this computer.")
-
-    def send_over_qrexec(self, packet: bytes) -> None:
-        """Send packet content over the Qubes qrexec RPC.
-
-        More information at https://www.qubes-os.org/doc/qrexec/
-
-        The packet is encoded with ASCII85 to ensure e.g. 0x0a
-        byte is not interpreted as line feed by the RPC service.
-        """
-        target_vm   = QUBES_NET_VM_NAME    if self.settings.software_operation == TX else QUBES_DST_VM_NAME
-        dom0_policy = QUBES_SRC_NET_POLICY if self.settings.software_operation == TX else QUBES_NET_DST_POLICY
-
-        subprocess.Popen(['/usr/bin/qrexec-client-vm', target_vm, dom0_policy],
-                         stdin=subprocess.PIPE,
-                         stdout=subprocess.DEVNULL,
-                         stderr=subprocess.DEVNULL
-                         ).communicate(base64.b85encode(packet))
-
-    def write(self, orig_packet: bytes) -> None:
-        """Add error correction data and output data via socket/serial interface.
-
-        After outputting the packet via serial, sleep long enough to
-        trigger the Rx-side timeout timer, or if local testing is
-        enabled, add slight delay to simulate that introduced by the
-        serial interface.
-        """
-        packet = self.add_error_correction(orig_packet)
-
-        if self.settings.local_testing_mode and self.tx_socket is not None:
-            try:
-                self.tx_socket.send(packet)
-                time.sleep(LOCAL_TESTING_PACKET_DELAY)
-            except BrokenPipeError:
-                raise CriticalError("Relay IPC server disconnected.", exit_code=0)
-
-        elif self.settings.qubes:
-            self.send_over_qrexec(packet)
-
-        elif self.tx_serial is not None:
-            try:
-                self.tx_serial.write(packet)
-                self.tx_serial.flush()
-                time.sleep(self.settings.tx_inter_packet_delay)
-            except SerialException:
-                self.establish_serial()
-                self.write(orig_packet)
-
-    def read_socket(self) -> bytes:
-        """Read packet from socket interface."""
-        if self.rx_socket is None:
-            raise CriticalError("Socket interface has not been initialized.")
-
-        while True:
-            try:
-                packet = self.rx_socket.recv()  # type: bytes
-                return packet
-            except KeyboardInterrupt:
-                pass
-            except EOFError:
-                raise CriticalError("Relay IPC client disconnected.", exit_code=0)
-
-    @staticmethod
-    def read_qubes_buffer_file() -> bytes:
-        """Read packet from oldest buffer file."""
-
-        ensure_dir(f"{QUBES_BUFFER_INCOMING_DIR}/")
-
-        while not any([f for f in os.listdir(QUBES_BUFFER_INCOMING_DIR) if f.startswith(QUBES_BUFFER_INCOMING_PACKET)]):
-            time.sleep(0.001)
-
-        buffer_file_numbers   = [f[(len(QUBES_BUFFER_INCOMING_PACKET) + len('.')):]
-                                 for f in os.listdir(QUBES_BUFFER_INCOMING_DIR) if f.startswith(QUBES_BUFFER_INCOMING_PACKET)]
-        buffer_file_numbers   = [n for n in buffer_file_numbers if n.isdigit()]
-        buffer_files_in_order = [f"{QUBES_BUFFER_INCOMING_PACKET}.{n}" for n in sorted(buffer_file_numbers, key=int)]
-
-        try:
-            oldest_buffer_file = buffer_files_in_order[0]
-        except IndexError:
-            raise SoftError("No packet was available.", output=False)
-
-        with open(f"{QUBES_BUFFER_INCOMING_DIR}/{oldest_buffer_file}", 'rb') as f:
-            packet = f.read()
-
-        try:
-            packet = base64.b85decode(packet)
-        except ValueError:
-            raise SoftError("Error: Received packet had invalid Base85 encoding.")
-
-        os.remove(f"{QUBES_BUFFER_INCOMING_DIR}/{oldest_buffer_file}")
-
-        return packet
+            raise CriticalError('SerialException. Ensure $USER is in the dialout group by restarting this computer.')
 
     def read_serial(self) -> bytes:
         """Read packet from serial interface.
@@ -252,7 +314,7 @@ class Gateway(object):
         exceed the timeout value, return received data.
         """
         if self.rx_serial is None:
-            raise CriticalError("Serial interface has not been initialized.")
+            raise CriticalError('Serial interface has not been initialized.')
 
         while True:
             try:
@@ -276,86 +338,52 @@ class Gateway(object):
             except (OSError, SerialException):
                 self.establish_serial()
 
-    def read(self) -> bytes:
-        """Read data via socket/serial interface."""
-        if self.settings.local_testing_mode:
-            return self.read_socket()
-        if self.settings.qubes:
-            return self.read_qubes_buffer_file()
-        return self.read_serial()
 
-    def add_error_correction(self, packet: bytes) -> bytes:
-        """Add error correction to packet that will be output.
+    # ┌───────────────────────────────────────────────────────────────────────────┐
+    # │                                   Qubes                                   │
+    # └───────────────────────────────────────────────────────────────────────────┘
 
-        If the error correction setting is set to 1 or higher, TFC adds
-        Reed-Solomon erasure codes to detect and correct errors during
-        transmission over the serial interface. For more information on
-        Reed-Solomon, see
-            https://en.wikipedia.org/wiki/Reed%E2%80%93Solomon_error_correction
-            https://www.cs.cmu.edu/~guyb/realworld/reedsolomon/reed_solomon_codes.html
+    def send_over_qrexec(self, packet: bytes) -> None:
+        """Send packet content over the Qubes' qrexec RPC.
 
-        If error correction is set to 0, errors are only detected. This
-        is done by using a BLAKE2b based, 128-bit checksum.
+        More information at https://www.qubes-os.org/doc/qrexec/
 
-        If Qubes is used, Reed-Solomon is not used as it only slows down data transfer.
+        The packet is encoded with ASCII85 to ensure e.g. 0x0a
+        byte is not interpreted as line feed by the RPC service.
         """
-        if self.settings.session_serial_error_correction and not self.settings.qubes:
-            packet = self.rs.encode(packet)
-        else:
-            packet = packet + hashlib.blake2b(packet, digest_size=PACKET_CHECKSUM_LENGTH).digest()
+        target_vm   = QubesLiterals.QUBES_NET_VM_NAME    if self.settings.program_id == ProgramID.TX else QubesLiterals.QUBES_DST_VM_NAME
+        dom0_policy = QubesLiterals.QUBES_SRC_NET_POLICY if self.settings.program_id == ProgramID.TX else QubesLiterals.QUBES_NET_DST_POLICY
+
+        subprocess.Popen(['/usr/bin/qrexec-client-vm', target_vm, dom0_policy],
+                         stdin  = subprocess.PIPE,
+                         stdout = subprocess.DEVNULL,
+                         stderr = subprocess.DEVNULL
+                         ).communicate(base64.b85encode(packet))
+
+    @staticmethod
+    def read_qubes_buffer_file() -> bytes:
+        """Read packet from oldest buffer file."""
+        incoming_packet = QubesLiterals.QUBES_BUFFER_INCOMING_PACKET
+        incoming_dir    = QubesLiterals.QUBES_BUFFER_INCOMING_DIR
+
+        ensure_dir(incoming_dir)
+
+        while not any([f for f in os.listdir(incoming_dir) if f.startswith(incoming_packet)]):
+            time.sleep(0.001)
+
+        packet, _ = read_oldest_buffer_file(incoming_dir, incoming_packet)
+
+        try:
+            packet = base64.b85decode(packet)
+        except ValueError:
+            raise SoftError('Error: Received packet had invalid Base85 encoding.')
+
         return packet
 
-    def detect_errors(self, packet: bytes) -> bytes:
-        """Handle received packet error detection and/or correction."""
-        if self.settings.qubes:
-            try:
-                packet = base64.b85decode(packet)
-            except ValueError:
-                raise SoftError("Error: Received packet had invalid Base85 encoding.")
 
-        if self.settings.session_serial_error_correction and not self.settings.qubes:
-            try:
-                packet, _ = self.rs.decode(packet)
-                return bytes(packet)
-            except ReedSolomonError:
-                raise SoftError("Error: Reed-Solomon failed to correct errors in the received packet.", bold=True)
-        else:
-            packet, checksum = separate_trailer(packet, PACKET_CHECKSUM_LENGTH)
-
-            if hashlib.blake2b(packet, digest_size=PACKET_CHECKSUM_LENGTH).digest() != checksum:
-                raise SoftError("Warning! Received packet had an invalid checksum.", bold=True)
-            return packet
-
-    def search_serial_interface(self) -> str:
-        """Search for a serial interface."""
-        if self.settings.session_usb_serial_adapter:
-            search_announced = False
-
-            if not self.init_found:
-                phase("Searching for USB-to-serial interface", offset=len('Found'))
-
-            while True:
-                for f in sorted(os.listdir('/dev/')):
-                    if f.startswith('ttyUSB'):
-                        if self.init_found:
-                            time.sleep(1)
-                        phase('Found', done=True)
-                        if self.init_found:
-                            print_on_previous_line(reps=2)
-                        self.init_found = True
-                        return f'/dev/{f}'
-
-                time.sleep(0.1)
-                if self.init_found and not search_announced:
-                    phase("Serial adapter disconnected. Waiting for interface", head=1, offset=len('Found'))
-                    search_announced = True
-
-        else:
-            if self.settings.built_in_serial_interface in sorted(os.listdir('/dev/')):
-                return f'/dev/{self.settings.built_in_serial_interface}'
-            raise CriticalError(f"Error: /dev/{self.settings.built_in_serial_interface} was not found.")
-
-    # Local testing
+    # ┌───────────────────────────────────────────────────────────────────────────┐
+    # │                               Local Testing                               │
+    # └───────────────────────────────────────────────────────────────────────────┘
 
     def server_establish_socket(self) -> None:
         """Initialize the receiver (IPC server).
@@ -388,32 +416,36 @@ class Gateway(object):
         To conclude, the local test configuration should never be used
         under a threat model where endpoint security is of importance.
         """
+        listener: O[multiprocessing.connection.Listener] = None
         try:
-            socket_number  = RP_LISTEN_SOCKET if self.settings.software_operation == NC else DST_LISTEN_SOCKET
-            listener       = multiprocessing.connection.Listener((LOCALHOST, socket_number))
+            socket_number  = (SocketNumber.RP_LISTEN if self.settings.program_id == ProgramID.NC else SocketNumber.DST_LISTEN)
+            listener       = multiprocessing.connection.Listener((NetworkLiterals.LOCALHOST.value, socket_number))
             self.rx_socket = listener.accept()
         except KeyboardInterrupt:
             graceful_exit()
+        finally:
+            if listener is not None:
+                listener.close()
 
     def client_establish_socket(self) -> None:
         """Initialize the transmitter (IPC client)."""
         try:
-            target = RECEIVER if self.settings.software_operation == NC else RELAY
-            phase(f"Connecting to {target}")
+            target = ProgramName.RECEIVER.value if self.settings.program_id == ProgramID.NC else ProgramName.RELAY.value
+            phase(f'Connecting to {target}')
             while True:
                 try:
-                    if self.settings.software_operation == TX:
-                        socket_number = SRC_DD_LISTEN_SOCKET if self.settings.data_diode_sockets else RP_LISTEN_SOCKET
+                    if self.settings.program_id == ProgramID.TX:
+                        socket_number = SocketNumber.SRC_DD_LISTEN if self.settings.data_diode_sockets else SocketNumber.RP_LISTEN
                     else:
-                        socket_number = DST_DD_LISTEN_SOCKET if self.settings.data_diode_sockets else DST_LISTEN_SOCKET
+                        socket_number = SocketNumber.DST_DD_LISTEN if self.settings.data_diode_sockets else SocketNumber.DST_LISTEN
 
                     try:
-                        self.tx_socket = multiprocessing.connection.Client((LOCALHOST, socket_number))
+                        self.tx_socket = multiprocessing.connection.Client((NetworkLiterals.LOCALHOST.value, socket_number))
                     except ConnectionRefusedError:
                         time.sleep(0.1)
                         continue
 
-                    phase(DONE)
+                    phase(StatusMsg.DONE.value)
                     break
 
                 except socket.error:
@@ -422,289 +454,69 @@ class Gateway(object):
         except KeyboardInterrupt:
             graceful_exit()
 
+    def read_socket(self) -> bytes:
+        """Read packet from socket interface."""
+        while True:
+            if self.rx_socket is None:
+                raise CriticalError('Socket interface has not been initialized.')
 
-class GatewaySettings(object):
-    """\
-    Gateway settings store settings for serial interface in an
-    unencrypted JSON database.
+            rx_socket = self.rx_socket
 
-    The reason these settings are in plaintext is it protects the system
-    from an inconsistent serial setting state: Would the user change one
-    or more settings of their serial interfaces, and would the setting
-    adjusting packet to Receiver Program drop, Relay Program could in
-    some situations no longer communicate with the Receiver Program.
+            try:
+                packet = rx_socket.recv()  # type: bytes
+                return packet
+            except KeyboardInterrupt:
+                pass
+            except EOFError:
+                self.rx_socket = None
+                self.server_establish_socket()
+            except OSError:
+                self.rx_socket = None
+                self.server_establish_socket()
 
-    Serial interface settings are not sensitive enough to justify the
-    inconveniences that would result from encrypting the setting values.
-    """
 
-    def __init__(self,
-                 operation:  str,
-                 local_test: bool,
-                 dd_sockets: bool,
-                 qubes:      bool
-                 ) -> None:
-        """Create a new Settings object.
+    # ┌───────────────────────────────────────────────────────────────────────────┐
+    # │                         Error Correction/Detection                        │
+    # └───────────────────────────────────────────────────────────────────────────┘
 
-        The settings below are altered from within the program itself.
-        Changes made to the default settings are stored in the JSON
-        file under $HOME/tfc/user_data from where, if needed, they can
-        be manually altered by the user.
+    def add_error_correction(self, packet: bytes) -> bytes:
+        """Add error correction to packet that will be output.
+
+        If the error correction setting is set to 1 or higher, TFC adds
+        Reed-Solomon erasure codes to detect and correct errors during
+        transmission over the serial interface. For more information on
+        Reed-Solomon, see
+            https://en.wikipedia.org/wiki/Reed%E2%80%93Solomon_error_correction
+            https://www.cs.cmu.edu/~guyb/realworld/reedsolomon/reed_solomon_codes.html
+
+        If error correction is set to 0, errors are only detected. This
+        is done by using a BLAKE2b based, 128-bit checksum.
+
+        If Qubes is used, Reed-Solomon is not used as it only slows down data transfer.
         """
-        self.serial_baudrate           = 19200
-        self.serial_error_correction   = 5
-        self.use_serial_usb_adapter    = True
-        self.built_in_serial_interface = 'ttyS0'
-
-        self.software_operation = operation
-        self.local_testing_mode = local_test
-        self.data_diode_sockets = dd_sockets
-
-        self.qubes    = qubes
-        self.all_keys = list(vars(self).keys())
-        self.key_list = self.all_keys[:self.all_keys.index('software_operation')]
-        self.defaults = {k: self.__dict__[k] for k in self.key_list}
-
-        self.file_name = f'{DIR_USER_DATA}{self.software_operation}_serial_settings.json'
-
-        ensure_dir(DIR_USER_DATA)
-        if os.path.isfile(self.file_name):
-            self.load_settings()
+        if self.settings.session_serial_error_correction and not self.settings.qubes:
+            return bytes(self.rs.encode(packet))
         else:
-            self.setup()
-            self.store_settings()
+            packet += hashlib.blake2b(packet, digest_size=FieldLength.PACKET_CHECKSUM).digest()
+        return packet
 
-        self.session_serial_baudrate         = self.serial_baudrate
-        self.session_serial_error_correction = self.serial_error_correction
-        self.session_usb_serial_adapter      = self.use_serial_usb_adapter
-
-        self.tx_inter_packet_delay, self.rx_receive_timeout = self.calculate_serial_delays(self.session_serial_baudrate)
-
-        self.race_condition_delay = calculate_race_condition_delay(self.session_serial_error_correction,
-                                                                   self.serial_baudrate)
-
-    @classmethod
-    def calculate_serial_delays(cls, baud_rate: int) -> Tuple[float, float]:
-        """Calculate the inter-packet delay and receive timeout.
-
-        Although this calculation mainly depends on the baud rate, a
-        minimal value will be set for rx_receive_timeout. This is to
-        ensure high baud rates do not cause issues by having shorter
-        delays than what the `time.sleep()` resolution allows.
-        """
-        bytes_per_sec = baud_rate / BAUDS_PER_BYTE
-        byte_travel_t = 1 / bytes_per_sec
-
-        rx_receive_timeout    = max(2 * byte_travel_t, SERIAL_RX_MIN_TIMEOUT)
-        tx_inter_packet_delay = 2 * rx_receive_timeout
-
-        return tx_inter_packet_delay, rx_receive_timeout
-
-    def setup(self) -> None:
-        """Prompt the user to enter initial serial interface setting.
-
-        Ensure that the serial interface is available before proceeding.
-        """
-        if not self.local_testing_mode and not self.qubes:
-            name = {TX: TRANSMITTER, NC: RELAY, RX: RECEIVER}[self.software_operation]
-
-            self.use_serial_usb_adapter = yes(f"Use USB-to-serial/TTL adapter for {name} Computer?", head=1, tail=1)
-
-            if self.use_serial_usb_adapter:
-                for f in sorted(os.listdir('/dev/')):
-                    if f.startswith('ttyUSB'):
-                        return None
-                m_print("Error: USB-to-serial/TTL adapter not found.")
-                self.setup()
-            else:
-                if self.built_in_serial_interface not in sorted(os.listdir('/dev/')):
-                    m_print(f"Error: Serial interface /dev/{self.built_in_serial_interface} not found.")
-                    self.setup()
-
-    def store_settings(self) -> None:
-        """Store serial settings in JSON format."""
-        serialized = json.dumps(self, default=(lambda o: {k: self.__dict__[k] for k in self.key_list}), indent=4)
-
-        with open(self.file_name, 'w+') as f:
-            f.write(serialized)
-            f.flush()
-            os.fsync(f.fileno())
-
-    def invalid_setting(self,
-                        key:       str,
-                        json_dict: Dict[str, Union[bool, int, str]]
-                        ) -> None:
-        """Notify about setting an invalid value to default value."""
-        m_print([f"Error: Invalid value '{json_dict[key]}' for setting '{key}' in '{self.file_name}'.",
-                 f"The value has been set to default ({self.defaults[key]})."], head=1, tail=1)
-        setattr(self, key, self.defaults[key])
-
-    def load_settings(self) -> None:
-        """Load and validate JSON settings for serial interface."""
-        with open(self.file_name) as f:
+    def detect_errors(self, packet: bytes) -> bytes:
+        """Handle received packet error detection and/or correction."""
+        if self.settings.qubes:
             try:
-                json_dict = json.load(f)
-            except json.decoder.JSONDecodeError:
-                os.remove(self.file_name)
-                self.store_settings()
-                print(f"\nError: Invalid JSON format in '{self.file_name}'."
-                      "\nSerial interface settings have been set to default values.\n")
-                return None
+                packet = base64.b85decode(packet)
+            except ValueError:
+                raise SoftError('Error: Received packet had invalid Base85 encoding.')
 
-        # Check for missing setting
-        self.check_missing_settings(json_dict)
-
-        # Store after loading to add missing, to replace invalid settings,
-        # and to remove settings that do not belong in the JSON file.
-        self.store_settings()
-
-    def check_missing_settings(self, json_dict: Any) -> None:
-        """Check for missing JSON fields and invalid values."""
-        for key in self.key_list:
+        if self.settings.session_serial_error_correction and not self.settings.qubes:
             try:
-                self.check_key_in_key_list(key, json_dict)
+                decoded_packet, _ = self.rs.decode(packet)
+                return bytes(decoded_packet)
+            except ReedSolomonError:
+                raise SoftError('Error: Reed-Solomon failed to correct errors in the received packet.', bold=True)
+        else:
+            packet, checksum = separate_trailer(packet, FieldLength.PACKET_CHECKSUM)
 
-                if key == 'serial_baudrate':
-                    self.validate_serial_baudrate(key, json_dict)
-
-                elif key == 'serial_error_correction':
-                    self.validate_serial_error_correction(key, json_dict)
-
-                elif key == 'use_serial_usb_adapter':
-                    self.validate_serial_usb_adapter_value(key, json_dict)
-
-                elif key == 'built_in_serial_interface':
-                    self.validate_serial_interface_value(key, json_dict)
-
-            except SoftError:
-                continue
-
-            setattr(self, key, json_dict[key])
-
-    def check_key_in_key_list(self, key: str, json_dict: Any) -> None:
-        """Check if the setting's key value is in the setting dictionary."""
-        if key not in json_dict:
-            m_print([f"Error: Missing setting '{key}' in '{self.file_name}'.",
-                     f"The value has been set to default ({self.defaults[key]})."], head=1, tail=1)
-            setattr(self, key, self.defaults[key])
-            raise SoftError("Missing key", output=False)
-
-    def validate_serial_usb_adapter_value(self, key: str, json_dict: Any) -> None:
-        """Validate the serial usb adapter setting value."""
-        if not isinstance(json_dict[key], bool):
-            self.invalid_setting(key, json_dict)
-            raise SoftError("Invalid value", output=False)
-
-    def validate_serial_baudrate(self, key: str, json_dict: Any) -> None:
-        """Validate the serial baudrate setting value."""
-        if json_dict[key] not in serial.Serial().BAUDRATES:
-            self.invalid_setting(key, json_dict)
-            raise SoftError("Invalid value", output=False)
-
-    def validate_serial_error_correction(self, key: str, json_dict: Any) -> None:
-        """Validate the serial error correction setting value."""
-        if not isinstance(json_dict[key], int) or json_dict[key] < 0:
-            self.invalid_setting(key, json_dict)
-            raise SoftError("Invalid value", output=False)
-
-    def validate_serial_interface_value(self, key: str, json_dict: Any) -> None:
-        """Validate the serial interface setting value."""
-        if not isinstance(json_dict[key], str):
-            self.invalid_setting(key, json_dict)
-            raise SoftError("Invalid value", output=False)
-
-        if not any(json_dict[key] == f for f in os.listdir('/sys/class/tty')):
-            self.invalid_setting(key, json_dict)
-            raise SoftError("Invalid value", output=False)
-
-    def change_setting(self, key: str, value_str: str) -> None:
-        """Parse, update and store new setting value."""
-        attribute = self.__getattribute__(key)
-        try:
-            if isinstance(attribute, bool):
-                value = dict(true=True, false=False)[value_str.lower()]  # type: Union[bool, int]
-
-            elif isinstance(attribute, int):
-                value = int(value_str)
-                if value < 0 or value > MAX_INT:
-                    raise ValueError
-
-            else:
-                raise CriticalError("Invalid attribute type in settings.")
-
-        except (KeyError, ValueError):
-            raise SoftError(f"Error: Invalid setting value '{value_str}'.", delay=1, tail_clear=True)
-
-        self.validate_key_value_pair(key, value)
-
-        setattr(self, key, value)
-        self.store_settings()
-
-    @staticmethod
-    def validate_key_value_pair(key:   str,
-                                value: Union[int, bool]
-                                ) -> None:
-        """\
-        Perform further evaluation on settings the values of which have
-        restrictions.
-        """
-        if key == 'serial_baudrate':
-            if value not in serial.Serial().BAUDRATES:
-                raise SoftError("Error: The specified baud rate is not supported.")
-            m_print("Baud rate will change on restart.", head=1, tail=1)
-
-        if key == 'serial_error_correction':
-            if value < 0:
-                raise SoftError("Error: Invalid value for error correction ratio.")
-            m_print("Error correction ratio will change on restart.", head=1, tail=1)
-
-    def print_settings(self) -> None:
-        """\
-        Print list of settings, their current and
-        default values, and setting descriptions.
-        """
-        desc_d = {"serial_baudrate":         "The speed of serial interface in bauds per second",
-                  "serial_error_correction": "Number of byte errors serial datagrams can recover from"}
-
-        # Columns
-        c1 = ['Serial interface setting']
-        c2 = ['Current value']
-        c3 = ['Default value']
-        c4 = ['Description']
-
-        terminal_width = get_terminal_width()
-        description_indent = 64
-
-        if terminal_width < description_indent + 1:
-            raise SoftError("Error: Screen width is too small.")
-
-        # Populate columns with setting data
-        for key in desc_d:
-            c1.append(key)
-            c2.append(str(self.__getattribute__(key)))
-            c3.append(str(self.defaults[key]))
-
-            description = desc_d[key]
-            wrapper     = textwrap.TextWrapper(width=max(1, (terminal_width - description_indent)))
-            desc_lines  = wrapper.fill(description).split('\n')
-            desc_string = desc_lines[0]
-
-            for line in desc_lines[1:]:
-                desc_string += '\n' + description_indent * ' ' + line
-
-            if len(desc_lines) > 1:
-                desc_string += '\n'
-
-            c4.append(desc_string)
-
-        # Calculate column widths
-        c1w, c2w, c3w = [max(len(v) for v in column) + SETTINGS_INDENT for column in [c1, c2, c3]]
-
-        # Align columns by adding whitespace between fields of each line
-        lines = [f'{f1:{c1w}}      {f2:{c2w}} {f3:{c3w}} {f4}' for f1, f2, f3, f4 in zip(c1, c2, c3, c4)]
-
-        # Add a terminal-wide line between the column names and the data
-        lines.insert(1, get_terminal_width() * '─')
-
-        # Print the settings
-        print('\n' + '\n'.join(lines) + '\n')
+            if hashlib.blake2b(packet, digest_size=FieldLength.PACKET_CHECKSUM).digest() != checksum:
+                raise SoftError('Warning! Received packet had an invalid checksum.', bold=True)
+            return packet
