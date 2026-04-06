@@ -312,7 +312,7 @@ UV_BIN=''
 # │ TFC source files │
 # └──────────────────┘
 PINNED_HASHES_FILE="${INSTALL_SUBDIR}/pinned_hashes.txt"
-PINNED_HASHES_DIGEST='8a5d5160ea36360a82fd8faa7847a29d1fcadb24537d829726ddd48937bfb62b500b9dfb17ffe0113a7965fcc83ef416c12ed49e5d386630618b9e3769d4003a'
+PINNED_HASHES_DIGEST='b6d468fae513a866b052b325e21fca61b7ff0790bc9187d749b51d3e716b195f2937973e383e9390ba4a6818d64601b9d75c25a7b7585fe557609960d2af3e59'
 declare -A tfc_file_hashes
 pinned_hashes_loaded=false
 
@@ -990,6 +990,22 @@ function install_system_dependencies {
     esac
 }
 
+# ┌─────────────────────┐
+# │ Tails configuration │
+# └─────────────────────┘
+
+function install_apt_tails_relay_dependencies {
+  tsudo torsocks apt update
+  tsudo torsocks apt install -y \
+    build-essential \
+    cargo \
+    git \
+    libssl-dev \
+    python3-dev \
+    rustc
+}
+
+
 # ┌─────────────────────────────┐
 # │ Local testing configuration │
 # └─────────────────────────────┘
@@ -1521,18 +1537,22 @@ function install_tfc_configuration_relay_tails {
     # running Tails live distro (https://tails.boum.org/).
     read_sudo_pwd
 
-    t_sudo apt update
+    install_apt_tails_relay_dependencies
 
     prepare_clone_target_dir
 
     torsocks git clone https://github.com/maqp/tfc.git "${HOME}/tfc"
     cd "${HOME}/tfc"
     git checkout development
+
     t_sudo mv "${HOME}/tfc/" "${INSTALL_DIR}/"
     t_sudo chown -R root "${INSTALL_DIR}/"
 
     verify_tcb_requirements_files
     verify_files
+
+    t_sudo torsocks cargo fetch --locked --manifest-path "${INSTALL_DIR}/reed_solomon/Cargo.toml"
+    build_reed_solomon_extension "${INSTALL_DIR}" "/usr/bin/python3" "t_sudo"
 
     update_onion_grater_profile_python_version "${INSTALL_DIR}/${INSTALL_SUBDIR}/tfc.yml" "t_sudo"
 
