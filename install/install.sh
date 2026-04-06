@@ -612,11 +612,6 @@ function get_system_package_manager {
         return
     fi
 
-    if command -v eopkg >/dev/null 2>&1; then
-        echo 'eopkg'
-        return
-    fi
-
     echo ''
 }
 
@@ -662,9 +657,6 @@ function wait_for_system_package_manager {
         zypper )
             pid_files=(/run/zypp.pid /var/run/zypp.pid)
             process_names=(zypper)
-            ;;
-        eopkg )
-            process_names=(eopkg)
             ;;
         * )
             return
@@ -776,10 +768,10 @@ function install_config_arg_error {
     clear
     echo -e "\nUsage: bash install.sh [OPTION]\n"
     echo    "Mandatory arguments"
-    echo    "  tcb      Install Transmitter/Receiver Program (Arch Linux, Debian/Ubuntu, Fedora, openSUSE, SolusOS)"
-    echo    "  relay    Install Relay Program                (Arch Linux, Debian/Ubuntu, Fedora, openSUSE, SolusOS, Tails)"
-    echo    "  local    Install insecure local testing mode  (Arch Linux, Debian/Ubuntu, Fedora, openSUSE, SolusOS)"
-    echo -e "  dev      Install development configuration    (Arch Linux, Debian/Ubuntu, Fedora, openSUSE, SolusOS)\n"
+    echo    "  tcb      Install Transmitter/Receiver Program (Arch Linux, Debian/Ubuntu, Fedora, openSUSE)"
+    echo    "  relay    Install Relay Program                (Arch Linux, Debian/Ubuntu, Fedora, openSUSE, Tails)"
+    echo    "  local    Install insecure local testing mode  (Arch Linux, Debian/Ubuntu, Fedora, openSUSE)"
+    echo -e "  dev      Install development configuration    (Arch Linux, Debian/Ubuntu, Fedora, openSUSE)\n"
     echo    "  qsrc     Install Transmitter Program          (Qubes)"
     echo    "  qdst     Install Receiver Program             (Qubes)"
     echo -e "  qnet     Install Relay Program                (Qubes)\n"
@@ -787,7 +779,7 @@ function install_config_arg_error {
 }
 
 function unsupported_system_error {
-    exit_with_message "Unsupported system. Supported systems: Arch Linux, Debian/Ubuntu, Fedora, openSUSE, and Solus."
+    exit_with_message "Unsupported system. Supported systems: Arch Linux, Debian/Ubuntu, Fedora, and openSUSE."
 }
 
 
@@ -866,18 +858,6 @@ function ensure_zypper_bootstrap_packages {
     fi
 }
 
-function ensure_eopkg_bootstrap_packages {
-    # Ensure Tor bootstrap tools are installed for eopkg.
-    if ! eopkg list-installed | grep -qE '^tor[[:space:]]'; then
-        sudo eopkg update-repo
-        sudo eopkg install -y tor
-    fi
-
-    if ! command -v wget >/dev/null 2>&1; then
-        sudo eopkg install -y wget
-    fi
-}
-
 function ensure_bootstrap_packages {
     # Ensure Tor bootstrap tools are installed.
     case "$(get_system_package_manager)" in
@@ -885,7 +865,6 @@ function ensure_bootstrap_packages {
         pacman ) ensure_pacman_bootstrap_packages ;;
         dnf    ) ensure_dnf_bootstrap_packages ;;
         zypper ) ensure_zypper_bootstrap_packages ;;
-        eopkg  ) ensure_eopkg_bootstrap_packages ;;
         *      ) unsupported_system_error ;;
     esac
 }
@@ -961,31 +940,12 @@ function install_zypper_system_dependencies {
         zenity
 }
 
-function install_eopkg_system_dependencies {
-    sudo torsocks eopkg update-repo
-    # Solus ships Cargo as part of the `rust` package.
-    sudo torsocks eopkg install -y \
-        binutils \
-        gcc \
-        git \
-        glibc-devel \
-        gnome-terminal \
-        make \
-        openssl-devel \
-        pip \
-        python3 \
-        python3-devel \
-        rust \
-        zenity
-}
-
 function install_system_dependencies {
     case "$(get_system_package_manager)" in
         apt    ) install_apt_system_dependencies ;;
         pacman ) install_pacman_system_dependencies ;;
         dnf    ) install_dnf_system_dependencies ;;
         zypper ) install_zypper_system_dependencies ;;
-        eopkg  ) install_eopkg_system_dependencies ;;
         *      ) unsupported_system_error ;;
     esac
 }
@@ -1026,9 +986,6 @@ function install_zypper_local_test_dependencies {
     sudo torsocks zypper --non-interactive install --no-recommends terminator zenity
 }
 
-function install_eopkg_local_test_dependencies {
-    sudo torsocks eopkg install -y terminator zenity
-}
 
 function install_local_test_system_dependencies {
     case "$(get_system_package_manager)" in
@@ -1036,7 +993,6 @@ function install_local_test_system_dependencies {
         pacman ) install_pacman_local_test_dependencies ;;
         dnf    ) install_dnf_local_test_dependencies ;;
         zypper ) install_zypper_local_test_dependencies ;;
-        eopkg  ) install_eopkg_local_test_dependencies ;;
         *      ) unsupported_system_error ;;
     esac
 }
@@ -1104,30 +1060,12 @@ function install_zypper_dev_mode_dependencies {
         zenity
 }
 
-function install_eopkg_dev_mode_dependencies {
-    sudo torsocks eopkg update-repo
-    # Solus ships Cargo as part of the `rust` package.
-    sudo torsocks eopkg install -y \
-        binutils \
-        gcc \
-        git \
-        glibc-devel \
-        make \
-        openssl-devel \
-        python3 \
-        python3-devel \
-        rust \
-        terminator \
-        zenity
-}
-
 function install_dev_mode_system_dependencies {
     case "$(get_system_package_manager)" in
         apt    ) install_apt_dev_mode_dependencies ;;
         pacman ) install_pacman_dev_mode_dependencies ;;
         dnf    ) install_dnf_dev_mode_dependencies ;;
         zypper ) install_zypper_dev_mode_dependencies ;;
-        eopkg  ) install_eopkg_dev_mode_dependencies ;;
         *      ) unsupported_system_error ;;
     esac
 }

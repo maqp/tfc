@@ -222,7 +222,6 @@ This intermediate isolation mechanism runs on a single computer which means no h
 - Qubes 4.3.0 (Debian 13 VM)
 - OpenSUSE
 - Fedora 43
-- SolusOS
 
 #### Networked Computer
 - Arch Linux
@@ -230,7 +229,6 @@ This intermediate isolation mechanism runs on a single computer which means no h
 - Qubes 4.3.0 (Debian 13 VM)
 - OpenSUSE
 - Fedora 43
-- SolusOS
 - Tails 7.6
 
 
