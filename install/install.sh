@@ -1551,7 +1551,10 @@ function install_tfc_configuration_relay_tails {
     verify_tcb_requirements_files
     verify_files
 
-    t_sudo torsocks cargo fetch --locked --manifest-path "${INSTALL_DIR}/reed_solomon/Cargo.toml"
+    t_sudo env CARGO_HTTP_PROXY="socks5h://127.0.0.1:9050" \
+               CARGO_HTTP_MULTIPLEXING=false \
+        cargo fetch --locked --manifest-path "${INSTALL_DIR}/reed_solomon/Cargo.toml"
+
     build_reed_solomon_extension "${INSTALL_DIR}" "/usr/bin/python3" "t_sudo"
 
     update_onion_grater_profile_python_version "${INSTALL_DIR}/${INSTALL_SUBDIR}/tfc.yml" "t_sudo"
