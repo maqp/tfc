@@ -56,4 +56,4 @@ def process_offset(offset : int,
             raise SoftError(f'Dropped packet from {nick}.', window=window)
 
     elif offset:
-        print_message(f'Warning! {offset} packet{'s' if offset > 1 else ''} {direction} {nick} were not received.')
+        print_message(f"Warning! {offset} packet{'s' if offset > 1 else ''} {direction} {nick} were not received.")

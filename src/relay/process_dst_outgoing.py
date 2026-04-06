@@ -110,7 +110,7 @@ def process_dst_outgoing(queues       : 'RelayQueue',
                 packet_number    = gateway.write_rxp_datagram(command_datagram, cache_packet=cache_packet)
                 for _ in range(max(0, autoreplay_times - 1)):
                     gateway.resend_cached_packet(packet_number)
-                print_log_message(f'{DatagramTypeHR.COMMAND:<9} {'to':<4} Receiver Program', command_datagram.ts)
+                print_log_message(f"{DatagramTypeHR.COMMAND:<9} {'to':<4} Receiver Program", command_datagram.ts)
                 continue
 
             elif resend_queue.qsize() > 0:

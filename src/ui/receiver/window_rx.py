@@ -359,7 +359,7 @@ class RxWindow:
             ending = ' '
         else:
             len_indent = self.len_longest_handle - len(message.handle) if self.is_active else 0
-            handle     = f'{len_indent * ' '}{message.handle}'
+            handle     = f"{len_indent * ' '}{message.handle}"
 
             if not self.is_active:
                 if   self.is_contact_window: handle += f' (private message)'
@@ -488,7 +488,7 @@ class RxWindow:
         c5w            = max(len('Progress'), bar_width + 2) + CLIIndentLiterals.FILE_TRANSFER_INDENT
 
         # Align columns by adding whitespace between fields of each line
-        lines = [f'{'File name':{c1w}}{'Size':{c2w}}{'Sender':{c3w}}{'Complete':{c4w}}{'Progress':{c5w}}']
+        lines = [f"{'File name':{c1w}}{'Size':{c2w}}{'Sender':{c3w}}{'Complete':{c4w}}{'Progress':{c5w}}"]
         lines.extend(f'{name:{c1w}}{size:{c2w}}{sender:{c3w}}{complete:{c4w}}{self.render_progress_bar(percent, bar_width):{c5w}}'
                      for name, size, sender, complete, percent in rows)
 

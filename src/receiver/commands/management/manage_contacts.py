@@ -63,7 +63,7 @@ def delete_contact(ser_cmd      : 'SerializedCommand',
 
     contact_list.remove_contact(onion_pub_key)
 
-    message = f'Removed {nick} ({onion_pub_key.short_address}) from contacts{' and groups' if in_group else ''}.'
+    message = f"Removed {nick} ({onion_pub_key.short_address}) from contacts{' and groups' if in_group else ''}."
     print_message(message, bold=True, padding_top=1, padding_bottom=1)
 
     sys_msg_win = window_list.sys_msg_win

@@ -334,7 +334,7 @@ class ProgramID(StrEnum):
 @enum.unique
 class OSIdentifier(StrEnum):
     """OS identifiers"""
-    TAILS = "NAME='Tails'"
+    TAILS = 'NAME="Tails"'
 
 
 @enum.unique
@@ -714,15 +714,15 @@ class BufferFileDir(StrEnum):
 class DataDir(StrEnum):
     """Default directories"""
     USER_DATA      = 'user_data'
-    EXT_BASE_DIR   = f'{os.getenv('HOME')}/Downloads/tfc'
+    EXT_BASE_DIR   = f"{os.getenv('HOME')}/Downloads/tfc"
     RECEIVED_FILES = f'{EXT_BASE_DIR}/received_files'
     EXPORTED_LOGS  = f'{EXT_BASE_DIR}/exported_logs'
 
 
 class WorkingDir(StrEnum):
     """Working directories."""
-    NORMAL = f'{os.getenv('HOME')}/.tfc'
-    TAILS  = f'{os.getenv('HOME')}/Persistent/tfc'
+    NORMAL = f"{os.getenv('HOME')}/.tfc"
+    TAILS  = f"{os.getenv('HOME')}/Persistent/tfc"
 
 
 class DatabaseLiterals(IntEnum):
