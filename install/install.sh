@@ -1546,7 +1546,7 @@ function install_tfc_configuration_relay_tails {
     git checkout development
 
     torsocks cargo fetch --locked --manifest-path "${HOME}/tfc/reed_solomon/Cargo.toml"
-    build_reed_solomon_extension "${HOME}/tfc" "/usr/bin/python3" "t_sudo"
+    build_reed_solomon_extension "${HOME}/tfc" "/usr/bin/python3" ""
 
     t_sudo mv "${HOME}/tfc/" "${INSTALL_DIR}/"
     t_sudo chown -R root "${INSTALL_DIR}/"
