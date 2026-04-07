@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=TFC-Relay
+Exec=gnome-terminal --geometry=105x25 -x bash -c "cd /opt/tfc && ./venv_relay/bin/python3 ./tfc-relay.py || bash"
+Icon=tfc.png
+Terminal=false
+Type=Application
+Categories=Network;Messaging;Security;
+Actions=Launch-Test
+
+[Desktop Action Launch-Test]
+Name=Launch-Test
+Exec=gnome-terminal --geometry=105x25 -x bash -c "cd /opt/tfc && ./venv_relay/bin/python3 ./tfc-relay.py -t || bash"
+OnlyShowIn=Unity;

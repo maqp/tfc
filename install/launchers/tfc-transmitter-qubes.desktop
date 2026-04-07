@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=TFC-Transmitter
+Exec=gnome-terminal --geometry=94x25 -x bash -c "cd /opt/tfc && ./venv_tcb/bin/python3 ./tfc-transmitter.py -q || bash"
+Icon=tfc.png
+Terminal=false
+Type=Application
+Categories=Network;Messaging;Security;

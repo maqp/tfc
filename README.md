@@ -3,10 +3,8 @@
 ### Tinfoil Chat
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Python 3.9|3.10](https://img.shields.io/badge/Python-3.9%20%7C%203.10-blue)](https://python.org)
+[![Python 3.13|3.14](https://img.shields.io/badge/Python-3.13%20%7C%203.14-blue)](https://python.org)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
-[![Unit Tests](https://github.com/maqp/tfc/actions/workflows/unit_tests.yml/badge.svg?branch=master)](https://github.com/maqp/tfc/actions/workflows/unit_tests.yml)
-[![codecov](https://codecov.io/gh/maqp/tfc/branch/master/graph/badge.svg?token=RJv2hFFdnR)](https://codecov.io/gh/maqp/tfc)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/71fa9cc1da424f52a576a04c2722da26)](https://www.codacy.com/gh/maqp/tfc/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=maqp/tfc&amp;utm_campaign=Badge_Grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/maqp/tfc/badge)](https://www.codefactor.io/repository/github/maqp/tfc)
 [![Snyk Report](https://snyk.io/test/github/maqp/tfc/badge.svg)](https://snyk.io/test/github/maqp/tfc) 
@@ -55,9 +53,10 @@ a syscall for its ChaCha20 based
 
 
 #### Anonymous by design
+
 TFC routes all communication exclusively through the 
 [Tor](https://2019.www.torproject.org/about/overview.html.en) 
-anonymity network. It uses the next generation
+anonymity network. It uses the
 ([v3](https://trac.torproject.org/projects/tor/wiki/doc/NextGenOnions))
 [Tor Onion Services](https://2019.www.torproject.org/docs/onion-services)
 to enable P2P communication that never exits the Tor network. This makes it hard for the 
@@ -84,7 +83,7 @@ further metadata protection from hackers, the Internet-facing part of TFC can be
 contains no personal files of the user (which makes it hard to deduce to whom the endpoint
 belongs to), and that provides 
 [additional layers of protection](https://github.com/Whonix/onion-grater)
-for their anonymity.
+for ensuring anonymity.
 
 
 #### First messaging system with endpoint security
@@ -116,15 +115,16 @@ of the data diode enforce direction of data transmission with the fundamental la
 physics. This protection is so strong, the certified implementations of data diodes are 
 typically found in critical infrastructure protection and government networks where the
 classification level of data varies between systems. A data diode might e.g. allow access 
-to a nuclear power plant's safety system readings, while at the same time preventing 
-attackers from exploiting these critical systems. An alternative use case is to allow 
-importing data from less secure systems to ones that contain classified documents that 
-must be protected from exfiltration.
+to a nuclear power plant's safety system readings \[[1](https://www-pub.iaea.org/MTCD/Publications/PDF/PUB1921_web.pdf#page=142)], 
+while at the same time preventing attackers from exploiting these critical systems. An 
+alternative use case is to allow importing data from less secure systems to ones that 
+contain classified documents that must be protected from exfiltration
+\[[2](https://csrc.nist.gov/CSRC/media/Projects/risk-management/800-53%20Downloads/800-53r5/SP_800-53_v5_1-derived-OSCAL.pdf#page=32)].
 
 In TFC the hardware data diode ensures that neither of the TCB-halves can be accessed 
 bidirectionally. Since the protection relies on physical limitations of the hardware's
 capabilities, no piece of malware, not even a 
-[zero-day exploit](https://en.wikipedia.org/wiki/Zero-day_(computing))
+[zero-day exploit](https://en.wikipedia.org/wiki/Zero-day_vulnerability#Exploits)
 can bypass the security provided by the data diode.
 
 
@@ -158,26 +158,26 @@ on her Destination Computer. All this happens seamlessly and automatically.
 ### Why keys and plaintexts cannot be exfiltrated
 
 The architecture described above simultaneously utilizes both
-[the classical and the alternative data diode models](https://en.wikipedia.org/wiki/Unidirectional_network#Applications) 
+[the classical and the alternative data diode models](https://en.wikipedia.org/wiki/Unidirectional_network#Usage) 
 to enable bidirectional communication between two users, while at the same time providing 
 hardware enforced endpoint security: 
 
 1. The Destination Computer uses the classical data diode model. This means it can receive 
 data from the insecure Networked Computer, but is unable to send data back to the Networked 
-Computer. The Receiver Program is designed to function under these constraints. However,
-even though the program authenticates and validates all incoming data, it is not ruled out 
-malware couldn't still infiltrate the Destination Computer. In the event that would happen, 
-the malware would be unable to exfiltrate sensitive keys or plaintexts back to the Networked 
+Computer. The Receiver Program is designed to function under these constraints. Even though 
+the Receiver Program authenticates and validates all incoming data, it is not ruled out that 
+malware could still infiltrate the Destination Computer. In the event that would happen, the 
+malware would be unable to exfiltrate sensitive keys or plaintexts back to the Networked 
 Computer, as the data diode prevents all outbound traffic.
 
-2. The Source Computer uses the alternative data diode model. This means it can output
-encrypted data to the insecure Networked Computer without having to worry about being
+2. The Source Computer uses the alternative data diode model. This means Transmitter Program
+can output encrypted data to the insecure Networked Computer without having to worry about being
 compromised. The data diode lacks the hardware that would allow transmission of data to the 
 Source Computer, which protects the Source Computer from all remote attacks. The Transmitter 
 Program is also designed to work under the data flow constraints introduced by the data diode; 
-To allow key exchanges, the short elliptic-curve public keys are input manually by the user. 
+To allow key exchanges, the short elliptic-curve public keys are input manually by the user.
 
-3. The Networked Computer is designed under the assumption it can be compromised by a
+3. The Networked Computer is operated under the assumption it can be compromised by a
 remote attacker: All sensitive data that passes through the Relay Program is protected by 
 [authenticated encryption](https://en.wikipedia.org/wiki/Authenticated_encryption)
 with no exceptions. Since the attacker is unable to exfiltrate decryption keys from 
@@ -193,9 +193,9 @@ are of no value to the attacker.
 
 For some users the
 [APTs](https://en.wikipedia.org/wiki/Advanced_persistent_threat) 
-of the modern world are not part of the threat model, and for others, the 
-requirement of having to build the data diode by themselves is a deal-breaker. Yet, for 
-all of them, storing private keys on a networked device is still a security risk.
+of the modern world are not part of the threat model, and for others, the requirement of having to 
+build the data diode by themselves is a deal-breaker. Yet, for all of them, storing private keys 
+on a networked device is still a security risk.
 
 To meet these users' needs, TFC can also be run in three dedicated 
 [Qubes](https://www.qubes-os.org/)
@@ -209,25 +209,17 @@ This intermediate isolation mechanism runs on a single computer which means no h
 ### Supported Operating Systems
 
 #### Source/Destination Computer
-- Debian 12.5
-- PureOS 10.3
-- *buntu 24.04 LTS
-- Pop!_OS 22.04 LTS
-- Linux Mint 21.3
-- LMDE 6
-- Zorin OS 17.1
-- Qubes 4.2.1 (Debian 12 VM)
+- Arch Linux and its derivatives
+- Debian and its derivatives (*buntu, PureOS, Pop!_OS, Linux Mint, LMDE, Zorin OS, Pop!_OS)
+- Fedora 43
+- Qubes 4.3.0 (Debian 13 VM)
 
 #### Networked Computer
-- Tails 6.2
-- Debian 12.5
-- PureOS 10.3
-- *buntu 24.04 LTS
-- Pop!_OS 22.04 LTS
-- Linux Mint 21.3
-- LMDE 6
-- Zorin OS 17.1
-- Qubes 4.2.1 (Debian 12 VM)
+- Arch Linux and its derivatives
+- Debian and its derivatives (*buntu, PureOS, Pop!_OS, Linux Mint, LMDE, Zorin OS, Pop!_OS)
+- Fedora 43
+- Qubes 4.3.0 (Debian 13 VM)
+- Tails 7.6
 
 
 ### More information

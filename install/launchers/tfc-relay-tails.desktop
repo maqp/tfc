@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=TFC-Relay
+Exec=kgx -- bash -c "/usr/bin/python3.13 /opt/tfc/tfc-relay.py; exec bash"
+Icon=/usr/share/pixmaps/tfc.png
+Terminal=false
+Type=Application
+Categories=Messaging;
+Actions=Launch-Test
+
+[Desktop Action Launch-Test]
+Name=Launch-Test
+Exec=kgx -- bash -c "/usr/bin/python3.13 /opt/tfc/tfc-relay.py -t; exec bash"
