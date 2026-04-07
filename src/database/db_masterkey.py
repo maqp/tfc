@@ -300,7 +300,7 @@ class MasterKey:
         time_cost   = IntArgon2TimeCost(lower_bound)
 
         min_time = Argon2KDTime.MIN_KEY_DERIVATION_TIME.value
-        max_time = Argon2KDTime.MIN_KEY_DERIVATION_TIME.value
+        max_time = Argon2KDTime.MAX_KEY_DERIVATION_TIME.value
 
         print(2*'\n')
 
@@ -377,7 +377,7 @@ class MasterKey:
         previous_memory_cost : O[int] = None
 
         min_time = Argon2KDTime.MIN_KEY_DERIVATION_TIME.value
-        max_time = Argon2KDTime.MIN_KEY_DERIVATION_TIME.value
+        max_time = Argon2KDTime.MAX_KEY_DERIVATION_TIME.value
 
         while True:
             midpoint    = (lower_bound + upper_bound) // 2
@@ -487,23 +487,22 @@ class MasterKey:
     @classmethod
     def new_password(cls, purpose: str = 'master password') -> Password:
         """Prompt the user to enter and confirm a new password."""
-        password_1 = get_password(f'Enter a new {purpose}: ')
+        password_str_1 = get_password(f'Enter a new {purpose}: ')
 
-        if password_1.lower() == 'generate':
+        if password_str_1.lower() == 'generate':
             password = Password.generate()
 
             print_message([f'Generated a {password.bit_strength}-bit password:',
-                     '', password_1, '',
+                     '', password.password, '',
                      'Write down this password and dispose of the copy once you remember it.',
                      'Press <Enter> to continue.'], manual_proceed=True, box=True, padding_top=1, padding_bottom=1)
             reset_terminal()
+            return password
 
-            password_2 = password_1
-        else:
-            password_2 = get_password(f'Confirm the {purpose}: ', repeat=True)
+        password_str_2 = get_password(f'Confirm the {purpose}: ', repeat=True)
 
-        if password_1 == password_2:
-            return Password(password_1)
+        if password_str_1 == password_str_2:
+            return Password(password_str_1)
 
         print_message('Error: Passwords did not match. Try again.', padding_top=1, padding_bottom=1)
         clear_previous_lines(delay=1, no_lines=7)

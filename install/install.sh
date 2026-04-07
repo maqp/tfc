@@ -312,7 +312,7 @@ UV_BIN=''
 # │ TFC source files │
 # └──────────────────┘
 PINNED_HASHES_FILE="${INSTALL_SUBDIR}/pinned_hashes.txt"
-PINNED_HASHES_DIGEST='54916739cb2ab79eafa70ecd326c42f3fc7973844cbc8e21804f1997e3536faa8364a97b445be0e2473f21a0350967802158603721e38477f1d0acbc9f0c31af'
+PINNED_HASHES_DIGEST='5a9235ddc072bffdc1f11e0b0e918043f345b79e5e152e75f6d7bdd462adffcc918df50e62937371114c66578e276ffed06b790b65efba44e31026e141b2f1fd'
 declare -A tfc_file_hashes
 pinned_hashes_loaded=false
 
