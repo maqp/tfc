@@ -220,14 +220,12 @@ This intermediate isolation mechanism runs on a single computer which means no h
 - Arch Linux
 - Debian and its derivatives (*buntu, PureOS, Pop!_OS, Linux Mint, LMDE, Zorin OS, Pop!_OS)
 - Qubes 4.3.0 (Debian 13 VM)
-- OpenSUSE
 - Fedora 43
 
 #### Networked Computer
 - Arch Linux
 - Debian and its derivatives (*buntu, PureOS, Pop!_OS, Linux Mint, LMDE, Zorin OS, Pop!_OS)
 - Qubes 4.3.0 (Debian 13 VM)
-- OpenSUSE
 - Fedora 43
 - Tails 7.6
 

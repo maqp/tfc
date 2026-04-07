@@ -607,11 +607,6 @@ function get_system_package_manager {
         return
     fi
 
-    if command -v zypper >/dev/null 2>&1; then
-        echo 'zypper'
-        return
-    fi
-
     echo ''
 }
 
@@ -653,10 +648,6 @@ function wait_for_system_package_manager {
         dnf )
             pid_files=(/var/cache/dnf/metadata_lock.pid)
             process_names=(dnf)
-            ;;
-        zypper )
-            pid_files=(/run/zypp.pid /var/run/zypp.pid)
-            process_names=(zypper)
             ;;
         * )
             return
@@ -768,10 +759,10 @@ function install_config_arg_error {
     clear
     echo -e "\nUsage: bash install.sh [OPTION]\n"
     echo    "Mandatory arguments"
-    echo    "  tcb      Install Transmitter/Receiver Program (Arch Linux, Debian/Ubuntu, Fedora, openSUSE)"
-    echo    "  relay    Install Relay Program                (Arch Linux, Debian/Ubuntu, Fedora, openSUSE, Tails)"
-    echo    "  local    Install insecure local testing mode  (Arch Linux, Debian/Ubuntu, Fedora, openSUSE)"
-    echo -e "  dev      Install development configuration    (Arch Linux, Debian/Ubuntu, Fedora, openSUSE)\n"
+    echo    "  tcb      Install Transmitter/Receiver Program (Arch Linux, Debian/Ubuntu, Fedora)"
+    echo    "  relay    Install Relay Program                (Arch Linux, Debian/Ubuntu, Fedora, Tails)"
+    echo    "  local    Install insecure local testing mode  (Arch Linux, Debian/Ubuntu, Fedora)"
+    echo -e "  dev      Install development configuration    (Arch Linux, Debian/Ubuntu, Fedora)\n"
     echo    "  qsrc     Install Transmitter Program          (Qubes)"
     echo    "  qdst     Install Receiver Program             (Qubes)"
     echo -e "  qnet     Install Relay Program                (Qubes)\n"
@@ -779,7 +770,7 @@ function install_config_arg_error {
 }
 
 function unsupported_system_error {
-    exit_with_message "Unsupported system. Supported systems: Arch Linux, Debian/Ubuntu, Fedora, and openSUSE."
+    exit_with_message "Unsupported system. Supported systems: Arch Linux, Debian/Ubuntu, and Fedora."
 }
 
 
@@ -846,25 +837,12 @@ function ensure_dnf_bootstrap_packages {
     fi
 }
 
-function ensure_zypper_bootstrap_packages {
-    # Ensure Tor bootstrap tools are installed for zypper.
-    if ! rpm -q tor >/dev/null 2>&1; then
-        sudo zypper --non-interactive --gpg-auto-import-keys refresh
-        sudo zypper --non-interactive install --no-recommends tor
-    fi
-
-    if ! command -v wget >/dev/null 2>&1; then
-        sudo zypper --non-interactive install --no-recommends wget
-    fi
-}
-
 function ensure_bootstrap_packages {
     # Ensure Tor bootstrap tools are installed.
     case "$(get_system_package_manager)" in
         apt    ) ensure_apt_bootstrap_packages ;;
         pacman ) ensure_pacman_bootstrap_packages ;;
         dnf    ) ensure_dnf_bootstrap_packages ;;
-        zypper ) ensure_zypper_bootstrap_packages ;;
         *      ) unsupported_system_error ;;
     esac
 }
@@ -923,29 +901,11 @@ function install_dnf_system_dependencies {
         zenity
 }
 
-function install_zypper_system_dependencies {
-    sudo torsocks zypper --non-interactive --gpg-auto-import-keys refresh
-    sudo torsocks zypper --non-interactive install --no-recommends \
-        cargo \
-        gcc \
-        gcc-c++ \
-        git \
-        gnome-terminal \
-        libffi-devel \
-        libopenssl-devel \
-        make \
-        python3-devel \
-        python3-pip \
-        rust \
-        zenity
-}
-
 function install_system_dependencies {
     case "$(get_system_package_manager)" in
         apt    ) install_apt_system_dependencies ;;
         pacman ) install_pacman_system_dependencies ;;
         dnf    ) install_dnf_system_dependencies ;;
-        zypper ) install_zypper_system_dependencies ;;
         *      ) unsupported_system_error ;;
     esac
 }
@@ -982,17 +942,11 @@ function install_dnf_local_test_dependencies {
     sudo torsocks dnf -y install terminator zenity
 }
 
-function install_zypper_local_test_dependencies {
-    sudo torsocks zypper --non-interactive install --no-recommends terminator zenity
-}
-
-
 function install_local_test_system_dependencies {
     case "$(get_system_package_manager)" in
         apt    ) install_apt_local_test_dependencies ;;
         pacman ) install_pacman_local_test_dependencies ;;
         dnf    ) install_dnf_local_test_dependencies ;;
-        zypper ) install_zypper_local_test_dependencies ;;
         *      ) unsupported_system_error ;;
     esac
 }
@@ -1044,28 +998,11 @@ function install_dnf_dev_mode_dependencies {
         zenity
 }
 
-function install_zypper_dev_mode_dependencies {
-    sudo torsocks zypper --non-interactive --gpg-auto-import-keys refresh
-    sudo torsocks zypper --non-interactive install --no-recommends \
-        cargo \
-        gcc \
-        gcc-c++ \
-        git \
-        libffi-devel \
-        libopenssl-devel \
-        make \
-        python3-devel \
-        rust \
-        terminator \
-        zenity
-}
-
 function install_dev_mode_system_dependencies {
     case "$(get_system_package_manager)" in
         apt    ) install_apt_dev_mode_dependencies ;;
         pacman ) install_pacman_dev_mode_dependencies ;;
         dnf    ) install_dnf_dev_mode_dependencies ;;
-        zypper ) install_zypper_dev_mode_dependencies ;;
         *      ) unsupported_system_error ;;
     esac
 }
