@@ -60,7 +60,7 @@ execnet>=2.1.2
 requests>=2.33.1
 certifi>=2026.2.25
 charset-normalizer==2.1.1
-idna>=3.11
+idna>=3.15
 urllib3>=2.6.3
 setuptools>=82.0.1
 
